@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock } from "lucide-react";
+import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -21,6 +21,18 @@ export default function Dashboard() {
   // Fetch recordings
   const { data: recordings, isLoading, refetch } = trpc.recordings.list.useQuery();
   const deleteRecordingMutation = trpc.recordings.delete.useMutation();
+
+  // Calculate statistics
+  const statistics = useMemo(() => {
+    const totalSeconds = (recordings || []).reduce((sum, r) => sum + (r.duration || 0), 0);
+    const totalHours = (totalSeconds / 3600).toFixed(1);
+    const totalRecordings = recordings?.length || 0;
+
+    return {
+      totalHours,
+      totalRecordings,
+    };
+  }, [recordings]);
 
   // Filter and search recordings
   const filteredRecordings = useMemo(() => {
@@ -117,6 +129,50 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Statistics Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-b border-border">
+        <div className="container py-6">
+          <h2 className="text-lg font-semibold mb-4 text-foreground">Your Study Statistics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Total Hours */}
+            <Card className="p-4 bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Hours Recorded</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">{statistics.totalHours}</p>
+                  <p className="text-xs text-muted-foreground mt-1">hours</p>
+                </div>
+                <Clock className="w-6 h-6 text-blue-500 opacity-50" />
+              </div>
+            </Card>
+
+            {/* Total Recordings */}
+            <Card className="p-4 bg-white dark:bg-slate-900 border-purple-200 dark:border-purple-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Recordings</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">{statistics.totalRecordings}</p>
+                  <p className="text-xs text-muted-foreground mt-1">lectures & meetings</p>
+                </div>
+                <Mic className="w-6 h-6 text-purple-500 opacity-50" />
+              </div>
+            </Card>
+
+            {/* Study Progress */}
+            <Card className="p-4 bg-white dark:bg-slate-900 border-green-200 dark:border-green-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Study Streak</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">Active</p>
+                  <p className="text-xs text-muted-foreground mt-1">keep it up!</p>
+                </div>
+                <TrendingUp className="w-6 h-6 text-green-500 opacity-50" />
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="container py-8">

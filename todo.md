@@ -59,8 +59,16 @@
 ## Phase 7: App Restructuring & Dashboard Consolidation
 - [x] Create Landing page (public, shows marketing content) - Landing.tsx created
 - [x] Rename current Home.tsx to Landing.tsx - Moved to Landing.tsx
-- [x] Create new comprehensive Dashboard page with all features - Dashboard.tsx with 4 tabs
+- [x] Create new comprehensive Dashboard page with all features - Dashboard.tsx with 5 tabs
 - [x] Fix routing: / → Landing (public), /dashboard → Dashboard (protected) - Working
 - [x] Fix sign-in redirect to go to /dashboard - Properly redirecting
 - [x] Consolidate all features into Dashboard (Recorder, Transcription, Notes, Flashcards, Tutor) - All tabs present
 - [x] Test end-to-end authentication and navigation flows - All verified working
+
+## Phase 8: My Library & Organization Features
+- [x] Create My Library section in Dashboard - Primary tab with search/filter/sort
+- [x] Add search functionality - Search by title
+- [x] Add filtering - By recording type (Lectures/Meetings)
+- [x] Add sorting - Recent, Oldest, Alphabetical
+- [x] Add quick actions - View and Delete buttons
+- [x] Add empty state - Helpful CTA when no recordings
