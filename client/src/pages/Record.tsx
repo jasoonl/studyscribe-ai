@@ -1,11 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle, AlertCircle } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
 
 export default function Record() {
   const { user } = useAuth();
@@ -50,9 +50,10 @@ export default function Record() {
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       setDuration(0);
+      toast.success("Recording started");
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      alert("Unable to access microphone. Please check permissions.");
+      toast.error("Unable to access microphone. Please check permissions.");
     }
   };
 
@@ -60,6 +61,7 @@ export default function Record() {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.pause();
       setIsPaused(true);
+      toast.info("Recording paused");
     }
   };
 
@@ -67,6 +69,7 @@ export default function Record() {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.resume();
       setIsPaused(false);
+      toast.info("Recording resumed");
     }
   };
 

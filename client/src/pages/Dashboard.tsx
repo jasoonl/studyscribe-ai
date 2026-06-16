@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Plus, Mic, Upload, Trash2 } from "lucide-react";
+import { Loader2, Plus, Mic, UploadCloud, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -10,6 +10,12 @@ export default function Dashboard() {
   const { user, logout } = useAuth();
   const { data: recordings, isLoading } = trpc.recordings.list.useQuery();
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const deleteRecordingMutation = trpc.recordings.delete.useMutation({
+    onSuccess: () => {
+      setDeletingId(null);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -78,7 +84,7 @@ export default function Dashboard() {
             <Card className="p-8 border-2 border-dashed border-primary hover:border-primary/80 transition-colors cursor-pointer group">
               <div className="flex flex-col items-center justify-center gap-4 text-center" onClick={() => setShowUploadModal(true)}>
                 <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Upload className="w-8 h-8 text-primary" />
+                  <UploadCloud className="w-8 h-8 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold">Upload File</h3>
@@ -137,10 +143,18 @@ export default function Dashboard() {
                         className="text-muted-foreground hover:text-destructive"
                         onClick={(e) => {
                           e.preventDefault();
-                          // TODO: Implement delete
+                          if (confirm(`Delete "${recording.title}"? This cannot be undone.`)) {
+                            setDeletingId(recording.id);
+                            deleteRecordingMutation.mutate({ id: recording.id });
+                          }
                         }}
+                        disabled={deletingId === recording.id}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {deletingId === recording.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   </Card>

@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
-import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -12,6 +12,8 @@ export default function RecordingDetail() {
   const [, params] = useRoute("/recording/:id");
   const recordingId = params?.id ? parseInt(params.id) : null;
   const { user } = useAuth();
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
+  const [editedTranscript, setEditedTranscript] = useState("");
 
   const { data: recording, isLoading: recordingLoading } = trpc.recordings.get.useQuery(
     { id: recordingId || 0 },
@@ -22,6 +24,13 @@ export default function RecordingDetail() {
     { recordingId: recordingId || 0 },
     { enabled: !!recordingId }
   );
+
+  // Update edited transcript when transcript loads
+  useEffect(() => {
+    if (transcript?.fullText) {
+      setEditedTranscript(transcript.fullText);
+    }
+  }, [transcript?.fullText]);
 
   const { data: studyNotes } = trpc.ai.getStudyNotes.useQuery(
     { recordingId: recordingId || 0 },
@@ -130,12 +139,13 @@ export default function RecordingDetail() {
               </div>
             </Card>
 
-            {/* Tabs: Transcript, Notes, Flashcards */}
+            {/* Tabs: Transcript, Notes, Flashcards, Tutor */}
             <Tabs defaultValue="transcript" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 <TabsTrigger value="notes">Study Notes</TabsTrigger>
                 <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
+                <TabsTrigger value="tutor">AI Tutor</TabsTrigger>
               </TabsList>
 
               {/* Transcript Tab */}
@@ -147,11 +157,80 @@ export default function RecordingDetail() {
                     </div>
                   ) : transcript ? (
                     <div className="space-y-4">
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                          {transcript.fullText}
-                        </p>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold">Full Transcript</h3>
+                        <div className="flex gap-2">
+                          {!isEditingTranscript && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setIsEditingTranscript(true)}
+                              className="gap-2"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                              Edit
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const element = document.createElement("a");
+                              element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(transcript.fullText));
+                              element.setAttribute("download", `${recording?.title || 'transcript'}.txt`);
+                              element.style.display = "none";
+                              document.body.appendChild(element);
+                              element.click();
+                              document.body.removeChild(element);
+                            }}
+                            className="gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            Export
+                          </Button>
+                        </div>
                       </div>
+                      {isEditingTranscript ? (
+                        <div className="space-y-3">
+                          <textarea
+                            value={editedTranscript}
+                            onChange={(e) => setEditedTranscript(e.target.value)}
+                            className="w-full h-64 p-3 border border-border rounded-lg bg-background text-foreground font-mono text-sm resize-none"
+                            placeholder="Edit transcript..."
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-accent hover:bg-accent/90 text-primary gap-2"
+                              onClick={() => {
+                                setIsEditingTranscript(false);
+                                // TODO: Save edited transcript to backend
+                              }}
+                            >
+                              <Save className="w-4 h-4" />
+                              Save Changes
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIsEditingTranscript(false);
+                                setEditedTranscript(transcript.fullText);
+                              }}
+                              className="gap-2"
+                            >
+                              <X className="w-4 h-4" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                            {transcript.fullText}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-12 text-muted-foreground">
@@ -272,36 +351,36 @@ export default function RecordingDetail() {
                   )}
                 </div>
               </TabsContent>
-            </Tabs>
-          </div>
 
-          {/* Right: AI Tutor Chat */}
-          <div className="lg:col-span-1">
-            <Card className="p-6 border-2 border-border sticky top-24">
-              <h3 className="font-bold mb-4 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-accent" />
-                AI Tutor
-              </h3>
-              <AIChatBox
-                messages={chatHistory?.map(m => ({
-                  role: m.role as 'user' | 'assistant',
-                  content: m.content,
-                })) || []}
-                onSendMessage={async (content) => {
-                  try {
-                    await tutorChatMutation.mutateAsync({
-                      recordingId: recordingId || 0,
-                      message: content,
-                    });
-                    // Refetch chat history
-                    window.location.reload();
-                  } catch (error) {
-                    console.error('Failed to send message:', error);
-                  }
-                }}
-                isLoading={tutorChatMutation.isPending}
-              />
-            </Card>
+              {/* AI Tutor Tab */}
+              <TabsContent value="tutor">
+                <Card className="p-6 border-2 border-border">
+                  <h3 className="font-bold mb-4 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-accent" />
+                    AI Tutor
+                  </h3>
+                  <AIChatBox
+                    messages={chatHistory?.map(m => ({
+                      role: m.role as 'user' | 'assistant',
+                      content: m.content,
+                    })) || []}
+                    onSendMessage={async (content) => {
+                      try {
+                        await tutorChatMutation.mutateAsync({
+                          recordingId: recordingId || 0,
+                          message: content,
+                        });
+                        // Refetch chat history
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('Failed to send message:', error);
+                      }
+                    }}
+                    isLoading={tutorChatMutation.isPending}
+                  />
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>
