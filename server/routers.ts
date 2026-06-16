@@ -39,13 +39,17 @@ export const appRouter = router({
         title: z.string().min(1),
         description: z.string().optional(),
         audience: z.enum(["student", "professional"]),
-        audioBuffer: z.instanceof(Buffer),
+        audioBase64: z.string(),
         duration: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Convert base64 to buffer
+        const base64Data = input.audioBase64.split(',')[1] || input.audioBase64;
+        const audioBuffer = Buffer.from(base64Data, 'base64');
+        
         // Upload audio to S3
         const fileKey = `${ctx.user.id}/recordings/${Date.now()}.wav`;
-        const { url: audioUrl } = await storagePut(fileKey, input.audioBuffer, "audio/wav");
+        const { url: audioUrl } = await storagePut(fileKey, audioBuffer, "audio/wav");
 
         // Create recording in database
         await createRecording({

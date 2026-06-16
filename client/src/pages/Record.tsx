@@ -91,24 +91,33 @@ export default function Record() {
 
         setIsUploading(true);
         try {
-          // Convert Blob to Buffer for upload
-          const arrayBuffer = await audioBlob.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          
-          const recording = await createRecordingMutation.mutateAsync({
-            title: recordingTitle,
-            audience,
-            audioBuffer: buffer,
-            duration,
-          });
+          // Convert Blob to base64 string for transmission
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const base64String = reader.result as string;
+            
+            const recording = await createRecordingMutation.mutateAsync({
+              title: recordingTitle,
+              audience,
+              audioBase64: base64String,
+              duration,
+            });
 
-          setUploadComplete(true);
-          toast.success("Recording uploaded! Processing transcript...");
+            setUploadComplete(true);
+            toast.success("Recording uploaded! Processing transcript...");
 
-          // Redirect to recording detail after a short delay
-          setTimeout(() => {
-            navigate(`/recording/${recording.id}`);
-          }, 1500);
+            // Redirect to recording detail after a short delay
+            setTimeout(() => {
+              navigate(`/recording/${recording.id}`);
+            }, 1500);
+          };
+          reader.onerror = () => {
+            throw new Error("Failed to read audio file");
+          };
+          reader.readAsDataURL(audioBlob);
+          return;
+
+
         } catch (error) {
           console.error("Upload failed:", error);
           const errorMessage = error instanceof Error ? error.message : "Failed to upload recording";

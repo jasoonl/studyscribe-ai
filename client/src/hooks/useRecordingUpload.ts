@@ -6,7 +6,7 @@ export function useRecordingUpload() {
   const [error, setError] = useState<string | null>(null);
 
   const uploadRecording = async (
-    audioBuffer: Buffer,
+    audioBase64: string,
     title: string,
     audience: "student" | "professional",
     description?: string,
@@ -21,7 +21,7 @@ export function useRecordingUpload() {
         title,
         description,
         audience,
-        audioBuffer,
+        audioBase64,
         duration,
       });
 

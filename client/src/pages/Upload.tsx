@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, UploadCloud, FileAudio, CheckCircle } from "lucide-react";
 import { useState, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 export default function Upload() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [audience, setAudience] = useState<"student" | "professional">("student");
@@ -68,21 +69,30 @@ export default function Upload() {
 
     setIsUploading(true);
     try {
-      const buffer = Buffer.from(await selectedFile.arrayBuffer());
-      const recording = await createRecordingMutation.mutateAsync({
-        title,
-        audience,
-        audioBuffer: buffer,
-        duration: 0,
-      });
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64String = reader.result as string;
+        const recording = await createRecordingMutation.mutateAsync({
+          title,
+          audience,
+          audioBase64: base64String,
+          duration: 0,
+        });
 
-      setUploadComplete(true);
-      toast.success("File uploaded! Processing transcript...");
+        setUploadComplete(true);
+        toast.success("File uploaded! Processing transcript...");
 
-      // Redirect to recording detail after a short delay
-      setTimeout(() => {
-        window.location.href = `/recording/${recording.id}`;
-      }, 1500);
+        // Redirect to recording detail after a short delay
+        setTimeout(() => {
+          navigate(`/recording/${recording.id}`);
+        }, 1500);
+      };
+      reader.onerror = () => {
+        throw new Error("Failed to read file");
+      };
+      reader.readAsDataURL(selectedFile);
+      return;
     } catch (error) {
       console.error("Upload failed:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
