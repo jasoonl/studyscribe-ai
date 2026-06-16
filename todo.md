@@ -54,3 +54,13 @@
 - [x] Wire pricing page "Upgrade Now" to billing page - Working
 - [x] Create billing/upgrade page - Billing.tsx complete
 - [x] Test all navigation flows end-to-end - All verified
+
+
+## Phase 7: App Restructuring & Dashboard Consolidation
+- [ ] Create Landing page (public, shows marketing content)
+- [ ] Rename current Home.tsx to Landing.tsx
+- [ ] Create new comprehensive Dashboard page with all features
+- [ ] Fix routing: / → Landing (public), /dashboard → Dashboard (protected)
+- [ ] Fix sign-in redirect to go to /dashboard
+- [ ] Consolidate all features into Dashboard (Recorder, Transcription, Notes, Flashcards, Tutor)
+- [ ] Test end-to-end authentication and navigation flows
