@@ -190,14 +190,14 @@ export default function Demo() {
                 Join thousands of students and professionals who are already transforming their learning and productivity with ScribeSync AI.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/record">
+                <Link href="/dashboard">
                   <Button size="lg" className="bg-accent hover:bg-accent/90 text-primary font-semibold">
-                    Start Recording Now
+                    Go to Dashboard
                   </Button>
                 </Link>
-                <Link href="/upload">
+                <Link href="/">
                   <Button size="lg" variant="outline" className="border-2 border-primary">
-                    Upload a File
+                    Back to Home
                   </Button>
                 </Link>
               </div>

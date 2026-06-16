@@ -17,8 +17,16 @@ type Audience = "student" | "professional";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const [audience, setAudience] = useState<Audience>("student");
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // Redirect to dashboard if authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -81,15 +89,6 @@ export default function Home() {
   };
 
   const content = audience === "student" ? studentContent : professionalContent;
-
-  const [, navigate] = useLocation();
-
-  // If authenticated, redirect to dashboard
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      navigate("/dashboard");
-    }
-  }, [isAuthenticated, user, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
