@@ -43,39 +43,42 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
+  /* ScribeSync AI Brand Colors */
+  --primary: oklch(0.45 0.3 260); /* Indigo #2D1B69 */
+  --primary-foreground: oklch(0.98 0.001 0);
+  --sidebar-primary: oklch(0.45 0.3 260);
+  --sidebar-primary-foreground: oklch(0.98 0.001 0);
+  /* Cyan accent for transformation theme */
+  --accent: oklch(0.65 0.2 195); /* Cyan #00D9FF */
   --accent-foreground: oklch(0.141 0.005 285.823);
+  /* Warm amber for CTAs */
+  --chart-1: oklch(0.65 0.2 195); /* Cyan */
+  --chart-2: oklch(0.65 0.15 50); /* Amber */
+  --chart-3: oklch(0.45 0.3 260); /* Indigo */
+  --chart-4: oklch(0.55 0.25 270);
+  --chart-5: oklch(0.35 0.25 265);
+  --radius: 0.65rem;
+  --background: oklch(0.98 0.001 0); /* Off-white */
+  --foreground: oklch(0.15 0.02 265); /* Charcoal */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 265);
+  --secondary: oklch(0.92 0.01 265); /* Soft purple */
+  --secondary-foreground: oklch(0.15 0.02 265);
+  --muted: oklch(0.85 0.01 0);
+  --muted-foreground: oklch(0.55 0.01 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
+  --ring: oklch(0.65 0.2 195); /* Cyan ring */
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-foreground: oklch(0.15 0.02 265);
+  --sidebar-accent: oklch(0.92 0.01 265);
   --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
   --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --sidebar-ring: oklch(0.65 0.2 195);
 }
 
 .dark {
@@ -119,6 +122,12 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Geist', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -173,5 +182,77 @@
       padding-right: 2rem;
       max-width: 1280px; /* Standard content width */
     }
+  }
+}
+
+/* Kinetic Energy animations for ScribeSync AI */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@layer components {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+
+  .animate-fade-in-scale {
+    animation: fadeInScale 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+
+  .gradient-shift {
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease infinite;
+  }
+
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:border-accent/50;
+  }
+
+  /* Button press effect */
+  button:active:not(:disabled) {
+    @apply scale-95 transition-transform duration-150;
   }
 }
