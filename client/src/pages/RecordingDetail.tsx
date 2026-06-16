@@ -357,7 +357,7 @@ export default function RecordingDetail() {
                 <Card className="p-6 border-2 border-border">
                   <h3 className="font-bold mb-4 flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-accent" />
-                    AI Tutor
+                    AI Tutor - Ask questions about this lecture
                   </h3>
                   <AIChatBox
                     messages={chatHistory?.map(m => ({
@@ -370,13 +370,21 @@ export default function RecordingDetail() {
                           recordingId: recordingId || 0,
                           message: content,
                         });
-                        // Refetch chat history
-                        window.location.reload();
+                        // Refetch chat history after mutation
+                        const utils = trpc.useUtils();
+                        await utils.ai.getChatHistory.invalidate({ recordingId: recordingId || 0 });
                       } catch (error) {
                         console.error('Failed to send message:', error);
                       }
                     }}
                     isLoading={tutorChatMutation.isPending}
+                    placeholder="Ask the AI tutor a question about this lecture..."
+                    suggestedPrompts={[
+                      "Explain the main concepts",
+                      "What are the key takeaways?",
+                      "Can you give me an example?",
+                      "How does this relate to...?"
+                    ]}
                   />
                 </Card>
               </TabsContent>
