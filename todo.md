@@ -9,17 +9,17 @@
 
 ## Phase 2: Recording & Transcription
 - [x] Build audio recorder component (browser-based) - Record.tsx created
-- [ ] Implement real-time transcription during recording - Backend ready
+- [x] Implement real-time transcription during recording - Background transcription wired
 - [ ] Build file upload interface - UI placeholder ready
-- [x] Implement post-upload transcription - Backend API ready
-- [x] Create storage integration for audio files - S3 helpers ready
+- [x] Implement post-upload transcription - Backend API fully wired
+- [x] Create storage integration for audio files - S3 upload working
 - [x] Build transcript viewer with timestamp sync - RecordingDetail.tsx
 - [ ] Add speaker diarization display - Backend ready
 
 ## Phase 3: AI Features
-- [ ] Implement adaptive summarization (key concepts, action items, formulas) - Backend ready
-- [x] Build AI Tutor chat interface (Socratic mode) - AIChatBox component
-- [ ] Create flashcard auto-generation - Backend ready
+- [x] Implement adaptive summarization (key concepts, action items, formulas) - Wired
+- [x] Build AI Tutor chat interface (Socratic mode) - Fully wired
+- [x] Create flashcard auto-generation - Wired and functional
 - [ ] Build study guide generation - Backend ready
 - [ ] Add practice quiz generation - Backend ready
 - [ ] Implement email/document draft generation - Backend ready
@@ -31,13 +31,15 @@
 - [x] Create study tools interface - Tabs in RecordingDetail
 - [ ] Build knowledge base / searchable transcript history - Backend ready
 - [ ] Add export functionality (Quizlet, Notion, Anki, Google Docs) - Backend ready
-- [ ] Implement data deletion/privacy controls - Backend ready
+- [x] Implement data deletion/privacy controls - Delete mutation ready
 
 ## Phase 5: Polish & Launch
-- [ ] Integrate landing page with app (navigation)
-- [ ] Add loading states and error handling
-- [ ] Test all features end-to-end
-- [ ] Optimize performance
-- [ ] Add analytics tracking
-- [ ] Create help/onboarding flow
+- [x] Integrate landing page with app (navigation) - Home page shows auth state
+- [x] Add loading states and error handling - Implemented
+- [x] Build file upload interface - Upload.tsx complete
+- [x] Add error boundaries and fallbacks - ErrorBoundary component
+- [ ] Test end-to-end recording flow - Manual testing needed
+- [ ] Optimize performance and caching - Future improvement
+- [ ] Add analytics and monitoring - Future improvement
+- [ ] Create help/onboarding flow - Future improvement
 - [ ] Deploy and test in production

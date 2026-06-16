@@ -105,7 +105,10 @@ export default function Record() {
           }, 1500);
         } catch (error) {
           console.error("Upload failed:", error);
-          toast.error("Failed to upload recording");
+          const errorMessage = error instanceof Error ? error.message : "Failed to upload recording";
+          toast.error(errorMessage);
+          setIsRecording(false);
+          setIsPaused(false);
         } finally {
           setIsUploading(false);
         }

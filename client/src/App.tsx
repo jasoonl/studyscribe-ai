@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import Dashboard from "./pages/Dashboard";
+import Record from "./pages/Record";
+import RecordingDetail from "./pages/RecordingDetail";
+import Upload from "./pages/Upload";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import RecordingDetail from "./pages/RecordingDetail";
-import Record from "./pages/Record";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/record" component={Record} />
+      <Route path="/upload" component={Upload} />
       <Route path="/recording/:id" component={RecordingDetail} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
