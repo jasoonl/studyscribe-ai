@@ -2,22 +2,55 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus } from "lucide-react";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import Record from "./Record";
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
-  const [selectedRecordingId, setSelectedRecordingId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState("recorder");
+  const [activeTab, setActiveTab] = useState("library");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "student" | "professional">("all");
+  const [sortBy, setSortBy] = useState<"recent" | "oldest" | "name">("recent");
 
   // Fetch recordings
   const { data: recordings, isLoading, refetch } = trpc.recordings.list.useQuery();
   const deleteRecordingMutation = trpc.recordings.delete.useMutation();
+
+  // Filter and search recordings
+  const filteredRecordings = useMemo(() => {
+    if (!recordings) return [];
+
+    let filtered = recordings;
+
+    // Filter by audience
+    if (filterType !== "all") {
+      filtered = filtered.filter(r => r.audience === filterType);
+    }
+
+    // Search by title
+    if (searchQuery) {
+      filtered = filtered.filter(r =>
+        r.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Sort
+    if (sortBy === "recent") {
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === "oldest") {
+      filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (sortBy === "name") {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return filtered;
+  }, [recordings, searchQuery, filterType, sortBy]);
 
   const handleDeleteRecording = async (id: number) => {
     if (!confirm("Are you sure you want to delete this recording?")) return;
@@ -31,15 +64,25 @@ export default function Dashboard() {
     }
   };
 
-  if (!user) {
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Please sign in to continue</p>
           <Link href="/">
             <Button>Go to Home</Button>
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
       </div>
     );
   }
@@ -62,7 +105,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              Welcome, {user.name || user.email}
+              Welcome, {user?.name || user?.email}
             </span>
             <Button
               variant="outline"
@@ -79,7 +122,11 @@ export default function Dashboard() {
       <main className="container py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
+            <TabsTrigger value="library" className="gap-2">
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">My Library</span>
+            </TabsTrigger>
             <TabsTrigger value="recorder" className="gap-2">
               <Mic className="w-4 h-4" />
               <span className="hidden sm:inline">Recorder</span>
@@ -98,104 +145,107 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Recorder Tab */}
-          <TabsContent value="recorder" className="space-y-6">
+          {/* My Library Tab */}
+          <TabsContent value="library" className="space-y-6">
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Record New Lecture</h2>
-              <p className="text-muted-foreground">
-                Record a live lecture or meeting directly in your browser
-              </p>
-            </div>
-            <Record />
-          </TabsContent>
-
-          {/* Transcription Tab */}
-          <TabsContent value="transcription" className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Your Recordings</h2>
-                  <p className="text-muted-foreground">
-                    View and manage all your recorded lectures and meetings
-                  </p>
+              {/* Search and Filter Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative md:col-span-2">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search recordings..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <Link href="/upload">
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Upload File
-                  </Button>
-                </Link>
+
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as any)}
+                  className="px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                >
+                  <option value="all">All Types</option>
+                  <option value="student">Lectures</option>
+                  <option value="professional">Meetings</option>
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="name">Name (A-Z)</option>
+                </select>
+              </div>
+
+              {/* Recording Count */}
+              <div className="text-sm text-muted-foreground">
+                {filteredRecordings.length} recording{filteredRecordings.length !== 1 ? 's' : ''}
               </div>
             </div>
 
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-accent" />
-              </div>
-            ) : !recordings || recordings.length === 0 ? (
-              <Card className="p-12 text-center border-2 border-dashed">
-                <Mic className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No recordings yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  Start by recording a lecture or uploading an audio file
-                </p>
-                <div className="flex gap-4 justify-center">
-                  <Button onClick={() => setActiveTab("recorder")} className="gap-2">
-                    <Mic className="w-4 h-4" />
-                    Start Recording
-                  </Button>
-                  <Link href="/upload">
-                    <Button variant="outline" className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Upload File
-                    </Button>
-                  </Link>
-                </div>
+            {/* Recordings Grid */}
+            {filteredRecordings.length === 0 ? (
+              <Card className="p-12 text-center">
+                <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">No recordings yet</p>
+                <Button onClick={() => setActiveTab("recorder")}>
+                  <Mic className="w-4 h-4 mr-2" />
+                  Start Recording
+                </Button>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {recordings.map((recording) => (
-                  <Card
-                    key={recording.id}
-                    className="p-6 border-2 hover:border-accent/50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setSelectedRecordingId(recording.id);
-                      setActiveTab("summary");
-                    }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold mb-2">{recording.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {new Date(recording.createdAt).toLocaleDateString()} at{" "}
-                          {new Date(recording.createdAt).toLocaleTimeString()}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredRecordings.map((recording) => (
+                  <Card key={recording.id} className="p-4 hover:border-accent/50 transition-colors cursor-pointer group">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-foreground group-hover:text-accent transition-colors">
+                          {recording.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {recording.audience === "student" ? "Lecture" : "Meeting"}
                         </p>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground">
-                            {recording.audience === "student" ? "Student Lecture" : "Professional Meeting"}
-                          </span>
-                          {recording.status === "processing" && (
-                            <span className="flex items-center gap-2 text-accent">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Processing...
-                            </span>
-                          )}
-                          {recording.status === "completed" && (
-                            <span className="text-green-600">✓ Ready</span>
-                          )}
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(recording.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {recording.duration ? `${Math.round(recording.duration / 60)}m` : "Processing"}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRecording(recording.id);
-                        }}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+
+                      {recording.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {recording.description}
+                        </p>
+                      )}
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => navigate(`/recording/${recording.id}`)}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteRecording(recording.id)}
+                          className="text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -203,58 +253,42 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          {/* AI Tutor Tab */}
-          <TabsContent value="tutor" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">AI Tutor</h2>
-              <p className="text-muted-foreground">
-                Select a recording to chat with your AI tutor about the content
-              </p>
-            </div>
-
-            {!selectedRecordingId ? (
-              <Card className="p-12 text-center border-2 border-dashed">
-                <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Select a recording</h3>
-                <p className="text-muted-foreground mb-6">
-                  Choose a recording from the Transcription tab to start chatting with your AI tutor
-                </p>
-                <Button onClick={() => setActiveTab("transcription")}>
-                  Go to Recordings
-                </Button>
-              </Card>
-            ) : (
-              <Link href={`/recording/${selectedRecordingId}`}>
-                <Button>View Recording Details</Button>
-              </Link>
-            )}
+          {/* Recorder Tab */}
+          <TabsContent value="recorder">
+            <Record />
           </TabsContent>
 
-          {/* Recording Summary Tab */}
-          <TabsContent value="summary" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Recording Summary</h2>
-              <p className="text-muted-foreground">
-                View AI-generated summaries, flashcards, and study notes
-              </p>
-            </div>
+          {/* Transcription Tab */}
+          <TabsContent value="transcription" className="space-y-4">
+            <Card className="p-8 text-center">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground mb-4">Select a recording from My Library to view its transcript</p>
+              <Button onClick={() => setActiveTab("library")}>
+                Go to My Library
+              </Button>
+            </Card>
+          </TabsContent>
 
-            {!selectedRecordingId ? (
-              <Card className="p-12 text-center border-2 border-dashed">
-                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Select a recording</h3>
-                <p className="text-muted-foreground mb-6">
-                  Choose a recording from the Transcription tab to view its summary and study materials
-                </p>
-                <Button onClick={() => setActiveTab("transcription")}>
-                  Go to Recordings
-                </Button>
-              </Card>
-            ) : (
-              <Link href={`/recording/${selectedRecordingId}`}>
-                <Button>View Recording Details</Button>
-              </Link>
-            )}
+          {/* AI Tutor Tab */}
+          <TabsContent value="tutor" className="space-y-4">
+            <Card className="p-8 text-center">
+              <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground mb-4">Select a recording from My Library to chat with AI Tutor</p>
+              <Button onClick={() => setActiveTab("library")}>
+                Go to My Library
+              </Button>
+            </Card>
+          </TabsContent>
+
+          {/* Summary Tab */}
+          <TabsContent value="summary" className="space-y-4">
+            <Card className="p-8 text-center">
+              <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground mb-4">Select a recording from My Library to view study notes and flashcards</p>
+              <Button onClick={() => setActiveTab("library")}>
+                Go to My Library
+              </Button>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
