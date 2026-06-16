@@ -1,20 +1,21 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check, ArrowRight, Zap, BookOpen, Briefcase, Users, BarChart3, Shield } from "lucide-react";
+import { getLoginUrl } from "@/const";
 
 /**
- * ScribeSync AI — Marketing Landing Page
- * Design Philosophy: Kinetic Energy
- * - Gradient-driven color palette (indigo → cyan)
- * - Flowing, asymmetric layouts
- * - Transformation as the hero narrative
- * - Warm amber accents for CTAs
+ * ScribeSync AI — Marketing Landing Page + Dashboard Entry
+ * 
+ * If user is authenticated, they see a CTA to go to dashboard.
+ * If not authenticated, they see the full marketing landing page.
  */
 
 type Audience = "student" | "professional";
 
 export default function Home() {
+  const { user, isAuthenticated } = useAuth();
   const [audience, setAudience] = useState<Audience>("student");
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -80,6 +81,26 @@ export default function Home() {
 
   const content = audience === "student" ? studentContent : professionalContent;
 
+  // If authenticated, show quick dashboard entry
+  if (isAuthenticated && user) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <h1 className="text-4xl font-bold">Welcome back, {user.name || user.email}!</h1>
+          <p className="text-lg text-muted-foreground">Ready to transform your learning?</p>
+          <div className="flex gap-4 justify-center">
+            <Button size="lg" className="bg-accent hover:bg-accent/90 text-primary font-semibold">
+              Go to Dashboard
+            </Button>
+            <Button size="lg" variant="outline">
+              View Recordings
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -124,8 +145,11 @@ export default function Home() {
             </button>
           </div>
 
-          <Button className="bg-accent hover:bg-accent/90 text-primary font-semibold">
-            Get Started
+          <Button 
+            onClick={() => window.location.href = getLoginUrl()}
+            className="bg-accent hover:bg-accent/90 text-primary font-semibold"
+          >
+            Sign In
           </Button>
         </div>
       </header>
@@ -142,15 +166,16 @@ export default function Home() {
           <div className="space-y-6">
             <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
               {content.headline}
-              <span className="block bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                {audience === "student" ? "" : ""}
-              </span>
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed">
               {content.description}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" className="bg-accent hover:bg-accent/90 text-primary font-semibold group">
+              <Button 
+                size="lg" 
+                onClick={() => window.location.href = getLoginUrl()}
+                className="bg-accent hover:bg-accent/90 text-primary font-semibold group"
+              >
                 {content.cta}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
@@ -369,7 +394,11 @@ export default function Home() {
                   <span>Text summaries</span>
                 </li>
               </ul>
-              <Button variant="outline" className="w-full border-2 border-primary text-primary">
+              <Button 
+                variant="outline" 
+                className="w-full border-2 border-primary text-primary"
+                onClick={() => window.location.href = getLoginUrl()}
+              >
                 Start Free
               </Button>
             </Card>
@@ -393,7 +422,10 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button className="w-full bg-accent hover:bg-accent/90 text-primary font-semibold">
+              <Button 
+                className="w-full bg-accent hover:bg-accent/90 text-primary font-semibold"
+                onClick={() => window.location.href = getLoginUrl()}
+              >
                 Upgrade Now
               </Button>
             </Card>
@@ -453,7 +485,11 @@ export default function Home() {
               : "Join professionals who've automated their admin work and reclaimed hours every week."}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-white text-primary hover:bg-white/90 font-semibold group">
+            <Button 
+              size="lg" 
+              onClick={() => window.location.href = getLoginUrl()}
+              className="bg-white text-primary hover:bg-white/90 font-semibold group"
+            >
               {content.cta}
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
