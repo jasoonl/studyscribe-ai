@@ -72,3 +72,14 @@
 - [x] Add sorting - Recent, Oldest, Alphabetical
 - [x] Add quick actions - View and Delete buttons
 - [x] Add empty state - Helpful CTA when no recordings
+
+
+## Phase 9: Critical Bug Fixes & Finalization
+- [ ] Fix delete recording functionality - Currently not working
+- [ ] Add deleted recordings/trash page - Show soft-deleted recordings
+- [ ] Add progress bars for transcription - Show real-time progress
+- [ ] Add progress bars for flashcards - Show generation progress
+- [ ] Add progress bars for summary - Show generation progress
+- [ ] Fix AI tutor chat interface - Enable real conversations
+- [ ] Test delete, progress tracking, and AI tutor end-to-end
+- [ ] Finalize and deploy application

@@ -38,6 +38,8 @@ export const recordings = mysqlTable("recordings", {
   duration: int("duration"), // Duration in seconds
   audience: mysqlEnum("audience", ["student", "professional"]).default("student"),
   status: mysqlEnum("status", ["processing", "completed", "failed"]).default("processing"),
+  isDeleted: int("isDeleted").default(0).notNull(), // Soft delete flag
+  deletedAt: timestamp("deletedAt"), // Timestamp when deleted
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

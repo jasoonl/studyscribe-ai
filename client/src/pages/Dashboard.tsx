@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +8,58 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import Record from "./Record";
+import { useAuth } from "@/_core/hooks/useAuth";
+
+function TrashTabContent() {
+  const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
+  const restoreMutation = trpc.recordings.restore.useMutation();
+
+  const handleRestore = async (id: number) => {
+    try {
+      await restoreMutation.mutateAsync({ id });
+      toast.success("Recording restored");
+    } catch (error) {
+      toast.error("Failed to restore recording");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (!deletedRecordings || deletedRecordings.length === 0) {
+    return (
+      <Card className="p-12 text-center">
+        <Trash2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <p className="text-muted-foreground">No deleted recordings</p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {deletedRecordings.map((recording) => (
+        <Card key={recording.id} className="p-4 flex items-start justify-between">
+          <div>
+            <h4 className="font-semibold">{recording.title}</h4>
+            <p className="text-sm text-muted-foreground">Deleted {recording.deletedAt ? new Date(recording.deletedAt).toLocaleDateString() : "recently"}</p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => handleRestore(recording.id)}
+            disabled={restoreMutation.isPending}
+          >
+            Restore
+          </Button>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user, logout, loading: authLoading } = useAuth();
@@ -178,7 +229,7 @@ export default function Dashboard() {
       <main className="container py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-6 mb-8">
             <TabsTrigger value="library" className="gap-2">
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">My Library</span>
@@ -199,15 +250,18 @@ export default function Dashboard() {
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">Summary</span>
             </TabsTrigger>
+            <TabsTrigger value="trash" className="gap-2">
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Trash</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* My Library Tab */}
           <TabsContent value="library" className="space-y-6">
             <div className="space-y-4">
-              {/* Search and Filter Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative md:col-span-2">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <div className="flex gap-4 flex-col sm:flex-row">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search recordings..."
                     value={searchQuery}
@@ -215,38 +269,30 @@ export default function Dashboard() {
                     className="pl-10"
                   />
                 </div>
-
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value as any)}
-                  className="px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                  className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
                 >
                   <option value="all">All Types</option>
-                  <option value="student">Lectures</option>
-                  <option value="professional">Meetings</option>
+                  <option value="student">Student</option>
+                  <option value="professional">Professional</option>
                 </select>
-
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                  className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
                 >
                   <option value="recent">Most Recent</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="name">Name (A-Z)</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name">Alphabetical</option>
                 </select>
-              </div>
-
-              {/* Recording Count */}
-              <div className="text-sm text-muted-foreground">
-                {filteredRecordings.length} recording{filteredRecordings.length !== 1 ? 's' : ''}
               </div>
             </div>
 
-            {/* Recordings Grid */}
             {filteredRecordings.length === 0 ? (
               <Card className="p-12 text-center">
-                <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">No recordings yet</p>
                 <Button onClick={() => setActiveTab("recorder")}>
                   <Mic className="w-4 h-4 mr-2" />
@@ -254,54 +300,28 @@ export default function Dashboard() {
                 </Button>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 {filteredRecordings.map((recording) => (
-                  <Card key={recording.id} className="p-4 hover:border-accent/50 transition-colors cursor-pointer group">
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-semibold text-foreground group-hover:text-accent transition-colors">
-                          {recording.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {recording.audience === "student" ? "Lecture" : "Meeting"}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(recording.createdAt).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {recording.duration ? `${Math.round(recording.duration / 60)}m` : "Processing"}
-                        </div>
-                      </div>
-
-                      {recording.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {recording.description}
-                        </p>
-                      )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => navigate(`/recording/${recording.id}`)}
-                        >
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteRecording(recording.id)}
-                          className="text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                  <Card key={recording.id} className="p-4 flex items-start justify-between hover:shadow-md transition-shadow">
+                    <div className="flex-1">
+                      <Link href={`/recording/${recording.id}`}>
+                        <h4 className="font-semibold cursor-pointer hover:text-primary">{recording.title}</h4>
+                      </Link>
+                      <p className="text-sm text-muted-foreground">{new Date(recording.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{recording.audience}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link href={`/recording/${recording.id}`}>
+                        <Button size="sm" variant="outline">View</Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteRecording(recording.id)}
+                        disabled={deleteRecordingMutation.isPending}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </Card>
                 ))}
@@ -315,10 +335,10 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* Transcription Tab */}
-          <TabsContent value="transcription" className="space-y-4">
+          <TabsContent value="transcription" className="space-y-6">
             <Card className="p-8 text-center">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground mb-4">Select a recording from My Library to view its transcript</p>
+              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">Select a recording from My Library to view its transcription</p>
               <Button onClick={() => setActiveTab("library")}>
                 Go to My Library
               </Button>
@@ -326,10 +346,10 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* AI Tutor Tab */}
-          <TabsContent value="tutor" className="space-y-4">
+          <TabsContent value="tutor" className="space-y-6">
             <Card className="p-8 text-center">
-              <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground mb-4">Select a recording from My Library to chat with AI Tutor</p>
+              <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">Select a recording from My Library to chat with the AI Tutor</p>
               <Button onClick={() => setActiveTab("library")}>
                 Go to My Library
               </Button>
@@ -337,14 +357,22 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* Summary Tab */}
-          <TabsContent value="summary" className="space-y-4">
+          <TabsContent value="summary" className="space-y-6">
             <Card className="p-8 text-center">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground mb-4">Select a recording from My Library to view study notes and flashcards</p>
               <Button onClick={() => setActiveTab("library")}>
                 Go to My Library
               </Button>
             </Card>
+          </TabsContent>
+
+          {/* Trash Tab */}
+          <TabsContent value="trash" className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Deleted Recordings</h3>
+              <p className="text-sm text-muted-foreground">Recover deleted recordings from trash. Items are permanently deleted after 30 days.</p>
+            </div>
+            <TrashTabContent />
           </TabsContent>
         </Tabs>
       </main>

@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording } from "./db";
 import { storagePut } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
@@ -83,7 +83,22 @@ export const appRouter = router({
         if (!recording || recording.userId !== ctx.user.id) {
           throw new Error("Recording not found");
         }
-        // TODO: Implement deletion with cascade delete
+        await softDeleteRecording(input.id);
+        return { success: true };
+      }),
+
+    listDeleted: protectedProcedure.query(async ({ ctx }) => {
+      return getDeletedRecordingsByUserId(ctx.user.id);
+    }),
+
+    restore: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.id);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+        await restoreRecording(input.id);
         return { success: true };
       }),
   }),

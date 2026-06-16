@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -120,7 +120,9 @@ export async function getRecordingsByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.select().from(recordings).where(eq(recordings.userId, userId));
+  return db.select().from(recordings).where(
+    and(eq(recordings.userId, userId), eq(recordings.isDeleted, 0))
+  );
 }
 
 export async function getRecordingById(id: number) {
@@ -227,4 +229,34 @@ export async function getChatHistoryByRecordingId(recordingId: number) {
   if (!db) throw new Error("Database not available");
 
   return db.select().from(chatHistory).where(eq(chatHistory.recordingId, recordingId));
+}
+
+// Soft delete helpers
+export async function softDeleteRecording(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(recordings).set({
+    isDeleted: 1,
+    deletedAt: new Date(),
+  }).where(eq(recordings.id, id));
+}
+
+export async function getDeletedRecordingsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(recordings).where(
+    and(eq(recordings.userId, userId), eq(recordings.isDeleted, 1))
+  );
+}
+
+export async function restoreRecording(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(recordings).set({
+    isDeleted: 0,
+    deletedAt: null,
+  }).where(eq(recordings.id, id));
 }
