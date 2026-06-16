@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check, ArrowRight, Zap, BookOpen, Briefcase, Users, BarChart3, Shield } from "lucide-react";
 import { getLoginUrl } from "@/const";
+import { useLocation } from "wouter";
 
 /**
  * ScribeSync AI — Marketing Landing Page + Dashboard Entry
@@ -81,25 +82,14 @@ export default function Home() {
 
   const content = audience === "student" ? studentContent : professionalContent;
 
-  // If authenticated, show quick dashboard entry
-  if (isAuthenticated && user) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <h1 className="text-4xl font-bold">Welcome back, {user.name || user.email}!</h1>
-          <p className="text-lg text-muted-foreground">Ready to transform your learning?</p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" className="bg-accent hover:bg-accent/90 text-primary font-semibold">
-              Go to Dashboard
-            </Button>
-            <Button size="lg" variant="outline">
-              View Recordings
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const [, navigate] = useLocation();
+
+  // If authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, user, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -179,7 +169,12 @@ export default function Home() {
                 {content.cta}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button size="lg" variant="outline" className="border-2 border-primary text-primary hover:bg-primary/5">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-2 border-primary text-primary hover:bg-primary/5"
+                onClick={() => navigate("/demo")}
+              >
                 See It in Action
               </Button>
             </div>
@@ -424,7 +419,7 @@ export default function Home() {
               </ul>
               <Button 
                 className="w-full bg-accent hover:bg-accent/90 text-primary font-semibold"
-                onClick={() => window.location.href = getLoginUrl()}
+                onClick={() => navigate("/billing")}
               >
                 Upgrade Now
               </Button>
@@ -493,7 +488,12 @@ export default function Home() {
               {content.cta}
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
-            <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10">
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="border-2 border-white text-white hover:bg-white/10"
+              onClick={() => navigate("/demo")}
+            >
               Watch Demo
             </Button>
           </div>

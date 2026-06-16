@@ -9,6 +9,8 @@ import Upload from "./pages/Upload";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Demo from "./pages/Demo";
+import Billing from "./pages/Billing";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -19,6 +21,8 @@ function Router() {
       <Route path="/record" component={Record} />
       <Route path="/upload" component={Upload} />
       <Route path="/recording/:id" component={RecordingDetail} />
+      <Route path="/demo" component={Demo} />
+      <Route path="/billing" component={Billing} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
