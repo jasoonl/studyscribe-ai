@@ -91,7 +91,10 @@ export default function Record() {
 
         setIsUploading(true);
         try {
-          const buffer = Buffer.from(await audioBlob.arrayBuffer());
+          // Convert Blob to Buffer for upload
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          
           const recording = await createRecordingMutation.mutateAsync({
             title: recordingTitle,
             audience,
@@ -104,7 +107,7 @@ export default function Record() {
 
           // Redirect to recording detail after a short delay
           setTimeout(() => {
-            window.location.href = `/recording/${recording.id}`;
+            navigate(`/recording/${recording.id}`);
           }, 1500);
         } catch (error) {
           console.error("Upload failed:", error);
