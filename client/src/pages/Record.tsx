@@ -47,10 +47,17 @@ export default function Record() {
         }
       });
       
-      // Use audio/webm for better browser compatibility
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-        ? 'audio/webm' 
-        : 'audio/mp4';
+      // Use audio/webm for better browser compatibility, fallback to wav for Safari
+      let mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+          mimeType = 'audio/wav';
+        } else {
+          mimeType = ''; // Let browser choose default
+        }
+      }
       
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
@@ -95,7 +102,9 @@ export default function Record() {
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        // Determine actual MIME type from MediaRecorder
+        const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
         setIsRecording(false);
         setIsPaused(false);
         setRecordingStopped(true);
@@ -117,7 +126,9 @@ export default function Record() {
 
     setIsUploading(true);
     try {
-      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      // Use the actual MIME type that was used during recording
+      const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
       const reader = new FileReader();
       
       reader.onload = async () => {
