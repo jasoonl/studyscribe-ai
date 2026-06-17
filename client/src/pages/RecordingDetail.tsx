@@ -49,7 +49,7 @@ export default function RecordingDetail() {
 
   const generateStudyNotesMutation = trpc.ai.generateStudyNotes.useMutation();
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
-  const tutorChatMutation = trpc.ai.tutorChat.useMutation();
+  const assistantChatMutation = trpc.ai.assistantChat.useMutation();
 
   if (recordingLoading) {
     return (
@@ -139,13 +139,13 @@ export default function RecordingDetail() {
               </div>
             </Card>
 
-            {/* Tabs: Transcript, Notes, Flashcards, Tutor */}
+            {/* Tabs: Transcript, Notes, Flashcards, Assistant */}
             <Tabs defaultValue="transcript" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 <TabsTrigger value="notes">Study Notes</TabsTrigger>
                 <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
-                <TabsTrigger value="tutor">AI Tutor</TabsTrigger>
+                <TabsTrigger value="tutor">AI Assistant</TabsTrigger>
               </TabsList>
 
               {/* Transcript Tab */}
@@ -366,7 +366,7 @@ export default function RecordingDetail() {
                     })) || []}
                     onSendMessage={async (content) => {
                       try {
-                        await tutorChatMutation.mutateAsync({
+                        await assistantChatMutation.mutateAsync({
                           recordingId: recordingId || 0,
                           message: content,
                         });
@@ -377,8 +377,8 @@ export default function RecordingDetail() {
                         console.error('Failed to send message:', error);
                       }
                     }}
-                    isLoading={tutorChatMutation.isPending}
-                    placeholder="Ask the AI tutor a question about this lecture..."
+                    isLoading={assistantChatMutation.isPending}
+                    placeholder="Ask the AI Assistant a question about this lecture..."
                     suggestedPrompts={[
                       "Explain the main concepts",
                       "What are the key takeaways?",

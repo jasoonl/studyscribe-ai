@@ -47,9 +47,13 @@ export const appRouter = router({
         const base64Data = input.audioBase64.split(',')[1] || input.audioBase64;
         const audioBuffer = Buffer.from(base64Data, 'base64');
         
-        // Upload audio to S3
-        const fileKey = `${ctx.user.id}/recordings/${Date.now()}.wav`;
-        const { url: audioUrl } = await storagePut(fileKey, audioBuffer, "audio/wav");
+        // Determine correct MIME type and extension based on browser encoding
+        const mimeType = input.audioBase64.includes('audio/webm') ? 'audio/webm' : 'audio/wav';
+        const extension = mimeType === 'audio/webm' ? 'webm' : 'wav';
+        
+        // Upload audio to S3 with correct format
+        const fileKey = `${ctx.user.id}/recordings/${Date.now()}.${extension}`;
+        const { url: audioUrl } = await storagePut(fileKey, audioBuffer, mimeType);
 
         // Create recording in database
         await createRecording({
@@ -249,7 +253,7 @@ export const appRouter = router({
         return getChatHistoryByRecordingId(input.recordingId);
       }),
 
-    tutorChat: protectedProcedure
+    assistantChat: protectedProcedure
       .input(z.object({
         recordingId: z.number(),
         message: z.string().min(1),

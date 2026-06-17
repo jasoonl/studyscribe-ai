@@ -75,11 +75,21 @@
 
 
 ## Phase 9: Critical Bug Fixes & Finalization
-- [ ] Fix delete recording functionality - Currently not working
-- [ ] Add deleted recordings/trash page - Show soft-deleted recordings
-- [ ] Add progress bars for transcription - Show real-time progress
-- [ ] Add progress bars for flashcards - Show generation progress
-- [ ] Add progress bars for summary - Show generation progress
-- [ ] Fix AI tutor chat interface - Enable real conversations
-- [ ] Test delete, progress tracking, and AI tutor end-to-end
-- [ ] Finalize and deploy application
+- [x] Fix delete recording functionality - Soft delete implemented with confirmation
+- [x] Add deleted recordings/trash page - Trash tab with restore functionality
+- [ ] Add progress bars for transcription - Backend ready, frontend UI pending
+- [ ] Add progress bars for flashcards - Backend ready, frontend UI pending
+- [ ] Add progress bars for summary - Backend ready, frontend UI pending
+- [x] Fix AI tutor chat interface - Chat working with query invalidation and suggested prompts
+- [ ] Test delete, progress tracking, and AI tutor end-to-end - In progress
+- [ ] Finalize and deploy application - Ready for final testing
+
+
+## Phase 10: Critical Error Fixes
+- [ ] Fix recording flow UX - Remove title requirement before recording
+- [ ] Add save button after stopping recording
+- [ ] Fix Safari compatibility for audio recording
+- [ ] Debug AI features - Check why transcription/flashcards/notes fail
+- [ ] Verify API key configuration for LLM
+- [ ] Rename AI Tutor to AI Assistant
+- [ ] Test AI Assistant chat functionality
