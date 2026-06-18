@@ -348,6 +348,13 @@ async function transcribeRecordingInBackground(recordingId: number, audioUrl: st
       return;
     }
 
+    // Validate result has required fields
+    if (!result.text || typeof result.text !== 'string') {
+      console.error("Invalid transcription response:", result);
+      await updateRecordingStatus(recordingId, "failed");
+      return;
+    }
+
     // Get recording to get userId
     const recording = await getRecordingByIdDb(recordingId);
     if (!recording) {
