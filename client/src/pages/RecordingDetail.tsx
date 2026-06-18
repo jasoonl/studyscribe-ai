@@ -51,6 +51,64 @@ export default function RecordingDetail() {
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
   const assistantChatMutation = trpc.ai.assistantChat.useMutation();
 
+  // Generate contextual starter questions based on transcript content
+  const getContextualQuestions = () => {
+    if (!transcript?.fullText) {
+      return [
+        "Explain the main concepts",
+        "What are the key takeaways?",
+        "Can you give me an example?",
+        "How does this relate to real-world applications?"
+      ];
+    }
+
+    const text = transcript.fullText.toLowerCase();
+    const questions = [];
+
+    // Detect keywords and suggest relevant questions
+    if (text.includes('definition') || text.includes('define')) {
+      questions.push("What are the key definitions?");
+    }
+    if (text.includes('formula') || text.includes('equation')) {
+      questions.push("Can you explain the formulas?");
+    }
+    if (text.includes('example') || text.includes('case study')) {
+      questions.push("Can you walk through an example?");
+    }
+    if (text.includes('process') || text.includes('step')) {
+      questions.push("What are the steps involved?");
+    }
+    if (text.includes('why') || text.includes('reason')) {
+      questions.push("Why is this important?");
+    }
+    if (text.includes('compare') || text.includes('difference')) {
+      questions.push("What's the difference between these concepts?");
+    }
+
+    // Add default questions if not enough specific ones
+    if (questions.length === 0) {
+      questions.push("Explain the main concepts");
+      questions.push("What are the key takeaways?");
+    }
+
+    // Add more generic questions to reach 4 total
+    if (questions.length < 4) {
+      const generic = [
+        "Can you give me an example?",
+        "How does this relate to real-world applications?",
+        "What should I focus on for studying?",
+        "What are common misconceptions?"
+      ];
+      for (const q of generic) {
+        if (questions.length < 4 && !questions.includes(q)) {
+          questions.push(q);
+        }
+      }
+    }
+
+    return questions.slice(0, 4);
+  };
+
   if (recordingLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -379,12 +437,7 @@ export default function RecordingDetail() {
                     }}
                     isLoading={assistantChatMutation.isPending}
                     placeholder="Ask the AI Assistant a question about this lecture..."
-                    suggestedPrompts={[
-                      "Explain the main concepts",
-                      "What are the key takeaways?",
-                      "Can you give me an example?",
-                      "How does this relate to...?"
-                    ]}
+                    suggestedPrompts={getContextualQuestions()}
                   />
                 </Card>
               </TabsContent>

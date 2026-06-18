@@ -13,6 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
   const restoreMutation = trpc.recordings.restore.useMutation();
+  const permanentDeleteMutation = trpc.recordings.permanentDelete.useMutation();
 
   const handleRestore = async (id: number) => {
     try {
@@ -20,6 +21,18 @@ function TrashTabContent() {
       toast.success("Recording restored");
     } catch (error) {
       toast.error("Failed to restore recording");
+    }
+  };
+
+  const handlePermanentDelete = async (id: number, title: string) => {
+    if (!confirm(`Are you sure you want to permanently delete "${title}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await permanentDeleteMutation.mutateAsync({ id });
+      toast.success("Recording permanently deleted");
+    } catch (error) {
+      toast.error("Failed to permanently delete recording");
     }
   };
 
@@ -48,13 +61,24 @@ function TrashTabContent() {
             <h4 className="font-semibold">{recording.title}</h4>
             <p className="text-sm text-muted-foreground">Deleted {recording.deletedAt ? new Date(recording.deletedAt).toLocaleDateString() : "recently"}</p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => handleRestore(recording.id)}
-            disabled={restoreMutation.isPending}
-          >
-            Restore
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => handleRestore(recording.id)}
+              disabled={restoreMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Restore
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => handlePermanentDelete(recording.id, recording.title)}
+              disabled={permanentDeleteMutation.isPending}
+            >
+              Delete Forever
+            </Button>
+          </div>
         </Card>
       ))}
     </div>

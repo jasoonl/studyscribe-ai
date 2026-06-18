@@ -86,10 +86,18 @@
 
 
 ## Phase 10: Critical Error Fixes
-- [ ] Fix recording flow UX - Remove title requirement before recording
-- [ ] Add save button after stopping recording
-- [ ] Fix Safari compatibility for audio recording
-- [ ] Debug AI features - Check why transcription/flashcards/notes fail
+- [x] Fix recording flow UX - Remove title requirement before recording
+- [x] Add save button after stopping recording
+- [x] Fix Safari compatibility for audio recording
+- [ ] Debug AI features - Check why transcription/flashcards/notes fail (ONGOING)
 - [ ] Verify API key configuration for LLM
-- [ ] Rename AI Tutor to AI Assistant
-- [ ] Test AI Assistant chat functionality
+- [x] Rename AI Tutor to AI Assistant
+- [x] Test AI Assistant chat functionality
+
+## Phase 11: Final Enhancements
+- [ ] Debug and fix Error #3: AI generation failures
+- [ ] Add contextual starter questions to AI Assistant
+- [ ] Add "Delete Forever" button to Trash page
+- [ ] Add "Restore" button to Trash page
+- [ ] Create reusable skill documentation
+- [ ] Final testing and verification
