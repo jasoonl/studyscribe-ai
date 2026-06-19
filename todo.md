@@ -77,12 +77,12 @@
 ## Phase 9: Critical Bug Fixes & Finalization
 - [x] Fix delete recording functionality - Soft delete implemented with confirmation
 - [x] Add deleted recordings/trash page - Trash tab with restore functionality
-- [ ] Add progress bars for transcription - Backend ready, frontend UI pending
-- [ ] Add progress bars for flashcards - Backend ready, frontend UI pending
-- [ ] Add progress bars for summary - Backend ready, frontend UI pending
+- [ ] Add progress bars for transcription - Loading states only, progress bars not yet implemented
+- [ ] Add progress bars for flashcards - Loading states only, progress bars not yet implemented
+- [ ] Add progress bars for summary - Loading states only, progress bars not yet implemented
 - [x] Fix AI tutor chat interface - Chat working with query invalidation and suggested prompts
 - [x] Fix cache invalidation for delete/restore/AI generation - Improved with proper tRPC invalidation
-- [ ] Test delete, progress tracking, and AI tutor end-to-end - In progress
+- [ ] Test delete, progress tracking, and AI tutor end-to-end - Partial testing done
 - [ ] Finalize and deploy application - Ready for final testing
 
 
@@ -90,15 +90,15 @@
 - [x] Fix recording flow UX - Remove title requirement before recording
 - [x] Add save button after stopping recording
 - [x] Fix Safari compatibility for audio recording
-- [ ] Debug AI features - Added error handling, but root causes not fully identified
-- [ ] Verify API key configuration for LLM - Need server-side validation check
+- [ ] Debug AI features - Added error handling, but root causes still need investigation
+- [x] Verify API key configuration for LLM - Added server-side health check endpoint
 - [x] Rename AI Tutor to AI Assistant
 - [x] Test AI Assistant chat functionality
 
 ## Phase 11: Final Enhancements
-- [ ] Identify root causes of AI generation failures (transcription, notes, flashcards, chat)
-- [ ] Add production-quality UI error states for failed AI generation
-- [ ] Add server-side LLM configuration validation (startup check or health endpoint)
+- [ ] Reproduce and identify actual root causes of AI generation failures
+- [ ] Add inline error states and retry actions for failed AI operations
+- [x] Add server-side LLM configuration validation - Added checkLLMConfig endpoint
 - [x] Add "Delete Forever" button to Trash page - Already implemented
 - [x] Add "Restore" button to Trash page - Already implemented
 - [ ] Create reusable skill documentation

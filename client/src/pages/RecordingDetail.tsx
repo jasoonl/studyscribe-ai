@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X } from "lucide-react";
@@ -51,6 +53,7 @@ export default function RecordingDetail() {
   const generateStudyNotesMutation = trpc.ai.generateStudyNotes.useMutation();
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
   const assistantChatMutation = trpc.ai.assistantChat.useMutation();
+  const utils = trpc.useUtils();
 
   // Generate contextual starter questions based on transcript content
   const getContextualQuestions = () => {
@@ -302,6 +305,17 @@ export default function RecordingDetail() {
               {/* Study Notes Tab */}
               <TabsContent value="notes">
                 <div className="space-y-4">
+                  {generateStudyNotesMutation.isError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Generation Failed</AlertTitle>
+                      <AlertDescription>
+                        {generateStudyNotesMutation.error instanceof Error 
+                          ? generateStudyNotesMutation.error.message 
+                          : "Failed to generate study notes. Please try again."}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   {studyNotes && studyNotes.length > 0 ? (
                     studyNotes.map((note) => (
                       <Card key={note.id} className="p-6 border-2 border-border">
@@ -329,9 +343,8 @@ export default function RecordingDetail() {
                             await generateStudyNotesMutation.mutateAsync({
                               recordingId: recordingId || 0,
                             });
-                            // Invalidate study notes cache
-                            const utils = trpc.useUtils();
                             await utils.ai.getStudyNotes.invalidate({ recordingId: recordingId || 0 });
+                            toast.success("Study notes generated successfully!");
                           } catch (error) {
                             console.error("Failed to generate study notes:", error);
                             const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -394,9 +407,8 @@ export default function RecordingDetail() {
                             await generateFlashcardsMutation.mutateAsync({
                               recordingId: recordingId || 0,
                             });
-                            // Invalidate flashcards cache
-                            const utils = trpc.useUtils();
                             await utils.ai.getFlashcards.invalidate({ recordingId: recordingId || 0 });
+                            toast.success("Flashcards generated successfully!");
                           } catch (error) {
                             console.error("Failed to generate flashcards:", error);
                             const errorMsg = error instanceof Error ? error.message : "Unknown error";
