@@ -14,11 +14,15 @@ function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
   const restoreMutation = trpc.recordings.restore.useMutation();
   const permanentDeleteMutation = trpc.recordings.permanentDelete.useMutation();
+  const utils = trpc.useUtils();
 
   const handleRestore = async (id: number) => {
     try {
       await restoreMutation.mutateAsync({ id });
       toast.success("Recording restored");
+      // Invalidate both deleted and active recordings lists
+      await utils.recordings.listDeleted.invalidate();
+      await utils.recordings.list.invalidate();
     } catch (error) {
       toast.error("Failed to restore recording");
     }
@@ -31,6 +35,8 @@ function TrashTabContent() {
     try {
       await permanentDeleteMutation.mutateAsync({ id });
       toast.success("Recording permanently deleted");
+      // Invalidate deleted recordings list
+      await utils.recordings.listDeleted.invalidate();
     } catch (error) {
       toast.error("Failed to permanently delete recording");
     }
@@ -145,7 +151,9 @@ export default function Dashboard() {
     try {
       await deleteRecordingMutation.mutateAsync({ id });
       toast.success("Recording deleted");
-      refetch();
+      // Use proper cache invalidation
+      const utils = trpc.useUtils();
+      await utils.recordings.list.invalidate();
     } catch (error) {
       toast.error("Failed to delete recording");
     }

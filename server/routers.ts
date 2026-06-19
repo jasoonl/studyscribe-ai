@@ -148,42 +148,62 @@ export const appRouter = router({
     generateStudyNotes: protectedProcedure
       .input(z.object({ recordingId: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const recording = await getRecordingByIdDb(input.recordingId);
-        if (!recording || recording.userId !== ctx.user.id) {
-          throw new Error("Recording not found");
+        try {
+          const recording = await getRecordingByIdDb(input.recordingId);
+          if (!recording || recording.userId !== ctx.user.id) {
+            throw new Error("Recording not found");
+          }
+
+          const transcript = await getTranscriptByRecordingId(input.recordingId);
+          if (!transcript) {
+            throw new Error("Transcript not available");
+          }
+
+          // Validate transcript has content
+          if (!transcript.fullText || transcript.fullText.trim().length === 0) {
+            throw new Error("Transcript is empty");
+          }
+
+          // Generate study notes using LLM
+          const prompt = recording.audience === "student"
+            ? `Analyze this lecture transcript and create comprehensive study notes. Include: 1) Key Concepts (main ideas), 2) Important Formulas (if any), 3) Reading Assignments (topics to explore further). Format as clear, organized notes.\n\nTranscript:\n${transcript.fullText}`
+            : `Analyze this meeting transcript and create executive summary. Include: 1) Key Decisions (what was decided), 2) Action Items (tasks with owners), 3) Deadlines (important dates). Format as clear, actionable items.\n\nTranscript:\n${transcript.fullText}`;
+
+          const response = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are an expert at creating concise, well-organized study notes and meeting summaries." },
+              { role: "user", content: prompt },
+            ],
+          });
+
+          // Validate response structure
+          if (!response.choices || response.choices.length === 0) {
+            throw new Error("Invalid LLM response: no choices returned");
+          }
+
+          const content = typeof response.choices[0].message.content === "string"
+            ? response.choices[0].message.content
+            : "";
+
+          if (!content || content.trim().length === 0) {
+            throw new Error("LLM returned empty content");
+          }
+
+          // Save study notes
+          const noteType = recording.audience === "student" ? "key_concepts" : "summary";
+          await createStudyNote({
+            recordingId: input.recordingId,
+            userId: ctx.user.id,
+            type: noteType,
+            content,
+          });
+
+          return { success: true, content };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          console.error("Study notes generation failed:", errorMsg, error);
+          throw new Error(`Failed to generate study notes: ${errorMsg}`);
         }
-
-        const transcript = await getTranscriptByRecordingId(input.recordingId);
-        if (!transcript) {
-          throw new Error("Transcript not available");
-        }
-
-        // Generate study notes using LLM
-        const prompt = recording.audience === "student"
-          ? `Analyze this lecture transcript and create comprehensive study notes. Include: 1) Key Concepts (main ideas), 2) Important Formulas (if any), 3) Reading Assignments (topics to explore further). Format as clear, organized notes.\n\nTranscript:\n${transcript.fullText}`
-          : `Analyze this meeting transcript and create executive summary. Include: 1) Key Decisions (what was decided), 2) Action Items (tasks with owners), 3) Deadlines (important dates). Format as clear, actionable items.\n\nTranscript:\n${transcript.fullText}`;
-
-        const response = await invokeLLM({
-          messages: [
-            { role: "system", content: "You are an expert at creating concise, well-organized study notes and meeting summaries." },
-            { role: "user", content: prompt },
-          ],
-        });
-
-        const content = typeof response.choices[0].message.content === "string"
-          ? response.choices[0].message.content
-          : "";
-
-        // Save study notes
-        const noteType = recording.audience === "student" ? "key_concepts" : "summary";
-        await createStudyNote({
-          recordingId: input.recordingId,
-          userId: ctx.user.id,
-          type: noteType,
-          content,
-        });
-
-        return { success: true, content };
       }),
 
     getFlashcards: protectedProcedure
@@ -199,62 +219,89 @@ export const appRouter = router({
     generateFlashcards: protectedProcedure
       .input(z.object({ recordingId: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const recording = await getRecordingByIdDb(input.recordingId);
-        if (!recording || recording.userId !== ctx.user.id) {
-          throw new Error("Recording not found");
-        }
+        try {
+          const recording = await getRecordingByIdDb(input.recordingId);
+          if (!recording || recording.userId !== ctx.user.id) {
+            throw new Error("Recording not found");
+          }
 
-        const transcript = await getTranscriptByRecordingId(input.recordingId);
-        if (!transcript) {
-          throw new Error("Transcript not available");
-        }
+          const transcript = await getTranscriptByRecordingId(input.recordingId);
+          if (!transcript) {
+            throw new Error("Transcript not available");
+          }
 
-        // Generate flashcards using LLM
-        const response = await invokeLLM({
-          messages: [
-            { role: "system", content: "You are an expert at creating effective flashcard questions and answers. Return valid JSON only." },
-            { role: "user", content: `Create 10 flashcards from this transcript. Return as JSON array with objects: {question: string, answer: string, difficulty: "easy" | "medium" | "hard"}.\n\nTranscript:\n${transcript.fullText}` },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "flashcards",
-              strict: true,
-              schema: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    question: { type: "string" },
-                    answer: { type: "string" },
-                    difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+          // Validate transcript has content
+          if (!transcript.fullText || transcript.fullText.trim().length === 0) {
+            throw new Error("Transcript is empty");
+          }
+
+          // Generate flashcards using LLM
+          const response = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are an expert at creating effective flashcard questions and answers. Return valid JSON only." },
+              { role: "user", content: `Create 10 flashcards from this transcript. Return as JSON array with objects: {question: string, answer: string, difficulty: "easy" | "medium" | "hard"}.\n\nTranscript:\n${transcript.fullText}` },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "flashcards",
+                strict: true,
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      question: { type: "string" },
+                      answer: { type: "string" },
+                      difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+                    },
+                    required: ["question", "answer", "difficulty"],
                   },
-                  required: ["question", "answer", "difficulty"],
                 },
               },
             },
-          },
-        });
+          });
 
-        const content = typeof response.choices[0].message.content === "string"
-          ? response.choices[0].message.content
-          : "[]";
-
-        try {
-          const flashcards = JSON.parse(content);
-          for (const card of flashcards) {
-            await createFlashcard({
-              recordingId: input.recordingId,
-              userId: ctx.user.id,
-              question: card.question,
-              answer: card.answer,
-              difficulty: card.difficulty || "medium",
-            });
+          // Validate response structure
+          if (!response.choices || response.choices.length === 0) {
+            throw new Error("Invalid LLM response: no choices returned");
           }
-          return { success: true, count: flashcards.length };
+
+          const content = typeof response.choices[0].message.content === "string"
+            ? response.choices[0].message.content
+            : "[]";
+
+          try {
+            const flashcards = JSON.parse(content);
+            
+            // Validate flashcards array
+            if (!Array.isArray(flashcards)) {
+              throw new Error("Expected array of flashcards");
+            }
+
+            if (flashcards.length === 0) {
+              throw new Error("No flashcards were generated");
+            }
+
+            for (const card of flashcards) {
+              await createFlashcard({
+                recordingId: input.recordingId,
+                userId: ctx.user.id,
+                question: card.question,
+                answer: card.answer,
+                difficulty: card.difficulty || "medium",
+              });
+            }
+            return { success: true, count: flashcards.length };
+          } catch (parseError) {
+            const parseMsg = parseError instanceof Error ? parseError.message : "Unknown parse error";
+            console.error("Failed to parse flashcards:", parseMsg, parseError);
+            throw new Error(`Failed to parse flashcards: ${parseMsg}`);
+          }
         } catch (error) {
-          console.error("Failed to parse flashcards:", error);
-          throw new Error("Failed to generate flashcards");
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          console.error("Flashcards generation failed:", errorMsg, error);
+          throw new Error(`Failed to generate flashcards: ${errorMsg}`);
         }
       }),
 
@@ -274,57 +321,77 @@ export const appRouter = router({
         message: z.string().min(1),
       }))
       .mutation(async ({ input, ctx }) => {
-        const recording = await getRecordingByIdDb(input.recordingId);
-        if (!recording || recording.userId !== ctx.user.id) {
-          throw new Error("Recording not found");
+        try {
+          const recording = await getRecordingByIdDb(input.recordingId);
+          if (!recording || recording.userId !== ctx.user.id) {
+            throw new Error("Recording not found");
+          }
+
+          const transcript = await getTranscriptByRecordingId(input.recordingId);
+          if (!transcript) {
+            throw new Error("Transcript not available");
+          }
+
+          // Validate transcript has content
+          if (!transcript.fullText || transcript.fullText.trim().length === 0) {
+            throw new Error("Transcript is empty");
+          }
+
+          // Save user message
+          await addChatMessage({
+            recordingId: input.recordingId,
+            userId: ctx.user.id,
+            role: "user",
+            content: input.message,
+          });
+
+          // Get chat history for context
+          const chatHistory = await getChatHistoryByRecordingId(input.recordingId);
+
+          // Build system prompt based on audience
+          const systemPrompt = recording.audience === "student"
+            ? `You are a Socratic tutor helping a student understand lecture material. Ask probing questions to help them think deeper, rather than giving direct answers. Ground all responses in the provided lecture transcript.`
+            : `You are a professional assistant helping with meeting insights. Provide concise, actionable answers based on the meeting transcript.`;
+
+          // Prepare messages for LLM
+          const messages = [
+            { role: "system" as const, content: `${systemPrompt}\n\nLecture/Meeting Transcript:\n${transcript.fullText}` },
+            ...chatHistory.map(msg => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+            })),
+          ];
+
+          // Get AI response
+          const response = await invokeLLM({ messages });
+
+          // Validate response structure
+          if (!response.choices || response.choices.length === 0) {
+            throw new Error("Invalid LLM response: no choices returned");
+          }
+
+          const assistantMessage = typeof response.choices[0].message.content === "string"
+            ? response.choices[0].message.content
+            : "";
+
+          if (!assistantMessage || assistantMessage.trim().length === 0) {
+            throw new Error("LLM returned empty response");
+          }
+
+          // Save assistant message
+          await addChatMessage({
+            recordingId: input.recordingId,
+            userId: ctx.user.id,
+            role: "assistant",
+            content: assistantMessage,
+          });
+
+          return { message: assistantMessage };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          console.error("Assistant chat failed:", errorMsg, error);
+          throw new Error(`Failed to process chat: ${errorMsg}`);
         }
-
-        const transcript = await getTranscriptByRecordingId(input.recordingId);
-        if (!transcript) {
-          throw new Error("Transcript not available");
-        }
-
-        // Save user message
-        await addChatMessage({
-          recordingId: input.recordingId,
-          userId: ctx.user.id,
-          role: "user",
-          content: input.message,
-        });
-
-        // Get chat history for context
-        const chatHistory = await getChatHistoryByRecordingId(input.recordingId);
-
-        // Build system prompt based on audience
-        const systemPrompt = recording.audience === "student"
-          ? `You are a Socratic tutor helping a student understand lecture material. Ask probing questions to help them think deeper, rather than giving direct answers. Ground all responses in the provided lecture transcript.`
-          : `You are a professional assistant helping with meeting insights. Provide concise, actionable answers based on the meeting transcript.`;
-
-        // Prepare messages for LLM
-        const messages = [
-          { role: "system" as const, content: `${systemPrompt}\n\nLecture/Meeting Transcript:\n${transcript.fullText}` },
-          ...chatHistory.map(msg => ({
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-          })),
-        ];
-
-        // Get AI response
-        const response = await invokeLLM({ messages });
-
-        const assistantMessage = typeof response.choices[0].message.content === "string"
-          ? response.choices[0].message.content
-          : "";
-
-        // Save assistant message
-        await addChatMessage({
-          recordingId: input.recordingId,
-          userId: ctx.user.id,
-          role: "assistant",
-          content: assistantMessage,
-        });
-
-        return { message: assistantMessage };
       }),
   }),
 });

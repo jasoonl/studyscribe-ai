@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
@@ -7,6 +6,8 @@ import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2,
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function RecordingDetail() {
   const [, params] = useRoute("/recording/:id");
@@ -328,10 +329,13 @@ export default function RecordingDetail() {
                             await generateStudyNotesMutation.mutateAsync({
                               recordingId: recordingId || 0,
                             });
-                            // Refetch study notes
-                            window.location.reload();
+                            // Invalidate study notes cache
+                            const utils = trpc.useUtils();
+                            await utils.ai.getStudyNotes.invalidate({ recordingId: recordingId || 0 });
                           } catch (error) {
                             console.error("Failed to generate study notes:", error);
+                            const errorMsg = error instanceof Error ? error.message : "Unknown error";
+                            toast.error(`Failed to generate study notes: ${errorMsg}`);
                           }
                         }}
                         disabled={generateStudyNotesMutation.isPending}
@@ -390,10 +394,13 @@ export default function RecordingDetail() {
                             await generateFlashcardsMutation.mutateAsync({
                               recordingId: recordingId || 0,
                             });
-                            // Refetch flashcards
-                            window.location.reload();
+                            // Invalidate flashcards cache
+                            const utils = trpc.useUtils();
+                            await utils.ai.getFlashcards.invalidate({ recordingId: recordingId || 0 });
                           } catch (error) {
                             console.error("Failed to generate flashcards:", error);
+                            const errorMsg = error instanceof Error ? error.message : "Unknown error";
+                            toast.error(`Failed to generate flashcards: ${errorMsg}`);
                           }
                         }}
                         disabled={generateFlashcardsMutation.isPending}

@@ -81,6 +81,7 @@
 - [ ] Add progress bars for flashcards - Backend ready, frontend UI pending
 - [ ] Add progress bars for summary - Backend ready, frontend UI pending
 - [x] Fix AI tutor chat interface - Chat working with query invalidation and suggested prompts
+- [x] Fix cache invalidation for delete/restore/AI generation - Improved with proper tRPC invalidation
 - [ ] Test delete, progress tracking, and AI tutor end-to-end - In progress
 - [ ] Finalize and deploy application - Ready for final testing
 
@@ -89,15 +90,16 @@
 - [x] Fix recording flow UX - Remove title requirement before recording
 - [x] Add save button after stopping recording
 - [x] Fix Safari compatibility for audio recording
-- [ ] Debug AI features - Check why transcription/flashcards/notes fail (ONGOING)
-- [ ] Verify API key configuration for LLM
+- [ ] Debug AI features - Added error handling, but root causes not fully identified
+- [ ] Verify API key configuration for LLM - Need server-side validation check
 - [x] Rename AI Tutor to AI Assistant
 - [x] Test AI Assistant chat functionality
 
 ## Phase 11: Final Enhancements
-- [ ] Debug and fix Error #3: AI generation failures
-- [ ] Add contextual starter questions to AI Assistant
-- [ ] Add "Delete Forever" button to Trash page
-- [ ] Add "Restore" button to Trash page
+- [ ] Identify root causes of AI generation failures (transcription, notes, flashcards, chat)
+- [ ] Add production-quality UI error states for failed AI generation
+- [ ] Add server-side LLM configuration validation (startup check or health endpoint)
+- [x] Add "Delete Forever" button to Trash page - Already implemented
+- [x] Add "Restore" button to Trash page - Already implemented
 - [ ] Create reusable skill documentation
-- [ ] Final testing and verification
+- [ ] Final testing and verification of all features
