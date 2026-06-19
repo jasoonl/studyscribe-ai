@@ -82,7 +82,7 @@
 - [x] Add progress bars for summary - AIProgressBar component added (placeholder)
 - [x] Fix AI tutor chat interface - Chat working with query invalidation and suggested prompts
 - [x] Fix cache invalidation for delete/restore/AI generation - Improved with proper tRPC invalidation
-- [ ] Test delete, progress tracking, and AI tutor end-to-end - Needs comprehensive verification
+- [ ] Test delete, progress tracking, and AI tutor end-to-end - Partial verification done
 - [ ] Finalize and deploy application - Ready for publication, awaiting user deployment
 
 
@@ -104,4 +104,4 @@
 - [x] Add AudioPlayer with speed controls - Implemented with 0.5x-2x speeds
 - [x] Add tagging system - Database tables and helpers created
 - [x] Add export functionality - Markdown export helpers created
-- [ ] Final comprehensive end-to-end testing of all features - In progress
+- [ ] Final comprehensive end-to-end testing of all features - Needs verification
