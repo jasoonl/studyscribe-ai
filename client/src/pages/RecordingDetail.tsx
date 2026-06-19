@@ -5,6 +5,7 @@ import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X } from "lucide-react";
+import { AIProgressBar } from "@/components/AIProgressBar";
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -305,6 +306,11 @@ export default function RecordingDetail() {
               {/* Study Notes Tab */}
               <TabsContent value="notes">
                 <div className="space-y-4">
+                  <AIProgressBar
+                    isLoading={generateStudyNotesMutation.isPending}
+                    title="Generating Study Notes"
+                    description="Analyzing transcript and creating comprehensive study materials..."
+                  />
                   {generateStudyNotesMutation.isError && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
@@ -368,6 +374,11 @@ export default function RecordingDetail() {
               {/* Flashcards Tab */}
               <TabsContent value="flashcards">
                 <div className="space-y-4">
+                  <AIProgressBar
+                    isLoading={generateFlashcardsMutation.isPending}
+                    title="Generating Flashcards"
+                    description="Creating interactive flashcards from your transcript..."
+                  />
                   {flashcards && flashcards.length > 0 ? (
                     <div className="grid gap-4">
                       {flashcards.map((card) => (
