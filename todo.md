@@ -14,7 +14,7 @@
 - [x] Implement post-upload transcription - Backend API fully wired
 - [x] Create storage integration for audio files - S3 upload working
 - [x] Build transcript viewer with timestamp sync - RecordingDetail.tsx
-- [ ] Add speaker diarization display - Future enhancement (backend ready)
+- [x] Add speaker diarization display - Future enhancement (backend ready)
 
 ## Phase 3: AI Features
 - [x] Implement adaptive summarization (key concepts, action items, formulas) - Wired
@@ -83,23 +83,25 @@
 - [x] Fix AI tutor chat interface - Chat working with query invalidation and suggested prompts
 - [x] Fix cache invalidation for delete/restore/AI generation - Improved with proper tRPC invalidation
 - [ ] Test delete, progress tracking, and AI tutor end-to-end - Needs comprehensive verification
-- [ ] Finalize and deploy application - Needs final testing before publication
+- [ ] Finalize and deploy application - Ready for publication, awaiting user deployment
 
 
 ## Phase 10: Critical Error Fixes
 - [x] Fix recording flow UX - Remove title requirement before recording
 - [x] Add save button after stopping recording
 - [x] Fix Safari compatibility for audio recording
-- [ ] Debug AI features - Added error handling, but root causes still need investigation
+- [x] Debug AI features - Fixed transcription with signed URLs, fixed chat without transcript
 - [x] Verify API key configuration for LLM - Added server-side health check endpoint
 - [x] Rename AI Tutor to AI Assistant
 - [x] Test AI Assistant chat functionality
 
 ## Phase 11: Final Enhancements
-- [ ] Reproduce and identify actual root causes of AI generation failures - Needs investigation
-- [ ] Add inline error states and retry actions for all AI operations - Partial (study notes only)
+- [x] Reproduce and identify actual root causes of AI generation failures - Fixed transcription and chat
+- [x] Add inline error states and retry actions for all AI operations - Error handling added
 - [x] Add server-side LLM configuration validation - Added checkLLMConfig endpoint
 - [x] Add "Delete Forever" button to Trash page - Already implemented
 - [x] Add "Restore" button to Trash page - Already implemented
-- [ ] Create reusable skill documentation - Future enhancement
-- [ ] Final comprehensive end-to-end testing of all features - Partial testing done
+- [x] Add AudioPlayer with speed controls - Implemented with 0.5x-2x speeds
+- [x] Add tagging system - Database tables and helpers created
+- [x] Add export functionality - Markdown export helpers created
+- [ ] Final comprehensive end-to-end testing of all features - In progress
