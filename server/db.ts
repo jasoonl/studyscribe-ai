@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -259,4 +259,64 @@ export async function restoreRecording(id: number) {
     isDeleted: 0,
     deletedAt: null,
   }).where(eq(recordings.id, id));
+}
+
+// Tag management helpers
+export async function createTag(data: { userId: number; name: string; color?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(tags).values(data);
+  // Return the created tag by querying
+  const result = await db.select().from(tags).where(eq(tags.userId, data.userId)).orderBy((t) => t.id).limit(1);
+  return result[0];
+}
+
+export async function getUserTags(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(tags).where(eq(tags.userId, userId));
+}
+
+export async function addTagToRecording(recordingId: number, tagId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(recordingTags).values({ recordingId, tagId });
+  const result = await db.select().from(recordingTags).where(and(eq(recordingTags.recordingId, recordingId), eq(recordingTags.tagId, tagId))).limit(1);
+  return result[0];
+}
+
+export async function removeTagFromRecording(recordingId: number, tagId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(recordingTags).where(
+    and(eq(recordingTags.recordingId, recordingId), eq(recordingTags.tagId, tagId))
+  );
+}
+
+export async function getRecordingTags(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(recordingTags).where(eq(recordingTags.recordingId, recordingId));
+}
+
+export async function addTagToNote(noteId: number, tagId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(noteTags).values({ noteId, tagId });
+  const result = await db.select().from(noteTags).where(and(eq(noteTags.noteId, noteId), eq(noteTags.tagId, tagId))).limit(1);
+  return result[0];
+}
+
+export async function removeTagFromNote(noteId: number, tagId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(noteTags).where(
+    and(eq(noteTags.noteId, noteId), eq(noteTags.tagId, tagId))
+  );
+}
+
+export async function getNoteTags(noteId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(noteTags).where(eq(noteTags.noteId, noteId));
 }

@@ -119,4 +119,45 @@ export const chatHistory = mysqlTable("chatHistory", {
 });
 
 export type ChatMessage = typeof chatHistory.$inferSelect;
+
+/**
+ * Tags table — user-defined tags for organizing recordings and notes
+ */
+export const tags = mysqlTable("tags", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  color: varchar("color", { length: 7 }).default("#3B82F6"), // Hex color
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Tag = typeof tags.$inferSelect;
+export type InsertTag = typeof tags.$inferInsert;
+
+/**
+ * Recording tags junction table — many-to-many relationship
+ */
+export const recordingTags = mysqlTable("recordingTags", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  tagId: int("tagId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RecordingTag = typeof recordingTags.$inferSelect;
+export type InsertRecordingTag = typeof recordingTags.$inferInsert;
+
+/**
+ * Note tags junction table — many-to-many relationship
+ */
+export const noteTags = mysqlTable("noteTags", {
+  id: int("id").autoincrement().primaryKey(),
+  noteId: int("noteId").notNull(),
+  tagId: int("tagId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NoteTag = typeof noteTags.$inferSelect;
+export type InsertNoteTag = typeof noteTags.$inferInsert;
+
 export type InsertChatMessage = typeof chatHistory.$inferInsert;

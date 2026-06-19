@@ -6,6 +6,7 @@ import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X } from "lucide-react";
 import { AIProgressBar } from "@/components/AIProgressBar";
+import { AudioPlayer } from "@/components/AudioPlayer";
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -190,13 +191,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <audio
-                      controls
-                      className="w-full"
-                      src={recording.audioUrl}
-                    >
-                      Your browser does not support the audio element.
-                    </audio>
+                    <AudioPlayer src={recording.audioUrl} title="Recording Audio" />
                   </div>
                 )}
               </div>

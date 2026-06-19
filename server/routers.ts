@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb } from "./db";
-import { storagePut } from "./storage";
+import { storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
@@ -77,7 +77,8 @@ export const appRouter = router({
         }
 
         // Start transcription in background (fire and forget)
-        transcribeRecordingInBackground(recording.id, audioUrl, input.audience);
+        // Pass the audioKey so we can get a signed URL for server-side transcription
+        transcribeRecordingInBackground(recording.id, fileKey, input.audience);
 
         return recording;
       }),
@@ -327,16 +328,6 @@ export const appRouter = router({
             throw new Error("Recording not found");
           }
 
-          const transcript = await getTranscriptByRecordingId(input.recordingId);
-          if (!transcript) {
-            throw new Error("Transcript not available");
-          }
-
-          // Validate transcript has content
-          if (!transcript.fullText || transcript.fullText.trim().length === 0) {
-            throw new Error("Transcript is empty");
-          }
-
           // Save user message
           await addChatMessage({
             recordingId: input.recordingId,
@@ -348,14 +339,30 @@ export const appRouter = router({
           // Get chat history for context
           const chatHistory = await getChatHistoryByRecordingId(input.recordingId);
 
-          // Build system prompt based on audience
-          const systemPrompt = recording.audience === "student"
-            ? `You are a Socratic tutor helping a student understand lecture material. Ask probing questions to help them think deeper, rather than giving direct answers. Ground all responses in the provided lecture transcript.`
-            : `You are a professional assistant helping with meeting insights. Provide concise, actionable answers based on the meeting transcript.`;
+          // Get transcript if available
+          const transcript = await getTranscriptByRecordingId(input.recordingId);
+
+          // Build system prompt based on audience and transcript availability
+          let systemPrompt = "";
+          let transcriptContext = "";
+          
+          if (recording.audience === "student") {
+            systemPrompt = `You are a Socratic tutor helping a student understand lecture material. Ask probing questions to help them think deeper, rather than giving direct answers.`;
+            if (transcript?.fullText && transcript.fullText.trim().length > 0) {
+              systemPrompt += ` Ground all responses in the provided lecture transcript.`;
+              transcriptContext = `\n\nLecture Transcript:\n${transcript.fullText}`;
+            }
+          } else {
+            systemPrompt = `You are a professional assistant helping with meeting insights. Provide concise, actionable answers.`;
+            if (transcript?.fullText && transcript.fullText.trim().length > 0) {
+              systemPrompt += ` Ground all responses in the provided meeting transcript.`;
+              transcriptContext = `\n\nMeeting Transcript:\n${transcript.fullText}`;
+            }
+          }
 
           // Prepare messages for LLM
           const messages = [
-            { role: "system" as const, content: `${systemPrompt}\n\nLecture/Meeting Transcript:\n${transcript.fullText}` },
+            { role: "system" as const, content: `${systemPrompt}${transcriptContext}` },
             ...chatHistory.map(msg => ({
               role: msg.role as "user" | "assistant",
               content: msg.content,
@@ -399,11 +406,14 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 // Helper function to transcribe recording in background
-async function transcribeRecordingInBackground(recordingId: number, audioUrl: string, _audience: "student" | "professional") {
+async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional") {
   try {
+    // Get signed URL for server-side transcription
+    const signedUrl = await storageGetSignedUrl(audioKey);
+    
     // Transcribe audio
     const result = await transcribeAudio({
-      audioUrl,
+      audioUrl: signedUrl,
       language: "en",
       prompt: _audience === "student" ? "This is a lecture recording" : "This is a meeting recording",
     });
@@ -445,3 +455,5 @@ async function transcribeRecordingInBackground(recordingId: number, audioUrl: st
     await updateRecordingStatus(recordingId, "failed");
   }
 }
+
+
