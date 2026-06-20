@@ -52,10 +52,40 @@ export default function RecordingDetail() {
     { enabled: !!recordingId }
   );
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
+
   const generateStudyNotesMutation = trpc.ai.generateStudyNotes.useMutation();
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
-  const assistantChatMutation = trpc.ai.assistantChat.useMutation();
   const utils = trpc.useUtils();
+
+  // Initialize messages from chat history
+  useEffect(() => {
+    if (chatHistory) {
+      setMessages(chatHistory.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })));
+    }
+  }, [chatHistory]);
+
+  const assistantChatMutation = trpc.ai.assistantChat.useMutation({
+    onSuccess: (response) => {
+      // Add assistant message to local state
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: response.message,
+      }]);
+      setIsLoadingChat(false);
+      // Invalidate cache for next refetch
+      utils.ai.getChatHistory.invalidate({ recordingId: recordingId || 0 });
+    },
+    onError: (error) => {
+      console.error('Chat failed:', error);
+      setIsLoadingChat(false);
+      toast.error('Failed to get AI response');
+    },
+  });
 
   // Generate contextual starter questions based on transcript content
   const getContextualQuestions = () => {
@@ -443,24 +473,22 @@ export default function RecordingDetail() {
                     AI Tutor - Ask questions about this lecture
                   </h3>
                   <AIChatBox
-                    messages={chatHistory?.map(m => ({
-                      role: m.role as 'user' | 'assistant',
-                      content: m.content,
-                    })) || []}
+                    messages={messages}
                     onSendMessage={async (content) => {
-                      try {
-                        await assistantChatMutation.mutateAsync({
-                          recordingId: recordingId || 0,
-                          message: content,
-                        });
-                        // Refetch chat history after mutation
-                        const utils = trpc.useUtils();
-                        await utils.ai.getChatHistory.invalidate({ recordingId: recordingId || 0 });
-                      } catch (error) {
-                        console.error('Failed to send message:', error);
-                      }
+                      // Optimistically add user message to state
+                      setMessages(prev => [...prev, {
+                        role: 'user',
+                        content: content,
+                      }]);
+                      setIsLoadingChat(true);
+                      
+                      // Send to server
+                      assistantChatMutation.mutate({
+                        recordingId: recordingId || 0,
+                        message: content,
+                      });
                     }}
-                    isLoading={assistantChatMutation.isPending}
+                    isLoading={isLoadingChat}
                     placeholder="Ask the AI Assistant a question about this lecture..."
                     suggestedPrompts={getContextualQuestions()}
                   />

@@ -105,3 +105,13 @@
 - [x] Add tagging system - Database tables and helpers created
 - [x] Add export functionality - Markdown export helpers created
 - [ ] Final comprehensive end-to-end testing of all features - Needs verification
+
+## Phase 12: Critical Bug Fixes - Round 2
+- [ ] Fix transcription "failed" status display - Debug why status shows failed
+- [ ] Implement live AI chat with typing indicators - Real-time streaming responses
+- [ ] Add message streaming/live updates - No page reload needed for responses
+- [ ] Improve first message accuracy - Better context understanding
+- [ ] Add learning/adaptation capabilities - Remember user preferences
+- [ ] Create features showcase webpage - Marketing landing page
+- [ ] Generate presentation script - For demo and marketing
+- [ ] Comprehensive end-to-end testing - All features verified working
