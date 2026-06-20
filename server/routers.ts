@@ -54,8 +54,8 @@ export const appRouter = router({
         const extension = mimeType === 'audio/webm' ? 'webm' : 'wav';
         
         // Upload audio to S3 with correct format
-        const fileKey = `${ctx.user.id}/recordings/${Date.now()}.${extension}`;
-        const { url: audioUrl } = await storagePut(fileKey, audioBuffer, mimeType);
+        const fileKeyInput = `${ctx.user.id}/recordings/${Date.now()}.${extension}`;
+        const { url: audioUrl, key: actualFileKey } = await storagePut(fileKeyInput, audioBuffer, mimeType);
 
         // Create recording in database
         await createRecording({
@@ -64,13 +64,13 @@ export const appRouter = router({
           description: input.description,
           audience: input.audience,
           audioUrl,
-          audioKey: fileKey,
+          audioKey: actualFileKey,
           duration: input.duration || 0,
         });
 
         // Get the created recording (query by audioKey since we just created it)
         const recordings = await getRecordingsByUserId(ctx.user.id);
-        const recording = recordings.find(r => r.audioKey === fileKey);
+        const recording = recordings.find(r => r.audioKey === actualFileKey);
 
         if (!recording) {
           throw new Error("Failed to create recording");
@@ -78,7 +78,7 @@ export const appRouter = router({
 
         // Start transcription in background (fire and forget)
         // Pass the audioKey so we can get a signed URL for server-side transcription
-        transcribeRecordingInBackground(recording.id, fileKey, input.audience);
+        transcribeRecordingInBackground(recording.id, actualFileKey, input.audience);
 
         return recording;
       }),
