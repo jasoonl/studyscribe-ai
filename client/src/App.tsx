@@ -11,6 +11,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Demo from "./pages/Demo";
 import Billing from "./pages/Billing";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import { NotificationProvider } from "./components/NotificationContainer";
 
 function Router() {
@@ -18,6 +20,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/record" component={Record} />
       <Route path="/upload" component={Upload} />

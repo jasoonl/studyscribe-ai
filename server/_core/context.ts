@@ -1,6 +1,10 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
+import { getSessionFromCookie } from "../sessionManager";
+import { getDb } from "../db";
+import { users } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -14,7 +18,26 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    user = await sdk.authenticateRequest(opts.req);
+    // Try custom session first
+    const session = getSessionFromCookie(opts.req.headers.cookie);
+    if (session) {
+      const db = await getDb();
+      if (db) {
+        const dbUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, session.userId))
+          .limit(1);
+        if (dbUser.length > 0) {
+          user = dbUser[0];
+        }
+      }
+    }
+
+    // Fall back to Manus OAuth for backward compatibility
+    if (!user) {
+      user = await sdk.authenticateRequest(opts.req);
+    }
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;

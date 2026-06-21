@@ -10,6 +10,7 @@ import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
 import { recordings } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
+import { customAuthRouter } from "./customAuthRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
       return { success: true } as const;
     }),
   }),
+  customAuth: customAuthRouter,
 
   recordings: router({
     list: protectedProcedure.query(async ({ ctx }) => {
