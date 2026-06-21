@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build",
-  "installCommand": "npm install -g pnpm@10.4.1 && pnpm install",
+  "buildCommand": "rm -rf node_modules && pnpm build",
+  "installCommand": "npm install -g pnpm@10.4.1 && pnpm install --no-frozen-lockfile",
   "framework": null,
   "outputDirectory": "."
 }
