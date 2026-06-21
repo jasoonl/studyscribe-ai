@@ -1,10 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm install && pnpm build",
+  "buildCommand": "npm install -g pnpm && pnpm install && pnpm build",
+  "installCommand": "npm install -g pnpm && pnpm install --frozen-lockfile",
   "framework": null,
-  "functions": {
-    "dist/index.js": {
-      "maxDuration": 60
-    }
-  }
+  "nodeVersion": "22.x"
 }
