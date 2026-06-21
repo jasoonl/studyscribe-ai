@@ -1,19 +1,7 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.mjs",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": "dist/**",
-        "nodeVersion": "22.x"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "api/index.mjs"
-    }
-  ]
+  "buildCommand": "pnpm build",
+  "installCommand": "npm install -g pnpm@10.4.1 && pnpm install",
+  "framework": null,
+  "outputDirectory": "."
 }
