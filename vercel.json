@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm install && pnpm build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": null,
+  "builds": [
+    {
+      "src": "dist/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "nodeVersion": "22.x"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "dist/index.js"
+    },
+    {
+      "src": "/public/(.*)",
+      "dest": "/dist/public/$1"
+    },
+    {
+      "src": "/(.*\\..*)",
+      "dest": "/dist/public/$1"
+    },
+    {
+      "src": "/.*",
+      "dest": "dist/index.js"
+    }
+  ],
+  "functions": {
+    "dist/index.js": {
+      "maxDuration": 60,
+      "memory": 3008
+    }
+  }
+}
