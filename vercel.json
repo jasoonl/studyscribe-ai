@@ -1,7 +1,22 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build",
-  "installCommand": "npm install -g pnpm@10.4.1 && pnpm install",
-  "framework": null,
-  "outputDirectory": "dist"
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": "dist/**"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "dist/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/index.js"
+    }
+  ]
 }
