@@ -3,6 +3,5 @@
   "buildCommand": "pnpm build",
   "installCommand": "npm install -g pnpm@10.4.1 && pnpm install",
   "framework": null,
-  "outputDirectory": "dist",
-  "public": false
+  "outputDirectory": "dist"
 }
