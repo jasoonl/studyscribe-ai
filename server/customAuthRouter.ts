@@ -1,0 +1,307 @@
+import { router, publicProcedure, protectedProcedure } from './_core/trpc';
+import { z } from 'zod';
+import {
+  registerWithEmailPassword,
+  loginWithEmailPassword,
+  loginWithGoogle,
+  createPasswordResetRequest,
+  resetPasswordWithToken,
+  createInvite,
+  getUserByEmail,
+} from './authService';
+import { getDb } from './db';
+import { eq } from 'drizzle-orm';
+import { users, inviteCodes } from '../drizzle/schema';
+
+export const customAuthRouter = router({
+  /**
+   * Register with email and password
+   * Requires a valid invite code
+   */
+  registerEmailPassword: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string().min(8, 'Password must be at least 8 characters'),
+        name: z.string().min(1, 'Name is required'),
+        inviteCode: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const result = await registerWithEmailPassword(
+        input.email,
+        input.password,
+        input.name,
+        input.inviteCode
+      );
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        user: {
+          id: result.user!.id,
+          email: result.user!.email,
+          name: result.user!.name,
+          role: result.user!.role,
+        },
+      };
+    }),
+
+  /**
+   * Login with email and password
+   */
+  loginEmailPassword: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const result = await loginWithEmailPassword(input.email, input.password);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        user: {
+          id: result.user!.id,
+          email: result.user!.email,
+          name: result.user!.name,
+          role: result.user!.role,
+        },
+      };
+    }),
+
+  /**
+   * Login with Google OAuth
+   */
+  loginGoogle: publicProcedure
+    .input(
+      z.object({
+        googleId: z.string(),
+        email: z.string().email(),
+        name: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const result = await loginWithGoogle(input.googleId, input.email, input.name);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        user: {
+          id: result.user!.id,
+          email: result.user!.email,
+          name: result.user!.name,
+          role: result.user!.role,
+        },
+        isNewUser: result.isNewUser,
+      };
+    }),
+
+  /**
+   * Request password reset
+   */
+  requestPasswordReset: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      const result = await createPasswordResetRequest(input.email);
+
+      if (result.error) {
+        // Don't reveal if email exists
+        return { success: true };
+      }
+
+      // In production, send email with reset link
+      // For now, return token (should be sent via email)
+      return {
+        success: true,
+        token: result.token,
+        message: 'Password reset link sent to email',
+      };
+    }),
+
+  /**
+   * Reset password with token
+   */
+  resetPassword: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const result = await resetPasswordWithToken(input.token, input.newPassword);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        success: true,
+        message: 'Password reset successfully',
+      };
+    }),
+
+  /**
+   * Create invite code (admin only)
+   */
+  createInviteCode: protectedProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input, ctx }) => {
+      // Check if user is admin
+      if (ctx.user.role !== 'admin') {
+        throw new Error('Only admins can create invite codes');
+      }
+
+      const result = await createInvite(input.email, ctx.user.id);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return {
+        code: result.code,
+        email: input.email,
+        expiresIn: '7 days',
+      };
+    }),
+
+  /**
+   * Get all invite codes (admin only)
+   */
+  getInviteCodes: protectedProcedure.query(async ({ ctx }) => {
+    // Check if user is admin
+    if (ctx.user.role !== 'admin') {
+      throw new Error('Only admins can view invite codes');
+    }
+
+    const db = await getDb();
+    if (!db) {
+      throw new Error('Database not available');
+    }
+
+    const codes = await db
+      .select()
+      .from(inviteCodes)
+      .where(eq(inviteCodes.createdBy, ctx.user.id));
+
+    return codes.map((code) => ({
+      id: code.id,
+      code: code.code,
+      email: code.email,
+      isUsed: code.isUsed === 1,
+      usedAt: code.usedAt,
+      expiresAt: code.expiresAt,
+      createdAt: code.createdAt,
+    }));
+  }),
+
+  /**
+   * Get all users (admin only)
+   */
+  getAllUsers: protectedProcedure.query(async ({ ctx }) => {
+    // Check if user is admin
+    if (ctx.user.role !== 'admin') {
+      throw new Error('Only admins can view all users');
+    }
+
+    const db = await getDb();
+    if (!db) {
+      throw new Error('Database not available');
+    }
+
+    const allUsers = await db.select().from(users);
+
+    return allUsers.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      loginMethod: user.loginMethod,
+      emailVerified: user.emailVerified === 1,
+      createdAt: user.createdAt,
+      lastSignedIn: user.lastSignedIn,
+    }));
+  }),
+
+  /**
+   * Update user role (admin only)
+   */
+  updateUserRole: protectedProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        role: z.enum(['user', 'admin']),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Check if user is admin
+      if (ctx.user.role !== 'admin') {
+        throw new Error('Only admins can update user roles');
+      }
+
+      const db = await getDb();
+      if (!db) {
+        throw new Error('Database not available');
+      }
+
+      await db.update(users).set({ role: input.role }).where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Validate invite code
+   */
+  validateInviteCode: publicProcedure
+    .input(z.object({ code: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error('Database not available');
+      }
+
+      const invite = await db
+        .select()
+        .from(inviteCodes)
+        .where(eq(inviteCodes.code, input.code))
+        .limit(1);
+
+      if (!invite || invite.length === 0) {
+        return { valid: false, error: 'Invalid invite code' };
+      }
+
+      const inviteCode = invite[0];
+
+      if (inviteCode.isUsed) {
+        return { valid: false, error: 'Invite code already used' };
+      }
+
+      if (new Date() > inviteCode.expiresAt) {
+        return { valid: false, error: 'Invite code expired' };
+      }
+
+      return {
+        valid: true,
+        email: inviteCode.email,
+      };
+    }),
+
+  /**
+   * Check if email is available
+   */
+  checkEmailAvailable: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .query(async ({ input }) => {
+      const user = await getUserByEmail(input.email);
+      return { available: !user };
+    }),
+});

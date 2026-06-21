@@ -11,12 +11,20 @@ export const users = mysqlTable("users", {
    * Use this for relations between tables.
    */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  /** Email address - unique identifier for custom auth */
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  /** Password hash for email/password login (bcrypt) */
+  passwordHash: text("passwordHash"),
+  /** Google OAuth ID */
+  googleId: varchar("googleId", { length: 255 }).unique(),
+  /** Manus OAuth identifier (kept for backwards compatibility) */
+  openId: varchar("openId", { length: 64 }).unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
+  /** Login method used: 'email', 'google', or 'manus' */
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  /** Whether email is verified */
+  emailVerified: int("emailVerified").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -179,3 +187,35 @@ export const userNotifications = mysqlTable("userNotifications", {
 
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+/**
+ * Invite codes table — for invite-only signup system
+ */
+export const inviteCodes = mysqlTable("inviteCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull(),
+  createdBy: int("createdBy").notNull(), // Admin who created the invite
+  usedBy: int("usedBy"), // User who used the invite
+  isUsed: int("isUsed").default(0).notNull(),
+  usedAt: timestamp("usedAt"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InviteCode = typeof inviteCodes.$inferSelect;
+export type InsertInviteCode = typeof inviteCodes.$inferInsert;
+
+/**
+ * Password reset tokens table — for password recovery
+ */
+export const passwordResetTokens = mysqlTable("passwordResetTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;

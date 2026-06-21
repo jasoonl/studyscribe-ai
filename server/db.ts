@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -18,9 +18,33 @@ export async function getDb() {
   return _db;
 }
 
+// Auth helpers
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByGoogleId(googleId: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.googleId, googleId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+  // Support both old Manus OAuth (openId) and new custom auth (email)
+  if (!user.openId && !user.email) {
+    throw new Error("Either openId or email is required for upsert");
   }
 
   const db = await getDb();
@@ -31,11 +55,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
   try {
     const values: InsertUser = {
-      openId: user.openId,
+      email: user.email || "unknown@example.com",
+      ...(user.openId && { openId: user.openId }),
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -47,6 +72,18 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
 
     textFields.forEach(assignNullable);
+
+    // Handle password hash
+    if (user.passwordHash !== undefined) {
+      values.passwordHash = user.passwordHash;
+      updateSet.passwordHash = user.passwordHash;
+    }
+
+    // Handle Google ID
+    if (user.googleId !== undefined) {
+      values.googleId = user.googleId;
+      updateSet.googleId = user.googleId;
+    }
 
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
@@ -87,6 +124,72 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+// Invite code helpers
+export async function createInviteCode(data: {
+  code: string;
+  email: string;
+  createdBy: number;
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(inviteCodes).values(data);
+}
+
+export async function getInviteCodeByCode(code: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(inviteCodes).where(eq(inviteCodes.code, code)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function markInviteCodeAsUsed(code: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(inviteCodes).set({
+    isUsed: 1,
+    usedBy: userId,
+    usedAt: new Date(),
+  }).where(eq(inviteCodes.code, code));
+}
+
+export async function getInviteCodesByCreatedBy(createdBy: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(inviteCodes).where(eq(inviteCodes.createdBy, createdBy));
+}
+
+// Password reset token helpers
+export async function createPasswordResetToken(data: {
+  userId: number;
+  token: string;
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(passwordResetTokens).values(data);
+}
+
+export async function getPasswordResetTokenByToken(token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function deletePasswordResetToken(token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
 }
 
 // Recording helpers
