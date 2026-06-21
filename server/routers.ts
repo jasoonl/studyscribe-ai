@@ -9,6 +9,7 @@ import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
 import { recordings } from "../drizzle/schema";
+import { notificationsRouter } from "./notificationsRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -401,6 +402,7 @@ export const appRouter = router({
         }
       }),
   }),
+  notifications: notificationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

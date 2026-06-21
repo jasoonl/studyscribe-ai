@@ -161,3 +161,21 @@ export type NoteTag = typeof noteTags.$inferSelect;
 export type InsertNoteTag = typeof noteTags.$inferInsert;
 
 export type InsertChatMessage = typeof chatHistory.$inferInsert;
+
+/**
+ * User notifications table — stores notifications for users
+ */
+export const userNotifications = mysqlTable("userNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["info", "success", "warning", "error"]).default("info"),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  recordingId: int("recordingId"), // Optional: link to a recording
+  isRead: int("isRead").default(0).notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserNotification = typeof userNotifications.$inferSelect;
+export type InsertUserNotification = typeof userNotifications.$inferInsert;
