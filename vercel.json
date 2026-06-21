@@ -2,6 +2,5 @@
   "version": 2,
   "buildCommand": "npm install -g pnpm && pnpm install && pnpm build",
   "installCommand": "npm install -g pnpm && pnpm install --frozen-lockfile",
-  "framework": null,
-  "nodeVersion": "22.x"
+  "framework": null
 }
