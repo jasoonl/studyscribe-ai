@@ -5,10 +5,14 @@
       "src": "package.json",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": "dist/**"
+        "includeFiles": "dist/**",
+        "nodeVersion": "22.x"
       }
     }
   ],
+  "env": {
+    "NPM_FLAGS": "--legacy-peer-deps"
+  },
   "routes": [
     {
       "src": "/api/(.*)",
