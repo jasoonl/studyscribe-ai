@@ -8,32 +8,28 @@
       "src": "dist/index.js",
       "use": "@vercel/node",
       "config": {
-        "maxLambdaSize": "50mb",
         "nodeVersion": "22.x"
       }
     }
   ],
   "routes": [
     {
-      "src": "/api/trpc(.*)",
+      "src": "/api/(.*)",
       "dest": "dist/index.js"
     },
     {
-      "src": "/api/oauth(.*)",
-      "dest": "dist/index.js"
+      "src": "/public/(.*)",
+      "dest": "/dist/public/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "dist/public/$1"
+      "src": "/(.*\\..*)",
+      "dest": "/dist/public/$1"
     },
     {
       "src": "/.*",
       "dest": "dist/index.js"
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
-  },
   "functions": {
     "dist/index.js": {
       "maxDuration": 60,
