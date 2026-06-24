@@ -31,8 +31,9 @@ export default function Login() {
       }
 
       toast.success("Login successful!");
-      // Redirect to dashboard
-      navigate("/dashboard");
+      // Hard reload to /dashboard so auth state is freshly read from the
+      // session cookie (avoids stale client-side auth state).
+      window.location.href = "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed";
       toast.error(message);
@@ -48,17 +49,20 @@ export default function Login() {
       const response = await fetch("/api/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ redirectUri: window.location.origin }),
+        body: JSON.stringify({ origin: window.location.origin }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to initiate Google login");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to initiate Google login");
       }
 
       const { authUrl } = await response.json();
       window.location.href = authUrl;
     } catch (error) {
-      toast.error("Google login failed");
+      const message =
+        error instanceof Error ? error.message : "Google login failed";
+      toast.error(message);
       setIsLoading(false);
     }
   };

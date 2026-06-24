@@ -5,9 +5,26 @@ import { eq } from "drizzle-orm";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || "http://localhost:3000/auth/google/callback";
 
-const client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI);
+/**
+ * The redirect URI MUST match exactly what is registered in the Google Cloud
+ * Console OAuth client AND the callback route in authRoutes.ts
+ * (`GET /api/auth/google/callback`).
+ *
+ * We build it from the request origin at runtime so it works in both local
+ * development and production without hardcoding domains.
+ */
+export function getGoogleRedirectUri(origin: string): string {
+  return `${origin}/api/auth/google/callback`;
+}
+
+function createClient(redirectUri: string) {
+  return new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirectUri);
+}
+
+export function isGoogleOAuthConfigured(): boolean {
+  return Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+}
 
 export interface GoogleUser {
   id: string;
@@ -19,8 +36,12 @@ export interface GoogleUser {
 /**
  * Exchange authorization code for tokens
  */
-export async function exchangeGoogleCode(code: string): Promise<{ tokens: any; user: GoogleUser }> {
+export async function exchangeGoogleCode(
+  code: string,
+  redirectUri: string
+): Promise<{ tokens: any; user: GoogleUser }> {
   try {
+    const client = createClient(redirectUri);
     const { tokens } = await client.getToken(code);
     const ticket = await client.verifyIdToken({
       idToken: tokens.id_token!,
@@ -41,7 +62,9 @@ export async function exchangeGoogleCode(code: string): Promise<{ tokens: any; u
 
     return { tokens, user };
   } catch (error) {
-    throw new Error(`Failed to exchange Google code: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to exchange Google code: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -55,14 +78,22 @@ export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
   }
 
   // Check if user exists by googleId
-  const existingUser = await db.select().from(users).where(eq(users.googleId, googleUser.id)).limit(1);
+  const existingUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.googleId, googleUser.id))
+    .limit(1);
 
   if (existingUser.length > 0) {
     return existingUser[0];
   }
 
   // Check if user exists by email
-  const userByEmail = await db.select().from(users).where(eq(users.email, googleUser.email)).limit(1);
+  const userByEmail = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, googleUser.email))
+    .limit(1);
 
   if (userByEmail.length > 0) {
     // Update existing user with Google ID
@@ -94,20 +125,26 @@ export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
   });
 
   // Fetch the created user
-  const newUser = await db.select().from(users).where(eq(users.email, googleUser.email)).limit(1);
+  const newUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, googleUser.email))
+    .limit(1);
   return newUser[0];
 }
 
 /**
  * Generate Google OAuth URL
  */
-export function getGoogleAuthUrl(state: string): string {
+export function getGoogleAuthUrl(state: string, redirectUri: string): string {
   const scopes = ["openid", "email", "profile"];
 
+  const client = createClient(redirectUri);
   const url = client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
     state,
+    prompt: "select_account",
   });
 
   return url;

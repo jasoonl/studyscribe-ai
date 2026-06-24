@@ -4,7 +4,7 @@ import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFro
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl } from "./googleOAuthHandler";
+import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
 
 export function registerAuthRoutes(app: Express) {
   /**
@@ -167,18 +167,29 @@ export function registerAuthRoutes(app: Express) {
    */
   app.post("/api/auth/google", (req: Request, res: Response) => {
     try {
-      const { redirectUri } = req.body;
-
-      if (!redirectUri) {
-        res.status(400).json({ error: "redirectUri is required" });
+      if (!isGoogleOAuthConfigured()) {
+        res.status(503).json({
+          error:
+            "Google sign-in is not configured yet. Please contact the site owner.",
+        });
         return;
       }
 
-      // Generate state for CSRF protection
-      const state = Buffer.from(JSON.stringify({ redirectUri })).toString("base64");
+      // The origin the user is on (e.g. https://app.example.com). Falls back to
+      // the request origin header when not provided by the client.
+      const origin =
+        (req.body && req.body.origin) ||
+        (req.headers.origin as string) ||
+        `${req.protocol}://${req.get("host")}`;
+
+      const redirectUri = getGoogleRedirectUri(origin);
+
+      // Generate state for CSRF protection, carrying the origin so the callback
+      // can rebuild the exact same redirect URI.
+      const state = Buffer.from(JSON.stringify({ origin })).toString("base64");
 
       // Get Google auth URL
-      const googleAuthUrl = getGoogleAuthUrl(state);
+      const googleAuthUrl = getGoogleAuthUrl(state, redirectUri);
 
       res.json({ authUrl: googleAuthUrl });
     } catch (error) {
@@ -233,8 +244,8 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      // Decode state to get redirectUri
-      let stateData;
+      // Decode state to get the origin used to start the flow
+      let stateData: { origin?: string };
       try {
         stateData = JSON.parse(Buffer.from(state, "base64").toString());
       } catch {
@@ -242,8 +253,12 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
+      const origin =
+        stateData.origin || `${req.protocol}://${req.get("host")}`;
+      const redirectUri = getGoogleRedirectUri(origin);
+
       // Exchange Google code for tokens
-      const result = await exchangeGoogleCode(code);
+      const result = await exchangeGoogleCode(code, redirectUri);
 
       if (!result || !result.user) {
         res.status(400).json({ error: "Failed to exchange Google code" });

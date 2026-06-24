@@ -110,7 +110,8 @@ export default function Signup() {
       }
 
       toast.success("Account created successfully!");
-      navigate("/dashboard");
+      // Hard reload so the session cookie is freshly read.
+      window.location.href = "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Signup failed";
       toast.error(message);
