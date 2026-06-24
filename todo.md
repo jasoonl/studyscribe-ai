@@ -6,6 +6,7 @@
 - [x] Configure OAuth (Google, Apple, Microsoft) - Built-in with template
 - [x] Test authentication flow (login/logout) - Working with template
 - [x] Create user dashboard layout - Dashboard.tsx created
+- [x] Replace Manus OAuth with custom email/password + Google OAuth - Fully implemented with JWT sessions
 
 ## Phase 2: Recording & Transcription
 - [x] Build audio recorder component (browser-based) - Record.tsx created
