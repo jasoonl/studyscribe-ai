@@ -39,6 +39,32 @@ export function generatePasswordResetToken(): string {
 }
 
 /**
+ * Validate an invite code
+ */
+export async function validateInviteCode(code: string): Promise<{ valid: boolean; email?: string; error?: string }> {
+  try {
+    const invite = await getInviteCodeByCode(code);
+
+    if (!invite) {
+      return { valid: false, error: 'Invalid invite code' };
+    }
+
+    if (invite.isUsed) {
+      return { valid: false, error: 'Invite code already used' };
+    }
+
+    if (new Date() > invite.expiresAt) {
+      return { valid: false, error: 'Invite code expired' };
+    }
+
+    return { valid: true, email: invite.email };
+  } catch (error) {
+    console.error('[Auth] Invite validation error:', error);
+    return { valid: false, error: 'Failed to validate invite code' };
+  }
+}
+
+/**
  * Register a new user with email and password
  * Requires a valid invite code
  */

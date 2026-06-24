@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 export default function Signup() {
@@ -31,27 +30,37 @@ export default function Signup() {
   const [inviteValid, setInviteValid] = useState<boolean | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
-  const signupMutation = trpc.customAuth.registerEmailPassword.useMutation();
-  const validateInviteQuery = trpc.customAuth.validateInviteCode.useQuery(
-    { code: inviteCode },
-    { enabled: !!inviteCode }
-  );
-
-  // Handle invite validation result
+  // Validate invite code on mount
   useEffect(() => {
-    if (validateInviteQuery.data) {
-      if (validateInviteQuery.data.valid) {
-        setInviteValid(true);
-        setInviteError(null);
-        if (validateInviteQuery.data.email) {
-          setFormData((prev) => ({ ...prev, email: validateInviteQuery.data.email || "" }));
+    if (!inviteCode) return;
+
+    const validateInvite = async () => {
+      try {
+        const response = await fetch("/api/auth/validate-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: inviteCode }),
+        });
+
+        const data = await response.json();
+        if (data.valid) {
+          setInviteValid(true);
+          setInviteError(null);
+          if (data.email) {
+            setFormData((prev) => ({ ...prev, email: data.email }));
+          }
+        } else {
+          setInviteValid(false);
+          setInviteError(data.error || "Invalid invite code");
         }
-      } else {
+      } catch (error) {
         setInviteValid(false);
-        setInviteError(validateInviteQuery.data.error || "Invalid invite code");
+        setInviteError("Failed to validate invite code");
       }
-    }
-  }, [validateInviteQuery.data]);
+    };
+
+    validateInvite();
+  }, [inviteCode]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,12 +92,22 @@ export default function Signup() {
     }
 
     try {
-      await signupMutation.mutateAsync({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        inviteCode: formData.inviteCode,
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          inviteCode: formData.inviteCode,
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Signup failed");
+      }
 
       toast.success("Account created successfully!");
       navigate("/dashboard");

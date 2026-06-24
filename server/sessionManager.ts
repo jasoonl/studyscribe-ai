@@ -2,7 +2,7 @@ import { Response } from "express";
 import jwt from "jsonwebtoken";
 const { sign, verify } = jwt;
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "default-dev-secret-change-in-production";
 const SESSION_COOKIE_NAME = "scribesync_session";
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -20,7 +20,7 @@ export interface SessionData {
 export function createSessionToken(data: Omit<SessionData, "iat" | "exp">): string {
   return sign(data, JWT_SECRET, {
     expiresIn: "30d",
-  });
+  }) as string;
 }
 
 /**

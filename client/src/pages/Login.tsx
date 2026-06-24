@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -14,17 +13,22 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const loginMutation = trpc.customAuth.loginEmailPassword.useMutation();
-
   const handleEmailPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const result = await loginMutation.mutateAsync({
-        email,
-        password,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Login failed");
+      }
 
       toast.success("Login successful!");
       // Redirect to dashboard
@@ -40,20 +44,18 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      // Initiate Google OAuth flow
-      const clientId = "840367929652-bfs184t5kb3lvt14ncf1n04u41ocvlkm.apps.googleusercontent.com";
-      const redirectUri = `${window.location.origin}/auth/google/callback`;
-      const scope = "openid email profile";
-      const responseType = "code";
+      // Get Google auth URL from backend
+      const response = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ redirectUri: window.location.origin }),
+      });
 
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: responseType,
-        scope,
-        state: Math.random().toString(36).substring(7),
-      }).toString()}`;
+      if (!response.ok) {
+        throw new Error("Failed to initiate Google login");
+      }
 
+      const { authUrl } = await response.json();
       window.location.href = authUrl;
     } catch (error) {
       toast.error("Google login failed");
@@ -164,9 +166,13 @@ export default function Login() {
 
         {/* Forgot Password Link */}
         <div className="text-center mt-4">
-          <a href="/forgot-password" className="text-sm text-accent hover:underline">
+          <button
+            type="button"
+            className="text-sm text-accent hover:underline"
+            onClick={() => toast.info("Password reset coming soon")}
+          >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         {/* Sign Up Link */}

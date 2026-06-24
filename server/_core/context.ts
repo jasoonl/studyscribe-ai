@@ -34,10 +34,7 @@ export async function createContext(
       }
     }
 
-    // Fall back to Manus OAuth for backward compatibility
-    if (!user) {
-      user = await sdk.authenticateRequest(opts.req);
-    }
+    // Custom auth only - no Manus OAuth fallback
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;
