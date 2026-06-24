@@ -126,3 +126,16 @@
 - [ ] Implement browser push notifications
 - [ ] Add notifications to key app events (upload, transcription, AI generation)
 - [ ] Test all notification types end-to-end
+
+## Phase 14: Authentication Overhaul (Custom Auth - replacing Manus OAuth)
+- [x] Remove Manus OAuth fallback from server context (context.ts)
+- [x] Rewrite useAuth hook to use custom REST API (/api/auth/me, /api/auth/logout)
+- [x] Change getLoginUrl() to point to /login custom page (no more Manus portal)
+- [x] Email/password login verified working (login 200, /api/auth/me 200, logout 200)
+- [x] Make Google OAuth redirect URI dynamic and consistent (/api/auth/google/callback)
+- [x] Add config guard returning 503 when Google secrets missing
+- [x] Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET secrets
+- [x] Vitest tests for Google OAuth config (4 tests passing)
+- [x] Google init endpoint returns valid consent URL (verified 200)
+- [x] Hard-reload to /dashboard after login/signup for fresh session state
+- [x] Push all auth changes to GitHub (jasoonl/scribesyncs-ai + jasoonl/scribesync.ai)
