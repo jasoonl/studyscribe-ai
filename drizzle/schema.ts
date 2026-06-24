@@ -219,3 +219,22 @@ export const passwordResetTokens = mysqlTable("passwordResetTokens", {
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+/**
+ * Invite requests table — stores access requests from prospective users
+ */
+export const inviteRequests = mysqlTable("inviteRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  reason: text("reason"), // Why they want access
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).default("pending").notNull(),
+  inviteCodeId: int("inviteCodeId"), // Set when approved
+  reviewedBy: int("reviewedBy"), // Admin who reviewed
+  reviewedAt: timestamp("reviewedAt"),
+  reviewNote: text("reviewNote"), // Admin note on approval/denial
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InviteRequest = typeof inviteRequests.$inferSelect;
+export type InsertInviteRequest = typeof inviteRequests.$inferInsert;

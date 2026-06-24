@@ -9,9 +9,11 @@ import {
   createInvite,
   getUserByEmail,
 } from './authService';
-import { getDb } from './db';
+import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode } from './db';
 import { eq } from 'drizzle-orm';
 import { users, inviteCodes } from '../drizzle/schema';
+import { notifyOwner } from './_core/notification';
+import { nanoid } from 'nanoid';
 
 export const customAuthRouter = router({
   /**
@@ -303,5 +305,115 @@ export const customAuthRouter = router({
     .query(async ({ input }) => {
       const user = await getUserByEmail(input.email);
       return { available: !user };
+    }),
+
+  // ─── Invite Request Procedures ───────────────────────────────────────────
+
+  /**
+   * Public: Submit a request for an invite code
+   */
+  requestInvite: publicProcedure
+    .input(z.object({
+      email: z.string().email('Please enter a valid email address'),
+      name: z.string().min(1, 'Name is required').max(255),
+      reason: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      await createInviteRequest({
+        email: input.email,
+        name: input.name,
+        reason: input.reason,
+      });
+
+      // Notify owner about the new request
+      try {
+        await notifyOwner({
+          title: `New Invite Request from ${input.name}`,
+          content: `${input.name} (${input.email}) has requested access to StudyScribe AI.${input.reason ? `\n\nReason: ${input.reason}` : ''}\n\nReview and approve/deny in the Admin panel.`,
+        });
+      } catch (e) {
+        // Non-fatal: request was saved even if notification fails
+        console.warn('[InviteRequest] Owner notification failed:', e);
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Admin: List all invite requests
+   */
+  listInviteRequests: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== 'admin') {
+      throw new Error('Forbidden');
+    }
+    return getAllInviteRequests();
+  }),
+
+  /**
+   * Admin: Approve an invite request — generates a unique invite code and
+   * sends it to the requester via owner notification (email TBD)
+   */
+  approveInviteRequest: protectedProcedure
+    .input(z.object({
+      requestId: z.number(),
+      reviewNote: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+
+      const request = await getInviteRequestById(input.requestId);
+      if (!request) throw new Error('Request not found');
+      if (request.status !== 'pending') throw new Error('Request already reviewed');
+
+      // Generate a unique invite code for this requester
+      const code = `SS-${nanoid(12).toUpperCase()}`;
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+      await createInviteCode({
+        code,
+        email: request.email,
+        createdBy: ctx.user.id,
+        expiresAt,
+      });
+
+      // Get the invite code ID
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const inviteRow = await db.select().from(inviteCodes).where(eq(inviteCodes.code, code)).limit(1);
+      const inviteCodeId = inviteRow[0]?.id;
+
+      await updateInviteRequestStatus(input.requestId, 'approved', ctx.user.id, input.reviewNote, inviteCodeId);
+
+      // Notify owner with the code to forward to the user
+      try {
+        await notifyOwner({
+          title: `Invite Code Generated for ${request.name}`,
+          content: `You approved ${request.name} (${request.email}).\n\nTheir invite code is:\n\n${code}\n\nPlease forward this code to them. It expires in 30 days.`,
+        });
+      } catch (e) {
+        console.warn('[InviteRequest] Approval notification failed:', e);
+      }
+
+      return { success: true, code };
+    }),
+
+  /**
+   * Admin: Deny an invite request
+   */
+  denyInviteRequest: protectedProcedure
+    .input(z.object({
+      requestId: z.number(),
+      reviewNote: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+
+      const request = await getInviteRequestById(input.requestId);
+      if (!request) throw new Error('Request not found');
+      if (request.status !== 'pending') throw new Error('Request already reviewed');
+
+      await updateInviteRequestStatus(input.requestId, 'denied', ctx.user.id, input.reviewNote);
+
+      return { success: true };
     }),
 });

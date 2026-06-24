@@ -126,10 +126,7 @@ export default function Invite() {
         {/* No invite? */}
         <p className="text-center text-sm text-muted-foreground">
           Don't have an invite code?{" "}
-          <a
-            href="mailto:hello@studyscribe.ai?subject=Invite Request"
-            className="text-accent font-medium hover:underline"
-          >
+          <a href="/request-access" className="text-accent font-medium hover:underline">
             Request access
           </a>
         </p>

@@ -43,6 +43,13 @@
       "when": 1782015252789,
       "tag": "0005_melodic_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1782312856608,
+      "tag": "0006_handy_prowler",
+      "breakpoints": true
     }
   ]
 }

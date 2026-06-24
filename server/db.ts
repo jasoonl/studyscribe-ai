@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -422,4 +422,66 @@ export async function getNoteTags(noteId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.select().from(noteTags).where(eq(noteTags.noteId, noteId));
+}
+
+// Invite request helpers
+export async function createInviteRequest(data: {
+  email: string;
+  name: string;
+  reason?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check if there's already a pending request from this email
+  const existing = await db
+    .select()
+    .from(inviteRequests)
+    .where(and(eq(inviteRequests.email, data.email), eq(inviteRequests.status, "pending")))
+    .limit(1);
+
+  if (existing.length > 0) {
+    throw new Error("A pending request already exists for this email address.");
+  }
+
+  return db.insert(inviteRequests).values({
+    email: data.email,
+    name: data.name,
+    reason: data.reason,
+    status: "pending",
+  });
+}
+
+export async function getAllInviteRequests() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(inviteRequests).orderBy(inviteRequests.createdAt);
+}
+
+export async function getInviteRequestById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(inviteRequests).where(eq(inviteRequests.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateInviteRequestStatus(
+  id: number,
+  status: "approved" | "denied",
+  reviewedBy: number,
+  reviewNote?: string,
+  inviteCodeId?: number,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(inviteRequests).set({
+    status,
+    reviewedBy,
+    reviewedAt: new Date(),
+    reviewNote: reviewNote ?? null,
+    inviteCodeId: inviteCodeId ?? null,
+  }).where(eq(inviteRequests.id, id));
 }
