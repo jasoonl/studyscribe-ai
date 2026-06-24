@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 const { sign, verify } = jwt;
 
 const JWT_SECRET = process.env.JWT_SECRET || "default-dev-secret-change-in-production";
-const SESSION_COOKIE_NAME = "scribesync_session";
+const SESSION_COOKIE_NAME = "studyscribe_session";
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export interface SessionData {

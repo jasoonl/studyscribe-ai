@@ -43,7 +43,7 @@
 }
 
 :root {
-  /* ScribeSync AI Brand Colors */
+  /* StudyScribe AI Brand Colors */
   --primary: oklch(0.45 0.3 260); /* Indigo #2D1B69 */
   --primary-foreground: oklch(0.98 0.001 0);
   --sidebar-primary: oklch(0.45 0.3 260);
@@ -185,7 +185,7 @@
   }
 }
 
-/* Kinetic Energy animations for ScribeSync AI */
+/* Kinetic Energy animations for StudyScribe AI */
 @keyframes fadeInUp {
   from {
     opacity: 0;

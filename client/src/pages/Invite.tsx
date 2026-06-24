@@ -58,7 +58,7 @@ export default function Invite() {
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">You're Invited</h1>
           <p className="text-muted-foreground">
-            ScribeSync AI is currently invite-only. Enter your invite code below to create your account.
+            StudyScribe AI is currently invite-only. Enter your invite code below to create your account.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function Invite() {
         <p className="text-center text-sm text-muted-foreground">
           Don't have an invite code?{" "}
           <a
-            href="mailto:hello@scribesync.ai?subject=Invite Request"
+            href="mailto:hello@studyscribe.ai?subject=Invite Request"
             className="text-accent font-medium hover:underline"
           >
             Request access

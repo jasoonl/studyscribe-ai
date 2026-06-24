@@ -1,4 +1,4 @@
-# ScribeSync AI — Design Brainstorm
+# StudyScribe AI — Design Brainstorm
 
 ## Three Stylistic Approaches
 
@@ -86,12 +86,12 @@ Inspired by contemporary tech startups (Stripe, Vercel, Linear) combined with ki
 - **Microcopy**: Warm, encouraging, never patronizing. Acknowledge user pain points directly.
 
 ### **Wordmark & Logo**
-**Concept**: A stylized "S" formed by a flowing waveform or transcript line, morphing into an upward arrow. The mark suggests both transcription (wave) and transformation (arrow). Paired with "ScribeSync AI" in Geist Bold.
+**Concept**: A stylized "S" formed by a flowing waveform or transcript line, morphing into an upward arrow. The mark suggests both transcription (wave) and transformation (arrow). Paired with "StudyScribe AI" in Geist Bold.
 - **Logo Mark**: Gradient fill (indigo → cyan), clean and recognizable at small sizes
 - **Usage**: Placed in header, favicon, and as a subtle watermark in backgrounds
 
 ### **Signature Brand Color**
-**Cyan (#00D9FF)**: Unmistakably ScribeSync. Used for CTAs, highlights, and accent elements. Represents clarity, energy, and the "aha!" moment of understanding.
+**Cyan (#00D9FF)**: Unmistakably StudyScribe. Used for CTAs, highlights, and accent elements. Represents clarity, energy, and the "aha!" moment of understanding.
 
 ---
 

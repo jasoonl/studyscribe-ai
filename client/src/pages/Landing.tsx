@@ -6,7 +6,7 @@ import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 
 /**
- * ScribeSync AI — Marketing Landing Page
+ * StudyScribe AI — Marketing Landing Page
  * Public page for unauthenticated users
  */
 
@@ -27,7 +27,7 @@ export default function Landing() {
     headline: "From Lecture to Mastery.",
     subheading: "AI-powered study tools that learn with you.",
     cta: "Start Learning Smarter",
-    description: "Stop stressing about what you missed in lecture. ScribeSync AI listens, takes perfect notes, and instantly transforms your classes into custom flashcards, practice exams, and a 24/7 personalized AI tutor.",
+    description: "Stop stressing about what you missed in lecture. StudyScribe AI listens, takes perfect notes, and instantly transforms your classes into custom flashcards, practice exams, and a 24/7 personalized AI tutor.",
     heroImage: "https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/hero-student-F84Hba5Y9ResacfdkYA7Zt.webp",
     painPoints: [
       { title: "Information Overload", desc: "Too much to absorb, too little time to process." },
@@ -90,12 +90,12 @@ export default function Landing() {
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/scribesyncs-logo-myaZdb94CzsaGY5RkidZFa.webp"
-              alt="ScribeSync AI"
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/studyscribe-logo-YqjarSv2s9a5LtpKjX9CE5.webp"
+              alt="StudyScribe AI"
               className="w-8 h-8"
             />
             <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              ScribeSync AI
+              StudyScribe AI
             </span>
           </div>
 
@@ -229,7 +229,7 @@ export default function Landing() {
         <div className="container text-center">
           <h2 className="text-4xl font-bold mb-6">Ready to Transform Your Learning?</h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of students and professionals already using ScribeSync AI to study smarter and work faster.
+            Join thousands of students and professionals already using StudyScribe AI to study smarter and work faster.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -253,7 +253,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="py-12 border-t border-border">
         <div className="container text-center text-muted-foreground">
-          <p>&copy; 2026 ScribeSync AI. All rights reserved.</p>
+          <p>&copy; 2026 StudyScribe AI. All rights reserved.</p>
         </div>
       </footer>
     </div>

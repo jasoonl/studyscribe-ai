@@ -1,4 +1,4 @@
-# ScribeSync AI — Full-Stack Application TODO
+# StudyScribe AI — Full-Stack Application TODO
 
 ## Phase 1: Foundation & Authentication
 - [x] Upgrade to full-stack (web-db-user)
@@ -138,4 +138,4 @@
 - [x] Vitest tests for Google OAuth config (4 tests passing)
 - [x] Google init endpoint returns valid consent URL (verified 200)
 - [x] Hard-reload to /dashboard after login/signup for fresh session state
-- [x] Push all auth changes to GitHub (jasoonl/scribesyncs-ai + jasoonl/scribesync.ai)
+- [x] Push all auth changes to GitHub (jasoonl/scribesyncs-ai + jasoonl/studyscribe.ai)

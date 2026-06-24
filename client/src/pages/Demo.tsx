@@ -15,7 +15,7 @@ export default function Demo() {
               Back to Home
             </Button>
           </Link>
-          <h1 className="text-xl font-bold">ScribeSync AI Demo</h1>
+          <h1 className="text-xl font-bold">StudyScribe AI Demo</h1>
           <div className="w-20" />
         </div>
       </header>
@@ -26,7 +26,7 @@ export default function Demo() {
           {/* Hero Section */}
           <div className="text-center space-y-6">
             <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              See ScribeSync AI in Action
+              See StudyScribe AI in Action
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Watch how students and professionals transform their learning and productivity with AI-powered transcription and study tools.
@@ -44,7 +44,7 @@ export default function Demo() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              A comprehensive walkthrough of all ScribeSync AI features
+              A comprehensive walkthrough of all StudyScribe AI features
             </p>
           </Card>
 
@@ -187,7 +187,7 @@ export default function Demo() {
             <div className="text-center space-y-6">
               <h2 className="text-3xl font-bold">Ready to Get Started?</h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Join thousands of students and professionals who are already transforming their learning and productivity with ScribeSync AI.
+                Join thousands of students and professionals who are already transforming their learning and productivity with StudyScribe AI.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/dashboard">

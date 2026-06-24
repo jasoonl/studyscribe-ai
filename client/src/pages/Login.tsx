@@ -72,7 +72,7 @@ export default function Login() {
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">ScribeSync AI</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">StudyScribe AI</h1>
           <p className="text-muted-foreground">Sign in to your account</p>
         </div>
 

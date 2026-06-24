@@ -1,8 +1,8 @@
-# ScribeSync AI - Features Showcase
+# StudyScribe AI - Features Showcase
 
 ## Transform Your Learning with AI-Powered Study Tools
 
-ScribeSync AI is a revolutionary study companion that transforms your lectures, meetings, and recordings into comprehensive study materials using advanced artificial intelligence. Whether you're a student preparing for exams or a professional documenting important meetings, ScribeSync AI helps you learn smarter, not harder.
+StudyScribe AI is a revolutionary study companion that transforms your lectures, meetings, and recordings into comprehensive study materials using advanced artificial intelligence. Whether you're a student preparing for exams or a professional documenting important meetings, StudyScribe AI helps you learn smarter, not harder.
 
 ---
 
@@ -106,7 +106,7 @@ ScribeSync AI is a revolutionary study companion that transforms your lectures, 
 
 ---
 
-## 🚀 Why Choose ScribeSync AI?
+## 🚀 Why Choose StudyScribe AI?
 
 ### **Accuracy**
 - Advanced AI models trained on millions of hours of audio
@@ -136,7 +136,7 @@ ScribeSync AI is a revolutionary study companion that transforms your lectures, 
 
 ---
 
-## 🎓 Learning Science Behind ScribeSync AI
+## 🎓 Learning Science Behind StudyScribe AI
 
 ### **Spaced Repetition**
 Our flashcard system uses evidence-based spaced repetition to maximize retention and minimize study time.
@@ -157,7 +157,7 @@ Track your learning progress and adapt your study strategy based on performance 
 
 ## 📊 Real Results
 
-- **3x faster learning** - Students using ScribeSync AI improve exam scores by an average of 3 letter grades
+- **3x faster learning** - Students using StudyScribe AI improve exam scores by an average of 3 letter grades
 - **50% less study time** - Efficient study materials reduce time spent on passive review
 - **95% retention** - Spaced repetition and active recall maximize long-term retention
 - **10,000+ users** - Trusted by students and professionals worldwide
@@ -225,7 +225,7 @@ Track your learning progress and adapt your study strategy based on performance 
 
 ## 🤝 Join the Learning Revolution
 
-Transform how you learn. Join thousands of students and professionals already using ScribeSync AI to master their subjects faster and retain more information.
+Transform how you learn. Join thousands of students and professionals already using StudyScribe AI to master their subjects faster and retain more information.
 
 **Start learning smarter today. Sign up for free.**
 
@@ -243,12 +243,12 @@ Transform how you learn. Join thousands of students and professionals already us
 
 ## 💬 What Users Say
 
-> "ScribeSync AI changed how I study. I went from struggling to get B's to consistently getting A's. The AI tutor is like having a personal teacher available 24/7." - Sarah, College Student
+> "StudyScribe AI changed how I study. I went from struggling to get B's to consistently getting A's. The AI tutor is like having a personal teacher available 24/7." - Sarah, College Student
 
-> "As a manager, ScribeSync AI helps me document meetings and share key decisions with my team instantly. It's saved us hours of manual note-taking." - James, Business Manager
+> "As a manager, StudyScribe AI helps me document meetings and share key decisions with my team instantly. It's saved us hours of manual note-taking." - James, Business Manager
 
 > "The flashcard generation is incredible. What used to take me 2 hours to create now takes 2 minutes, and the quality is actually better." - Maria, Medical Student
 
 ---
 
-**ScribeSync AI - Learn Smarter, Remember Longer, Achieve More.**
+**StudyScribe AI - Learn Smarter, Remember Longer, Achieve More.**

@@ -95,7 +95,7 @@ export default function Signup() {
         throw new Error(error.error || "Signup failed");
       }
 
-      toast.success("Account created! Welcome to ScribeSync AI.");
+      toast.success("Account created! Welcome to StudyScribe AI.");
       window.location.href = "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Signup failed";

@@ -1,8 +1,8 @@
-# ScribeSync AI — Marketing Website
+# StudyScribe AI — Marketing Website
 
 ## Overview
 
-This is a modern, conversion-focused marketing website for **ScribeSync AI**, an intelligent meeting and lecture transcription platform that combines real-time transcription with advanced AI to transform passive listening into active learning and actionable insights.
+This is a modern, conversion-focused marketing website for **StudyScribe AI**, an intelligent meeting and lecture transcription platform that combines real-time transcription with advanced AI to transform passive listening into active learning and actionable insights.
 
 ## Design Philosophy: Kinetic Energy
 

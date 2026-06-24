@@ -1,12 +1,12 @@
-# ScribeSync AI - Presentation Script
+# StudyScribe AI - Presentation Script
 
 ## Opening (30 seconds)
 
-**[Slide: Title Slide with ScribeSync AI Logo]**
+**[Slide: Title Slide with StudyScribe AI Logo]**
 
 "Good morning, everyone. How many of you have sat through a lecture and realized you missed half of it because you were busy taking notes? Or attended a meeting and forgot what was discussed by the end of the day?
 
-I'm here to introduce you to ScribeSync AI - a revolutionary platform that transforms how you learn and work by turning your recordings into intelligent study materials and meeting insights.
+I'm here to introduce you to StudyScribe AI - a revolutionary platform that transforms how you learn and work by turning your recordings into intelligent study materials and meeting insights.
 
 Let me show you how it works."
 
@@ -22,15 +22,15 @@ Why? Because traditional note-taking forces us to choose between two things: act
 
 And even when we do take notes, they're often incomplete, disorganized, and hard to review later. Meetings end, and nobody remembers what was actually decided. Lectures finish, and students don't know where to start studying.
 
-This is where ScribeSync AI comes in."
+This is where StudyScribe AI comes in."
 
 ---
 
 ## Solution Overview (1.5 minutes)
 
-**[Slide: ScribeSync AI Overview]**
+**[Slide: StudyScribe AI Overview]**
 
-"ScribeSync AI is an intelligent study companion that does three things:
+"StudyScribe AI is an intelligent study companion that does three things:
 
 First, it captures your audio - whether that's a lecture, meeting, or personal notes. Our recording system works on any device, any browser, with no downloads required.
 
@@ -96,21 +96,21 @@ Instead of spending 3 hours taking notes and another 3 hours studying them, she 
 
 "James is a project manager. His team has a 2-hour project planning meeting. Normally, he spends an hour after the meeting manually creating notes and sending them to the team.
 
-With ScribeSync AI, the notes are generated automatically. Within 5 minutes, everyone has a clear summary of decisions made, action items assigned, and deadlines set. His team's productivity increases by 20% just from better meeting documentation."
+With StudyScribe AI, the notes are generated automatically. Within 5 minutes, everyone has a clear summary of decisions made, action items assigned, and deadlines set. His team's productivity increases by 20% just from better meeting documentation."
 
 ### For Researchers (30 seconds)
 
 **[Slide: Researcher Use Case]**
 
-"Maria is conducting research interviews. She records 20 interviews. Instead of spending weeks manually transcribing and analyzing them, ScribeSync AI transcribes all 20 in hours. She can search across all interviews for specific topics, compare responses, and generate summaries instantly. What used to take months now takes days."
+"Maria is conducting research interviews. She records 20 interviews. Instead of spending weeks manually transcribing and analyzing them, StudyScribe AI transcribes all 20 in hours. She can search across all interviews for specific topics, compare responses, and generate summaries instantly. What used to take months now takes days."
 
 ---
 
 ## Key Differentiators (1 minute)
 
-**[Slide: Why ScribeSync AI?]**
+**[Slide: Why StudyScribe AI?]**
 
-"You might be wondering - why ScribeSync AI instead of other tools? Here's what sets us apart:
+"You might be wondering - why StudyScribe AI instead of other tools? Here's what sets us apart:
 
 **Accuracy** - We use advanced AI models trained on millions of hours of audio. Our transcription accuracy is 99.5% for clear audio.
 
@@ -158,7 +158,7 @@ See how it's asking me to think, not just giving me the answer? That's the power
 
 **Professional** - $19.99 per month. Everything in Student, plus team collaboration, advanced analytics, and API access for integrations.
 
-We also offer a 7-day free trial of the Professional plan, so you can experience the full power of ScribeSync AI risk-free."
+We also offer a 7-day free trial of the Professional plan, so you can experience the full power of StudyScribe AI risk-free."
 
 ---
 
@@ -186,9 +186,9 @@ But I'm confident that once you experience the power of AI-assisted learning, yo
 
 "Learning is one of the most important things we do. Whether you're a student preparing for your future or a professional staying current in your field, you deserve tools that make learning easier, not harder.
 
-ScribeSync AI is that tool. It's intelligent. It's fast. It's affordable. And it actually works.
+StudyScribe AI is that tool. It's intelligent. It's fast. It's affordable. And it actually works.
 
-So I invite you to join thousands of students and professionals who are already learning smarter with ScribeSync AI.
+So I invite you to join thousands of students and professionals who are already learning smarter with StudyScribe AI.
 
 Thank you."
 
