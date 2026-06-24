@@ -13,6 +13,7 @@ import Demo from "./pages/Demo";
 import Billing from "./pages/Billing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Invite from "./pages/Invite";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/invite" component={Invite} />
       <Route path="/demo" component={Demo} />
       <Route path="/billing" component={Billing} />
       
