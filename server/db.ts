@@ -485,3 +485,45 @@ export async function updateInviteRequestStatus(
     inviteCodeId: inviteCodeId ?? null,
   }).where(eq(inviteRequests.id, id));
 }
+
+// Invite code admin management helpers
+export async function getAllInviteCodes() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Join with users to get the email of the person who used it
+  return db.select().from(inviteCodes).orderBy(inviteCodes.createdAt);
+}
+
+export async function getInviteCodeById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(inviteCodes).where(eq(inviteCodes.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateInviteCodeExpiry(id: number, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(inviteCodes).set({ expiresAt }).where(eq(inviteCodes.id, id));
+}
+
+export async function revokeInviteCode(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Mark as used with a sentinel value to indicate revocation (usedAt = now, isUsed = 1)
+  return db.update(inviteCodes).set({
+    isUsed: 1,
+    usedAt: new Date(),
+  }).where(eq(inviteCodes.id, id));
+}
+
+export async function deleteInviteCode(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.delete(inviteCodes).where(eq(inviteCodes.id, id));
+}

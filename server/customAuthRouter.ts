@@ -9,7 +9,7 @@ import {
   createInvite,
   getUserByEmail,
 } from './authService';
-import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode } from './db';
+import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode, getAllInviteCodes, getInviteCodeById, updateInviteCodeExpiry, revokeInviteCode, deleteInviteCode } from './db';
 import { eq } from 'drizzle-orm';
 import { users, inviteCodes } from '../drizzle/schema';
 import { notifyOwner } from './_core/notification';
@@ -414,6 +414,85 @@ export const customAuthRouter = router({
 
       await updateInviteRequestStatus(input.requestId, 'denied', ctx.user.id, input.reviewNote);
 
+      return { success: true };
+    }),
+
+  // ─── Invite Code Management Procedures ──────────────────────────────────────
+
+  /**
+   * Admin: List all invite codes with status
+   */
+  listInviteCodes: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+    const codes = await getAllInviteCodes();
+    // Enrich with user info for usedBy
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const enriched = await Promise.all(codes.map(async (c) => {
+      let usedByEmail: string | null = null;
+      if (c.usedBy) {
+        const userRows = await db.select({ email: users.email }).from(users).where(eq(users.id, c.usedBy)).limit(1);
+        usedByEmail = userRows[0]?.email ?? null;
+      }
+      return { ...c, usedByEmail };
+    }));
+    return enriched;
+  }),
+
+  /**
+   * Admin: Create a new invite code manually
+   */
+  createInviteCodeManual: protectedProcedure
+    .input(z.object({
+      email: z.string().email(),
+      expiresInDays: z.number().int().min(1).max(365).default(30),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+      const code = `SS-${nanoid(12).toUpperCase()}`;
+      const expiresAt = new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000);
+      await createInviteCode({ code, email: input.email, createdBy: ctx.user.id, expiresAt });
+      return { success: true, code, expiresAt };
+    }),
+
+  /**
+   * Admin: Update expiration date of an invite code
+   */
+  updateInviteCodeExpiry: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      expiresAt: z.union([z.date(), z.string()]).transform((val) => val instanceof Date ? val : new Date(val)),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+      const code = await getInviteCodeById(input.id);
+      if (!code) throw new Error('Invite code not found');
+      await updateInviteCodeExpiry(input.id, input.expiresAt);
+      return { success: true };
+    }),
+
+  /**
+   * Admin: Revoke an invite code (marks as used without a real user)
+   */
+  revokeInviteCode: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+      const code = await getInviteCodeById(input.id);
+      if (!code) throw new Error('Invite code not found');
+      if (code.isUsed) throw new Error('Code is already used or revoked');
+      await revokeInviteCode(input.id);
+      return { success: true };
+    }),
+
+  /**
+   * Admin: Permanently delete an invite code
+   */
+  deleteInviteCode: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== 'admin') throw new Error('Forbidden');
+      await deleteInviteCode(input.id);
       return { success: true };
     }),
 });
