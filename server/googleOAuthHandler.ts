@@ -136,10 +136,15 @@ export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
 /**
  * Generate Google OAuth URL
  */
-export function getGoogleAuthUrl(state: string, redirectUri: string): string {
+export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string): string {
   const scopes = ["openid", "email", "profile"];
 
-  const client = createClient(redirectUri);
+  // Encode origin and mode in state
+  const stateData = JSON.stringify({ origin, mode });
+  const state = Buffer.from(stateData).toString("base64");
+
+  const finalRedirectUri = redirectUri || getGoogleRedirectUri(origin);
+  const client = createClient(finalRedirectUri);
   const url = client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,

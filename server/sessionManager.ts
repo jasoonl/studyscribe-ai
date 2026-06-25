@@ -1,5 +1,6 @@
 import { Response } from "express";
 import jwt from "jsonwebtoken";
+import type { Request } from "express";
 const { sign, verify } = jwt;
 
 const JWT_SECRET = process.env.JWT_SECRET || "default-dev-secret-change-in-production";
@@ -63,7 +64,15 @@ export function clearSessionCookie(res: Response): void {
 /**
  * Get session from cookie
  */
-export function getSessionFromCookie(cookieHeader?: string): SessionData | null {
+export function getSessionFromCookie(req: Request | string | undefined): SessionData | null {
+  let cookieHeader: string | undefined;
+  
+  if (typeof req === 'string') {
+    cookieHeader = req;
+  } else if (req && typeof req === 'object' && 'headers' in req) {
+    cookieHeader = (req as any).headers.cookie;
+  }
+  
   if (!cookieHeader) return null;
 
   const cookies = cookieHeader.split(";").reduce(

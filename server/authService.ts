@@ -177,7 +177,52 @@ export async function loginWithEmailPassword(
 }
 
 /**
- * Login or register with Google OAuth
+ * Login with Google OAuth - existing users only (for login page)
+ * Rejects unknown users to enforce invite-gated signup
+ */
+export async function loginWithGoogleExistingOnly(
+  googleId: string,
+  email: string,
+  name: string
+): Promise<{ user: User; error?: undefined } | { user?: undefined; error: string }> {
+  try {
+    // Check if user exists by Google ID
+    let user = await getUserByGoogleId(googleId);
+
+    if (user) {
+      // Update last signed in
+      const db = await getDb();
+      if (db) {
+        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
+      }
+      return { user };
+    }
+
+    // Check if user exists by email
+    user = await getUserByEmail(email);
+
+    if (user) {
+      // Link Google ID to existing user
+      const db = await getDb();
+      if (db) {
+        await db.update(users).set({
+          googleId,
+          lastSignedIn: new Date(),
+        }).where(eq(users.id, user.id));
+      }
+      return { user };
+    }
+
+    // User does not exist - reject (no auto-create for login)
+    return { error: 'User not found. Please sign up with an invite code first.' };
+  } catch (error) {
+    console.error('[Auth] Google login error:', error);
+    return { error: 'Google login failed' };
+  }
+}
+
+/**
+ * Login or register with Google OAuth - auto-creates for signup
  */
 export async function loginWithGoogle(
   googleId: string,

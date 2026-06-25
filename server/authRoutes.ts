@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, validateInviteCode } from "./authService";
+import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
@@ -107,9 +107,9 @@ export function registerAuthRoutes(app: Express) {
 
   /**
    * POST /api/auth/logout
-   * Clear session cookie
+   * Clear session
    */
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
+  app.post("/api/auth/logout", async (req: Request, res: Response) => {
     try {
       clearSessionCookie(res);
       res.json({ success: true });
@@ -125,7 +125,7 @@ export function registerAuthRoutes(app: Express) {
    */
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
-      const session = getSessionFromCookie(req.headers.cookie);
+      const session = getSessionFromCookie(req);
 
       if (!session) {
         res.status(401).json({ error: "Not authenticated" });
@@ -138,63 +138,28 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const dbUser = await db
+      const userResults = await db
         .select()
         .from(users)
         .where(eq(users.id, session.userId))
         .limit(1);
+      
+      const user = userResults[0];
 
-      if (dbUser.length === 0) {
+      if (!user) {
         res.status(401).json({ error: "User not found" });
         return;
       }
 
       res.json({
-        id: dbUser[0].id,
-        email: dbUser[0].email,
-        name: dbUser[0].name,
-        role: dbUser[0].role,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
       });
     } catch (error) {
       console.error("[Auth] Get me failed", error);
       res.status(500).json({ error: "Failed to get user" });
-    }
-  });
-
-  /**
-   * POST /api/auth/google
-   * Initiate Google OAuth flow - returns the Google consent URL
-   */
-  app.post("/api/auth/google", (req: Request, res: Response) => {
-    try {
-      if (!isGoogleOAuthConfigured()) {
-        res.status(503).json({
-          error:
-            "Google sign-in is not configured yet. Please contact the site owner.",
-        });
-        return;
-      }
-
-      // The origin the user is on (e.g. https://app.example.com). Falls back to
-      // the request origin header when not provided by the client.
-      const origin =
-        (req.body && req.body.origin) ||
-        (req.headers.origin as string) ||
-        `${req.protocol}://${req.get("host")}`;
-
-      const redirectUri = getGoogleRedirectUri(origin);
-
-      // Generate state for CSRF protection, carrying the origin so the callback
-      // can rebuild the exact same redirect URI.
-      const state = Buffer.from(JSON.stringify({ origin })).toString("base64");
-
-      // Get Google auth URL
-      const googleAuthUrl = getGoogleAuthUrl(state, redirectUri);
-
-      res.json({ authUrl: googleAuthUrl });
-    } catch (error) {
-      console.error("[Auth] Google init failed", error);
-      res.status(500).json({ error: "Failed to initiate Google auth" });
     }
   });
 
@@ -231,8 +196,31 @@ export function registerAuthRoutes(app: Express) {
   });
 
   /**
+   * GET /api/auth/google
+   * Initiate Google OAuth flow
+   */
+  app.get("/api/auth/google", async (req: Request, res: Response) => {
+    try {
+      if (!isGoogleOAuthConfigured()) {
+        res.status(503).json({ error: "Google OAuth is not configured" });
+        return;
+      }
+
+      const origin = (req.query.origin as string) || `${req.protocol}://${req.get("host")}`;
+      const mode = ((req.query.mode as string) || "login") as "login" | "signup";
+
+      const authUrl = getGoogleAuthUrl(origin, mode);
+
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("[Auth] Google init failed", error);
+      res.status(500).json({ error: "Failed to initialize Google OAuth" });
+    }
+  });
+
+  /**
    * GET /api/auth/google/callback
-   * Handle Google OAuth callback
+   * Handle Google OAuth callback - different logic for login vs signup
    */
   app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     try {
@@ -244,8 +232,8 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      // Decode state to get the origin used to start the flow
-      let stateData: { origin?: string };
+      // Decode state to get the origin and mode
+      let stateData: { origin?: string; mode?: "login" | "signup" };
       try {
         stateData = JSON.parse(Buffer.from(state, "base64").toString());
       } catch {
@@ -255,6 +243,7 @@ export function registerAuthRoutes(app: Express) {
 
       const origin =
         stateData.origin || `${req.protocol}://${req.get("host")}`;
+      const mode = stateData.mode || "login";
       const redirectUri = getGoogleRedirectUri(origin);
 
       // Exchange Google code for tokens
@@ -265,8 +254,25 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      // Get or create user in database
-      const user = await getOrCreateGoogleUser(result.user);
+      // Use different auth logic based on mode
+      let user;
+      if (mode === "signup") {
+        // Signup: allow auto-creating new users
+        user = await getOrCreateGoogleUser(result.user);
+      } else {
+        // Login: existing users only
+        const authResult = await loginWithGoogleExistingOnly(
+          result.user.id,
+          result.user.email,
+          result.user.name
+        );
+        if (authResult.error) {
+          // Redirect to login page with error
+          res.redirect(302, `${origin}/login?error=${encodeURIComponent(authResult.error)}`);
+          return;
+        }
+        user = authResult.user;
+      }
 
       if (!user) {
         res.status(500).json({ error: "Failed to create user" });
@@ -283,12 +289,10 @@ export function registerAuthRoutes(app: Express) {
       setSessionCookie(res, token);
 
       // Redirect to dashboard
-      res.redirect(302, "/dashboard");
+      res.redirect(302, `${origin}/dashboard`);
     } catch (error) {
       console.error("[Auth] Google callback failed", error);
       res.status(500).json({ error: "Google callback failed" });
     }
   });
 }
-
-
