@@ -35,13 +35,15 @@ export default function Demo() {
 
           {/* Video Section */}
           <Card className="p-8 border-2 border-border">
-            <div className="aspect-video bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg flex items-center justify-center mb-6">
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center mx-auto">
-                  <Play className="w-10 h-10 text-accent fill-accent" />
-                </div>
-                <p className="text-muted-foreground">Demo video coming soon</p>
-              </div>
+            <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6">
+              <video
+                src="/manus-storage/studyscribe-demo_6524ba2b.mp4"
+                controls
+                className="w-full h-full"
+                controlsList="nodownload"
+              >
+                Your browser does not support the video tag.
+              </video>
             </div>
             <p className="text-sm text-muted-foreground text-center">
               A comprehensive walkthrough of all StudyScribe AI features
