@@ -7,7 +7,7 @@ import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import Record from "./Record";
+import RecordOrUpload from "./RecordOrUpload";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function TrashTabContent() {
@@ -363,7 +363,7 @@ export default function Dashboard() {
 
           {/* Recorder Tab */}
           <TabsContent value="recorder">
-            <Record />
+            <RecordOrUpload />
           </TabsContent>
 
           {/* Transcription Tab */}

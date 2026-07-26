@@ -17,6 +17,7 @@ import Invite from "./pages/Invite";
 import RequestAccess from "./pages/RequestAccess";
 import AdminInviteRequests from "./pages/AdminInviteRequests";
 import AdminInviteCodes from "./pages/AdminInviteCodes";
+import RecordOrUpload from "./pages/RecordOrUpload";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/recording/:id" component={() => <ProtectedRoute component={RecordingDetail} />} />
       <Route path="/admin/invite-requests" component={() => <ProtectedRoute component={AdminInviteRequests} />} />
       <Route path="/admin/invite-codes" component={() => <ProtectedRoute component={AdminInviteCodes} />} />
+      <Route path="/record-or-upload" component={() => <ProtectedRoute component={RecordOrUpload} />} />
       
       {/* 404 fallback */}
       <Route path="/404" component={NotFound} />
