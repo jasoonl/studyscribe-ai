@@ -20,6 +20,9 @@ import AdminInviteCodes from "./pages/AdminInviteCodes";
 import RecordOrUpload from "./pages/RecordOrUpload";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import StudyGuides from "./pages/StudyGuides";
+import QuizPage from "./pages/QuizPage";
+import EmailDrafts from "./pages/EmailDrafts";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
@@ -69,6 +72,9 @@ function Router() {
       <Route path="/admin/invite-requests" component={() => <ProtectedRoute component={AdminInviteRequests} />} />
       <Route path="/admin/invite-codes" component={() => <ProtectedRoute component={AdminInviteCodes} />} />
       <Route path="/record-or-upload" component={() => <ProtectedRoute component={RecordOrUpload} />} />
+      <Route path="/recordings/:recordingId/study-guides" component={() => <ProtectedRoute component={StudyGuides} />} />
+      <Route path="/recordings/:recordingId/quizzes" component={() => <ProtectedRoute component={QuizPage} />} />
+      <Route path="/recordings/:recordingId/email-drafts" component={() => <ProtectedRoute component={EmailDrafts} />} />
       
       {/* 404 fallback */}
       <Route path="/404" component={NotFound} />

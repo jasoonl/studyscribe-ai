@@ -161,3 +161,18 @@
 - [ ] Add ResetPassword.tsx page with new password form
 - [ ] Wire forgot password link in Login.tsx to /forgot-password
 - [ ] Send password reset emails with token links
+
+## Phase 17: Study Materials Generation (Phase 2)
+- [x] Fix TypeScript error in schema.ts (text() mode property)
+- [x] Add studyGuides, quizzes, quizAttempts, emailDrafts tables to schema
+- [x] Run database migration (all 4 tables created in TiDB)
+- [x] Add DB helpers for study guides, quizzes, quiz attempts, email drafts
+- [x] Add tRPC procedures: studyGuides.generate, studyGuides.list, studyGuides.get
+- [x] Add tRPC procedures: quizzes.generate, quizzes.list, quizzes.get, quizzes.submitAttempt, quizzes.getAttempts
+- [x] Add tRPC procedures: emailDrafts.generate, emailDrafts.list, emailDrafts.get
+- [x] Build StudyGuides.tsx page with sidebar list + markdown content viewer
+- [x] Build QuizPage.tsx with interactive quiz taking, navigation dots, and results review
+- [x] Build EmailDrafts.tsx with type selector (email/document/report) and copy button
+- [x] Add routes in App.tsx: /recordings/:id/study-guides, /quizzes, /email-drafts
+- [x] Add AI Study Tools sidebar cards in RecordingDetail.tsx linking to new pages
+- [ ] Push to GitHub

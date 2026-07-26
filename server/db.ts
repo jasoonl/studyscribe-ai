@@ -527,3 +527,160 @@ export async function deleteInviteCode(id: number) {
 
   return db.delete(inviteCodes).where(eq(inviteCodes.id, id));
 }
+
+// ─── Study Guide helpers ────────────────────────────────────────────────────
+
+import { studyGuides, quizzes, quizAttempts, emailDrafts } from "../drizzle/schema";
+
+export async function createStudyGuide(data: {
+  recordingId: number;
+  userId: number;
+  title: string;
+  content: string;
+  keyPoints?: string[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(studyGuides).values({
+    recordingId: data.recordingId,
+    userId: data.userId,
+    title: data.title,
+    content: data.content,
+    keyPoints: data.keyPoints ?? [],
+    status: "completed",
+    generatedAt: new Date(),
+  });
+  return result;
+}
+
+export async function getStudyGuidesByRecordingId(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(studyGuides).where(eq(studyGuides.recordingId, recordingId));
+}
+
+export async function getStudyGuideById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(studyGuides).where(eq(studyGuides.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+// ─── Quiz helpers ────────────────────────────────────────────────────────────
+
+export async function createQuiz(data: {
+  recordingId: number;
+  userId: number;
+  title: string;
+  description?: string;
+  questions: Array<{
+    id: string;
+    question: string;
+    type: "multiple-choice" | "short-answer";
+    options?: string[];
+    correctAnswer: string;
+    explanation: string;
+  }>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(quizzes).values({
+    recordingId: data.recordingId,
+    userId: data.userId,
+    title: data.title,
+    description: data.description,
+    questions: data.questions,
+    status: "completed",
+    generatedAt: new Date(),
+  });
+  return result;
+}
+
+export async function getQuizzesByRecordingId(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(quizzes).where(eq(quizzes.recordingId, recordingId));
+}
+
+export async function getQuizById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(quizzes).where(eq(quizzes.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+// ─── Quiz Attempt helpers ────────────────────────────────────────────────────
+
+export async function createQuizAttempt(data: {
+  quizId: number;
+  userId: number;
+  answers: Record<string, string>;
+  score: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(quizAttempts).values({
+    quizId: data.quizId,
+    userId: data.userId,
+    answers: data.answers,
+    score: data.score,
+    completedAt: new Date(),
+  });
+}
+
+export async function getQuizAttemptsByQuizId(quizId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(quizAttempts).where(
+    and(eq(quizAttempts.quizId, quizId), eq(quizAttempts.userId, userId))
+  );
+}
+
+// ─── Email Draft helpers ─────────────────────────────────────────────────────
+
+export async function createEmailDraft(data: {
+  recordingId: number;
+  userId: number;
+  title: string;
+  subject: string;
+  content: string;
+  draftType?: "email-summary" | "document" | "report";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(emailDrafts).values({
+    recordingId: data.recordingId,
+    userId: data.userId,
+    title: data.title,
+    subject: data.subject,
+    content: data.content,
+    draftType: data.draftType ?? "email-summary",
+    status: "completed",
+    generatedAt: new Date(),
+  });
+  return result;
+}
+
+export async function getEmailDraftsByRecordingId(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(emailDrafts).where(eq(emailDrafts.recordingId, recordingId));
+}
+
+export async function getEmailDraftById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(emailDrafts).where(eq(emailDrafts.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}

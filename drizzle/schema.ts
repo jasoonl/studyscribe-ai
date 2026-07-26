@@ -238,3 +238,85 @@ export const inviteRequests = mysqlTable("inviteRequests", {
 
 export type InviteRequest = typeof inviteRequests.$inferSelect;
 export type InsertInviteRequest = typeof inviteRequests.$inferInsert;
+
+/**
+ * Study Guides table — AI-generated study guides from transcripts
+ */
+export const studyGuides = mysqlTable("studyGuides", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Markdown formatted study guide
+  keyPoints: json("keyPoints").$type<string[]>().default([]), // Array of key points
+  status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
+  generatedAt: timestamp("generatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StudyGuide = typeof studyGuides.$inferSelect;
+export type InsertStudyGuide = typeof studyGuides.$inferInsert;
+
+/**
+ * Quizzes table — AI-generated practice quizzes from transcripts
+ */
+export const quizzes = mysqlTable("quizzes", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  questions: json("questions").$type<Array<{
+    id: string;
+    question: string;
+    type: "multiple-choice" | "short-answer";
+    options?: string[];
+    correctAnswer: string;
+    explanation: string;
+  }>>().default([]),
+  status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
+  generatedAt: timestamp("generatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Quiz = typeof quizzes.$inferSelect;
+export type InsertQuiz = typeof quizzes.$inferInsert;
+
+/**
+ * Quiz Attempts table — Track user quiz attempts and scores
+ */
+export const quizAttempts = mysqlTable("quizAttempts", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quizId").notNull(),
+  userId: int("userId").notNull(),
+  answers: json("answers").$type<Record<string, string>>().default({}), // Question ID -> Answer
+  score: int("score"), // Percentage score
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type InsertQuizAttempt = typeof quizAttempts.$inferInsert;
+
+/**
+ * Email Drafts table — AI-generated email summaries and documents
+ */
+export const emailDrafts = mysqlTable("emailDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Email body in markdown
+  draftType: mysqlEnum("draftType", ["email-summary", "document", "report"]).default("email-summary"),
+  status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
+  generatedAt: timestamp("generatedAt"),
+  sentAt: timestamp("sentAt"), // When email was sent (if applicable)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailDraft = typeof emailDrafts.$inferSelect;
+export type InsertEmailDraft = typeof emailDrafts.$inferInsert;

@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById } from "./db";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
@@ -405,6 +405,275 @@ export const appRouter = router({
       }),
   }),
   notifications: notificationsRouter,
+
+  studyGuides: router({
+    list: protectedProcedure
+      .input(z.object({ recordingId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Recording not found");
+        return getStudyGuidesByRecordingId(input.recordingId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const guide = await getStudyGuideById(input.id);
+        if (!guide) throw new Error("Study guide not found");
+        const recording = await getRecordingByIdDb(guide.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Access denied");
+        return guide;
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({ recordingId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Recording not found");
+
+        const transcript = await getTranscriptByRecordingId(input.recordingId);
+        if (!transcript?.fullText?.trim()) throw new Error("Transcript not available yet. Please wait for transcription to complete.");
+
+        const isStudent = recording.audience === "student";
+        const systemPrompt = isStudent
+          ? "You are an expert educator. Create a comprehensive, well-structured study guide from this lecture transcript. Use markdown formatting with headers, bullet points, and emphasis."
+          : "You are a professional analyst. Create a comprehensive meeting summary and action guide from this transcript. Use markdown formatting with headers, bullet points, and emphasis.";
+
+        const userPrompt = isStudent
+          ? `Create a detailed study guide from this lecture transcript. Include:\n- ## Overview (2-3 sentence summary)\n- ## Key Concepts (main ideas with explanations)\n- ## Important Details (supporting facts, examples)\n- ## Key Takeaways (what to remember)\n- ## Review Questions (3-5 self-test questions)\n\nTranscript:\n${transcript.fullText}`
+          : `Create a comprehensive meeting guide from this transcript. Include:\n- ## Executive Summary (2-3 sentences)\n- ## Key Decisions (what was decided)\n- ## Action Items (tasks, owners, deadlines)\n- ## Discussion Points (main topics covered)\n- ## Next Steps (follow-up actions)\n\nTranscript:\n${transcript.fullText}`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        });
+
+        const content = typeof response.choices[0].message.content === "string"
+          ? response.choices[0].message.content : "";
+        if (!content.trim()) throw new Error("LLM returned empty content");
+
+        // Extract key points from content (first-level bullet points)
+        const keyPoints = content
+          .split("\n")
+          .filter(line => line.match(/^[-*•]\s+/) || line.match(/^\d+\.\s+/))
+          .slice(0, 8)
+          .map(line => line.replace(/^[-*•\d.]+\s+/, "").trim())
+          .filter(Boolean);
+
+        const title = isStudent ? `Study Guide: ${recording.title}` : `Meeting Guide: ${recording.title}`;
+        await createStudyGuide({ recordingId: input.recordingId, userId: ctx.user.id, title, content, keyPoints });
+        return { success: true, title, content };
+      }),
+  }),
+
+  quizzes: router({
+    list: protectedProcedure
+      .input(z.object({ recordingId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Recording not found");
+        return getQuizzesByRecordingId(input.recordingId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const quiz = await getQuizById(input.id);
+        if (!quiz) throw new Error("Quiz not found");
+        const recording = await getRecordingByIdDb(quiz.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Access denied");
+        return quiz;
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({ recordingId: z.number(), questionCount: z.number().min(3).max(20).default(10) }))
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Recording not found");
+
+        const transcript = await getTranscriptByRecordingId(input.recordingId);
+        if (!transcript?.fullText?.trim()) throw new Error("Transcript not available yet.");
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are an expert at creating educational quizzes. Return valid JSON only with no markdown code blocks." },
+            { role: "user", content: `Create ${input.questionCount} quiz questions from this transcript. Mix multiple-choice (80%) and short-answer (20%) questions. Return a JSON object: {\"title\": string, \"description\": string, \"questions\": [{\"id\": string, \"question\": string, \"type\": \"multiple-choice\" | \"short-answer\", \"options\": string[] (for MC only), \"correctAnswer\": string, \"explanation\": string}]}\n\nTranscript:\n${transcript.fullText}` },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "quiz",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  questions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        question: { type: "string" },
+                        type: { type: "string", enum: ["multiple-choice", "short-answer"] },
+                        options: { type: "array", items: { type: "string" } },
+                        correctAnswer: { type: "string" },
+                        explanation: { type: "string" },
+                      },
+                      required: ["id", "question", "type", "correctAnswer", "explanation"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["title", "description", "questions"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const raw = typeof response.choices[0].message.content === "string" ? response.choices[0].message.content : "{}";
+        const parsed = JSON.parse(raw);
+        if (!parsed.questions?.length) throw new Error("No questions generated");
+
+        await createQuiz({
+          recordingId: input.recordingId,
+          userId: ctx.user.id,
+          title: parsed.title || `Quiz: ${recording.title}`,
+          description: parsed.description,
+          questions: parsed.questions,
+        });
+        return { success: true, title: parsed.title, questionCount: parsed.questions.length };
+      }),
+
+    submitAttempt: protectedProcedure
+      .input(z.object({
+        quizId: z.number(),
+        answers: z.record(z.string(), z.string()),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const quiz = await getQuizById(input.quizId);
+        if (!quiz) throw new Error("Quiz not found");
+        const recording = await getRecordingByIdDb(quiz.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Access denied");
+
+        const questions = (quiz.questions as any[]) || [];
+        let correct = 0;
+        for (const q of questions) {
+          const userAnswer = input.answers[q.id]?.trim().toLowerCase();
+          const correctAnswer = q.correctAnswer?.trim().toLowerCase();
+          if (userAnswer && correctAnswer && (userAnswer === correctAnswer || (q.type === "multiple-choice" && userAnswer === correctAnswer))) {
+            correct++;
+          }
+        }
+        const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+        await createQuizAttempt({ quizId: input.quizId, userId: ctx.user.id, answers: input.answers, score });
+        return { score, correct, total: questions.length };
+      }),
+
+    getAttempts: protectedProcedure
+      .input(z.object({ quizId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const quiz = await getQuizById(input.quizId);
+        if (!quiz) throw new Error("Quiz not found");
+        const recording = await getRecordingByIdDb(quiz.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Access denied");
+        return getQuizAttemptsByQuizId(input.quizId, ctx.user.id);
+      }),
+  }),
+
+  emailDrafts: router({
+    list: protectedProcedure
+      .input(z.object({ recordingId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Recording not found");
+        return getEmailDraftsByRecordingId(input.recordingId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const draft = await getEmailDraftById(input.id);
+        if (!draft) throw new Error("Email draft not found");
+        const recording = await getRecordingByIdDb(draft.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Access denied");
+        return draft;
+      }),
+
+    generate: protectedProcedure
+      .input(z.object({
+        recordingId: z.number(),
+        draftType: z.enum(["email-summary", "document", "report"]).default("email-summary"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) throw new Error("Recording not found");
+
+        const transcript = await getTranscriptByRecordingId(input.recordingId);
+        if (!transcript?.fullText?.trim()) throw new Error("Transcript not available yet.");
+
+        const typeLabels = { "email-summary": "Email Summary", document: "Document", report: "Report" };
+        const typeLabel = typeLabels[input.draftType];
+
+        const prompts: Record<string, { system: string; user: string }> = {
+          "email-summary": {
+            system: "You are a professional writer who creates clear, concise email summaries. Return JSON with fields: subject, body.",
+            user: `Write a professional email summary of this ${recording.audience === "student" ? "lecture" : "meeting"}. The email should be suitable to send to colleagues or classmates who missed it.\n\nTranscript:\n${transcript.fullText}`,
+          },
+          document: {
+            system: "You are a professional technical writer. Return JSON with fields: subject, body (markdown formatted document).",
+            user: `Create a well-structured document summarizing this ${recording.audience === "student" ? "lecture" : "meeting"}. Include all key information in a professional format.\n\nTranscript:\n${transcript.fullText}`,
+          },
+          report: {
+            system: "You are a professional report writer. Return JSON with fields: subject, body (markdown formatted report with sections).",
+            user: `Write a formal report based on this ${recording.audience === "student" ? "lecture" : "meeting"} transcript. Include executive summary, key findings, and recommendations.\n\nTranscript:\n${transcript.fullText}`,
+          },
+        };
+
+        const { system, user } = prompts[input.draftType];
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "email_draft",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  subject: { type: "string" },
+                  body: { type: "string" },
+                },
+                required: ["subject", "body"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const raw = typeof response.choices[0].message.content === "string" ? response.choices[0].message.content : "{}";
+        const parsed = JSON.parse(raw);
+        if (!parsed.body?.trim()) throw new Error("LLM returned empty content");
+
+        const title = `${typeLabel}: ${recording.title}`;
+        await createEmailDraft({
+          recordingId: input.recordingId,
+          userId: ctx.user.id,
+          title,
+          subject: parsed.subject || title,
+          content: parsed.body,
+          draftType: input.draftType,
+        });
+        return { success: true, title, subject: parsed.subject, content: parsed.body };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

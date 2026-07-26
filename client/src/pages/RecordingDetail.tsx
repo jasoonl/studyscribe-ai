@@ -4,7 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
-import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X } from "lucide-react";
+import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText } from "lucide-react";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { useState, useEffect } from "react";
@@ -495,6 +495,64 @@ export default function RecordingDetail() {
                 </Card>
               </TabsContent>
             </Tabs>
+          </div>
+          {/* Right sidebar: AI Tools */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>
+
+            <Link href={`/recordings/${recordingId}/study-guides`}>
+              <div className="group p-4 rounded-xl border border-border bg-card hover:border-indigo-400/60 hover:bg-indigo-50/5 transition-all cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Study Guides</p>
+                    <p className="text-xs text-muted-foreground">AI-generated comprehensive guides</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-indigo-400/50 mt-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Open Study Guides
+                </Button>
+              </div>
+            </Link>
+
+            <Link href={`/recordings/${recordingId}/quizzes`}>
+              <div className="group p-4 rounded-xl border border-border bg-card hover:border-purple-400/60 hover:bg-purple-50/5 transition-all cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-lg bg-purple-500/15 flex items-center justify-center">
+                    <Brain className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Practice Quizzes</p>
+                    <p className="text-xs text-muted-foreground">Test your knowledge with AI quizzes</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-purple-400/50 mt-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Open Quizzes
+                </Button>
+              </div>
+            </Link>
+
+            <Link href={`/recordings/${recordingId}/email-drafts`}>
+              <div className="group p-4 rounded-xl border border-border bg-card hover:border-blue-400/60 hover:bg-blue-50/5 transition-all cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Email Drafts</p>
+                    <p className="text-xs text-muted-foreground">Summaries, documents & reports</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-blue-400/50 mt-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Open Email Drafts
+                </Button>
+              </div>
+            </Link>
           </div>
         </div>
       </main>
