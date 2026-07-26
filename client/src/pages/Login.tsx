@@ -46,10 +46,13 @@ export default function Login() {
     setIsLoading(true);
     try {
       // Get Google auth URL from backend
-      const response = await fetch("/api/auth/google", {
-        method: "POST",
+      const params = new URLSearchParams({
+        origin: window.location.origin,
+        mode: "login",
+      });
+      const response = await fetch(`/api/auth/google?${params}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin: window.location.origin }),
       });
 
       if (!response.ok) {

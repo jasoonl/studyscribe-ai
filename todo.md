@@ -139,3 +139,25 @@
 - [x] Google init endpoint returns valid consent URL (verified 200)
 - [x] Hard-reload to /dashboard after login/signup for fresh session state
 - [x] Push all auth changes to GitHub (jasoonl/scribesyncs-ai + jasoonl/studyscribe.ai)
+
+## Phase 15: Unified Recording & Upload Interface
+- [x] Create unified RecordOrUpload page combining recording and file upload
+- [x] Record tab with pause/resume, timer, and title input
+- [x] Upload tab with drag-and-drop and file validation (16MB limit)
+- [x] Both flows support content type selection (student/professional)
+- [x] Integrated into Dashboard as Recorder tab
+- [x] Check transcription backend status - Verified working
+- [x] Earlier transcription failure was temporary timeout, not backend issue
+
+
+## Phase 16: Google OAuth Fix & Password Reset
+- [x] Fixed Google OAuth endpoint (changed from POST /api/auth/google/init to GET /api/auth/google)
+- [x] Updated Login.tsx to use GET /api/auth/google with mode=login parameter
+- [x] Updated Signup.tsx to use GET /api/auth/google with mode=signup parameter
+- [x] Verified Google OAuth endpoint returns valid auth URL
+- [ ] Add password reset request endpoint (/api/auth/forgot-password)
+- [ ] Add password reset verification page (/reset-password?token=...)
+- [ ] Add ForgotPassword.tsx page with email input
+- [ ] Add ResetPassword.tsx page with new password form
+- [ ] Wire forgot password link in Login.tsx to /forgot-password
+- [ ] Send password reset emails with token links

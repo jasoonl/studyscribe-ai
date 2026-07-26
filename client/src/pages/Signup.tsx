@@ -108,10 +108,13 @@ export default function Signup() {
   const handleGoogleSignup = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/auth/google", {
-        method: "POST",
+      const params = new URLSearchParams({
+        origin: window.location.origin,
+        mode: "signup",
+      });
+      const response = await fetch(`/api/auth/google?${params}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ origin: window.location.origin }),
       });
 
       if (!response.ok) {
