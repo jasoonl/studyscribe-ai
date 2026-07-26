@@ -173,13 +173,9 @@ export default function Login() {
 
         {/* Forgot Password Link */}
         <div className="text-center mt-4">
-          <button
-            type="button"
-            className="text-sm text-accent hover:underline"
-            onClick={() => toast.info("Password reset coming soon")}
-          >
+          <a href="/forgot-password" className="text-sm text-accent hover:underline">
             Forgot password?
-          </button>
+          </a>
         </div>
 
         {/* Sign Up Link */}

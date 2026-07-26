@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
-import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode } from "./authService";
+import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, createPasswordResetRequest, resetPasswordWithToken } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
-import { getDb } from "./db";
+import { getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
@@ -293,6 +293,117 @@ export function registerAuthRoutes(app: Express) {
     } catch (error) {
       console.error("[Auth] Google callback failed", error);
       res.status(500).json({ error: "Google callback failed" });
+    }
+  });
+
+  /**
+   * POST /api/auth/forgot-password
+   * Request a password reset token
+   */
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ error: "Email is required" });
+        return;
+      }
+
+      const result = await createPasswordResetRequest(email);
+
+      if (result.error) {
+        // Always return success to avoid email enumeration
+        res.json({ success: true, message: "If email exists, password reset link will be sent" });
+        return;
+      }
+
+      // TODO: Send email with reset link
+      // For now, return the token (in production, send via email)
+      res.json({
+        success: true,
+        message: "Password reset link sent to email",
+        token: result.token, // Remove in production
+      });
+    } catch (error) {
+      console.error("[Auth] Forgot password failed", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  /**
+   * POST /api/auth/reset-password
+   * Reset password with token
+   */
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        res.status(400).json({ error: "Token and new password are required" });
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        res.status(400).json({ error: "Password must be at least 8 characters" });
+        return;
+      }
+
+      const result = await resetPasswordWithToken(token, newPassword);
+
+      if (result.error) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
+
+      if (!result.user) {
+        res.status(500).json({ error: "Failed to retrieve user after password reset" });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: "Password reset successful",
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+        },
+      });
+    } catch (error) {
+      console.error("[Auth] Reset password failed", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  /**
+   * GET /api/auth/validate-reset-token
+   * Validate a password reset token
+   */
+  app.get("/api/auth/validate-reset-token", async (req: Request, res: Response) => {
+    try {
+      const token = req.query.token as string;
+
+      if (!token) {
+        res.status(400).json({ error: "Token is required" });
+        return;
+      }
+
+      const resetToken = await getPasswordResetTokenByToken(token);
+
+      if (!resetToken) {
+        res.status(400).json({ error: "Invalid token" });
+        return;
+      }
+
+      if (new Date() > resetToken.expiresAt) {
+        res.status(400).json({ error: "Token expired" });
+        return;
+      }
+
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("[Auth] Validate token failed", error);
+      res.status(500).json({ error: "Failed to validate token" });
     }
   });
 }

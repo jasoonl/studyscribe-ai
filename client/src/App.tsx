@@ -18,6 +18,8 @@ import RequestAccess from "./pages/RequestAccess";
 import AdminInviteRequests from "./pages/AdminInviteRequests";
 import AdminInviteCodes from "./pages/AdminInviteCodes";
 import RecordOrUpload from "./pages/RecordOrUpload";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
@@ -53,6 +55,8 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/invite" component={Invite} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/request-access" component={RequestAccess} />
       <Route path="/demo" component={Demo} />
       <Route path="/billing" component={Billing} />
