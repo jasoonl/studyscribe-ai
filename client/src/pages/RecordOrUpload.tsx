@@ -118,6 +118,16 @@ export default function RecordOrUpload() {
     }
   };
 
+  // Helper: read blob/file as base64 DataURL using a Promise (avoids async callback bug)
+  const readAsBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Failed to read audio"));
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const submitRecording = async () => {
     if (!recordingTitle.trim()) {
       toast.error("Please enter a title");
@@ -131,30 +141,30 @@ export default function RecordOrUpload() {
 
     setIsUploading(true);
     try {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64String = reader.result as string;
-        await createRecordingMutation.mutateAsync({
-          title: recordingTitle,
-          audience,
-          audioBase64: base64String,
-          duration,
-        });
-        setUploadComplete(true);
-        toast.success("Recording uploaded successfully!");
-        setTimeout(() => navigate("/dashboard"), 2000);
-      };
-      reader.readAsDataURL(audioBlob);
+      const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
+      const base64String = await readAsBase64(audioBlob);
+      await createRecordingMutation.mutateAsync({
+        title: recordingTitle,
+        audience,
+        audioBase64: base64String,
+        duration,
+      });
+      setUploadComplete(true);
+      toast.success("Recording uploaded successfully!");
+      setTimeout(() => navigate("/dashboard"), 2000);
     } catch (error) {
-      toast.error("Failed to upload recording");
+      console.error("Failed to upload recording:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload recording";
+      toast.error(errorMessage);
+    } finally {
       setIsUploading(false);
     }
   };
 
   // Upload functions
   const validateAndSetFile = (file: File) => {
-    const validTypes = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"];
+    const validTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/ogg", "audio/mp4", "audio/webm", "audio/m4a", "audio/x-m4a"];
     if (!validTypes.includes(file.type)) {
       toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, or WebM)");
       return;
@@ -202,22 +212,21 @@ export default function RecordOrUpload() {
 
     setIsUploadingFile(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64String = reader.result as string;
-        await createRecordingMutation.mutateAsync({
-          title: uploadTitle,
-          audience: uploadAudience,
-          audioBase64: base64String,
-          duration: 0,
-        });
-        setUploadFileComplete(true);
-        toast.success("File uploaded successfully!");
-        setTimeout(() => navigate("/dashboard"), 2000);
-      };
-      reader.readAsDataURL(selectedFile);
+      const base64String = await readAsBase64(selectedFile);
+      await createRecordingMutation.mutateAsync({
+        title: uploadTitle,
+        audience: uploadAudience,
+        audioBase64: base64String,
+        duration: 0,
+      });
+      setUploadFileComplete(true);
+      toast.success("File uploaded successfully!");
+      setTimeout(() => navigate("/dashboard"), 2000);
     } catch (error) {
-      toast.error("Failed to upload file");
+      console.error("Failed to upload file:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+      toast.error(errorMessage);
+    } finally {
       setIsUploadingFile(false);
     }
   };

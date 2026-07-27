@@ -113,6 +113,16 @@ export default function Record() {
     }
   };
 
+  // Helper: read blob as base64 DataURL using a Promise (avoids async callback bug)
+  const readBlobAsBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Failed to read audio file"));
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const saveRecording = async () => {
     if (!recordingTitle.trim()) {
       toast.error("Please enter a recording title");
@@ -129,43 +139,29 @@ export default function Record() {
       // Use the actual MIME type that was used during recording
       const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-      const reader = new FileReader();
-      
-      reader.onload = async () => {
-        try {
-          const base64String = reader.result as string;
-          
-          const recording = await createRecordingMutation.mutateAsync({
-            title: recordingTitle,
-            audience,
-            audioBase64: base64String,
-            duration,
-          });
 
-          setUploadComplete(true);
-          toast.success("Recording uploaded! Processing transcript...");
+      // Convert blob to base64 using Promise-based approach
+      // (callback-based FileReader breaks async/await error handling)
+      const base64String = await readBlobAsBase64(audioBlob);
 
-          setTimeout(() => {
-            navigate(`/recording/${recording.id}`);
-          }, 1500);
-        } catch (error) {
-          console.error("Upload failed:", error);
-          const errorMessage = error instanceof Error ? error.message : "Failed to upload recording";
-          toast.error(errorMessage);
-        } finally {
-          setIsUploading(false);
-        }
-      };
-      
-      reader.onerror = () => {
-        toast.error("Failed to read audio file");
-        setIsUploading(false);
-      };
-      
-      reader.readAsDataURL(audioBlob);
+      const recording = await createRecordingMutation.mutateAsync({
+        title: recordingTitle,
+        audience,
+        audioBase64: base64String,
+        duration,
+      });
+
+      setUploadComplete(true);
+      toast.success("Recording uploaded! Processing transcript...");
+
+      setTimeout(() => {
+        navigate(`/recording/${recording.id}`);
+      }, 1500);
     } catch (error) {
       console.error("Error saving recording:", error);
-      toast.error("Failed to save recording");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save recording";
+      toast.error(errorMessage);
+    } finally {
       setIsUploading(false);
     }
   };

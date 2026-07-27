@@ -20,7 +20,7 @@ export default function Upload() {
 
   const validateAndSetFile = (file: File) => {
     // Validate file type
-    const validTypes = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/webm"];
+    const validTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/ogg", "audio/mp4", "audio/webm", "audio/m4a", "audio/x-m4a"];
     if (!validTypes.includes(file.type)) {
       toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, or WebM)");
       return;
@@ -56,6 +56,16 @@ export default function Upload() {
     validateAndSetFile(file);
   };
 
+  // Helper: read file as base64 DataURL using a Promise (avoids async callback bug)
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) {
       toast.error("Please select a file");
@@ -69,30 +79,24 @@ export default function Upload() {
 
     setIsUploading(true);
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64String = reader.result as string;
-        const recording = await createRecordingMutation.mutateAsync({
-          title,
-          audience,
-          audioBase64: base64String,
-          duration: 0,
-        });
+      // Convert file to base64 using Promise-based approach
+      // (callback-based FileReader breaks async/await error handling)
+      const base64String = await readFileAsBase64(selectedFile);
 
-        setUploadComplete(true);
-        toast.success("File uploaded! Processing transcript...");
+      const recording = await createRecordingMutation.mutateAsync({
+        title,
+        audience,
+        audioBase64: base64String,
+        duration: 0,
+      });
 
-        // Redirect to recording detail after a short delay
-        setTimeout(() => {
-          navigate(`/recording/${recording.id}`);
-        }, 1500);
-      };
-      reader.onerror = () => {
-        throw new Error("Failed to read file");
-      };
-      reader.readAsDataURL(selectedFile);
-      return;
+      setUploadComplete(true);
+      toast.success("File uploaded! Processing transcript...");
+
+      // Redirect to recording detail after a short delay
+      setTimeout(() => {
+        navigate(`/recording/${recording.id}`);
+      }, 1500);
     } catch (error) {
       console.error("Upload failed:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload file";

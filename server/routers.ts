@@ -57,16 +57,19 @@ export const appRouter = router({
           'audio/mpeg': 'mp3',
           'audio/mp3': 'mp3',
           'audio/wav': 'wav',
+          'audio/wave': 'wav',
+          'audio/x-wav': 'wav',
           'audio/ogg': 'ogg',
           'audio/webm': 'webm',
           'audio/mp4': 'mp4',
+          'audio/m4a': 'm4a',
           'audio/x-m4a': 'm4a',
+          'video/mp4': 'mp4',
+          'video/webm': 'webm',
         };
         
-        const extension = mimeToExt[mimeType] || 'wav';
-        if (!mimeToExt[mimeType]) {
-          throw new Error(`Unsupported audio format: ${mimeType}. Supported formats: MP3, WAV, OGG, WebM, MP4`);
-        }
+        // Use fallback extension instead of throwing — Whisper handles most audio formats
+        const extension = mimeToExt[mimeType] || 'mp3';
         
         // Convert base64 to buffer
         const base64Data = input.audioBase64.split(',')[1] || input.audioBase64;

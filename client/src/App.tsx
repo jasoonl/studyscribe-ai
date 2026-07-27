@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import Dashboard from "./pages/Dashboard";
 import Record from "./pages/Record";
 import RecordingDetail from "./pages/RecordingDetail";
@@ -43,8 +43,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   if (!isAuthenticated) {
-    window.location.href = "/login";
-    return null;
+    return <Redirect to="/login" />;
   }
 
   return <Component />;

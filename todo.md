@@ -201,4 +201,21 @@
 - [x] Added MIME-to-extension mapping for MP3, WAV, OGG, WebM, MP4
 - [x] Fixed storagePut to use Buffer instead of Blob for S3 upload
 - [x] Verified 0 TypeScript errors
-- [ ] Save checkpoint and push to GitHub
+- [x] Save checkpoint and push to GitHub (auto-published)
+
+## Phase 21: Bug Fix — File Upload (Deep Debug)
+- [x] Traced full upload flow — found async FileReader callback bug breaking error handling
+- [x] Fixed Upload.tsx: replaced callback-based FileReader with Promise-based readFileAsBase64
+- [x] Fixed Record.tsx: replaced callback-based FileReader with Promise-based readBlobAsBase64
+- [x] Fixed RecordOrUpload.tsx: replaced both submitRecording and handleUpload with Promise-based readAsBase64
+- [x] Verified 0 TypeScript errors across all fixed files
+
+## Phase 22: Bug Fix — Recorder Back Button
+- [x] Fixed ProtectedRoute in App.tsx: replaced window.location.href redirect with wouter <Redirect> for soft navigation
+- [x] This prevents the full-page reload that was causing the dashboard to appear broken
+- [x] Verified 0 TypeScript errors
+
+## Phase 23 (Day 3): Mobile Responsiveness
+- [ ] Audit all pages for mobile layout issues
+- [ ] Fix navigation, cards, and forms for small screens
+- [ ] Test on 375px and 768px viewports
