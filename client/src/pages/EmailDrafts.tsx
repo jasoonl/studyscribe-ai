@@ -1,4 +1,11 @@
 import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useParams, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -13,6 +20,14 @@ import {
 import { Streamdown } from "streamdown";
 
 type DraftType = "email-summary" | "document" | "report";
+type ToneType = "formal" | "casual" | "technical" | "persuasive";
+
+const TONES: { value: ToneType; label: string; description: string }[] = [
+  { value: "formal", label: "Formal", description: "Professional & structured" },
+  { value: "casual", label: "Casual", description: "Friendly & conversational" },
+  { value: "technical", label: "Technical", description: "Expert & detailed" },
+  { value: "persuasive", label: "Persuasive", description: "Motivating & action-oriented" },
+];
 
 const DRAFT_TYPES: { value: DraftType; label: string; description: string; icon: React.ReactNode; color: string }[] = [
   {
@@ -43,6 +58,7 @@ export default function EmailDrafts() {
   const recId = parseInt(recordingId || "0", 10);
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<ToneType>("formal");
 
   const { data: recording } = trpc.recordings.get.useQuery({ id: recId }, { enabled: !!recId });
   const { data: drafts, isLoading, refetch } = trpc.emailDrafts.list.useQuery(
@@ -61,6 +77,10 @@ export default function EmailDrafts() {
     },
     onError: (err) => toast.error(err.message || "Failed to generate draft"),
   });
+
+  const toneLabel = (tone: string) => {
+    return TONES.find(t => t.value === tone)?.label ?? tone;
+  };
 
   const handleCopy = async () => {
     if (!selectedDraft) return;
@@ -106,11 +126,34 @@ export default function EmailDrafts() {
           {/* Generate buttons */}
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Generate New</p>
+            {/* Tone selector */}
+            <div className="mb-4 p-3 rounded-lg border border-border bg-muted/20">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+                Writing Tone
+              </label>
+              <Select value={selectedTone} onValueChange={(val) => setSelectedTone(val as ToneType)}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TONES.map((tone) => (
+                    <SelectItem key={tone.value} value={tone.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{tone.label}</span>
+                        <span className="text-xs text-muted-foreground">{tone.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Draft type buttons */}
             <div className="space-y-2">
               {DRAFT_TYPES.map((type) => (
                 <button
                   key={type.value}
-                  onClick={() => generateMutation.mutate({ recordingId: recId, draftType: type.value })}
+                  onClick={() => generateMutation.mutate({ recordingId: recId, draftType: type.value, tone: selectedTone })}
                   disabled={generateMutation.isPending}
                   className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-blue-400/50 hover:bg-blue-50/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -155,6 +198,11 @@ export default function EmailDrafts() {
                           <Badge variant="outline" className={`text-xs px-1.5 py-0 ${draftTypeColor(draft.draftType ?? "email-summary")}`}>
                             {draftTypeLabel(draft.draftType ?? "email-summary")}
                           </Badge>
+                          {draft.tone && (
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                              {toneLabel(draft.tone)}
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 mt-1">
                           <Clock className="w-3 h-3 text-muted-foreground" />
@@ -214,6 +262,11 @@ export default function EmailDrafts() {
                       <Badge variant="outline" className={`text-xs ${draftTypeColor(selectedDraft.draftType ?? "email-summary")}`}>
                         {draftTypeLabel(selectedDraft.draftType ?? "email-summary")}
                       </Badge>
+                      {selectedDraft.tone && (
+                        <Badge variant="secondary" className="text-xs">
+                          {toneLabel(selectedDraft.tone)}
+                        </Badge>
+                      )}
                     </div>
                     <CardTitle className="text-base">{selectedDraft.title}</CardTitle>
                     <CardDescription className="mt-1">

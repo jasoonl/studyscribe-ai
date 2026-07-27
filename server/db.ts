@@ -653,6 +653,7 @@ export async function createEmailDraft(data: {
   subject: string;
   content: string;
   draftType?: "email-summary" | "document" | "report";
+  tone?: "formal" | "casual" | "technical" | "persuasive";
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -664,6 +665,7 @@ export async function createEmailDraft(data: {
     subject: data.subject,
     content: data.content,
     draftType: data.draftType ?? "email-summary",
+    tone: data.tone ?? "formal",
     status: "completed",
     generatedAt: new Date(),
   });

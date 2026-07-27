@@ -311,6 +311,7 @@ export const emailDrafts = mysqlTable("emailDrafts", {
   subject: varchar("subject", { length: 255 }).notNull(),
   content: text("content").notNull(), // Email body in markdown
   draftType: mysqlEnum("draftType", ["email-summary", "document", "report"]).default("email-summary"),
+  tone: mysqlEnum("tone", ["formal", "casual", "technical", "persuasive"]).default("formal"),
   status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
   generatedAt: timestamp("generatedAt"),
   sentAt: timestamp("sentAt"), // When email was sent (if applicable)
@@ -319,4 +320,5 @@ export const emailDrafts = mysqlTable("emailDrafts", {
 });
 
 export type EmailDraft = typeof emailDrafts.$inferSelect;
+export type EmailDraftTone = "formal" | "casual" | "technical" | "persuasive";
 export type InsertEmailDraft = typeof emailDrafts.$inferInsert;

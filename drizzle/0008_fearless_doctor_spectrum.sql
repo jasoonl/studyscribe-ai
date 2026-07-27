@@ -1,0 +1,1 @@
+ALTER TABLE `emailDrafts` ADD `tone` enum('formal','casual','technical','persuasive') DEFAULT 'formal';

@@ -608,6 +608,7 @@ export const appRouter = router({
       .input(z.object({
         recordingId: z.number(),
         draftType: z.enum(["email-summary", "document", "report"]).default("email-summary"),
+        tone: z.enum(["formal", "casual", "technical", "persuasive"]).default("formal"),
       }))
       .mutation(async ({ input, ctx }) => {
         const recording = await getRecordingByIdDb(input.recordingId);
@@ -619,17 +620,25 @@ export const appRouter = router({
         const typeLabels = { "email-summary": "Email Summary", document: "Document", report: "Report" };
         const typeLabel = typeLabels[input.draftType];
 
+        const toneInstructions: Record<string, string> = {
+          formal: "Use formal, professional language with proper grammar and structure.",
+          casual: "Use conversational, friendly language that's easy to read and relatable.",
+          technical: "Use technical terminology and detailed explanations suitable for experts.",
+          persuasive: "Use persuasive language that convinces and motivates the reader to take action.",
+        };
+        const toneInstruction = toneInstructions[input.tone];
+
         const prompts: Record<string, { system: string; user: string }> = {
           "email-summary": {
-            system: "You are a professional writer who creates clear, concise email summaries. Return JSON with fields: subject, body.",
+            system: `You are a professional writer who creates clear, concise email summaries. ${toneInstruction} Return JSON with fields: subject, body.`,
             user: `Write a professional email summary of this ${recording.audience === "student" ? "lecture" : "meeting"}. The email should be suitable to send to colleagues or classmates who missed it.\n\nTranscript:\n${transcript.fullText}`,
           },
           document: {
-            system: "You are a professional technical writer. Return JSON with fields: subject, body (markdown formatted document).",
+            system: `You are a professional technical writer. ${toneInstruction} Return JSON with fields: subject, body (markdown formatted document).`,
             user: `Create a well-structured document summarizing this ${recording.audience === "student" ? "lecture" : "meeting"}. Include all key information in a professional format.\n\nTranscript:\n${transcript.fullText}`,
           },
           report: {
-            system: "You are a professional report writer. Return JSON with fields: subject, body (markdown formatted report with sections).",
+            system: `You are a professional report writer. ${toneInstruction} Return JSON with fields: subject, body (markdown formatted report with sections).`,
             user: `Write a formal report based on this ${recording.audience === "student" ? "lecture" : "meeting"} transcript. Include executive summary, key findings, and recommendations.\n\nTranscript:\n${transcript.fullText}`,
           },
         };
@@ -670,6 +679,7 @@ export const appRouter = router({
           subject: parsed.subject || title,
           content: parsed.body,
           draftType: input.draftType,
+          tone: input.tone,
         });
         return { success: true, title, subject: parsed.subject, content: parsed.body };
       }),

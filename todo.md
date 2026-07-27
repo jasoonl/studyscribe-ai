@@ -175,4 +175,15 @@
 - [x] Build EmailDrafts.tsx with type selector (email/document/report) and copy button
 - [x] Add routes in App.tsx: /recordings/:id/study-guides, /quizzes, /email-drafts
 - [x] Add AI Study Tools sidebar cards in RecordingDetail.tsx linking to new pages
+- [x] Push to GitHub
+
+## Phase 18: Email Drafts Tone Selector Enhancement
+- [x] Add tone field to emailDrafts table schema (formal, casual, technical, persuasive)
+- [x] Generate and apply migration for tone field
+- [x] Update createEmailDraft DB helper to accept tone parameter
+- [x] Update emailDrafts.generate tRPC procedure to accept tone parameter
+- [x] Add tone instructions to LLM system prompts based on selected tone
+- [x] Build tone selector dropdown UI in EmailDrafts.tsx
+- [x] Display tone badge in draft list and detail view
+- [x] Verified 0 TypeScript errors
 - [ ] Push to GitHub
