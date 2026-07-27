@@ -187,3 +187,10 @@
 - [x] Display tone badge in draft list and detail view
 - [x] Verified 0 TypeScript errors
 - [x] Push to GitHub (auto-published via checkpoint)
+
+## Phase 19: Bug Fix — AI Study Tools Back Button
+- [x] Fix back button route in StudyGuides.tsx (/recordings/:id → /recording/:id)
+- [x] Fix back button route in QuizPage.tsx (/recordings/:id → /recording/:id)
+- [x] Fix back button route in EmailDrafts.tsx (/recordings/:id → /recording/:id)
+- [x] Verified 0 TypeScript errors
+- [ ] Save checkpoint and push to GitHub
