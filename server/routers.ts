@@ -48,13 +48,29 @@ export const appRouter = router({
         duration: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Extract MIME type from DataURL header
+        const mimeMatch = input.audioBase64.match(/^data:([^;]+);/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
+        
+        // Map MIME types to file extensions
+        const mimeToExt: Record<string, string> = {
+          'audio/mpeg': 'mp3',
+          'audio/mp3': 'mp3',
+          'audio/wav': 'wav',
+          'audio/ogg': 'ogg',
+          'audio/webm': 'webm',
+          'audio/mp4': 'mp4',
+          'audio/x-m4a': 'm4a',
+        };
+        
+        const extension = mimeToExt[mimeType] || 'wav';
+        if (!mimeToExt[mimeType]) {
+          throw new Error(`Unsupported audio format: ${mimeType}. Supported formats: MP3, WAV, OGG, WebM, MP4`);
+        }
+        
         // Convert base64 to buffer
         const base64Data = input.audioBase64.split(',')[1] || input.audioBase64;
         const audioBuffer = Buffer.from(base64Data, 'base64');
-        
-        // Determine correct MIME type and extension based on browser encoding
-        const mimeType = input.audioBase64.includes('audio/webm') ? 'audio/webm' : 'audio/wav';
-        const extension = mimeType === 'audio/webm' ? 'webm' : 'wav';
         
         // Upload audio to S3 with correct format
         const fileKeyInput = `${ctx.user.id}/recordings/${Date.now()}.${extension}`;

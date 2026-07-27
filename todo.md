@@ -194,3 +194,11 @@
 - [x] Fix back button route in EmailDrafts.tsx (/recordings/:id → /recording/:id)
 - [x] Verified 0 TypeScript errors
 - [x] Save checkpoint and push to GitHub (auto-published)
+
+## Phase 20: Bug Fix — File Upload Error
+- [x] Fixed MIME type detection in recordings.create (was defaulting all non-webm to WAV)
+- [x] Added proper MIME type parsing from DataURL header
+- [x] Added MIME-to-extension mapping for MP3, WAV, OGG, WebM, MP4
+- [x] Fixed storagePut to use Buffer instead of Blob for S3 upload
+- [x] Verified 0 TypeScript errors
+- [ ] Save checkpoint and push to GitHub
