@@ -186,4 +186,4 @@
 - [x] Build tone selector dropdown UI in EmailDrafts.tsx
 - [x] Display tone badge in draft list and detail view
 - [x] Verified 0 TypeScript errors
-- [ ] Push to GitHub
+- [x] Push to GitHub (auto-published via checkpoint)
