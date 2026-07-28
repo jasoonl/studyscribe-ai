@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts } from "./db";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
@@ -701,6 +701,37 @@ export const appRouter = router({
           tone: input.tone,
         });
         return { success: true, title, subject: parsed.subject, content: parsed.body };
+      }),
+  }),
+
+  knowledgeBase: router({
+    search: protectedProcedure
+      .input(z.object({ query: z.string().min(1).max(200) }))
+      .query(async ({ ctx, input }) => {
+        if (input.query.trim().length < 2) return [];
+        const results = await searchTranscripts(ctx.user.id, input.query.trim());
+        return results.map((r) => {
+          let snippet = "";
+          if (r.transcriptContent) {
+            const lower = r.transcriptContent.toLowerCase();
+            const idx = lower.indexOf(input.query.toLowerCase());
+            if (idx !== -1) {
+              const start = Math.max(0, idx - 80);
+              const end = Math.min(r.transcriptContent.length, idx + input.query.length + 80);
+              snippet = (start > 0 ? "..." : "") + r.transcriptContent.slice(start, end) + (end < r.transcriptContent.length ? "..." : "");
+            } else {
+              snippet = r.transcriptContent.slice(0, 160) + (r.transcriptContent.length > 160 ? "..." : "");
+            }
+          }
+          return {
+            recordingId: r.recordingId,
+            recordingTitle: r.recordingTitle,
+            recordingCreatedAt: r.recordingCreatedAt,
+            recordingDuration: r.recordingDuration,
+            transcriptStatus: r.transcriptStatus,
+            snippet,
+          };
+        });
       }),
   }),
 });

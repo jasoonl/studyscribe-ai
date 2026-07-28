@@ -498,7 +498,10 @@ export default function RecordingDetail() {
           </div>
           {/* Right sidebar: AI Tools */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Requires transcript</span>
+            </div>
 
             <Link href={`/recordings/${recordingId}/study-guides`}>
               <div className="group p-4 rounded-xl border border-border bg-card hover:border-indigo-400/60 hover:bg-indigo-50/5 transition-all cursor-pointer">
@@ -508,7 +511,7 @@ export default function RecordingDetail() {
                   </div>
                   <div>
                     <p className="font-medium text-sm">Study Guides</p>
-                    <p className="text-xs text-muted-foreground">AI-generated comprehensive guides</p>
+                    <p className="text-xs text-muted-foreground">AI-generated comprehensive notes with key concepts & formulas</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-indigo-400/50 mt-1">
@@ -526,7 +529,7 @@ export default function RecordingDetail() {
                   </div>
                   <div>
                     <p className="font-medium text-sm">Practice Quizzes</p>
-                    <p className="text-xs text-muted-foreground">Test your knowledge with AI quizzes</p>
+                    <p className="text-xs text-muted-foreground">10 AI-generated questions with instant scoring & explanations</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-purple-400/50 mt-1">
@@ -544,7 +547,7 @@ export default function RecordingDetail() {
                   </div>
                   <div>
                     <p className="font-medium text-sm">Email Drafts</p>
-                    <p className="text-xs text-muted-foreground">Summaries, documents & reports</p>
+                    <p className="text-xs text-muted-foreground">Generate emails, documents & reports in your chosen tone</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-blue-400/50 mt-1">

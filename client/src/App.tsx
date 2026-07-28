@@ -21,6 +21,7 @@ import RecordOrUpload from "./pages/RecordOrUpload";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import StudyGuides from "./pages/StudyGuides";
+import KnowledgeBase from "./pages/KnowledgeBase";
 import QuizPage from "./pages/QuizPage";
 import EmailDrafts from "./pages/EmailDrafts";
 import { NotificationProvider } from "./components/NotificationContainer";
@@ -71,6 +72,7 @@ function Router() {
       <Route path="/admin/invite-requests" component={() => <ProtectedRoute component={AdminInviteRequests} />} />
       <Route path="/admin/invite-codes" component={() => <ProtectedRoute component={AdminInviteCodes} />} />
       <Route path="/record-or-upload" component={() => <ProtectedRoute component={RecordOrUpload} />} />
+      <Route path="/knowledge-base" component={() => <ProtectedRoute component={KnowledgeBase} />} />
       <Route path="/recordings/:recordingId/study-guides" component={() => <ProtectedRoute component={StudyGuides} />} />
       <Route path="/recordings/:recordingId/quizzes" component={() => <ProtectedRoute component={QuizPage} />} />
       <Route path="/recordings/:recordingId/email-drafts" component={() => <ProtectedRoute component={EmailDrafts} />} />

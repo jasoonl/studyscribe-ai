@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, like, or, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -685,4 +685,40 @@ export async function getEmailDraftById(id: number) {
 
   const result = await db.select().from(emailDrafts).where(eq(emailDrafts.id, id)).limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+// Knowledge Base / Search helpers
+export async function searchTranscripts(userId: number, query: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const pattern = `%${query}%`;
+
+  // Search across recording titles and transcript content
+  const results = await db
+    .select({
+      recordingId: recordings.id,
+      recordingTitle: recordings.title,
+      recordingCreatedAt: recordings.createdAt,
+      recordingDuration: recordings.duration,
+      transcriptId: transcripts.id,
+      transcriptContent: transcripts.fullText,
+      transcriptStatus: transcripts.status,
+    })
+    .from(recordings)
+    .leftJoin(transcripts, eq(transcripts.recordingId, recordings.id))
+    .where(
+      and(
+        eq(recordings.userId, userId),
+        eq(recordings.isDeleted, 0),
+        or(
+          like(recordings.title, pattern),
+          like(transcripts.fullText, pattern)
+        )
+      )
+    )
+    .orderBy(desc(recordings.createdAt))
+    .limit(50);
+
+  return results;
 }

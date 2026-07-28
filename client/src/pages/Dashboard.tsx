@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp } from "lucide-react";
+import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import RecordOrUpload from "./RecordOrUpload";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -184,6 +185,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      <OnboardingModal />
       {/* Header */}
       <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
         <div className="container h-16 flex items-center justify-between">
@@ -259,6 +261,15 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="container py-8">
+        {/* Knowledge Base Quick Access */}
+        <div className="flex justify-end mb-4">
+          <Link href="/knowledge-base">
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors">
+              <Database className="w-4 h-4" />
+              Knowledge Base
+            </button>
+          </Link>
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
           <TabsList className="grid w-full grid-cols-6 mb-8">

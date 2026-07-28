@@ -21,9 +21,9 @@
 - [x] Implement adaptive summarization (key concepts, action items, formulas) - Wired
 - [x] Build AI Tutor chat interface (Socratic mode) - Fully wired
 - [x] Create flashcard auto-generation - Wired and functional
-- [ ] Build study guide generation - Future enhancement (backend ready)
-- [ ] Add practice quiz generation - Future enhancement (backend ready)
-- [ ] Implement email/document draft generation - Future enhancement (backend ready)
+- [x] Build study guide generation - Fully built in Phase 17 (StudyGuides.tsx + tRPC procedures)
+- [x] Add practice quiz generation - Fully built in Phase 17 (QuizPage.tsx + tRPC procedures)
+- [x] Implement email/document draft generation - Fully built in Phase 17-18 (EmailDrafts.tsx + tone selector)
 
 ## Phase 4: Dashboard & User Experience
 - [x] Build main dashboard showing all recordings - Dashboard.tsx with delete
@@ -219,3 +219,26 @@
 - [ ] Audit all pages for mobile layout issues
 - [ ] Fix navigation, cards, and forms for small screens
 - [ ] Test on 375px and 768px viewports
+
+## Phase 24 (Day 3): Knowledge Base / Searchable Transcript History
+- [x] Build substring search tRPC procedure across all transcripts (searchTranscripts in db.ts — SQL LIKE matching on title and transcript content)
+- [x] Add knowledgeBase.search tRPC procedure to routers.ts
+- [x] Create KnowledgeBase.tsx page with debounced search bar and highlighted snippets
+- [x] Add useDebounce hook (client/src/hooks/useDebounce.ts)
+- [x] Show matched transcript snippets with recording title/date/duration
+- [x] Link results to the recording detail page
+- [x] Add Knowledge Base quick-access button to Dashboard
+- [x] Add /knowledge-base route to App.tsx
+
+## Phase 25 (Day 3): Onboarding Flow
+- [x] Create OnboardingModal.tsx (3-step welcome modal for first-time users)
+- [x] Show modal on first login (tracked via localStorage key studyscribe_onboarding_done)
+- [x] 3-step guided tour: Record/Upload → Transcription → AI Tools
+- [x] Add skip/dismiss option
+- [x] Wire to Dashboard.tsx
+
+## Phase 26 (Day 3): Polish & Production Readiness
+- [x] Improved AI Study Tools sidebar descriptions in RecordingDetail.tsx
+- [x] Added "Requires transcript" badge to AI tools sidebar
+- [x] Verified 0 TypeScript errors across all new files
+- [ ] Mobile responsiveness audit (Phase 23) — scheduled for Day 3 continuation
