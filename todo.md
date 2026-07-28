@@ -216,9 +216,14 @@
 - [x] Verified 0 TypeScript errors
 
 ## Phase 23 (Day 3): Mobile Responsiveness
-- [ ] Audit all pages for mobile layout issues
-- [ ] Fix navigation, cards, and forms for small screens
-- [ ] Test on 375px and 768px viewports
+- [x] Audit all pages for mobile layout issues
+- [x] Fix Dashboard tabs to 3-column grid on mobile (hide tutor/summary/trash tabs)
+- [x] Fix RecordingDetail to single-column layout on mobile with 2-column tabs
+- [x] Fix KnowledgeBase search results to flex-column on mobile
+- [x] Fix StudyGuides and EmailDrafts sidebars to stack on mobile (w-full lg:w-72)
+- [x] Fix Upload and RecordOrUpload audience options to stack on mobile
+- [x] Verified 0 TypeScript errors across all responsive fixes
+- [x] Checkpoint saved (efcb3934)
 
 ## Phase 24 (Day 3): Knowledge Base / Searchable Transcript History
 - [x] Build substring search tRPC procedure across all transcripts (searchTranscripts in db.ts — SQL LIKE matching on title and transcript content)

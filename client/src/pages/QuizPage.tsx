@@ -113,15 +113,15 @@ export default function QuizPage() {
         {/* Quiz header */}
         <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setMode("list")} className="gap-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Button variant="ghost" size="sm" onClick={() => setMode("list")} className="gap-1 shrink-0">
                   <ArrowLeft className="w-4 h-4" />
-                  Exit
+                  <span className="hidden sm:inline">Exit</span>
                 </Button>
-                <span className="text-sm font-medium truncate max-w-[200px]">{activeQuiz.title}</span>
+                <span className="text-xs sm:text-sm font-medium truncate">{activeQuiz.title}</span>
               </div>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground shrink-0">
                 {currentQ + 1} / {questions.length}
               </span>
             </div>
@@ -201,12 +201,12 @@ export default function QuizPage() {
           </Card>
 
           {/* Question navigation dots */}
-          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+          <div className="flex flex-wrap gap-1 sm:gap-2 mt-4 justify-center">
             {questions.map((q, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentQ(i)}
-                className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full text-xs font-medium transition-colors ${
                   i === currentQ
                     ? "bg-indigo-600 text-white"
                     : answers[q.id]
@@ -350,7 +350,7 @@ export default function QuizPage() {
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-lg" />)}
           </div>
         ) : quizzes?.length === 0 ? (
@@ -370,7 +370,7 @@ export default function QuizPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {quizzes?.map((quiz) => {
               const qCount = Array.isArray(quiz.questions) ? quiz.questions.length : 0;
               return (
