@@ -68,7 +68,7 @@ function TrashTabContent() {
             <h4 className="font-semibold">{recording.title}</h4>
             <p className="text-sm text-muted-foreground">Deleted {recording.deletedAt ? new Date(recording.deletedAt).toLocaleDateString() : "recently"}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1 text-xs sm:text-sm px-2 sm:px-3">
             <Button
               size="sm"
               onClick={() => handleRestore(recording.id)}
@@ -264,38 +264,39 @@ export default function Dashboard() {
         {/* Knowledge Base Quick Access */}
         <div className="flex justify-end mb-4">
           <Link href="/knowledge-base">
-            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors whitespace-nowrap">
               <Database className="w-4 h-4" />
-              Knowledge Base
+              <span className="hidden sm:inline">Knowledge Base</span>
+              <span className="sm:hidden">Search</span>
             </button>
           </Link>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full grid-cols-6 mb-8">
-            <TabsTrigger value="library" className="gap-2">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-8 gap-1 sm:gap-0">
+            <TabsTrigger value="library" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">My Library</span>
             </TabsTrigger>
-            <TabsTrigger value="recorder" className="gap-2">
+            <TabsTrigger value="recorder" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
               <Mic className="w-4 h-4" />
               <span className="hidden sm:inline">Recorder</span>
             </TabsTrigger>
-            <TabsTrigger value="transcription" className="gap-2">
+            <TabsTrigger value="transcription" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Transcription</span>
             </TabsTrigger>
-            <TabsTrigger value="tutor" className="gap-2">
+            <TabsTrigger value="tutor" className="gap-1 text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex">
               <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">AI Tutor</span>
+              <span>AI Tutor</span>
             </TabsTrigger>
-            <TabsTrigger value="summary" className="gap-2">
+            <TabsTrigger value="summary" className="gap-1 text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex">
               <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Summary</span>
+              <span>Summary</span>
             </TabsTrigger>
-            <TabsTrigger value="trash" className="gap-2">
+            <TabsTrigger value="trash" className="gap-1 text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex">
               <Trash2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Trash</span>
+              <span>Trash</span>
             </TabsTrigger>
           </TabsList>
 
@@ -353,7 +354,7 @@ export default function Dashboard() {
                       <p className="text-sm text-muted-foreground">{new Date(recording.createdAt).toLocaleDateString()}</p>
                       <p className="text-xs text-muted-foreground mt-1">{recording.audience}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 text-xs sm:text-sm px-2 sm:px-3">
                       <Link href={`/recording/${recording.id}`}>
                         <Button size="sm" variant="outline">View</Button>
                       </Link>

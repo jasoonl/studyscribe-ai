@@ -261,7 +261,7 @@ export default function RecordOrUpload() {
               <p className="text-lg text-muted-foreground">Choose to record a live lecture or upload an existing audio file</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {/* Record Option */}
               <Card className="p-8 border-2 border-border hover:border-accent/50 transition-all cursor-pointer hover:shadow-lg" onClick={() => setMode("record")}>
                 <div className="flex flex-col items-center text-center space-y-6">
@@ -403,7 +403,7 @@ export default function RecordOrUpload() {
 
                     <div>
                       <label className="text-sm font-medium mb-2 block">Content Type</label>
-                      <div className="flex gap-4">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
@@ -466,7 +466,7 @@ export default function RecordOrUpload() {
 
                         <div>
                           <label className="text-sm font-medium mb-2 block">Content Type</label>
-                          <div className="flex gap-4">
+                          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input
                                 type="radio"

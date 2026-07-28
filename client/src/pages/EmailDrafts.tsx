@@ -120,9 +120,9 @@ export default function EmailDrafts() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 flex gap-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
         {/* Sidebar */}
-        <div className="w-72 shrink-0 space-y-4">
+        <div className="w-full lg:w-72 shrink-0 space-y-4">
           {/* Generate buttons */}
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Generate New</p>

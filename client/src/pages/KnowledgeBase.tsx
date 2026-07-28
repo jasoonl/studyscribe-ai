@@ -133,27 +133,27 @@ export default function KnowledgeBase() {
             {results.map((result) => (
               <Link key={result.recordingId} href={`/recording/${result.recordingId}`}>
                 <Card className="hover:shadow-md transition-all duration-150 hover:border-blue-300 cursor-pointer group">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                          <h3 className="font-semibold text-foreground group-hover:text-blue-600 transition-colors truncate">
+                          <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-blue-600 transition-colors truncate">
                             {result.recordingTitle}
                           </h3>
                         </div>
                         {result.snippet && (
-                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
                             {highlightMatch(result.snippet, debouncedQuery)}
                           </p>
                         )}
                         {!result.snippet && (
-                          <p className="text-sm text-muted-foreground italic">
+                          <p className="text-xs sm:text-sm text-muted-foreground italic">
                             Title match — open to view transcript
                           </p>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1.5 shrink-0">
                         <Badge
                           variant={result.transcriptStatus === "completed" ? "default" : "secondary"}
                           className="text-xs"

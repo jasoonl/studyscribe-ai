@@ -183,7 +183,7 @@ export default function RecordingDetail() {
 
       {/* Main Content */}
       <main className="container py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Left: Transcript & Notes */}
           <div className="lg:col-span-2 space-y-6">
             {/* Recording Info */}
@@ -229,7 +229,7 @@ export default function RecordingDetail() {
 
             {/* Tabs: Transcript, Notes, Flashcards, Assistant */}
             <Tabs defaultValue="transcript" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-0">
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 <TabsTrigger value="notes">Study Notes</TabsTrigger>
                 <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
