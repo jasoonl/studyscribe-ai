@@ -222,8 +222,10 @@
 - [x] Fix KnowledgeBase search results to flex-column on mobile
 - [x] Fix StudyGuides and EmailDrafts sidebars to stack on mobile (w-full lg:w-72)
 - [x] Fix Upload and RecordOrUpload audience options to stack on mobile
+- [x] Fix QuizPage header responsive with hidden "Exit" text and compact navigation dots (w-6 h-6 on mobile)
+- [x] Fix QuizPage quiz list grids with reduced gap on mobile (gap-3 md:gap-4)
 - [x] Verified 0 TypeScript errors across all responsive fixes
-- [x] Checkpoint saved (efcb3934)
+- [x] Checkpoint saved (9f3e39d6)
 
 ## Phase 24 (Day 3): Knowledge Base / Searchable Transcript History
 - [x] Build substring search tRPC procedure across all transcripts (searchTranscripts in db.ts — SQL LIKE matching on title and transcript content)
@@ -247,3 +249,40 @@
 - [x] Added "Requires transcript" badge to AI tools sidebar
 - [x] Verified 0 TypeScript errors across all new files
 - [ ] Mobile responsiveness audit (Phase 23) — scheduled for Day 3 continuation
+
+## Phase 27 (Day 4): Bug Fix — File Upload Transcription
+- [ ] Debug why transcription fails for uploaded files
+- [ ] Check transcribeRecordingInBackground function flow
+- [ ] Verify storage URL accessibility from server
+- [ ] Test end-to-end: upload file → transcription starts → status updates
+
+## Phase 28 (Day 4): Password Reset Flow
+- [ ] Add password reset request endpoint (/api/auth/forgot-password)
+- [ ] Add password reset verification page (/reset-password?token=...)
+- [ ] Add ForgotPassword.tsx page with email input
+- [ ] Add ResetPassword.tsx page with new password form
+- [ ] Wire forgot password link in Login.tsx to /forgot-password
+- [ ] Send password reset emails with token links
+- [ ] Test password reset flow end-to-end
+
+## Phase 29 (Day 4): Analytics & Monitoring
+- [ ] Add event tracking for key user actions (upload, transcription, AI generation)
+- [ ] Create analytics dashboard showing usage metrics
+- [ ] Track error rates and failures
+- [ ] Monitor LLM API usage and costs
+- [ ] Add performance metrics (page load times, API response times)
+
+## Phase 30 (Day 4): Help & Documentation
+- [ ] Create Help.tsx page with FAQ
+- [ ] Add keyboard shortcuts reference
+- [ ] Create tutorial videos (embedded or links)
+- [ ] Add in-app tooltips for complex features
+- [ ] Create user guide PDF
+
+## Phase 31 (Day 4): Production Readiness
+- [ ] Run security audit (check for XSS, CSRF, SQL injection)
+- [ ] Verify all environment variables are set correctly
+- [ ] Test all features in production environment
+- [ ] Set up error logging and monitoring
+- [ ] Create deployment checklist
+- [ ] Final comprehensive end-to-end testing

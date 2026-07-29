@@ -100,7 +100,10 @@ export const appRouter = router({
 
         // Start transcription in background (fire and forget)
         // Pass the audioKey so we can get a signed URL for server-side transcription
-        transcribeRecordingInBackground(recording.id, actualFileKey, input.audience);
+        console.log(`[Upload] Starting background transcription for recording ${recording.id}`);
+        transcribeRecordingInBackground(recording.id, actualFileKey, input.audience).catch(err => {
+          console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
+        });
 
         return recording;
       }),
@@ -739,28 +742,33 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 // Helper function to transcribe recording in background
-async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional") {
+async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional"): Promise<void> {
   try {
+    console.log(`[Transcription] Starting for recording ${recordingId}, audioKey: ${audioKey}`);
+    
     // Get signed URL for server-side transcription
     const signedUrl = await storageGetSignedUrl(audioKey);
+    console.log(`[Transcription] Got signed URL (first 100 chars): ${signedUrl.substring(0, 100)}...`);
     
     // Transcribe audio
+    console.log(`[Transcription] Calling transcribeAudio with URL...`);
     const result = await transcribeAudio({
       audioUrl: signedUrl,
       language: "en",
       prompt: _audience === "student" ? "This is a lecture recording" : "This is a meeting recording",
     });
+    console.log(`[Transcription] Got result, has text: ${('text' in result) ? 'yes' : 'no'}`);
 
     // Check for errors
     if ("error" in result) {
-      console.error("Transcription error:", result);
+      console.error(`[Transcription] Error for recording ${recordingId}:`, result);
       await updateRecordingStatus(recordingId, "failed");
       return;
     }
 
     // Validate result has required fields
-    if (!result.text || typeof result.text !== 'string') {
-      console.error("Invalid transcription response:", result);
+    if (!('text' in result) || !result.text || typeof result.text !== 'string') {
+      console.error(`[Transcription] Invalid response for recording ${recordingId}:`, result);
       await updateRecordingStatus(recordingId, "failed");
       return;
     }
@@ -774,18 +782,27 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
     }
 
     // Save transcript
-    await createTranscript({
-      recordingId,
-      userId: recording.userId,
-      fullText: result.text,
-      language: result.language || "en",
-    });
+    if ('text' in result) {
+      console.log(`[Transcription] Saving transcript for recording ${recordingId}, text length: ${result.text.length}`);
+      await createTranscript({
+        recordingId,
+        userId: recording.userId,
+        fullText: result.text,
+        language: result.language || "en",
+      });
 
-    // Update recording status
-    await updateRecordingStatus(recordingId, "completed");
+      // Update recording status
+      console.log(`[Transcription] Marking recording ${recordingId} as completed`);
+      await updateRecordingStatus(recordingId, "completed");
+      console.log(`[Transcription] Successfully completed recording ${recordingId}`);
+    }
   } catch (error) {
-    console.error("Transcription failed:", error);
-    await updateRecordingStatus(recordingId, "failed");
+    console.error(`[Transcription] Failed for recording ${recordingId}:`, error);
+    try {
+      await updateRecordingStatus(recordingId, "failed");
+    } catch (updateError) {
+      console.error(`[Transcription] Failed to update status for recording ${recordingId}:`, updateError);
+    }
   }
 }
 
