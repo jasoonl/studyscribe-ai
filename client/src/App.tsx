@@ -24,6 +24,8 @@ import StudyGuides from "./pages/StudyGuides";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import QuizPage from "./pages/QuizPage";
 import EmailDrafts from "./pages/EmailDrafts";
+import Analytics from "./pages/Analytics";
+import Help from "./pages/Help";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
@@ -76,6 +78,8 @@ function Router() {
       <Route path="/recordings/:recordingId/study-guides" component={() => <ProtectedRoute component={StudyGuides} />} />
       <Route path="/recordings/:recordingId/quizzes" component={() => <ProtectedRoute component={QuizPage} />} />
       <Route path="/recordings/:recordingId/email-drafts" component={() => <ProtectedRoute component={EmailDrafts} />} />
+      <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
+      <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
       
       {/* 404 fallback */}
       <Route path="/404" component={NotFound} />

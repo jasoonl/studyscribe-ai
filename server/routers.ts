@@ -748,6 +748,49 @@ export const appRouter = router({
         });
       }),
   }),
+
+  analytics: router({
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const { recordings: rec, transcripts, flashcards, chatHistory: chat, studyGuides, quizzes, emailDrafts } = await import('../drizzle/schema');
+      const { count, eq, and, gte, sql } = await import('drizzle-orm');
+
+      const userId = ctx.user.id;
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const [totalRecordings] = await db.select({ count: count() }).from(rec).where(and(eq(rec.userId, userId), eq(rec.isDeleted, 0)));
+      const [totalTranscripts] = await db.select({ count: count() }).from(transcripts).where(eq(transcripts.userId, userId));
+      const [totalFlashcards] = await db.select({ count: count() }).from(flashcards).where(eq(flashcards.userId, userId));
+      const [totalStudyGuides] = await db.select({ count: count() }).from(studyGuides).where(eq(studyGuides.userId, userId));
+      const [totalQuizzes] = await db.select({ count: count() }).from(quizzes).where(eq(quizzes.userId, userId));
+      const [totalEmailDrafts] = await db.select({ count: count() }).from(emailDrafts).where(eq(emailDrafts.userId, userId));
+      const [totalChatMessages] = await db.select({ count: count() }).from(chat).where(and(eq(chat.userId, userId), eq(chat.role, 'user')));
+      const [recentRecordings] = await db.select({ count: count() }).from(rec).where(and(eq(rec.userId, userId), eq(rec.isDeleted, 0), gte(rec.createdAt, thirtyDaysAgo)));
+
+      // Get recent recordings for activity feed
+      const recent = await db.select({
+        id: rec.id,
+        title: rec.title,
+        status: rec.status,
+        audience: rec.audience,
+        duration: rec.duration,
+        createdAt: rec.createdAt,
+      }).from(rec).where(and(eq(rec.userId, userId), eq(rec.isDeleted, 0))).orderBy(sql`${rec.createdAt} DESC`).limit(5);
+
+      return {
+        totalRecordings: totalRecordings.count,
+        totalTranscripts: totalTranscripts.count,
+        totalFlashcards: totalFlashcards.count,
+        totalStudyGuides: totalStudyGuides.count,
+        totalQuizzes: totalQuizzes.count,
+        totalEmailDrafts: totalEmailDrafts.count,
+        totalChatMessages: totalChatMessages.count,
+        recentRecordings: recentRecordings.count,
+        recentActivity: recent,
+      };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

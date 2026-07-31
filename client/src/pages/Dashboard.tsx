@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database } from "lucide-react";
+import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -264,13 +264,25 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="container py-8">
-        {/* Knowledge Base Quick Access */}
-        <div className="flex justify-end mb-4">
+        {/* Quick Access Buttons */}
+        <div className="flex justify-end gap-2 mb-4">
           <Link href="/knowledge-base">
             <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors whitespace-nowrap">
               <Database className="w-4 h-4" />
               <span className="hidden sm:inline">Knowledge Base</span>
               <span className="sm:hidden">Search</span>
+            </button>
+          </Link>
+          <Link href="/analytics">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 text-xs sm:text-sm font-medium hover:bg-purple-100 transition-colors whitespace-nowrap">
+              <BarChart2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Analytics</span>
+            </button>
+          </Link>
+          <Link href="/help">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors whitespace-nowrap">
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Help</span>
             </button>
           </Link>
         </div>
