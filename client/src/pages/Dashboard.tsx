@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import RecordOrUpload from "./RecordOrUpload";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -203,10 +204,11 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:block text-sm text-muted-foreground">
               Welcome, {user?.name || user?.email}
             </span>
+            <NotificationBell />
             <Button
               variant="outline"
               size="sm"

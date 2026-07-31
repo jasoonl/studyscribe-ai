@@ -8,9 +8,10 @@ import { storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
-import { recordings } from "../drizzle/schema";
+import { recordings, userNotifications } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
+import { desc, and } from "drizzle-orm";
 
 export const appRouter = router({
   system: systemRouter,
@@ -749,6 +750,52 @@ export const appRouter = router({
       }),
   }),
 
+  userNotifications: router({
+    list: protectedProcedure
+      .query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) return [];
+        const notifs = await db
+          .select()
+          .from(userNotifications)
+          .where(eq(userNotifications.userId, ctx.user.id))
+          .orderBy(desc(userNotifications.createdAt))
+          .limit(20);
+        return notifs;
+      }),
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) return { success: false };
+        await db
+          .update(userNotifications)
+          .set({ isRead: 1, readAt: new Date() })
+          .where(and(eq(userNotifications.id, input.id), eq(userNotifications.userId, ctx.user.id)));
+        return { success: true };
+      }),
+    markAllRead: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) return { success: false };
+        await db
+          .update(userNotifications)
+          .set({ isRead: 1, readAt: new Date() })
+          .where(and(eq(userNotifications.userId, ctx.user.id), eq(userNotifications.isRead, 0)));
+        return { success: true };
+      }),
+    unreadCount: protectedProcedure
+      .query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) return { count: 0 };
+        const all = await db
+          .select()
+          .from(userNotifications)
+          .where(and(eq(userNotifications.userId, ctx.user.id), eq(userNotifications.isRead, 0)));
+        return { count: all.length };
+      }),
+  }),
+
   analytics: router({
     overview: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
@@ -850,11 +897,43 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
       console.log(`[Transcription] Marking recording ${recordingId} as completed`);
       await updateRecordingStatus(recordingId, "completed");
       console.log(`[Transcription] Successfully completed recording ${recordingId}`);
+
+      // Create user notification
+      try {
+        const db = await getDb();
+        if (db) {
+          await db.insert(userNotifications).values({
+            userId: recording.userId,
+            type: "success",
+            title: "Transcription Complete",
+            message: `"${recording.title}" has been transcribed successfully. You can now use AI study tools.`,
+            recordingId,
+            isRead: 0,
+          });
+        }
+      } catch (notifError) {
+        console.error(`[Transcription] Failed to create notification:`, notifError);
+      }
     }
   } catch (error) {
     console.error(`[Transcription] Failed for recording ${recordingId}:`, error);
     try {
       await updateRecordingStatus(recordingId, "failed");
+      // Create failure notification
+      const recording = await getRecordingByIdDb(recordingId);
+      if (recording) {
+        const db = await getDb();
+        if (db) {
+          await db.insert(userNotifications).values({
+            userId: recording.userId,
+            type: "error",
+            title: "Transcription Failed",
+            message: `Transcription failed for "${recording.title}". Please try uploading again.`,
+            recordingId,
+            isRead: 0,
+          });
+        }
+      }
     } catch (updateError) {
       console.error(`[Transcription] Failed to update status for recording ${recordingId}:`, updateError);
     }
