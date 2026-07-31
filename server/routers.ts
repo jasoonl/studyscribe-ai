@@ -99,9 +99,9 @@ export const appRouter = router({
         }
 
         // Start transcription in background (fire and forget)
-        // Pass the audioKey so we can get a signed URL for server-side transcription
-        console.log(`[Upload] Starting background transcription for recording ${recording.id}`);
-        transcribeRecordingInBackground(recording.id, actualFileKey, input.audience).catch(err => {
+        // Pass the audioKey and mimeType so we can get a signed URL for server-side transcription
+        console.log(`[Upload] Starting background transcription for recording ${recording.id}, mimeType: ${mimeType}`);
+        transcribeRecordingInBackground(recording.id, actualFileKey, input.audience, mimeType).catch(err => {
           console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
         });
 
@@ -145,6 +145,17 @@ export const appRouter = router({
         if (!db) throw new Error("Database not available");
         await db.delete(recordings).where(eq(recordings.id, input.id));
         return { success: true };
+      }),
+
+    // Lightweight status poll — used by Upload/Record pages to detect transcription completion
+    getStatus: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.id);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+        return { id: recording.id, status: recording.status };
       }),
   }),
 
@@ -742,7 +753,7 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 // Helper function to transcribe recording in background
-async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional"): Promise<void> {
+async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional", mimeType?: string): Promise<void> {
   try {
     console.log(`[Transcription] Starting for recording ${recordingId}, audioKey: ${audioKey}`);
     
@@ -750,12 +761,13 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
     const signedUrl = await storageGetSignedUrl(audioKey);
     console.log(`[Transcription] Got signed URL (first 100 chars): ${signedUrl.substring(0, 100)}...`);
     
-    // Transcribe audio
-    console.log(`[Transcription] Calling transcribeAudio with URL...`);
+    // Transcribe audio — pass mimeType so Whisper gets the correct file extension
+    console.log(`[Transcription] Calling transcribeAudio with URL, mimeType: ${mimeType || 'auto'}`);
     const result = await transcribeAudio({
       audioUrl: signedUrl,
       language: "en",
       prompt: _audience === "student" ? "This is a lecture recording" : "This is a meeting recording",
+      mimeType: mimeType,
     });
     console.log(`[Transcription] Got result, has text: ${('text' in result) ? 'yes' : 'no'}`);
 

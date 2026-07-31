@@ -35,7 +35,27 @@ export default function RecordOrUpload() {
   const [uploadFileComplete, setUploadFileComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [createdRecordingId, setCreatedRecordingId] = useState<number | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
   const createRecordingMutation = trpc.recordings.create.useMutation();
+
+  // Poll for transcription status after upload/record
+  const { data: statusData } = trpc.recordings.getStatus.useQuery(
+    { id: createdRecordingId! },
+    {
+      enabled: isPolling && createdRecordingId !== null,
+      refetchInterval: isPolling && createdRecordingId !== null ? 3000 : false,
+    }
+  );
+
+  // Auto-redirect when transcription completes or fails
+  useEffect(() => {
+    if (!isPolling || !createdRecordingId || !statusData) return;
+    if (statusData.status === "completed" || statusData.status === "failed") {
+      setIsPolling(false);
+      navigate(`/recording/${createdRecordingId}`);
+    }
+  }, [statusData, isPolling, createdRecordingId, navigate]);
 
   // Recording timer
   useEffect(() => {
@@ -144,15 +164,18 @@ export default function RecordOrUpload() {
       const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
       const base64String = await readAsBase64(audioBlob);
-      await createRecordingMutation.mutateAsync({
+      const recording = await createRecordingMutation.mutateAsync({
         title: recordingTitle,
         audience,
         audioBase64: base64String,
         duration,
       });
       setUploadComplete(true);
-      toast.success("Recording uploaded successfully!");
-      setTimeout(() => navigate("/dashboard"), 2000);
+      setCreatedRecordingId(recording.id);
+      setIsPolling(true);
+      toast.success("Recording uploaded! Waiting for transcription...");
+      // Fallback redirect after 90 seconds
+      setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
       console.error("Failed to upload recording:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload recording";
@@ -213,15 +236,18 @@ export default function RecordOrUpload() {
     setIsUploadingFile(true);
     try {
       const base64String = await readAsBase64(selectedFile);
-      await createRecordingMutation.mutateAsync({
+      const recording = await createRecordingMutation.mutateAsync({
         title: uploadTitle,
         audience: uploadAudience,
         audioBase64: base64String,
         duration: 0,
       });
       setUploadFileComplete(true);
-      toast.success("File uploaded successfully!");
-      setTimeout(() => navigate("/dashboard"), 2000);
+      setCreatedRecordingId(recording.id);
+      setIsPolling(true);
+      toast.success("File uploaded! Waiting for transcription...");
+      // Fallback redirect after 90 seconds
+      setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
       console.error("Failed to upload file:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload file";

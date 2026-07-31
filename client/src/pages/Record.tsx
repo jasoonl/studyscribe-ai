@@ -1,14 +1,15 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle, AlertCircle } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Record() {
-  const { user } = useAuth();
+  // ALL hooks at the top — no early returns before hooks
+  const { user, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -18,131 +19,114 @@ export default function Record() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [recordingStopped, setRecordingStopped] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [recordingId, setRecordingId] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const createRecordingMutation = trpc.recordings.create.useMutation();
 
+  // Poll for transcription status using lightweight getStatus endpoint
+  const { data: statusData } = trpc.recordings.getStatus.useQuery(
+    { id: recordingId! },
+    {
+      enabled: uploadComplete && recordingId !== null,
+      refetchInterval: uploadComplete && recordingId !== null ? 3000 : false,
+    }
+  );
+
+  // Auto-redirect when transcription completes or fails
+  useEffect(() => {
+    if (!uploadComplete || !recordingId || !statusData) return;
+    if (statusData.status === "completed" || statusData.status === "failed") {
+      navigate(`/recording/${recordingId}`);
+    }
+  }, [statusData, uploadComplete, recordingId, navigate]);
+
+  // Timer for recording duration
   useEffect(() => {
     if (isRecording && !isPaused) {
-      timerRef.current = setInterval(() => {
-        setDuration((d) => d + 1);
-      }, 1000);
+      timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRecording, isPaused]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
-      
-      // Use audio/webm for better browser compatibility, fallback to wav for Safari
-      let mimeType = 'audio/webm';
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-          mimeType = 'audio/wav';
-        } else {
-          mimeType = ''; // Let browser choose default
-        }
+      let mimeType = "audio/webm";
+      if (!MediaRecorder.isTypeSupported("audio/webm")) {
+        if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
+        else mimeType = "";
       }
-      
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       setDuration(0);
       setRecordingStopped(false);
       toast.success("Recording started");
-    } catch (error) {
-      console.error("Error accessing microphone:", error);
+    } catch {
       toast.error("Unable to access microphone. Please check permissions.");
     }
   };
 
   const pauseRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.pause();
-      setIsPaused(true);
-      toast.info("Recording paused");
-    }
+    mediaRecorderRef.current?.pause();
+    setIsPaused(true);
+    toast.info("Recording paused");
   };
 
   const resumeRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.resume();
-      setIsPaused(false);
-      toast.info("Recording resumed");
-    }
+    mediaRecorderRef.current?.resume();
+    setIsPaused(false);
+    toast.info("Recording resumed");
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
-
-      mediaRecorderRef.current.onstop = () => {
-        // Determine actual MIME type from MediaRecorder
-        const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-        setIsRecording(false);
-        setIsPaused(false);
-        setRecordingStopped(true);
-        toast.info("Recording stopped. Please add a title and save.");
-      };
-    }
+    if (!mediaRecorderRef.current) return;
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+    mediaRecorderRef.current.onstop = () => {
+      setIsRecording(false);
+      setIsPaused(false);
+      setRecordingStopped(true);
+      toast.info("Recording stopped. Add a title and save.");
+    };
   };
 
-  // Helper: read blob as base64 DataURL using a Promise (avoids async callback bug)
-  const readBlobAsBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
+  const readBlobAsBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read audio file"));
+      reader.onerror = () => reject(new Error("Failed to read audio"));
       reader.readAsDataURL(blob);
     });
-  };
 
   const saveRecording = async () => {
-    if (!recordingTitle.trim()) {
-      toast.error("Please enter a recording title");
-      return;
-    }
-
-    if (audioChunksRef.current.length === 0) {
-      toast.error("No audio recorded");
-      return;
-    }
+    if (!recordingTitle.trim()) { toast.error("Please enter a recording title"); return; }
+    if (audioChunksRef.current.length === 0) { toast.error("No audio recorded"); return; }
 
     setIsUploading(true);
+    setUploadProgress(10);
     try {
-      // Use the actual MIME type that was used during recording
-      const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+      const actualMimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
       const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-
-      // Convert blob to base64 using Promise-based approach
-      // (callback-based FileReader breaks async/await error handling)
+      setUploadProgress(30);
       const base64String = await readBlobAsBase64(audioBlob);
+      setUploadProgress(60);
 
       const recording = await createRecordingMutation.mutateAsync({
         title: recordingTitle,
@@ -151,30 +135,44 @@ export default function Record() {
         duration,
       });
 
+      setUploadProgress(100);
+      setRecordingId(recording.id);
       setUploadComplete(true);
-      toast.success("Recording uploaded! Processing transcript...");
+      toast.success("Recording uploaded! Waiting for transcription...");
 
-      setTimeout(() => {
-        navigate(`/recording/${recording.id}`);
-      }, 1500);
+      // Fallback redirect after 90s
+      setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
-      console.error("Error saving recording:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save recording";
-      toast.error(errorMessage);
+      const msg = error instanceof Error ? error.message : "Failed to save recording";
+      toast.error(msg);
+      setUploadProgress(0);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+  // Auth guards — AFTER all hooks
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Please sign in to continue</p>
+          <Link href="/"><Button>Go to Home</Button></Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
         <div className="container h-16 flex items-center justify-between">
           <Link href="/dashboard">
@@ -188,118 +186,98 @@ export default function Record() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container py-12">
         <div className="max-w-2xl mx-auto">
-          {/* Recording Card */}
-          <Card className="p-12 border-2 border-border">
+          <Card className="p-8 border-2 border-border">
             <div className="space-y-8">
-              {/* Recording Status */}
-              <div className="text-center space-y-6">
-                {/* Timer */}
-                <div className="flex justify-center">
-                  <div className="text-6xl font-bold font-mono text-accent">
-                    {formatTime(duration)}
-                  </div>
-                </div>
 
-                {/* Status Indicator */}
+              {/* Timer */}
+              <div className="text-center space-y-4">
+                <div className="text-6xl font-bold font-mono text-accent">{formatTime(duration)}</div>
                 {isRecording && (
                   <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-sm font-medium">
-                      {isPaused ? "Paused" : "Recording..."}
-                    </span>
+                    <div className={`w-3 h-3 rounded-full bg-red-500 ${!isPaused ? "animate-pulse" : ""}`} />
+                    <span className="text-sm font-medium">{isPaused ? "Paused" : "Recording..."}</span>
                   </div>
                 )}
-
-                {recordingStopped && !isRecording && (
+                {recordingStopped && !isRecording && !uploadComplete && (
                   <div className="flex items-center justify-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-500" />
                     <span className="text-sm font-medium">Recording stopped</span>
                   </div>
                 )}
-
-                {/* Waveform Visualization */}
-                {isRecording && (
-                  <div className="flex items-center justify-center gap-1 h-12">
-                    {[...Array(20)].map((_, i) => (
+                {/* Waveform */}
+                {isRecording && !isPaused && (
+                  <div className="flex items-center justify-center gap-1 h-10">
+                    {[...Array(16)].map((_, i) => (
                       <div
                         key={i}
-                        className="w-1 bg-gradient-to-t from-primary to-accent rounded-full"
-                        style={{
-                          height: `${Math.random() * 100}%`,
-                          animation: `pulse ${0.5 + Math.random() * 0.5}s ease-in-out infinite`,
-                        }}
+                        className="w-1 bg-accent rounded-full"
+                        style={{ height: `${20 + Math.random() * 80}%`, animationDelay: `${i * 50}ms` }}
                       />
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Recording Controls */}
-              <div className="flex gap-4 justify-center">
-                {!isRecording && !recordingStopped && (
-                  <Button
-                    onClick={startRecording}
-                    size="lg"
-                    className="gap-2"
-                  >
-                    <Mic className="w-5 h-5" />
-                    Start Recording
+              {/* Controls */}
+              <div className="flex gap-3 justify-center flex-wrap">
+                {!isRecording && !recordingStopped && !uploadComplete && (
+                  <Button onClick={startRecording} size="lg" className="gap-2">
+                    <Mic className="w-5 h-5" /> Start Recording
                   </Button>
                 )}
-
                 {isRecording && (
                   <>
-                    <Button
-                      onClick={pauseRecording}
-                      disabled={isPaused}
-                      variant="outline"
-                      size="lg"
-                      className="gap-2"
-                    >
-                      <Pause className="w-5 h-5" />
-                      Pause
+                    <Button onClick={isPaused ? resumeRecording : pauseRecording} variant="outline" size="lg" className="gap-2">
+                      {isPaused ? <><Play className="w-5 h-5" /> Resume</> : <><Pause className="w-5 h-5" /> Pause</>}
                     </Button>
-                    <Button
-                      onClick={resumeRecording}
-                      disabled={!isPaused}
-                      variant="outline"
-                      size="lg"
-                      className="gap-2"
-                    >
-                      <Play className="w-5 h-5" />
-                      Resume
-                    </Button>
-                    <Button
-                      onClick={stopRecording}
-                      variant="destructive"
-                      size="lg"
-                      className="gap-2"
-                    >
-                      <Square className="w-5 h-5" />
-                      Stop
+                    <Button onClick={stopRecording} variant="destructive" size="lg" className="gap-2">
+                      <Square className="w-5 h-5" /> Stop
                     </Button>
                   </>
                 )}
-
-                {uploadComplete && (
-                  <div className="flex flex-col items-center gap-3">
-                    <CheckCircle className="w-12 h-12 text-green-500" />
-                    <p className="text-sm text-muted-foreground">Recording uploaded successfully!</p>
-                    <p className="text-xs text-muted-foreground">Redirecting...</p>
-                  </div>
-                )}
               </div>
 
-              {/* Save Section - Only show after recording stopped */}
+              {/* Upload Progress */}
+              {(isUploading || uploadComplete) && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold">
+                      {uploadComplete ? "Transcribing your recording..." : "Uploading..."}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${uploadComplete ? "bg-green-500 animate-pulse" : "bg-accent"}`}
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  {uploadComplete && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      You'll be redirected automatically when transcription completes.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Upload Complete */}
+              {uploadComplete && (
+                <div className="flex flex-col items-center gap-3">
+                  <CheckCircle className="w-12 h-12 text-green-500" />
+                  <p className="text-sm font-medium">Recording uploaded!</p>
+                  <Button variant="outline" size="sm" onClick={() => recordingId && navigate(`/recording/${recordingId}`)}>
+                    Go to Recording Now
+                  </Button>
+                </div>
+              )}
+
+              {/* Save Form — shown after recording stops */}
               {recordingStopped && !isRecording && !uploadComplete && (
-                <div className="space-y-6 border-t border-border pt-8">
+                <div className="space-y-5 border-t border-border pt-6">
                   <div>
-                    <label className="block text-sm font-semibold mb-2">
-                      Recording Title *
-                    </label>
+                    <label className="block text-sm font-semibold mb-2">Recording Title *</label>
                     <input
                       type="text"
                       placeholder="e.g., Biology 101 - Lecture 5"
@@ -311,57 +289,27 @@ export default function Record() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold mb-2">
-                      Recording Type
-                    </label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="student"
-                          checked={audience === "student"}
-                          onChange={(e) => setAudience(e.target.value as "student" | "professional")}
-                          disabled={isUploading}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">Student Lecture</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="professional"
-                          checked={audience === "professional"}
-                          onChange={(e) => setAudience(e.target.value as "student" | "professional")}
-                          disabled={isUploading}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">Professional Meeting</span>
-                      </label>
+                    <label className="block text-sm font-semibold mb-2">Recording Type</label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {(["student", "professional"] as const).map((val) => (
+                        <label key={val} className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" value={val} checked={audience === val} onChange={() => setAudience(val)} disabled={isUploading} className="w-4 h-4" />
+                          <span className="text-sm">{val === "student" ? "Student Lecture" : "Professional Meeting"}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="flex gap-4 justify-center pt-4">
+                  <div className="flex gap-3 justify-center pt-2">
                     <Button
-                      onClick={() => {
-                        setRecordingStopped(false);
-                        setRecordingTitle("");
-                        setDuration(0);
-                        audioChunksRef.current = [];
-                      }}
                       variant="outline"
-                      size="lg"
+                      onClick={() => { setRecordingStopped(false); setRecordingTitle(""); setDuration(0); audioChunksRef.current = []; }}
                       disabled={isUploading}
                     >
                       Discard
                     </Button>
-                    <Button
-                      onClick={saveRecording}
-                      size="lg"
-                      disabled={isUploading || !recordingTitle.trim()}
-                      className="gap-2"
-                    >
-                      {isUploading && <Loader2 className="w-5 h-5 animate-spin" />}
-                      {isUploading ? "Saving..." : "Save Recording"}
+                    <Button onClick={saveRecording} disabled={isUploading || !recordingTitle.trim()} className="gap-2">
+                      {isUploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : "Save & Transcribe"}
                     </Button>
                   </div>
                 </div>

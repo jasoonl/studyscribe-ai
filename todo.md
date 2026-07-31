@@ -286,3 +286,16 @@
 - [ ] Set up error logging and monitoring
 - [ ] Create deployment checklist
 - [ ] Final comprehensive end-to-end testing
+
+## Phase 28 (Day 5): Critical Bug Fixes — Redirect, Progress Bar, Transcription
+- [x] Added recordings.getStatus tRPC procedure for lightweight status polling
+- [x] Fixed Upload.tsx: replaced recordings.list polling with recordings.getStatus polling
+- [x] Fixed Record.tsx: replaced recordings.list polling with recordings.getStatus polling
+- [x] Fixed RecordOrUpload.tsx: added recordingId state, getStatus polling, auto-redirect to /recording/:id
+- [x] Fixed voiceTranscription.ts: pass mimeType to override S3 content-type for correct file extension
+- [x] Fixed Dashboard.tsx: moved trpc.useUtils() to component level to fix delete recording false error
+- [x] Fixed Upload.tsx: moved all hooks before early returns (React Rules of Hooks violation)
+- [x] Fixed Record.tsx: moved all hooks before early returns (React Rules of Hooks violation)
+- [x] Added progress bar to Upload.tsx with upload/transcribing phases
+- [x] Added progress bar to Record.tsx with uploading/transcribing phases
+- [x] Verified 0 TypeScript errors across all fixed files

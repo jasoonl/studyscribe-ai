@@ -31,6 +31,7 @@ export type TranscribeOptions = {
   audioUrl: string; // URL to the audio file (e.g., S3 URL)
   language?: string; // Optional: specify language code (e.g., "en", "es", "zh")
   prompt?: string; // Optional: custom prompt for the transcription
+  mimeType?: string; // Optional: override MIME type (fixes S3 content-type issues)
 };
 
 // Native Whisper API segment format
@@ -104,7 +105,10 @@ export async function transcribeAudio(
       }
       
       audioBuffer = Buffer.from(await response.arrayBuffer());
-      mimeType = response.headers.get('content-type') || 'audio/mpeg';
+      // Use caller-provided mimeType if available (S3 often returns application/octet-stream)
+      mimeType = options.mimeType || response.headers.get('content-type') || 'audio/mpeg';
+      // Strip any charset or extra params from content-type (e.g. "audio/mpeg; charset=utf-8")
+      mimeType = mimeType.split(';')[0].trim();
       
       // Check file size (16MB limit)
       const sizeMB = audioBuffer.length / (1024 * 1024);

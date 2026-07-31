@@ -103,6 +103,7 @@ export default function Dashboard() {
   // Fetch recordings
   const { data: recordings, isLoading, refetch } = trpc.recordings.list.useQuery();
   const deleteRecordingMutation = trpc.recordings.delete.useMutation();
+  const utils = trpc.useUtils();  // Must be at component level, not inside callbacks
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -151,12 +152,14 @@ export default function Dashboard() {
 
     try {
       await deleteRecordingMutation.mutateAsync({ id });
-      toast.success("Recording deleted");
-      // Use proper cache invalidation
-      const utils = trpc.useUtils();
+      toast.success("Recording moved to trash");
+      // Invalidate both active and deleted lists
       await utils.recordings.list.invalidate();
+      await utils.recordings.listDeleted.invalidate();
     } catch (error) {
-      toast.error("Failed to delete recording");
+      console.error("Delete error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete recording";
+      toast.error(errorMessage);
     }
   };
 
