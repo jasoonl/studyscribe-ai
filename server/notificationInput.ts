@@ -8,3 +8,7 @@ export const customNotificationInputSchema = z.object({
   type: z.enum(notificationTypes).default("info"),
   recordingId: z.number().int().positive().optional(),
 });
+
+export const dismissNotificationInputSchema = z.object({
+  id: z.number().int().positive(),
+});

@@ -4,7 +4,6 @@ import {
   registerWithEmailPassword,
   loginWithEmailPassword,
   loginWithGoogle,
-  createPasswordResetRequest,
   resetPasswordWithToken,
   createInvite,
   getUserByEmail,
@@ -112,20 +111,11 @@ export const customAuthRouter = router({
    */
   requestPasswordReset: publicProcedure
     .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input }) => {
-      const result = await createPasswordResetRequest(input.email);
-
-      if (result.error) {
-        // Don't reveal if email exists
-        return { success: true };
-      }
-
-      // In production, send email with reset link
-      // For now, return token (should be sent via email)
+    .mutation(async () => {
+      // Do not create or return credentials until a transactional email provider is configured.
       return {
-        success: true,
-        token: result.token,
-        message: 'Password reset link sent to email',
+        success: false,
+        message: 'Password reset email delivery is not configured yet. Please contact support for account recovery.',
       };
     }),
 

@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 import { recordings, userNotifications } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
-import { customNotificationInputSchema } from "./notificationInput";
+import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
 
@@ -855,6 +855,16 @@ export const appRouter = router({
           .update(userNotifications)
           .set({ isRead: 1, readAt: new Date() })
           .where(and(eq(userNotifications.userId, ctx.user.id), eq(userNotifications.isRead, 0)));
+        return { success: true };
+      }),
+    dismiss: protectedProcedure
+      .input(dismissNotificationInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db
+          .delete(userNotifications)
+          .where(and(eq(userNotifications.id, input.id), eq(userNotifications.userId, ctx.user.id)));
         return { success: true };
       }),
     unreadCount: protectedProcedure

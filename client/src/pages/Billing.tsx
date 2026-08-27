@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Check, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function Billing() {
   const [selectedPlan, setSelectedPlan] = useState<"pro-student" | "pro-professional">("pro-student");
@@ -190,11 +191,10 @@ export default function Billing() {
                   size="lg"
                   className="w-full bg-accent hover:bg-accent/90 text-primary font-semibold mb-3"
                   onClick={() => {
-                    // TODO: Integrate with payment processor (Stripe)
-                    alert("Payment integration coming soon. For now, your account has been upgraded!");
+                    toast.info("In-app subscription checkout is not available yet. Your plan has not been changed.");
                   }}
                 >
-                  Upgrade Now
+                  Upgrade unavailable
                 </Button>
 
                 <Button variant="outline" size="sm" className="w-full">

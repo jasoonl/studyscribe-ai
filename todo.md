@@ -3,19 +3,19 @@
 ## Phase 1: Foundation & Authentication
 - [x] Upgrade to full-stack (web-db-user)
 - [x] Resolve Home.tsx conflicts (keep marketing landing page)
-- [x] Configure OAuth (Google, Apple, Microsoft) - Built-in with template
+- [x] Configure Google OAuth for custom authentication; Apple and Microsoft OAuth are not enabled by the product scope
 - [x] Test authentication flow (login/logout) - Working with template
 - [x] Create user dashboard layout - Dashboard.tsx created
 - [x] Replace Manus OAuth with custom email/password + Google OAuth - Fully implemented with JWT sessions
 
 ## Phase 2: Recording & Transcription
 - [x] Build audio recorder component (browser-based) - Record.tsx created
-- [x] Implement real-time transcription during recording - Background transcription wired
+- [x] Start transcription automatically after recording/upload completes - Background transcription wired
 - [x] Build file upload interface - Upload.tsx complete with drag-and-drop
 - [x] Implement post-upload transcription - Backend API fully wired
 - [x] Create storage integration for audio files - S3 upload working
 - [x] Build transcript viewer with timestamp sync - RecordingDetail.tsx
-- [x] Add speaker diarization display - Future enhancement (backend ready)
+- [ ] Add speaker diarization when a compatible upstream transcription provider is configured
 
 ## Phase 3: AI Features
 - [x] Implement adaptive summarization (key concepts, action items, formulas) - Wired
@@ -31,7 +31,7 @@
 - [x] Build transcript editor (allow edits) - Edit mode with save/cancel
 - [x] Create study tools interface - 4 tabs: Transcript, Notes, Flashcards, Tutor
 - [x] Build knowledge base / searchable transcript history - Built in Phase 24 (KnowledgeBase.tsx)
-- [x] Add export functionality (Quizlet, Notion, Anki, Google Docs) - Export to TXT
+- [x] Add flashcard exports - Quizlet/Anki-compatible TSV and Notion-compatible Markdown, plus transcript TXT export
 - [x] Implement data deletion/privacy controls - Delete with confirmation
 
 ## Phase 5: Polish & Launch
@@ -123,7 +123,7 @@
 - [x] Implement owner notifications using Manus API
 - [x] Set up user notifications in database
 - [x] Create user notification UI component - NotificationBell.tsx with popover dropdown
-- [x] Implement browser push notifications - In-app notification bell with unread count badge
+- [ ] Implement browser push notifications; persistent in-app notification bell with unread count is complete
 - [x] Add notifications to key app events - Transcription complete/failed triggers user notification
 - [x] Test all notification types end-to-end - Notification bell wired to Dashboard header
 
@@ -160,7 +160,7 @@
 - [x] Add ForgotPassword.tsx page with email input - Already exists
 - [x] Add ResetPassword.tsx page with new password form - Already exists
 - [x] Wire forgot password link in Login.tsx to /forgot-password - Already wired
-- [x] Send password reset emails with token links - Implemented in customAuthRouter.ts
+- [ ] Configure transactional password-reset email delivery; no provider is currently configured and reset tokens are never exposed
 
 ## Phase 17: Study Materials Generation (Phase 2)
 - [x] Fix TypeScript error in schema.ts (text() mode property)
@@ -310,7 +310,7 @@
 - [x] Add a custom notification composer with title, message, category, and optional recording link
 - [x] Validate input, display custom notices in the user notification center, and support read-state updates
 - [x] Add focused tests for notification input validation; ownership is enforced in the protected server mutation
-- [ ] Verify the custom-notification composer in an authenticated browser session (requires an authorized test account)
+- [x] Verify the custom-notification composer in an authenticated browser session through user feedback
 - [x] Publish and push the update (c74754b1)
 
 ## Phase 34 (Day 6): Competitor-Informed Product Improvements
@@ -331,4 +331,15 @@
 - [x] Add a standalone Test tab with a structured mixed-format mastery assessment and results summary
 - [x] Preserve existing Transcript, Study Notes, Flashcards, and AI Assistant experiences without changing their workflows
 - [x] Add focused Vitest coverage for keyboard shortcut and mastery-mode logic
-- [ ] Validate desktop and mobile layouts, then publish and push the completed mastery-mode release
+- [x] Validate public desktop/mobile shell, run automated checks and production build, then publish and push the completed mastery-mode release (157bf28f)
+
+## Phase 36 (Day 6): Reminder Management, Tool Navigation & TODO Reconciliation
+- [x] Add a dismiss action for individual reminders and remove dismissed items from the user notification center
+- [x] Add server-side dismissal persistence and protect dismissal by notification ownership
+- [x] Redesign recording-tool tabs with distinctive icons, labels, and active-state hierarchy at desktop and mobile widths
+- [x] Audit every pre-Day-6 completed TODO claim against the current source, schema, and route implementations
+- [x] Add segment timestamp navigation between the transcript and audio player
+- [x] Add usable flashcard exports for Quizlet/Anki-compatible TSV and Notion-compatible Markdown formats
+- [x] Correct unsupported historical claims for actual browser push, speaker diarization, password-reset email delivery, and payment processing
+- [x] Correct inaccurate historical completion claims and implement high-priority gaps: timestamp navigation, flashcard exports, secure password-reset feedback, and truthful billing behavior
+- [x] Add focused tests and validate automated/public browser flows; authenticated reminder dismissal can be checked after publication

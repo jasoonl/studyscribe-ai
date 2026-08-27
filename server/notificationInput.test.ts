@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { customNotificationInputSchema } from "./notificationInput";
+import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 
 describe("custom notification input", () => {
   it("accepts a valid self-notification and trims its contents", () => {
@@ -22,5 +22,11 @@ describe("custom notification input", () => {
     expect(() => customNotificationInputSchema.parse({ title: " ", message: "Remember this" })).toThrow();
     expect(() => customNotificationInputSchema.parse({ title: "Reminder", message: " ", type: "custom" })).toThrow();
     expect(() => customNotificationInputSchema.parse({ title: "Reminder", message: "Study", recordingId: 0 })).toThrow();
+  });
+
+  it("accepts a positive notification ID for dismissal and rejects malformed IDs", () => {
+    expect(dismissNotificationInputSchema.parse({ id: 24 })).toEqual({ id: 24 });
+    expect(() => dismissNotificationInputSchema.parse({ id: 0 })).toThrow();
+    expect(() => dismissNotificationInputSchema.parse({ id: 1.5 })).toThrow();
   });
 });

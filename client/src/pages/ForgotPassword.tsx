@@ -11,10 +11,12 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
 
     try {
       const response = await fetch("/api/auth/forgot-password", {
@@ -28,17 +30,11 @@ export default function ForgotPassword() {
         throw new Error(error.error || "Failed to send reset link");
       }
 
-      const data = await response.json();
-      
-      // For development: show the token
-      if (data.token) {
-        toast.success(`Reset token: ${data.token}`);
-      }
-      
       setSubmitted(true);
       toast.success("Password reset link sent to your email!");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to send reset link";
+      setErrorMessage(message);
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -84,6 +80,12 @@ export default function ForgotPassword() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Reset Password</h1>
           <p className="text-muted-foreground">Enter your email to receive a reset link</p>
         </div>
+
+        {errorMessage && (
+          <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">

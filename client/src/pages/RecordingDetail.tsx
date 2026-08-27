@@ -4,13 +4,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
-import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText } from "lucide-react";
+import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText, ClipboardCheck, Layers3, NotebookPen } from "lucide-react";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { FlashcardReview } from "@/components/FlashcardReview";
 import { FlashcardLearnMode } from "@/components/FlashcardLearnMode";
 import { FlashcardTestMode } from "@/components/FlashcardTestMode";
-import { useState, useEffect } from "react";
+import { type AudioPlayerHandle } from "@/components/AudioPlayer";
+import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
+import { downloadFlashcardExport } from "@/lib/flashcardExports";
+import { useState, useEffect, useRef } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -24,6 +27,8 @@ export default function RecordingDetail() {
   const [editedTranscript, setEditedTranscript] = useState("");
   const [isReviewingFlashcards, setIsReviewingFlashcards] = useState(false);
   const [activeStudyTab, setActiveStudyTab] = useState("transcript");
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const audioPlayerRef = useRef<AudioPlayerHandle>(null);
 
   const { data: recording, isLoading: recordingLoading } = trpc.recordings.get.useQuery(
     { id: recordingId || 0 },
@@ -233,7 +238,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <AudioPlayer src={recording.audioUrl} title="Recording Audio" />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} />
                   </div>
                 )}
               </div>
@@ -241,13 +246,37 @@ export default function RecordingDetail() {
 
             {/* Tabs: source material, flashcard review, and separate mastery modes */}
             <Tabs value={activeStudyTab} onValueChange={setActiveStudyTab} className="w-full">
-              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 sm:gap-0">
-                <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                <TabsTrigger value="notes">Study Notes</TabsTrigger>
-                <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
-                <TabsTrigger value="learn">Learn</TabsTrigger>
-                <TabsTrigger value="test">Test</TabsTrigger>
-                <TabsTrigger value="tutor">AI Assistant</TabsTrigger>
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-none bg-transparent p-0 sm:grid-cols-3">
+                <TabsTrigger value="transcript" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
+                  <FileText className="h-5 w-5" />
+                  <span>Transcript</span>
+                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Source material</span>
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
+                  <NotebookPen className="h-5 w-5" />
+                  <span>Study Notes</span>
+                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Understand</span>
+                </TabsTrigger>
+                <TabsTrigger value="flashcards" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
+                  <Layers3 className="h-5 w-5" />
+                  <span>Flashcards</span>
+                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Recall</span>
+                </TabsTrigger>
+                <TabsTrigger value="learn" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
+                  <Brain className="h-5 w-5" />
+                  <span>Learn</span>
+                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Build mastery</span>
+                </TabsTrigger>
+                <TabsTrigger value="test" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
+                  <ClipboardCheck className="h-5 w-5" />
+                  <span>Test</span>
+                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Check mastery</span>
+                </TabsTrigger>
+                <TabsTrigger value="tutor" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
+                  <MessageSquare className="h-5 w-5" />
+                  <span>AI Assistant</span>
+                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Ask questions</span>
+                </TabsTrigger>
               </TabsList>
 
               {/* Transcript Tab */}
@@ -343,10 +372,42 @@ export default function RecordingDetail() {
                           </div>
                         </div>
                       ) : (
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                            {transcript.fullText}
-                          </p>
+                        <div className="space-y-4">
+                          {Array.isArray(transcript.segments) && transcript.segments.length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-semibold">Timestamped transcript</p>
+                                <p className="text-xs text-muted-foreground">Select a timestamp to play from that point.</p>
+                              </div>
+                              <div className="max-h-[32rem] space-y-1 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2">
+                                {(transcript.segments as TranscriptSegment[]).map((segment, index) => {
+                                  const isActive = getActiveTranscriptSegmentIndex(transcript.segments as TranscriptSegment[], playbackTime) === index;
+                                  return (
+                                    <button
+                                      key={`${segment.id}-${index}`}
+                                      type="button"
+                                      disabled={!recording.audioUrl}
+                                      onClick={() => audioPlayerRef.current?.seekTo(segment.start, { play: true })}
+                                      className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60 ${
+                                        isActive ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-background"
+                                      }`}
+                                    >
+                                      <span className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold ${isActive ? "bg-primary-foreground/15 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
+                                        {formatTranscriptTimestamp(segment.start)}
+                                      </span>
+                                      <span className="text-sm leading-relaxed">{segment.text}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                {transcript.fullText}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -450,9 +511,17 @@ export default function RecordingDetail() {
                               <h3 className="font-bold">Ready to actively recall?</h3>
                               <p className="mt-1 text-sm text-muted-foreground">Study one card at a time, reveal only when ready, and track what you have mastered.</p>
                             </div>
-                            <Button className="shrink-0 gap-2" onClick={() => setIsReviewingFlashcards(true)}>
-                              <Brain className="h-4 w-4" /> Start review
-                            </Button>
+                            <div className="flex flex-wrap gap-2">
+                              <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadFlashcardExport(flashcards, "tsv", recording.title)}>
+                                <Download className="h-4 w-4" /> Quizlet / Anki
+                              </Button>
+                              <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadFlashcardExport(flashcards, "markdown", recording.title)}>
+                                <Download className="h-4 w-4" /> Notion Markdown
+                              </Button>
+                              <Button className="shrink-0 gap-2" onClick={() => setIsReviewingFlashcards(true)}>
+                                <Brain className="h-4 w-4" /> Start review
+                              </Button>
+                            </div>
                           </div>
                         </Card>
                         <div className="grid gap-4">

@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, createPasswordResetRequest, resetPasswordWithToken } from "./authService";
+import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
 import { getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
@@ -309,20 +309,10 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const result = await createPasswordResetRequest(email);
-
-      if (result.error) {
-        // Always return success to avoid email enumeration
-        res.json({ success: true, message: "If email exists, password reset link will be sent" });
-        return;
-      }
-
-      // TODO: Send email with reset link
-      // For now, return the token (in production, send via email)
-      res.json({
-        success: true,
-        message: "Password reset link sent to email",
-        token: result.token, // Remove in production
+      // Password reset email delivery requires a configured transactional email provider.
+      // Do not create or expose reset tokens until a link can be delivered securely.
+      res.status(503).json({
+        error: "Password reset email delivery is not configured yet. Please contact support for account recovery.",
       });
     } catch (error) {
       console.error("[Auth] Forgot password failed", error);

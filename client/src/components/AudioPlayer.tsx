@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Play, Pause, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -6,20 +6,41 @@ import { Slider } from "@/components/ui/slider";
 interface AudioPlayerProps {
   src: string;
   title?: string;
+  onTimeUpdate?: (time: number) => void;
 }
 
-export function AudioPlayer({ src, title = "Recording" }: AudioPlayerProps) {
+export interface AudioPlayerHandle {
+  seekTo: (time: number, options?: { play?: boolean }) => void;
+}
+
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate }: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
 
+  const seekTo = useCallback((time: number, options?: { play?: boolean }) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const nextTime = Math.max(0, time);
+    audio.currentTime = nextTime;
+    setCurrentTime(nextTime);
+    if (options?.play) {
+      void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    }
+  }, []);
+
+  useImperativeHandle(ref, () => ({ seekTo }), [seekTo]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      onTimeUpdate?.(audio.currentTime);
+    };
     const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleEnded = () => setIsPlaying(false);
 
@@ -32,7 +53,7 @@ export function AudioPlayer({ src, title = "Recording" }: AudioPlayerProps) {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, []);
+  }, [onTimeUpdate]);
 
   const togglePlayPause = () => {
     if (audioRef.current) {
@@ -45,12 +66,7 @@ export function AudioPlayer({ src, title = "Recording" }: AudioPlayerProps) {
     }
   };
 
-  const handleSeek = (value: number[]) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = value[0];
-      setCurrentTime(value[0]);
-    }
-  };
+  const handleSeek = (value: number[]) => seekTo(value[0]);
 
   const handleSpeedChange = (speed: number) => {
     if (audioRef.current) {
@@ -129,4 +145,4 @@ export function AudioPlayer({ src, title = "Recording" }: AudioPlayerProps) {
       </div>
     </div>
   );
-}
+});

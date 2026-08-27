@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Check, CheckCheck, Info, AlertTriangle, XCircle, CheckCircle } from "lucide-react";
+import { Bell, Check, CheckCheck, Info, AlertTriangle, X, XCircle, CheckCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +46,13 @@ export function NotificationBell() {
   });
 
   const markAllRead = trpc.userNotifications.markAllRead.useMutation({
+    onSuccess: () => {
+      utils.userNotifications.unreadCount.invalidate();
+      utils.userNotifications.list.invalidate();
+    },
+  });
+
+  const dismiss = trpc.userNotifications.dismiss.useMutation({
     onSuccess: () => {
       utils.userNotifications.unreadCount.invalidate();
       utils.userNotifications.list.invalidate();
@@ -122,9 +129,23 @@ export function NotificationBell() {
                       <p className={`text-sm font-medium leading-tight ${notif.isRead === 0 ? "text-foreground" : "text-muted-foreground"}`}>
                         {notif.title}
                       </p>
-                      {notif.isRead === 0 && (
-                        <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1" />
-                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {notif.isRead === 0 && <div className="mt-1 h-2 w-2 rounded-full bg-primary" />}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          aria-label={`Dismiss ${notif.title} notification`}
+                          title="Dismiss notification"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            dismiss.mutate({ id: notif.id });
+                          }}
+                          disabled={dismiss.isPending}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                       {notif.message}
