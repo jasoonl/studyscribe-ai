@@ -87,47 +87,50 @@ export default function Landing() {
           isScrolled ? "bg-background/95 backdrop-blur-md shadow-sm border-b border-border" : "bg-transparent"
         }`}
       >
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
+        <div className="container flex h-14 items-center justify-between gap-1 sm:h-16 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/studyscribe-logo-YqjarSv2s9a5LtpKjX9CE5.webp"
               alt="StudyScribe AI"
-              className="w-8 h-8"
+              className="h-7 w-7 sm:h-8 sm:w-8"
             />
-            <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className="sr-only sm:not-sr-only sm:text-lg sm:font-bold sm:bg-gradient-to-r sm:from-primary sm:to-accent sm:bg-clip-text sm:text-transparent">
               StudyScribe AI
             </span>
           </div>
 
           {/* Audience Toggle */}
-          <div className="flex items-center gap-2 bg-secondary rounded-full p-1">
+          <div className="flex min-w-0 items-center gap-0 rounded-full bg-secondary p-0.5 sm:gap-2 sm:p-1">
             <button
               onClick={() => setAudience("student")}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
+              className={`whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium transition-all sm:px-4 sm:py-2 sm:text-sm ${
                 audience === "student"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "text-foreground hover:bg-secondary/50"
               }`}
             >
-              For Students
+              <span className="sm:hidden">Students</span>
+              <span className="hidden sm:inline">For Students</span>
             </button>
             <button
               onClick={() => setAudience("professional")}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
+              className={`whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium transition-all sm:px-4 sm:py-2 sm:text-sm ${
                 audience === "professional"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "text-foreground hover:bg-secondary/50"
               }`}
             >
-              For Professionals
+              <span className="sm:hidden">Work</span>
+              <span className="hidden sm:inline">For Professionals</span>
             </button>
           </div>
 
           <Button 
             onClick={() => window.location.href = getLoginUrl()}
-            className="bg-accent hover:bg-accent/90 text-primary font-semibold"
+            size="sm"
+            className="h-8 shrink-0 bg-accent px-2 text-xs font-semibold text-primary hover:bg-accent/90 sm:h-9 sm:px-3 sm:text-sm"
           >
-            Sign In
+            Sign in
           </Button>
         </div>
       </header>

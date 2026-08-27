@@ -3,19 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mail, Lock, Loader2 } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const oauthError = new URLSearchParams(search).get("error");
 
   const handleEmailPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setFormError("");
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -36,6 +41,7 @@ export default function Login() {
       window.location.href = "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed";
+      setFormError(message);
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -44,6 +50,7 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
+    setFormError("");
     try {
       // Get Google auth URL from backend
       const params = new URLSearchParams({
@@ -65,6 +72,7 @@ export default function Login() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Google login failed";
+      setFormError(message);
       toast.error(message);
       setIsLoading(false);
     }
@@ -78,6 +86,12 @@ export default function Login() {
           <h1 className="text-3xl font-bold text-foreground mb-2">StudyScribe AI</h1>
           <p className="text-muted-foreground">Sign in to your account</p>
         </div>
+
+        {(oauthError || formError) && (
+          <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {oauthError || formError}
+          </div>
+        )}
 
         {/* Google OAuth Button */}
         <Button

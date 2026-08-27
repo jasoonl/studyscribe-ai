@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, json } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -113,6 +113,27 @@ export const flashcards = mysqlTable("flashcards", {
 
 export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertFlashcard = typeof flashcards.$inferInsert;
+
+/**
+ * Flashcard review state — tracks a learner's active-recall progress for a card.
+ */
+export const flashcardReviews = mysqlTable("flashcardReviews", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  flashcardId: int("flashcardId").notNull(),
+  recordingId: int("recordingId").notNull(),
+  status: mysqlEnum("status", ["new", "learning", "mastered"]).default("new").notNull(),
+  reviewCount: int("reviewCount").default(0).notNull(),
+  lastReviewedAt: timestamp("lastReviewedAt"),
+  masteredAt: timestamp("masteredAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("flashcardReviews_user_flashcard_unique").on(table.userId, table.flashcardId),
+]);
+
+export type FlashcardReview = typeof flashcardReviews.$inferSelect;
+export type InsertFlashcardReview = typeof flashcardReviews.$inferInsert;
 
 /**
  * AI chat history table — stores conversations with AI tutor

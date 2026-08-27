@@ -1,6 +1,6 @@
 import { eq, and, like, or, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -272,6 +272,22 @@ export async function getTranscriptByRecordingId(recordingId: number) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function updateTranscriptText(data: {
+  recordingId: number;
+  userId: number;
+  fullText: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(transcripts)
+    .set({ fullText: data.fullText, updatedAt: new Date() })
+    .where(and(eq(transcripts.recordingId, data.recordingId), eq(transcripts.userId, data.userId)));
+
+  return getTranscriptByRecordingId(data.recordingId);
+}
+
 // Study notes helpers
 export async function createStudyNote(data: {
   recordingId: number;
@@ -312,6 +328,75 @@ export async function getFlashcardsByRecordingId(recordingId: number) {
   if (!db) throw new Error("Database not available");
 
   return db.select().from(flashcards).where(eq(flashcards.recordingId, recordingId));
+}
+
+export async function getFlashcardReviewsByRecordingId(userId: number, recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select()
+    .from(flashcardReviews)
+    .where(and(eq(flashcardReviews.userId, userId), eq(flashcardReviews.recordingId, recordingId)));
+}
+
+export async function recordFlashcardReview(data: {
+  userId: number;
+  recordingId: number;
+  flashcardId: number;
+  status: "new" | "learning" | "mastered";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db
+    .select()
+    .from(flashcardReviews)
+    .where(
+      and(
+        eq(flashcardReviews.userId, data.userId),
+        eq(flashcardReviews.flashcardId, data.flashcardId),
+      ),
+    )
+    .limit(1);
+
+  const now = new Date();
+  const reviewValues = {
+    status: data.status,
+    lastReviewedAt: now,
+    masteredAt: data.status === "mastered" ? now : null,
+    updatedAt: now,
+  };
+
+  if (existing[0]) {
+    const reviewCount = existing[0].reviewCount + 1;
+    await db
+      .update(flashcardReviews)
+      .set({ ...reviewValues, reviewCount })
+      .where(eq(flashcardReviews.id, existing[0].id));
+
+    return { ...existing[0], ...reviewValues, reviewCount };
+  }
+
+  await db.insert(flashcardReviews).values({
+    ...data,
+    ...reviewValues,
+    reviewCount: 1,
+  });
+
+  const created = await db
+    .select()
+    .from(flashcardReviews)
+    .where(
+      and(
+        eq(flashcardReviews.userId, data.userId),
+        eq(flashcardReviews.flashcardId, data.flashcardId),
+      ),
+    )
+    .limit(1);
+
+  if (!created[0]) throw new Error("Failed to save flashcard review");
+  return created[0];
 }
 
 // Chat history helpers

@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText } from "lucide-react";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { FlashcardReview } from "@/components/FlashcardReview";
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,7 @@ export default function RecordingDetail() {
   const { user } = useAuth();
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [editedTranscript, setEditedTranscript] = useState("");
+  const [isReviewingFlashcards, setIsReviewingFlashcards] = useState(false);
 
   const { data: recording, isLoading: recordingLoading } = trpc.recordings.get.useQuery(
     { id: recordingId || 0 },
@@ -47,6 +49,11 @@ export default function RecordingDetail() {
     { enabled: !!recordingId }
   );
 
+  const { data: flashcardReviews } = trpc.ai.getFlashcardReviews.useQuery(
+    { recordingId: recordingId || 0 },
+    { enabled: !!recordingId && !!flashcards?.length }
+  );
+
   const { data: chatHistory } = trpc.ai.getChatHistory.useQuery(
     { recordingId: recordingId || 0 },
     { enabled: !!recordingId }
@@ -57,6 +64,7 @@ export default function RecordingDetail() {
 
   const generateStudyNotesMutation = trpc.ai.generateStudyNotes.useMutation();
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
+  const updateTranscriptMutation = trpc.transcription.update.useMutation();
   const utils = trpc.useUtils();
 
   // Initialize messages from chat history
@@ -91,10 +99,10 @@ export default function RecordingDetail() {
   const getContextualQuestions = () => {
     if (!transcript?.fullText) {
       return [
-        "Explain the main concepts",
-        "What are the key takeaways?",
-        "Can you give me an example?",
-        "How does this relate to real-world applications?"
+        "Give me a 60-second concept check",
+        "What should I review first?",
+        "Test my understanding with 3 questions",
+        "Create a 15-minute review plan"
       ];
     }
 
@@ -130,9 +138,10 @@ export default function RecordingDetail() {
     // Add more generic questions to reach 4 total
     if (questions.length < 4) {
       const generic = [
-        "Can you give me an example?",
-        "How does this relate to real-world applications?",
-        "What should I focus on for studying?",
+        "Give me a 60-second concept check",
+        "Test my understanding with 3 questions",
+        "What should I review first?",
+        "Create a 15-minute review plan",
         "What are common misconceptions?"
       ];
       for (const q of generic) {
@@ -290,13 +299,29 @@ export default function RecordingDetail() {
                             <Button
                               size="sm"
                               className="bg-accent hover:bg-accent/90 text-primary gap-2"
-                              onClick={() => {
-                                setIsEditingTranscript(false);
-                                // TODO: Save edited transcript to backend
+                              disabled={updateTranscriptMutation.isPending}
+                              onClick={async () => {
+                                if (!editedTranscript.trim()) {
+                                  toast.error("Transcript cannot be empty");
+                                  return;
+                                }
+
+                                try {
+                                  await updateTranscriptMutation.mutateAsync({
+                                    recordingId: recordingId || 0,
+                                    fullText: editedTranscript,
+                                  });
+                                  await utils.transcription.get.invalidate({ recordingId: recordingId || 0 });
+                                  setIsEditingTranscript(false);
+                                  toast.success("Transcript changes saved");
+                                } catch (error) {
+                                  const message = error instanceof Error ? error.message : "Unable to save transcript";
+                                  toast.error(message);
+                                }
                               }}
                             >
-                              <Save className="w-4 h-4" />
-                              Save Changes
+                              {updateTranscriptMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                              {updateTranscriptMutation.isPending ? "Saving..." : "Save Changes"}
                             </Button>
                             <Button
                               variant="outline"
@@ -405,31 +430,53 @@ export default function RecordingDetail() {
                     description="Creating interactive flashcards from your transcript..."
                   />
                   {flashcards && flashcards.length > 0 ? (
-                    <div className="grid gap-4">
-                      {flashcards.map((card) => (
-                        <Card key={card.id} className="p-4 border-2 border-border">
-                          <div className="space-y-3">
+                    isReviewingFlashcards ? (
+                      <FlashcardReview
+                        recordingId={recordingId || 0}
+                        cards={flashcards}
+                        reviews={flashcardReviews}
+                        onExit={() => setIsReviewingFlashcards(false)}
+                      />
+                    ) : (
+                      <div className="space-y-4">
+                        <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-indigo-50 p-5 dark:from-cyan-950/30 dark:to-indigo-950/30">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                                Question
-                              </h4>
-                              <p className="text-sm font-medium">{card.question}</p>
+                              <h3 className="font-bold">Ready to actively recall?</h3>
+                              <p className="mt-1 text-sm text-muted-foreground">Study one card at a time, reveal only when ready, and track what you have mastered.</p>
                             </div>
-                            <div>
-                              <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                                Answer
-                              </h4>
-                              <p className="text-sm text-muted-foreground">{card.answer}</p>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs px-2 py-1 rounded-full bg-secondary capitalize">
-                                {card.difficulty}
-                              </span>
-                            </div>
+                            <Button className="shrink-0 gap-2" onClick={() => setIsReviewingFlashcards(true)}>
+                              <Brain className="h-4 w-4" /> Start review
+                            </Button>
                           </div>
                         </Card>
-                      ))}
-                    </div>
+                        <div className="grid gap-4">
+                          {flashcards.map((card) => (
+                            <Card key={card.id} className="p-4 border-2 border-border">
+                              <div className="space-y-3">
+                                <div>
+                                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">
+                                    Question
+                                  </h4>
+                                  <p className="text-sm font-medium">{card.question}</p>
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">
+                                    Answer
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground">{card.answer}</p>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs px-2 py-1 rounded-full bg-secondary capitalize">
+                                    {card.difficulty}
+                                  </span>
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <Card className="p-6 border-2 border-border text-center">
                       <BookOpen className="w-8 h-8 mx-auto mb-3 text-muted-foreground opacity-50" />

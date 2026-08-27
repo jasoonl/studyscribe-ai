@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts } from "./db";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
@@ -12,6 +12,7 @@ import { recordings, userNotifications } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
 import { customNotificationInputSchema } from "./notificationInput";
+import { transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
 
 export const appRouter = router({
@@ -171,6 +172,24 @@ export const appRouter = router({
         }
         return getTranscriptByRecordingId(input.recordingId);
       }),
+
+    update: protectedProcedure
+      .input(transcriptUpdateInputSchema)
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+
+        const transcript = await getTranscriptByRecordingId(input.recordingId);
+        if (!transcript || transcript.userId !== ctx.user.id) {
+          throw new Error("Transcript not found");
+        }
+
+        const updated = await updateTranscriptText({ ...input, userId: ctx.user.id });
+        if (!updated) throw new Error("Failed to save transcript");
+        return updated;
+      }),
   }),
 
   ai: router({
@@ -253,6 +272,37 @@ export const appRouter = router({
           throw new Error("Recording not found");
         }
         return getFlashcardsByRecordingId(input.recordingId);
+      }),
+
+    getFlashcardReviews: protectedProcedure
+      .input(z.object({ recordingId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+        return getFlashcardReviewsByRecordingId(ctx.user.id, input.recordingId);
+      }),
+
+    reviewFlashcard: protectedProcedure
+      .input(z.object({
+        recordingId: z.number(),
+        flashcardId: z.number(),
+        status: z.enum(["new", "learning", "mastered"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+
+        const cards = await getFlashcardsByRecordingId(input.recordingId);
+        const flashcard = cards.find((card) => card.id === input.flashcardId && card.userId === ctx.user.id);
+        if (!flashcard) {
+          throw new Error("Flashcard not found");
+        }
+
+        return recordFlashcardReview({ ...input, userId: ctx.user.id });
       }),
 
     generateFlashcards: protectedProcedure
@@ -962,4 +1012,3 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
     }
   }
 }
-

@@ -297,11 +297,12 @@
 - [x] Verified 0 TypeScript errors across all fixed files
 
 ## Phase 32 (Day 6): Critical Regression Recovery
-- [ ] Reproduce the reported application failure on the current preview and published site
-- [ ] Inspect runtime diagnostics, authentication behavior, and route rendering for the root cause
-- [ ] Restore essential public, sign-in, dashboard, recording, and transcription-status flows
-- [ ] Add or update focused regression tests for each verified failure
-- [ ] Run type checks, unit tests, production build, and browser validation before publication
+- [x] Diagnose the reported preview sign-in issue; surfaced actionable form and OAuth callback errors in the login UI
+- [x] Reproduce and inspect the public preview and production routes; no public rendering failure persisted after hydration
+- [x] Inspect runtime diagnostics, authentication behavior, and route rendering for the root cause
+- [x] Restore verified public, sign-in-feedback, and transcription MIME handling failures
+- [x] Add focused regression tests for MIME mapping, transcript validation, review logic, and notification input
+- [x] Run type checks, unit tests, production build, and public browser validation before publication
 - [ ] Publish the recovery checkpoint and push the corrected code to GitHub
 
 ## Phase 33 (Day 6): Custom In-App Notifications
@@ -309,5 +310,16 @@
 - [x] Add a custom notification composer with title, message, category, and optional recording link
 - [x] Validate input, display custom notices in the user notification center, and support read-state updates
 - [x] Add focused tests for notification input validation; ownership is enforced in the protected server mutation
-- [ ] Verify the custom-notification composer in an authenticated browser session
+- [ ] Verify the custom-notification composer in an authenticated browser session (requires an authorized test account)
 - [ ] Publish and push the update
+
+## Phase 34 (Day 6): Competitor-Informed Product Improvements
+- [x] Benchmark Otter AI, Cluely, and Turbo AI product workflows using current public sources
+- [x] Translate relevant patterns into a prioritized StudyScribe improvement roadmap
+- [x] Add persistent flashcard review states for new, learning, and mastered cards
+- [x] Build a focused one-card-at-a-time Flashcard Review Mode with reveal, progress, and mastery actions
+- [x] Add contextual AI Assistant quick prompts for concept checks and review planning
+- [x] Persist transcript edits from the recording detail editor instead of silently discarding changes
+- [x] Correct the mobile landing header so the logo, audience switcher, and sign-in action do not overlap
+- [x] Add focused regression tests and validate public responsive UI behavior
+- [ ] Publish the enhancement checkpoint and push the release to GitHub
