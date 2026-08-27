@@ -31,9 +31,9 @@ describe("Google OAuth configuration", () => {
   it("should generate a valid Google consent URL containing the client id and redirect uri", () => {
     const origin = "https://example.manus.space";
     const redirectUri = getGoogleRedirectUri(origin);
-    const state = Buffer.from(JSON.stringify({ origin })).toString("base64");
+    const state = Buffer.from(JSON.stringify({ origin, mode: "login" })).toString("base64");
 
-    const url = getGoogleAuthUrl(state, redirectUri);
+    const url = getGoogleAuthUrl(origin, "login", redirectUri);
     const parsed = new URL(url);
 
     expect(parsed.origin).toBe("https://accounts.google.com");

@@ -295,3 +295,19 @@
 - [x] Added progress bar to Upload.tsx with upload/transcribing phases
 - [x] Added progress bar to Record.tsx with uploading/transcribing phases
 - [x] Verified 0 TypeScript errors across all fixed files
+
+## Phase 32 (Day 6): Critical Regression Recovery
+- [ ] Reproduce the reported application failure on the current preview and published site
+- [ ] Inspect runtime diagnostics, authentication behavior, and route rendering for the root cause
+- [ ] Restore essential public, sign-in, dashboard, recording, and transcription-status flows
+- [ ] Add or update focused regression tests for each verified failure
+- [ ] Run type checks, unit tests, production build, and browser validation before publication
+- [ ] Publish the recovery checkpoint and push the corrected code to GitHub
+
+## Phase 33 (Day 6): Custom In-App Notifications
+- [x] Review and preserve the existing notification bell and transcription notification data model
+- [x] Add a custom notification composer with title, message, category, and optional recording link
+- [x] Validate input, display custom notices in the user notification center, and support read-state updates
+- [x] Add focused tests for notification input validation; ownership is enforced in the protected server mutation
+- [ ] Verify the custom-notification composer in an authenticated browser session
+- [ ] Publish and push the update

@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { recordings, userNotifications } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
+import { customNotificationInputSchema } from "./notificationInput";
 import { desc, and } from "drizzle-orm";
 
 export const appRouter = router({
@@ -763,6 +764,28 @@ export const appRouter = router({
           .limit(20);
         return notifs;
       }),
+    create: protectedProcedure
+      .input(customNotificationInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        if (input.recordingId) {
+          const recording = await getRecordingByIdDb(input.recordingId);
+          if (!recording || recording.userId !== ctx.user.id) {
+            throw new Error("Recording not found");
+          }
+        }
+
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.insert(userNotifications).values({
+          userId: ctx.user.id,
+          type: input.type,
+          title: input.title,
+          message: input.message,
+          recordingId: input.recordingId,
+          isRead: 0,
+        });
+        return { success: true };
+      }),
     markRead: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -939,5 +962,4 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
     }
   }
 }
-
 
