@@ -303,7 +303,7 @@
 - [x] Restore verified public, sign-in-feedback, and transcription MIME handling failures
 - [x] Add focused regression tests for MIME mapping, transcript validation, review logic, and notification input
 - [x] Run type checks, unit tests, production build, and public browser validation before publication
-- [ ] Publish the recovery checkpoint and push the corrected code to GitHub
+- [x] Publish the recovery checkpoint and push the corrected code to GitHub (c74754b1)
 
 ## Phase 33 (Day 6): Custom In-App Notifications
 - [x] Review and preserve the existing notification bell and transcription notification data model
@@ -311,7 +311,7 @@
 - [x] Validate input, display custom notices in the user notification center, and support read-state updates
 - [x] Add focused tests for notification input validation; ownership is enforced in the protected server mutation
 - [ ] Verify the custom-notification composer in an authenticated browser session (requires an authorized test account)
-- [ ] Publish and push the update
+- [x] Publish and push the update (c74754b1)
 
 ## Phase 34 (Day 6): Competitor-Informed Product Improvements
 - [x] Benchmark Otter AI, Cluely, and Turbo AI product workflows using current public sources
@@ -322,4 +322,13 @@
 - [x] Persist transcript edits from the recording detail editor instead of silently discarding changes
 - [x] Correct the mobile landing header so the logo, audience switcher, and sign-in action do not overlap
 - [x] Add focused regression tests and validate public responsive UI behavior
-- [ ] Publish the enhancement checkpoint and push the release to GitHub
+- [x] Publish the enhancement checkpoint and push the release to GitHub (c74754b1)
+
+## Phase 35 (Day 6): Mastery Learning Modes
+- [x] Add keyboard controls to Flashcard Review: Space to reveal, Right Arrow for “I know this,” Left Arrow for “Review again”
+- [x] Ensure flashcard keyboard shortcuts are accessible and disabled while typing in a form field or submitting an answer
+- [x] Add a standalone Learn tab with adaptive practice, immediate feedback, and retry-focused progress
+- [x] Add a standalone Test tab with a structured mixed-format mastery assessment and results summary
+- [x] Preserve existing Transcript, Study Notes, Flashcards, and AI Assistant experiences without changing their workflows
+- [x] Add focused Vitest coverage for keyboard shortcut and mastery-mode logic
+- [ ] Validate desktop and mobile layouts, then publish and push the completed mastery-mode release

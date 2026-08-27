@@ -3,6 +3,7 @@ export type FlashcardReviewStatus = "new" | "learning" | "mastered";
 export interface FlashcardReviewState {
   flashcardId: number;
   status: FlashcardReviewStatus;
+  reviewCount?: number;
 }
 
 export interface ReviewableFlashcard {

@@ -8,6 +8,8 @@ import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2,
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { FlashcardReview } from "@/components/FlashcardReview";
+import { FlashcardLearnMode } from "@/components/FlashcardLearnMode";
+import { FlashcardTestMode } from "@/components/FlashcardTestMode";
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +23,7 @@ export default function RecordingDetail() {
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [editedTranscript, setEditedTranscript] = useState("");
   const [isReviewingFlashcards, setIsReviewingFlashcards] = useState(false);
+  const [activeStudyTab, setActiveStudyTab] = useState("transcript");
 
   const { data: recording, isLoading: recordingLoading } = trpc.recordings.get.useQuery(
     { id: recordingId || 0 },
@@ -236,12 +239,14 @@ export default function RecordingDetail() {
               </div>
             </Card>
 
-            {/* Tabs: Transcript, Notes, Flashcards, Assistant */}
-            <Tabs defaultValue="transcript" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-0">
+            {/* Tabs: source material, flashcard review, and separate mastery modes */}
+            <Tabs value={activeStudyTab} onValueChange={setActiveStudyTab} className="w-full">
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 sm:gap-0">
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 <TabsTrigger value="notes">Study Notes</TabsTrigger>
                 <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
+                <TabsTrigger value="learn">Learn</TabsTrigger>
+                <TabsTrigger value="test">Test</TabsTrigger>
                 <TabsTrigger value="tutor">AI Assistant</TabsTrigger>
               </TabsList>
 
@@ -510,6 +515,40 @@ export default function RecordingDetail() {
                     </Card>
                   )}
                 </div>
+              </TabsContent>
+
+              {/* Learn Tab */}
+              <TabsContent value="learn">
+                {flashcards && flashcards.length > 0 ? (
+                  <FlashcardLearnMode
+                    recordingId={recordingId || 0}
+                    cards={flashcards}
+                    reviews={flashcardReviews}
+                    onExit={() => setActiveStudyTab("flashcards")}
+                  />
+                ) : (
+                  <Card className="border-2 border-border p-8 text-center">
+                    <Brain className="mx-auto mb-3 h-9 w-9 text-muted-foreground/60" />
+                    <h3 className="font-bold">Learn from your flashcards</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Generate flashcards first, then Learn Mode will adapt practice from recognition to written recall.</p>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Test Tab */}
+              <TabsContent value="test">
+                {flashcards && flashcards.length > 0 ? (
+                  <FlashcardTestMode
+                    cards={flashcards}
+                    onExit={() => setActiveStudyTab("flashcards")}
+                  />
+                ) : (
+                  <Card className="border-2 border-border p-8 text-center">
+                    <BookOpen className="mx-auto mb-3 h-9 w-9 text-muted-foreground/60" />
+                    <h3 className="font-bold">Test your mastery</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Generate flashcards first to unlock a mixed-format practice test for this recording.</p>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* AI Tutor Tab */}

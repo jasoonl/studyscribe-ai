@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Brain, CheckCircle2, ChevronLeft, ChevronRight, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { buildFlashcardReviewSummary, type FlashcardReviewState } from "@/lib/flashcardReview";
+import { getFlashcardShortcutAction } from "@/lib/flashcardShortcuts";
 import { toast } from "sonner";
 
 type Flashcard = {
@@ -24,6 +25,7 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
   const [activeIndex, setActiveIndex] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
   const [includeMastered, setIncludeMastered] = useState(false);
+  const isSavingReview = useRef(false);
   const utils = trpc.useUtils();
 
   const { reviewQueue, counts } = useMemo(
@@ -54,20 +56,49 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
   };
 
   const saveReview = async (status: "learning" | "mastered") => {
-    if (!currentCard) return;
-    await reviewMutation.mutateAsync({
-      recordingId,
-      flashcardId: currentCard.id,
-      status,
-    });
+    if (!currentCard || isSavingReview.current) return;
+    isSavingReview.current = true;
+    try {
+      await reviewMutation.mutateAsync({
+        recordingId,
+        flashcardId: currentCard.id,
+        status,
+      });
 
-    if (status === "mastered" && !includeMastered) {
-      setActiveIndex((current) => Math.max(0, Math.min(current, reviewQueue.length - 2)));
-    } else {
-      setActiveIndex((current) => (current + 1) % Math.max(reviewQueue.length, 1));
+      if (status === "mastered" && !includeMastered) {
+        setActiveIndex((current) => Math.max(0, Math.min(current, reviewQueue.length - 2)));
+      } else {
+        setActiveIndex((current) => (current + 1) % Math.max(reviewQueue.length, 1));
+      }
+      setIsRevealed(false);
+    } catch {
+      // The mutation-level handler presents the error message.
+    } finally {
+      isSavingReview.current = false;
     }
-    setIsRevealed(false);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const action = getFlashcardShortcutAction({
+        key: event.key,
+        isRevealed,
+        isSubmitting: reviewMutation.isPending || isSavingReview.current,
+        target: event.target as { tagName?: string; isContentEditable?: boolean } | null,
+      });
+      if (!action) return;
+
+      event.preventDefault();
+      if (action === "toggle") {
+        setIsRevealed((revealed) => !revealed);
+      } else {
+        void saveReview(action);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentCard?.id, includeMastered, isRevealed, recordingId, reviewMutation.isPending, reviewQueue.length]);
 
   if (cards.length === 0) return null;
 
@@ -99,6 +130,7 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
               Flashcard Review
             </div>
             <p className="mt-1 text-xs text-muted-foreground">Recall the answer before you reveal it, then tell StudyScribe what you know.</p>
+            <p className="mt-2 text-xs font-medium text-primary">Space: flip · ←: review again · →: I know this</p>
           </div>
           <Button variant="outline" size="sm" onClick={onExit}>Browse cards</Button>
         </div>
