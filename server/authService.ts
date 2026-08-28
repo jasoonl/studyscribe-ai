@@ -282,17 +282,13 @@ export async function loginWithGoogle(
 /**
  * Create a password reset request
  */
-export async function createPasswordResetRequest(email: string): Promise<{ token: string; error?: undefined } | { token?: undefined; error: string }> {
+export async function createPasswordResetRequest(email: string): Promise<{ token?: string; recipient?: string; error?: string }> {
   try {
     const user = await dbGetUserByEmail(email);
 
-    if (!user) {
-      // Don't reveal if email exists
-      return { error: 'If email exists, password reset link will be sent' };
-    }
-
-    if (!user.passwordHash) {
-      return { error: 'User does not have password set' };
+    // Keep the public response identical for unknown and Google-only accounts.
+    if (!user || !user.passwordHash) {
+      return {};
     }
 
     const token = generatePasswordResetToken();
@@ -304,7 +300,7 @@ export async function createPasswordResetRequest(email: string): Promise<{ token
       expiresAt,
     });
 
-    return { token };
+    return { token, recipient: user.email };
   } catch (error) {
     console.error('[Auth] Password reset request error:', error);
     return { error: 'Password reset request failed' };
@@ -378,4 +374,3 @@ export async function createInvite(
     return { error: 'Failed to create invite' };
   }
 }
-

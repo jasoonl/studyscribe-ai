@@ -1,6 +1,6 @@
 import { eq, and, like, or, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -190,6 +190,63 @@ export async function deletePasswordResetToken(token: string) {
   if (!db) throw new Error("Database not available");
 
   return db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+}
+
+// Browser push subscription helpers
+export async function upsertPushSubscription(data: {
+  userId: number;
+  endpoint: string;
+  endpointHash: string;
+  p256dh: string;
+  auth: string;
+  expirationTime: Date | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.endpointHash, data.endpointHash))
+    .limit(1);
+
+  if (existing[0]) {
+    await db
+      .update(pushSubscriptions)
+      .set({
+        userId: data.userId,
+        endpoint: data.endpoint,
+        p256dh: data.p256dh,
+        auth: data.auth,
+        expirationTime: data.expirationTime,
+        updatedAt: new Date(),
+      })
+      .where(eq(pushSubscriptions.id, existing[0].id));
+    return { ...existing[0], ...data };
+  }
+
+  await db.insert(pushSubscriptions).values(data);
+  const created = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.endpointHash, data.endpointHash))
+    .limit(1);
+  if (!created[0]) throw new Error("Failed to save browser push subscription");
+  return created[0];
+}
+
+export async function getPushSubscriptionsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+}
+
+export async function deletePushSubscription(userId: number, endpointHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .delete(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpointHash, endpointHash)));
 }
 
 // Recording helpers

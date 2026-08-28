@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Check, CheckCheck, Info, AlertTriangle, X, XCircle, CheckCircle } from "lucide-react";
+import { Bell, BellRing, Check, CheckCheck, Info, AlertTriangle, X, XCircle, CheckCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { CreateNotificationDialog } from "./CreateNotificationDialog";
+import { createBrowserPushSubscription, isBrowserPushSupported } from "@/lib/browserPush";
+import { toast } from "sonner";
 
 function NotificationIcon({ type }: { type: string }) {
   switch (type) {
@@ -28,7 +30,11 @@ function NotificationIcon({ type }: { type: string }) {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
   const utils = trpc.useUtils();
+
+  const { data: browserPushConfig } = trpc.browserPush.configuration.useQuery(undefined, { enabled: open });
+  const subscribeBrowserPush = trpc.browserPush.subscribe.useMutation();
 
   const { data: unreadData } = trpc.userNotifications.unreadCount.useQuery(undefined, {
     refetchInterval: 30000, // Poll every 30 seconds
@@ -61,6 +67,33 @@ export function NotificationBell() {
 
   const unreadCount = unreadData?.count ?? 0;
 
+  const enableBrowserPush = async () => {
+    if (!browserPushConfig?.supported || !browserPushConfig.publicKey) {
+      toast.error("Browser notifications are temporarily unavailable.");
+      return;
+    }
+    if (!isBrowserPushSupported()) {
+      toast.error("This browser does not support push notifications.");
+      return;
+    }
+
+    setIsEnablingPush(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        toast.message("Notifications remain off. You can enable them in your browser settings later.");
+        return;
+      }
+      const subscription = await createBrowserPushSubscription(browserPushConfig.publicKey);
+      await subscribeBrowserPush.mutateAsync(subscription);
+      toast.success("Browser notifications are enabled for this device.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to enable browser notifications.");
+    } finally {
+      setIsEnablingPush(false);
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -80,6 +113,17 @@ export function NotificationBell() {
           <h3 className="font-semibold text-sm">Notifications</h3>
           <div className="flex items-center gap-1">
             <CreateNotificationDialog />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={enableBrowserPush}
+              disabled={isEnablingPush}
+              title="Enable browser notifications on this device"
+            >
+              <BellRing className="w-3 h-3" />
+              {isEnablingPush ? "Enabling..." : "Enable push"}
+            </Button>
             {unreadCount > 0 && (
               <Button
                 variant="ghost"

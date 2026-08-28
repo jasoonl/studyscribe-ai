@@ -3,9 +3,10 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription } from "./db";
 import { storagePut, storageGetSignedUrl } from "./storage";
-import { transcribeAudio } from "./_core/voiceTranscription";
+import { transcribeWithSpeakerDiarization } from "./speakerDiarization";
+import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
 import { recordings, userNotifications } from "../drizzle/schema";
@@ -14,6 +15,7 @@ import { customAuthRouter } from "./customAuthRouter";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
+import { createHash } from "crypto";
 
 export const appRouter = router({
   system: systemRouter,
@@ -26,6 +28,38 @@ export const appRouter = router({
     }),
   }),
   customAuth: customAuthRouter,
+
+  browserPush: router({
+    configuration: protectedProcedure.query(() => getBrowserPushConfiguration()),
+    subscribe: protectedProcedure
+      .input(z.object({
+        endpoint: z.string().url().max(768),
+        expirationTime: z.number().nullable(),
+        keys: z.object({
+          p256dh: z.string().min(20).max(255),
+          auth: z.string().min(16).max(255),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const endpointHash = createHash("sha256").update(input.endpoint).digest("hex");
+        await upsertPushSubscription({
+          userId: ctx.user.id,
+          endpoint: input.endpoint,
+          endpointHash,
+          p256dh: input.keys.p256dh,
+          auth: input.keys.auth,
+          expirationTime: input.expirationTime ? new Date(input.expirationTime) : null,
+        });
+        return { success: true };
+      }),
+    unsubscribe: protectedProcedure
+      .input(z.object({ endpoint: z.string().url().max(768) }))
+      .mutation(async ({ ctx, input }) => {
+        const endpointHash = createHash("sha256").update(input.endpoint).digest("hex");
+        await deletePushSubscription(ctx.user.id, endpointHash);
+        return { success: true };
+      }),
+  }),
 
   recordings: router({
     list: protectedProcedure.query(async ({ ctx }) => {
@@ -834,6 +868,17 @@ export const appRouter = router({
           recordingId: input.recordingId,
           isRead: 0,
         });
+        try {
+          await sendBrowserPush(ctx.user.id, {
+            title: input.title,
+            body: input.message,
+            url: input.recordingId ? `/recording/${input.recordingId}` : "/dashboard",
+            tag: `reminder-${ctx.user.id}-${Date.now()}`,
+          });
+        } catch (error) {
+          // Persisted notifications remain available even when a browser endpoint has expired.
+          console.error("[Notifications] Browser push delivery failed", error);
+        }
         return { success: true };
       }),
     markRead: protectedProcedure
@@ -930,33 +975,10 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
   try {
     console.log(`[Transcription] Starting for recording ${recordingId}, audioKey: ${audioKey}`);
     
-    // Get signed URL for server-side transcription
+    // Get a short-lived signed URL for the asynchronous transcription provider.
     const signedUrl = await storageGetSignedUrl(audioKey);
-    console.log(`[Transcription] Got signed URL (first 100 chars): ${signedUrl.substring(0, 100)}...`);
-    
-    // Transcribe audio — pass mimeType so Whisper gets the correct file extension
-    console.log(`[Transcription] Calling transcribeAudio with URL, mimeType: ${mimeType || 'auto'}`);
-    const result = await transcribeAudio({
-      audioUrl: signedUrl,
-      language: "en",
-      prompt: _audience === "student" ? "This is a lecture recording" : "This is a meeting recording",
-      mimeType: mimeType,
-    });
-    console.log(`[Transcription] Got result, has text: ${('text' in result) ? 'yes' : 'no'}`);
-
-    // Check for errors
-    if ("error" in result) {
-      console.error(`[Transcription] Error for recording ${recordingId}:`, result);
-      await updateRecordingStatus(recordingId, "failed");
-      return;
-    }
-
-    // Validate result has required fields
-    if (!('text' in result) || !result.text || typeof result.text !== 'string') {
-      console.error(`[Transcription] Invalid response for recording ${recordingId}:`, result);
-      await updateRecordingStatus(recordingId, "failed");
-      return;
-    }
+    console.log(`[Transcription] Requesting speaker-labeled transcript for recording ${recordingId}`);
+    const result = await transcribeWithSpeakerDiarization({ audioUrl: signedUrl });
 
     // Get recording to get userId
     const recording = await getRecordingByIdDb(recordingId);
@@ -966,37 +988,43 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
       return;
     }
 
-    // Save transcript
-    if ('text' in result) {
-      console.log(`[Transcription] Saving transcript for recording ${recordingId}, text length: ${result.text.length}`);
-      await createTranscript({
-        recordingId,
-        userId: recording.userId,
-        fullText: result.text,
-        language: result.language || "en",
-      });
+    // Save the normalized, timestamped speaker turns with the full transcript.
+    console.log(`[Transcription] Saving speaker-labeled transcript for recording ${recordingId}`);
+    await createTranscript({
+      recordingId,
+      userId: recording.userId,
+      fullText: result.text,
+      segments: result.segments,
+      language: result.language || "en",
+    });
 
-      // Update recording status
-      console.log(`[Transcription] Marking recording ${recordingId} as completed`);
-      await updateRecordingStatus(recordingId, "completed");
-      console.log(`[Transcription] Successfully completed recording ${recordingId}`);
+    // Update recording status
+    console.log(`[Transcription] Marking recording ${recordingId} as completed`);
+    await updateRecordingStatus(recordingId, "completed");
+    console.log(`[Transcription] Successfully completed recording ${recordingId}`);
 
-      // Create user notification
-      try {
-        const db = await getDb();
-        if (db) {
-          await db.insert(userNotifications).values({
-            userId: recording.userId,
-            type: "success",
-            title: "Transcription Complete",
-            message: `"${recording.title}" has been transcribed successfully. You can now use AI study tools.`,
-            recordingId,
-            isRead: 0,
-          });
-        }
-      } catch (notifError) {
-        console.error(`[Transcription] Failed to create notification:`, notifError);
+    // Keep the existing in-app notification and deliver a push notification to opted-in devices.
+    const completedMessage = `"${recording.title}" has been transcribed successfully. You can now use AI study tools.`;
+    try {
+      const db = await getDb();
+      if (db) {
+        await db.insert(userNotifications).values({
+          userId: recording.userId,
+          type: "success",
+          title: "Transcription Complete",
+          message: completedMessage,
+          recordingId,
+          isRead: 0,
+        });
       }
+      await sendBrowserPush(recording.userId, {
+        title: "Transcription complete",
+        body: `Your speaker-labeled transcript for “${recording.title}” is ready.`,
+        url: `/recording/${recordingId}`,
+        tag: `recording-${recordingId}`,
+      });
+    } catch (notifError) {
+      console.error(`[Transcription] Failed to create or deliver completion notification:`, notifError);
     }
   } catch (error) {
     console.error(`[Transcription] Failed for recording ${recordingId}:`, error);
@@ -1016,6 +1044,12 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
             isRead: 0,
           });
         }
+        await sendBrowserPush(recording.userId, {
+          title: "Transcription needs attention",
+          body: `We could not transcribe “${recording.title}”. Please try uploading it again.`,
+          url: `/recording/${recordingId}`,
+          tag: `recording-${recordingId}`,
+        });
       }
     } catch (updateError) {
       console.error(`[Transcription] Failed to update status for recording ${recordingId}:`, updateError);

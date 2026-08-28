@@ -1,10 +1,11 @@
 import type { Express, Request, Response } from "express";
-import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken } from "./authService";
+import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
-import { getDb, getPasswordResetTokenByToken } from "./db";
+import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
+import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 
 export function registerAuthRoutes(app: Express) {
   /**
@@ -309,11 +310,33 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      // Password reset email delivery requires a configured transactional email provider.
-      // Do not create or expose reset tokens until a link can be delivered securely.
-      res.status(503).json({
-        error: "Password reset email delivery is not configured yet. Please contact support for account recovery.",
-      });
+      if (!isTransactionalEmailConfigured()) {
+        res.status(503).json({ error: "Password reset email delivery is temporarily unavailable. Please try again later." });
+        return;
+      }
+
+      const resetRequest = await createPasswordResetRequest(email);
+      if (resetRequest.error) {
+        res.status(503).json({ error: "Password reset email delivery is temporarily unavailable. Please try again later." });
+        return;
+      }
+
+      if (resetRequest.token && resetRequest.recipient) {
+        const origin = getSafeApplicationOrigin((req.body?.origin as string | undefined) ?? req.get("origin"));
+        const resetUrl = new URL("/reset-password", origin);
+        resetUrl.searchParams.set("token", resetRequest.token);
+        try {
+          await sendPasswordResetEmail({ to: resetRequest.recipient, resetUrl: resetUrl.toString() });
+        } catch (deliveryError) {
+          await deletePasswordResetToken(resetRequest.token);
+          console.error("[Auth] Password reset email delivery failed", deliveryError);
+          res.status(503).json({ error: "Password reset email delivery is temporarily unavailable. Please try again later." });
+          return;
+        }
+      }
+
+      // Never expose account existence, provider type, or reset credentials.
+      res.json({ success: true, message: "If an eligible account exists, a password reset link has been sent." });
     } catch (error) {
       console.error("[Auth] Forgot password failed", error);
       res.status(500).json({ error: "Failed to process password reset request" });

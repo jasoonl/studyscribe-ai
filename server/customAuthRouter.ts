@@ -5,14 +5,16 @@ import {
   loginWithEmailPassword,
   loginWithGoogle,
   resetPasswordWithToken,
+  createPasswordResetRequest,
   createInvite,
   getUserByEmail,
 } from './authService';
-import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode, getAllInviteCodes, getInviteCodeById, updateInviteCodeExpiry, revokeInviteCode, deleteInviteCode } from './db';
+import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode, getAllInviteCodes, getInviteCodeById, updateInviteCodeExpiry, revokeInviteCode, deleteInviteCode, deletePasswordResetToken } from './db';
 import { eq } from 'drizzle-orm';
 import { users, inviteCodes } from '../drizzle/schema';
 import { notifyOwner } from './_core/notification';
 import { nanoid } from 'nanoid';
+import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from './email';
 
 export const customAuthRouter = router({
   /**
@@ -111,11 +113,32 @@ export const customAuthRouter = router({
    */
   requestPasswordReset: publicProcedure
     .input(z.object({ email: z.string().email() }))
-    .mutation(async () => {
-      // Do not create or return credentials until a transactional email provider is configured.
+    .mutation(async ({ input, ctx }) => {
+      if (!isTransactionalEmailConfigured()) {
+        throw new Error('Password reset email delivery is temporarily unavailable. Please try again later.');
+      }
+
+      const resetRequest = await createPasswordResetRequest(input.email);
+      if (resetRequest.error) {
+        throw new Error('Password reset email delivery is temporarily unavailable. Please try again later.');
+      }
+
+      if (resetRequest.token && resetRequest.recipient) {
+        const origin = getSafeApplicationOrigin(ctx.req.headers.origin);
+        const resetUrl = new URL('/reset-password', origin);
+        resetUrl.searchParams.set('token', resetRequest.token);
+        try {
+          await sendPasswordResetEmail({ to: resetRequest.recipient, resetUrl: resetUrl.toString() });
+        } catch (error) {
+          await deletePasswordResetToken(resetRequest.token);
+          console.error('[Auth] Password reset email delivery failed', error);
+          throw new Error('Password reset email delivery is temporarily unavailable. Please try again later.');
+        }
+      }
+
       return {
-        success: false,
-        message: 'Password reset email delivery is not configured yet. Please contact support for account recovery.',
+        success: true,
+        message: 'If an eligible account exists, a password reset link has been sent.',
       };
     }),
 

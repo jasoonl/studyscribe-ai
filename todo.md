@@ -15,7 +15,7 @@
 - [x] Implement post-upload transcription - Backend API fully wired
 - [x] Create storage integration for audio files - S3 upload working
 - [x] Build transcript viewer with timestamp sync - RecordingDetail.tsx
-- [ ] Add speaker diarization when a compatible upstream transcription provider is configured
+- [x] Add speaker diarization with AssemblyAI; speaker-labeled timestamp segments are now shown in recordings
 
 ## Phase 3: AI Features
 - [x] Implement adaptive summarization (key concepts, action items, formulas) - Wired
@@ -123,7 +123,7 @@
 - [x] Implement owner notifications using Manus API
 - [x] Set up user notifications in database
 - [x] Create user notification UI component - NotificationBell.tsx with popover dropdown
-- [ ] Implement browser push notifications; persistent in-app notification bell with unread count is complete
+- [ ] Verify browser push notifications with an authenticated device: opt-in, service-worker activation, and subscription persistence passed today; native receipt and click routing require a local system notification surface
 - [x] Add notifications to key app events - Transcription complete/failed triggers user notification
 - [x] Test all notification types end-to-end - Notification bell wired to Dashboard header
 
@@ -160,7 +160,7 @@
 - [x] Add ForgotPassword.tsx page with email input - Already exists
 - [x] Add ResetPassword.tsx page with new password form - Already exists
 - [x] Wire forgot password link in Login.tsx to /forgot-password - Already wired
-- [ ] Configure transactional password-reset email delivery; no provider is currently configured and reset tokens are never exposed
+- [ ] Verify transactional password-reset delivery through Resend with an approved test recipient and reset-link completion
 
 ## Phase 17: Study Materials Generation (Phase 2)
 - [x] Fix TypeScript error in schema.ts (text() mode property)
@@ -343,3 +343,33 @@
 - [x] Correct unsupported historical claims for actual browser push, speaker diarization, password-reset email delivery, and payment processing
 - [x] Correct inaccurate historical completion claims and implement high-priority gaps: timestamp navigation, flashcard exports, secure password-reset feedback, and truthful billing behavior
 - [x] Add focused tests and validate automated/public browser flows; authenticated reminder dismissal can be checked after publication
+
+## Phase 37 (Day 6): Complete Provider-Backed Integrations
+- [x] Confirm a supported provider and credentials for transactional password-reset email delivery
+- [ ] Implement transactional password-reset email delivery without exposing reset credentials; code and mocked provider paths are complete, but live receipt validation requires the deferred owned sender domain
+- [x] Configure VAPID credentials and persist browser push subscriptions per user
+- [ ] Implement browser push permission, delivery, service-worker handling, and notification click routing; authenticated permission, service-worker activation, subscription persistence, and server acceptance passed today, while native receipt/click requires a local system notification surface
+- [x] Confirm a speaker-diarization provider/API and configure its credentials
+- [x] Enrich transcription with speaker labels while preserving timestamped transcript navigation
+- [ ] Add integration tests, validate provider responses, and publish the completed integrations; automated tests and live AssemblyAI validation passed, while native push receipt/click and Resend delivery remain deferred
+
+
+## Deferred / Later TODO
+
+These items are intentionally set aside for a later work session and are not part of the current release scope.
+
+- [ ] Obtain and connect a custom domain owned by the project owner for Resend verification; `studyscribe-ai.manus.space` is a Manus-managed subdomain and cannot be used as the owned sending domain.
+- [ ] Complete live transactional password-reset email verification after the custom sender domain is verified, including receipt of the reset email and end-to-end reset-link completion using an approved test address.
+- [ ] Complete authenticated browser-push validation on a real device, including permission grant, subscription persistence, real notification receipt, and notification-click routing.
+- [ ] Evaluate moving application hosting from Manus built-in hosting to Render or Railway, including service compatibility, environment-secret migration, database connectivity, deployment configuration, storage behavior, background transcription reliability, custom-domain setup, cost, and rollback plan.
+- [ ] If Render or Railway is selected, document and execute the migration only after confirming the external host supports the project’s full-stack runtime; Manus built-in hosting remains the supported default, and external hosting may require compatibility adjustments.
+
+### Deferred hosting decision note
+
+Manus provides built-in hosting with custom-domain support. Render and Railway are alternatives to evaluate rather than assumed replacements. Any future migration should be treated as a separate infrastructure project and should not be marked complete until production behavior, secrets, database access, storage, authentication callbacks, and background transcription have been revalidated.
+
+### Deferred provider status
+
+AssemblyAI speaker diarization is implemented and has passed a live provider test. Browser push and Resend password-reset delivery are implemented in code but remain pending real-device and verified-domain delivery validation, respectively.
+
+- [x] Finish feasible remaining Phase 37 validation today, reconcile provider-dependent items honestly, and wrap the work session after publication.

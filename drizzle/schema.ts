@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, json } from "drizzle-orm/mysql-core";
+import { index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -208,6 +208,28 @@ export const userNotifications = mysqlTable("userNotifications", {
 
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+/**
+ * Web Push subscriptions — encrypted browser endpoints owned by an authenticated user.
+ * Only the endpoint hash is indexed, which avoids indexing a potentially long endpoint URL.
+ */
+export const pushSubscriptions = mysqlTable("pushSubscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  endpoint: varchar("endpoint", { length: 768 }).notNull(),
+  endpointHash: varchar("endpointHash", { length: 64 }).notNull(),
+  p256dh: varchar("p256dh", { length: 255 }).notNull(),
+  auth: varchar("auth", { length: 255 }).notNull(),
+  expirationTime: timestamp("expirationTime"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("pushSubscriptions_endpoint_hash_unique").on(table.endpointHash),
+  index("pushSubscriptions_user_id_idx").on(table.userId),
+]);
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = typeof pushSubscriptions.$inferInsert;
 
 /**
  * Invite codes table — for invite-only signup system

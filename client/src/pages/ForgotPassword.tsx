@@ -22,7 +22,7 @@ export default function ForgotPassword() {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, origin: window.location.origin }),
       });
 
       if (!response.ok) {
@@ -31,7 +31,7 @@ export default function ForgotPassword() {
       }
 
       setSubmitted(true);
-      toast.success("Password reset link sent to your email!");
+      toast.success("If an eligible account exists, a reset link has been sent.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to send reset link";
       setErrorMessage(message);
@@ -51,7 +51,7 @@ export default function ForgotPassword() {
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h1>
             <p className="text-muted-foreground">
-              We've sent a password reset link to <strong>{email}</strong>
+              If an eligible account exists for <strong>{email}</strong>, a password reset link has been sent.
             </p>
           </div>
 
