@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings } from "./db";
 import { storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeWithSpeakerDiarization } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
@@ -971,6 +971,19 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 // Helper function to transcribe recording in background
+export async function resumeProcessingRecordings(): Promise<void> {
+  const processing = await getProcessingRecordings();
+  for (const recording of processing) {
+    if (!recording.audioKey) continue;
+    transcribeRecordingInBackground(recording.id, recording.audioKey, recording.audience ?? "student").catch((error) => {
+      console.error(`[Transcription] Recovery failed for recording ${recording.id}:`, error);
+    });
+  }
+  if (processing.length > 0) {
+    console.log(`[Transcription] Recovery queued ${processing.length} processing recording(s)`);
+  }
+}
+
 async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional", mimeType?: string): Promise<void> {
   try {
     console.log(`[Transcription] Starting for recording ${recordingId}, audioKey: ${audioKey}`);

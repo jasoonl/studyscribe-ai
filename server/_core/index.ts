@@ -6,7 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerAuthRoutes } from "../authRoutes";
-import { appRouter } from "../routers";
+import { appRouter, resumeProcessingRecordings } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -35,7 +35,12 @@ export function createApp() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  
+
+  // Platform health checks stay lightweight and independent of external providers.
+  app.get("/healthz", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   registerStorageProxy(app);
   registerAuthRoutes(app);
   registerOAuthRoutes(app);
@@ -65,8 +70,11 @@ async function startServer() {
   const app = createApp();
   const server = createServer(app);
   
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const preferredPort = parseInt(process.env.PORT || "3000", 10);
+  // Managed production hosts require the exact injected PORT; local development may avoid collisions.
+  const port = process.env.NODE_ENV === "production"
+    ? preferredPort
+    : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
@@ -74,6 +82,10 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Resume any uploads left in processing after a redeploy or process restart.
+    resumeProcessingRecordings().catch((error) => {
+      console.error("[Transcription] Startup recovery unavailable:", error);
+    });
   });
 }
 

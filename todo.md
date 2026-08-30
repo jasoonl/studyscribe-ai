@@ -373,3 +373,11 @@ Manus provides built-in hosting with custom-domain support. Render and Railway a
 AssemblyAI speaker diarization is implemented and has passed a live provider test. Browser push and Resend password-reset delivery are implemented in code but remain pending real-device and verified-domain delivery validation, respectively.
 
 - [x] Finish feasible remaining Phase 37 validation today, reconcile provider-dependent items honestly, and wrap the work session after publication.
+
+
+## Railway / Render Deployment Preparation
+
+- [x] Audit Railway and Render compatibility across authentication, Google OAuth, recording/upload storage, transcription, AI services, notifications, database migrations, secrets, and background processing.
+- [x] Harden portable runtime configuration, health checks, build/start scripts, public-origin handling, and deployment documentation without migrating production yet.
+- [x] Run automated checks and review authenticated browser flows, documenting provider- and account-dependent external-host checks; external-host feature execution remains pending platform selection.
+- [x] Prepare a platform comparison and migration runbook for Railway and Render; do not select or migrate until the user chooses a platform and supplies account/domain configuration.

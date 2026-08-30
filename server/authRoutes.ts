@@ -207,7 +207,9 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const origin = (req.query.origin as string) || `${req.protocol}://${req.get("host")}`;
+      const origin = getSafeApplicationOrigin(
+        typeof req.query.origin === "string" ? req.query.origin : undefined,
+      );
       const mode = ((req.query.mode as string) || "login") as "login" | "signup";
 
       const authUrl = getGoogleAuthUrl(origin, mode);
@@ -242,8 +244,7 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const origin =
-        stateData.origin || `${req.protocol}://${req.get("host")}`;
+      const origin = getSafeApplicationOrigin(stateData.origin);
       const mode = stateData.mode || "login";
       const redirectUri = getGoogleRedirectUri(origin);
 

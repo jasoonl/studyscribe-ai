@@ -293,6 +293,15 @@ export async function getRecordingById(id: number) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getProcessingRecordings() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(recordings).where(
+    and(eq(recordings.status, "processing"), eq(recordings.isDeleted, 0)),
+  );
+}
+
 export async function updateRecordingStatus(id: number, status: "processing" | "completed" | "failed") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

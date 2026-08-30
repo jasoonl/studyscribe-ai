@@ -1,27 +1,45 @@
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
-const productionOrigins = new Set([
-  "https://studyscribe-ai.manus.space",
+const defaultApplicationOrigin = "https://studyscribe-ai.manus.space";
+const knownManusOrigins = new Set([
+  defaultApplicationOrigin,
   "https://scribesync-asvcfial.manus.space",
 ]);
+
+function getConfiguredApplicationOrigin() {
+  const configured = process.env.PUBLIC_APP_URL || process.env.APP_URL;
+  if (!configured) return defaultApplicationOrigin;
+  try {
+    const parsed = new URL(configured);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") return parsed.origin;
+  } catch {
+    // Fall back to the known safe origin when configuration is malformed.
+  }
+  return defaultApplicationOrigin;
+}
+
+export function getApplicationOrigin() {
+  return getConfiguredApplicationOrigin();
+}
 
 export function isTransactionalEmailConfigured() {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 }
 
 export function getSafeApplicationOrigin(candidate: string | undefined) {
-  if (!candidate) return "https://studyscribe-ai.manus.space";
+  const configuredOrigin = getConfiguredApplicationOrigin();
+  if (!candidate) return configuredOrigin;
 
   try {
     const parsed = new URL(candidate);
     const isPreview = /^https:\/\/3000-[a-z0-9-]+\.us\d+\.manus\.computer$/i.test(parsed.origin);
     const isLocal = /^http:\/\/localhost:\d+$/i.test(parsed.origin);
-    if (productionOrigins.has(parsed.origin) || isPreview || isLocal) return parsed.origin;
+    if (knownManusOrigins.has(parsed.origin) || parsed.origin === configuredOrigin || isPreview || isLocal) return parsed.origin;
   } catch {
-    // Use the production origin below when an untrusted string cannot be parsed.
+    // Use the configured origin below when an untrusted string cannot be parsed.
   }
 
-  return "https://studyscribe-ai.manus.space";
+  return configuredOrigin;
 }
 
 function escapeHtml(value: string) {

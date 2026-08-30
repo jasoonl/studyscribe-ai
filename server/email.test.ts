@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildPasswordResetEmail, getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
+import { buildPasswordResetEmail, getApplicationOrigin, getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -11,6 +11,13 @@ describe("transactional password-reset email", () => {
     expect(getSafeApplicationOrigin("https://studyscribe-ai.manus.space")).toBe("https://studyscribe-ai.manus.space");
     expect(getSafeApplicationOrigin("https://untrusted.example/reset")).toBe("https://studyscribe-ai.manus.space");
     expect(getSafeApplicationOrigin("https://3000-local-preview.us4.manus.computer")).toBe("https://3000-local-preview.us4.manus.computer");
+  });
+
+  it("uses PUBLIC_APP_URL for an external deployment and rejects spoofed origins", () => {
+    vi.stubEnv("PUBLIC_APP_URL", "https://app.example.com/ignored-path");
+    expect(getApplicationOrigin()).toBe("https://app.example.com");
+    expect(getSafeApplicationOrigin("https://app.example.com/login")).toBe("https://app.example.com");
+    expect(getSafeApplicationOrigin("https://attacker.example")).toBe("https://app.example.com");
   });
 
   it("builds an email with a one-time reset call to action and escapes its link", () => {
