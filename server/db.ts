@@ -1,15 +1,60 @@
 import { eq, and, like, or, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool } from "mysql2";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+type ExternalDatabaseConfig =
+  | { kind: "url"; url: string }
+  | {
+      kind: "tidb";
+      host: string;
+      port: number;
+      user: string;
+      password: string;
+      database: string;
+      ssl: { minVersion: "TLSv1.2"; rejectUnauthorized: true };
+    }
+  | null;
+
+/**
+ * TiDB Cloud’s current Connect dialog provides independent .env values. Those
+ * fields take precedence over an old DATABASE_URL to prevent a stale/manual
+ * URL from blocking the external Vercel deployment.
+ */
+export function getExternalDatabaseConfig(): ExternalDatabaseConfig {
+  const host = process.env.TIDB_HOST?.trim();
+  const user = process.env.TIDB_USER?.trim();
+  const password = process.env.TIDB_PASSWORD;
+  const database = process.env.TIDB_DATABASE?.trim();
+  if (host || user || password || database) {
+    if (!host || !user || !password || !database) return null;
+    const requestedPort = Number.parseInt(process.env.TIDB_PORT || "4000", 10);
+    return {
+      kind: "tidb",
+      host,
+      port: Number.isFinite(requestedPort) ? requestedPort : 4000,
+      user,
+      password,
+      database,
+      ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    };
+  }
+
+  const url = process.env.DATABASE_URL?.trim();
+  return url ? { kind: "url", url } : null;
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const config = getExternalDatabaseConfig();
+  if (!_db && config) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = config.kind === "url"
+        ? drizzle(config.url)
+        : drizzle({ client: createPool(config) });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

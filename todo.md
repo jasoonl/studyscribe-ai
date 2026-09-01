@@ -398,6 +398,7 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [x] Verify Vercel Google OAuth initialization uses `https://studyscribe-ai.vercel.app/api/auth/google/callback`; full account callback completion remains an account-side test.
 - [ ] Diagnose and fix the user-confirmed Vercel Google and email/password sign-in failures for an existing StudyScribe account.
 - [ ] Connect the newly created TiDB Cloud Starter instance to Vercel using a TLS-enabled `DATABASE_URL` and initialize the StudyScribe schema.
+- [x] Support TiDB Cloud’s generated `.env` connection fields directly in the database adapter so Vercel configuration does not require manual connection-string construction.
 - [ ] Restore Vercel email/password and Google authentication against the new TiDB database without weakening invite-gated account controls.
 - [ ] Plan and execute a controlled migration of existing Manus-hosted StudyScribe users and application data into the project-owned TiDB database before cutover.
 
