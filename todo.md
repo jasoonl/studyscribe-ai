@@ -392,11 +392,13 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Create a Vercel deployment from `jasoonl/studyscribe-ai`, then validate the public route and essential authentication flow.
 - [ ] Configure Vercel environment variables for the external origin, database, JWT sessions, Google OAuth, AssemblyAI, Resend, and VAPID without exposing secret values.
 - [ ] Replace or migrate Manus Forge-based file storage, default transcription, AI generation, and owner notifications before claiming full StudyScribe parity on Vercel.
+- [ ] Reconcile the Vercel environment-variable set against the portable provider requirements and remove reliance on Manus-only Forge/OAuth values.
+- [ ] Diagnose and repair the Manus deployment startup probe failure without affecting the Vercel migration work.
 
 ## True Vercel Provider Migration
 
 - [x] Select portable providers and a secure architecture for user-file storage, general transcription, AI study generation, and owner notifications.
-- [ ] Replace Manus Forge storage with an S3-compatible provider, including upload, signed download, playback, and current recording ownership controls.
+- [ ] Replace Manus Forge storage with a private Vercel Blob provider, including direct upload, signed download, playback, and current recording ownership controls; implementation is staged pending live Vercel Blob validation.
 - [ ] Replace Manus Forge Whisper transcription and LLM calls with external Vercel-compatible APIs while preserving background status, study tools, and error handling.
 - [ ] Replace Manus owner notifications with a portable provider or documented operational equivalent suitable for Vercel.
 - [ ] Add provider configuration validation, tests, Vercel secrets documentation, and migration safeguards without committing credentials.

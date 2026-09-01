@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
+import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 
 type Mode = "choose" | "record" | "upload";
 
@@ -163,11 +164,12 @@ export default function RecordOrUpload() {
     try {
       const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-      const base64String = await readAsBase64(audioBlob);
+      const directUpload = await uploadAudioDirectly(audioBlob, `recording-${Date.now()}.webm`);
+      const base64String = directUpload ? undefined : await readAsBase64(audioBlob);
       const recording = await createRecordingMutation.mutateAsync({
         title: recordingTitle,
         audience,
-        audioBase64: base64String,
+        ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration,
       });
       setUploadComplete(true);
@@ -235,11 +237,12 @@ export default function RecordOrUpload() {
 
     setIsUploadingFile(true);
     try {
-      const base64String = await readAsBase64(selectedFile);
+      const directUpload = await uploadAudioDirectly(selectedFile, selectedFile.name);
+      const base64String = directUpload ? undefined : await readAsBase64(selectedFile);
       const recording = await createRecordingMutation.mutateAsync({
         title: uploadTitle,
         audience: uploadAudience,
-        audioBase64: base64String,
+        ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration: 0,
       });
       setUploadFileComplete(true);

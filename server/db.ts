@@ -293,6 +293,16 @@ export async function getRecordingById(id: number) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getRecordingByAudioKeyForUser(audioKey: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(recordings).where(
+    and(eq(recordings.audioKey, audioKey), eq(recordings.userId, userId), eq(recordings.isDeleted, 0)),
+  ).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function getProcessingRecordings() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

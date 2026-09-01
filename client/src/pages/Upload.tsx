@@ -6,6 +6,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 
 export default function Upload() {
   // ALL hooks must be called unconditionally at the top
@@ -95,9 +96,8 @@ export default function Upload() {
     setUploadProgress(5);
 
     try {
-      // Simulate progress while reading file
-      setUploadProgress(15);
-      const base64String = await readFileAsBase64(selectedFile);
+      const directUpload = await uploadAudioDirectly(selectedFile, selectedFile.name, setUploadProgress);
+      const base64String = directUpload ? undefined : await readFileAsBase64(selectedFile);
       setUploadProgress(40);
 
       setUploadPhase("transcribing");
@@ -106,7 +106,7 @@ export default function Upload() {
       const recording = await createRecordingMutation.mutateAsync({
         title,
         audience,
-        audioBase64: base64String,
+        ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration: 0,
       });
 

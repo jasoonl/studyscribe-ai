@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings } from "./db";
-import { storagePut, storageGetSignedUrl } from "./storage";
+import { storageGet, storagePut, storageGetSignedUrl } from "./storage";
 import { transcribeWithSpeakerDiarization } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
@@ -81,14 +81,16 @@ export const appRouter = router({
         title: z.string().min(1),
         description: z.string().optional(),
         audience: z.enum(["student", "professional"]),
-        audioBase64: z.string(),
+        audioBase64: z.string().optional(),
+        audioUpload: z.object({
+          key: z.string().min(1).max(512),
+          mimeType: z.string().min(1).max(100),
+        }).optional(),
         duration: z.number().optional(),
+      }).refine((value) => Boolean(value.audioBase64 || value.audioUpload), {
+        message: "Audio data is required",
       }))
       .mutation(async ({ input, ctx }) => {
-        // Extract MIME type from DataURL header
-        const mimeMatch = input.audioBase64.match(/^data:([^;]+);/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
-        
         // Map MIME types to file extensions
         const mimeToExt: Record<string, string> = {
           'audio/mpeg': 'mp3',
@@ -105,16 +107,30 @@ export const appRouter = router({
           'video/webm': 'webm',
         };
         
-        // Use fallback extension instead of throwing — Whisper handles most audio formats
-        const extension = mimeToExt[mimeType] || 'mp3';
-        
-        // Convert base64 to buffer
-        const base64Data = input.audioBase64.split(',')[1] || input.audioBase64;
-        const audioBuffer = Buffer.from(base64Data, 'base64');
-        
-        // Upload audio to S3 with correct format
-        const fileKeyInput = `${ctx.user.id}/recordings/${Date.now()}.${extension}`;
-        const { url: audioUrl, key: actualFileKey } = await storagePut(fileKeyInput, audioBuffer, mimeType);
+        let mimeType: string;
+        let audioUrl: string;
+        let actualFileKey: string;
+
+        if (input.audioUpload) {
+          if (!input.audioUpload.key.startsWith(`${ctx.user.id}/recordings/`)) {
+            throw new Error("Invalid recording upload reference");
+          }
+          if (!mimeToExt[input.audioUpload.mimeType]) {
+            throw new Error("Unsupported recording format");
+          }
+          mimeType = input.audioUpload.mimeType;
+          actualFileKey = input.audioUpload.key;
+          ({ url: audioUrl } = await storageGet(actualFileKey));
+        } else {
+          const audioBase64 = input.audioBase64!;
+          const mimeMatch = audioBase64.match(/^data:([^;]+);/);
+          mimeType = mimeMatch ? mimeMatch[1] : "audio/wav";
+          const extension = mimeToExt[mimeType] || "mp3";
+          const base64Data = audioBase64.split(",")[1] || audioBase64;
+          const audioBuffer = Buffer.from(base64Data, "base64");
+          const fileKeyInput = `${ctx.user.id}/recordings/${Date.now()}.${extension}`;
+          ({ url: audioUrl, key: actualFileKey } = await storagePut(fileKeyInput, audioBuffer, mimeType));
+        }
 
         // Create recording in database
         await createRecording({
