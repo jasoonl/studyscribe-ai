@@ -394,6 +394,7 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Replace or migrate Manus Forge-based file storage, default transcription, AI generation, and owner notifications before claiming full StudyScribe parity on Vercel.
 - [ ] Reconcile the Vercel environment-variable set against the portable provider requirements and remove reliance on Manus-only Forge/OAuth values.
 - [x] Diagnose and repair the Manus deployment startup probe failure without affecting the Vercel migration work; the direct-entry bootstrap fix is deployed and the managed service is healthy.
+- [ ] Diagnose and repair the Vercel redeployment failure where `npm run build` exits with code 127; root cause identified: `NODE_ENV=production` omitted Vite from the npm build install, and the repair is pending Vercel verification.
 
 ## True Vercel Provider Migration
 
