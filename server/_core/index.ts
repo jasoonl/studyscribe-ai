@@ -8,7 +8,6 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerAuthRoutes } from "../authRoutes";
 import { appRouter, resumeProcessingRecordings } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -57,9 +56,15 @@ export function createApp() {
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     const server = createServer(app);
-    setupVite(app, server).catch(console.error);
-  } else {
-    serveStatic(app);
+    import("./vite")
+      .then(({ setupVite }) => setupVite(app, server))
+      .catch(console.error);
+  } else if (!process.env.VERCEL) {
+    // Vercel serves dist/public itself. Keeping this import out of its function bundle
+    // avoids carrying Vite/Rollup production dependencies into the runtime.
+    import("./vite")
+      .then(({ serveStatic }) => serveStatic(app))
+      .catch(console.error);
   }
   
   return app;
