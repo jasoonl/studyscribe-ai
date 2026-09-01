@@ -25,20 +25,28 @@ type ExternalDatabaseConfig =
  * URL from blocking the external Vercel deployment.
  */
 export function getExternalDatabaseConfig(): ExternalDatabaseConfig {
-  const host = process.env.TIDB_HOST?.trim();
-  const user = process.env.TIDB_USER?.trim();
-  const password = process.env.TIDB_PASSWORD;
-  const database = process.env.TIDB_DATABASE?.trim();
-  if (host || user || password || database) {
-    if (!host || !user || !password || !database) return null;
-    const requestedPort = Number.parseInt(process.env.TIDB_PORT || "4000", 10);
+  const getTiDbFields = (prefix: "TIDB" | "DB") => ({
+    host: process.env[`${prefix}_HOST`]?.trim(),
+    port: process.env[`${prefix}_PORT`],
+    user: process.env[`${prefix}_USER`]?.trim() || process.env[`${prefix}_USERNAME`]?.trim(),
+    password: process.env[`${prefix}_PASSWORD`],
+    database: process.env[`${prefix}_DATABASE`]?.trim() || process.env[`${prefix}_DB_NAME`]?.trim(),
+  });
+  const tidbFields = getTiDbFields("TIDB");
+  const dbFields = getTiDbFields("DB");
+  const fields = tidbFields.host || tidbFields.user || tidbFields.password || tidbFields.database
+    ? tidbFields
+    : dbFields;
+  if (fields.host || fields.user || fields.password || fields.database) {
+    if (!fields.host || !fields.user || !fields.password || !fields.database) return null;
+    const requestedPort = Number.parseInt(fields.port || "4000", 10);
     return {
       kind: "tidb",
-      host,
+      host: fields.host,
       port: Number.isFinite(requestedPort) ? requestedPort : 4000,
-      user,
-      password,
-      database,
+      user: fields.user,
+      password: fields.password,
+      database: fields.database,
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     };
   }

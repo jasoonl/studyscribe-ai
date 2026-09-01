@@ -6,7 +6,7 @@ afterEach(() => {
 });
 
 describe("external database configuration", () => {
-  it("prefers the complete TiDB Cloud environment fields and enforces TLS", () => {
+  it("prefers the complete TIDB-prefixed environment fields and enforces TLS", () => {
     vi.stubEnv("DATABASE_URL", "mysql://stale.example/old");
     vi.stubEnv("TIDB_HOST", "gateway01.us-east-1.prod.aws.tidbcloud.com");
     vi.stubEnv("TIDB_PORT", "4000");
@@ -25,8 +25,26 @@ describe("external database configuration", () => {
     });
   });
 
+  it("accepts TiDB Cloud's DB-prefixed .env names", () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("TIDB_HOST", "");
+    vi.stubEnv("DB_HOST", "gateway01.us-east-1.prod.aws.tidbcloud.com");
+    vi.stubEnv("DB_PORT", "4000");
+    vi.stubEnv("DB_USERNAME", "prefix.root");
+    vi.stubEnv("DB_PASSWORD", "provider-password");
+    vi.stubEnv("DB_DATABASE", "sys");
+
+    expect(getExternalDatabaseConfig()).toMatchObject({
+      kind: "tidb",
+      host: "gateway01.us-east-1.prod.aws.tidbcloud.com",
+      user: "prefix.root",
+      database: "sys",
+    });
+  });
+
   it("uses DATABASE_URL where TiDB fields have not been configured", () => {
     vi.stubEnv("TIDB_HOST", "");
+    vi.stubEnv("DB_HOST", "");
     vi.stubEnv("DATABASE_URL", "mysql://user:pass@example.com:3306/app");
     expect(getExternalDatabaseConfig()).toEqual({ kind: "url", url: "mysql://user:pass@example.com:3306/app" });
   });

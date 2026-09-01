@@ -1,10 +1,18 @@
 import { defineConfig } from "drizzle-kit";
 
 function resolveDatabaseUrl(): string {
-  const host = process.env.TIDB_HOST?.trim();
-  const user = process.env.TIDB_USER?.trim();
-  const password = process.env.TIDB_PASSWORD;
-  const database = process.env.TIDB_DATABASE?.trim();
+  const getTiDbFields = (prefix: "TIDB" | "DB") => ({
+    host: process.env[`${prefix}_HOST`]?.trim(),
+    port: process.env[`${prefix}_PORT`],
+    user: process.env[`${prefix}_USER`]?.trim() || process.env[`${prefix}_USERNAME`]?.trim(),
+    password: process.env[`${prefix}_PASSWORD`],
+    database: process.env[`${prefix}_DATABASE`]?.trim() || process.env[`${prefix}_DB_NAME`]?.trim(),
+  });
+  const tidbFields = getTiDbFields("TIDB");
+  const dbFields = getTiDbFields("DB");
+  const { host, port, user, password, database } = tidbFields.host || tidbFields.user || tidbFields.password || tidbFields.database
+    ? tidbFields
+    : dbFields;
 
   // TiDB Cloud's current Connect dialog supplies independent .env values.
   // These take precedence so migrations and the runtime use the same database.
@@ -14,7 +22,7 @@ function resolveDatabaseUrl(): string {
     }
     const url = new URL("mysql://tidb.local");
     url.hostname = host;
-    url.port = process.env.TIDB_PORT || "4000";
+    url.port = port || "4000";
     url.username = user;
     url.password = password;
     url.pathname = `/${database}`;
