@@ -393,7 +393,7 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Configure Vercel environment variables for the external origin, database, JWT sessions, Google OAuth, AssemblyAI, Resend, and VAPID without exposing secret values.
 - [ ] Replace or migrate Manus Forge-based file storage, default transcription, AI generation, and owner notifications before claiming full StudyScribe parity on Vercel.
 - [ ] Reconcile the Vercel environment-variable set against the portable provider requirements and remove reliance on Manus-only Forge/OAuth values.
-- [ ] Diagnose and repair the Manus deployment startup probe failure without affecting the Vercel migration work.
+- [ ] Diagnose and repair the Manus deployment startup probe failure without affecting the Vercel migration work; production bootstrap hardening is staged pending deployment validation.
 
 ## True Vercel Provider Migration
 

@@ -303,6 +303,22 @@ export async function getRecordingByAudioKeyForUser(audioKey: string, userId: nu
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getRecordingByTranscriptionProviderId(transcriptionProviderId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(recordings).where(
+    eq(recordings.transcriptionProviderId, transcriptionProviderId),
+  ).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function setRecordingTranscriptionProviderId(recordingId: number, transcriptionProviderId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(recordings).set({ transcriptionProviderId }).where(eq(recordings.id, recordingId));
+}
+
 export async function getProcessingRecordings() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

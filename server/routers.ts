@@ -3,9 +3,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl } from "./storage";
-import { transcribeWithSpeakerDiarization } from "./speakerDiarization";
+import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
@@ -151,12 +151,24 @@ export const appRouter = router({
           throw new Error("Failed to create recording");
         }
 
-        // Start transcription in background (fire and forget)
-        // Pass the audioKey and mimeType so we can get a signed URL for server-side transcription
-        console.log(`[Upload] Starting background transcription for recording ${recording.id}, mimeType: ${mimeType}`);
-        transcribeRecordingInBackground(recording.id, actualFileKey, input.audience, mimeType).catch(err => {
-          console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
-        });
+        // Vercel uses an authenticated provider webhook; Manus retains the tested
+        // in-process fallback while external provider settings are being completed.
+        if (isAssemblyAiWebhookConfigured()) {
+          try {
+            const signedUrl = await storageGetSignedUrl(actualFileKey);
+            const webhookUrl = new URL("/api/webhooks/assemblyai", process.env.PUBLIC_APP_URL).toString();
+            const { providerId } = await submitSpeakerDiarization({ audioUrl: signedUrl, webhookUrl });
+            await setRecordingTranscriptionProviderId(recording.id, providerId);
+          } catch (error) {
+            await updateRecordingStatus(recording.id, "failed");
+            throw error;
+          }
+        } else {
+          console.log(`[Upload] Starting background transcription for recording ${recording.id}, mimeType: ${mimeType}`);
+          transcribeRecordingInBackground(recording.id, actualFileKey, input.audience, mimeType).catch(err => {
+            console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
+          });
+        }
 
         return recording;
       }),
@@ -991,6 +1003,7 @@ export async function resumeProcessingRecordings(): Promise<void> {
   const processing = await getProcessingRecordings();
   for (const recording of processing) {
     if (!recording.audioKey) continue;
+    if (recording.transcriptionProviderId) continue;
     transcribeRecordingInBackground(recording.id, recording.audioKey, recording.audience ?? "student").catch((error) => {
       console.error(`[Transcription] Recovery failed for recording ${recording.id}:`, error);
     });

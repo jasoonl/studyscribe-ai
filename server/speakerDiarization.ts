@@ -19,6 +19,11 @@ type AssemblyAiTranscript = {
   utterances?: AssemblyAiUtterance[];
 };
 
+export type AssemblyAiWebhookPayload = {
+  transcript_id: string;
+  status: "completed" | "error";
+};
+
 export type SpeakerSegment = {
   id: string;
   start: number;
@@ -30,6 +35,10 @@ export type SpeakerSegment = {
 
 export function isSpeakerDiarizationConfigured() {
   return Boolean(process.env.ASSEMBLYAI_API_KEY);
+}
+
+export function isAssemblyAiWebhookConfigured() {
+  return Boolean(process.env.ASSEMBLYAI_API_KEY && process.env.ASSEMBLYAI_WEBHOOK_SECRET && process.env.PUBLIC_APP_URL);
 }
 
 export function normalizeDiarizedSegments(utterances: AssemblyAiUtterance[]): SpeakerSegment[] {
@@ -67,11 +76,7 @@ export async function transcribeWithSpeakerDiarization(input: { audioUrl: string
   const createResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
     method: "POST",
     headers: { ...getHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      audio_url: input.audioUrl,
-      language_detection: true,
-      speaker_labels: true,
-    }),
+    body: JSON.stringify({ audio_url: input.audioUrl, language_detection: true, speaker_labels: true }),
   });
   const created = await readJson(createResponse);
   if (!createResponse.ok || !created.id) {
@@ -80,29 +85,51 @@ export async function transcribeWithSpeakerDiarization(input: { audioUrl: string
 
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const resultResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${created.id}`, {
-      headers: getHeaders(),
-    });
+    const resultResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${created.id}`, { headers: getHeaders() });
     const result = await readJson(resultResponse);
-    if (!resultResponse.ok) {
-      throw new Error(`Speaker diarization result check failed with ${resultResponse.status}`);
-    }
+    if (!resultResponse.ok) throw new Error(`Speaker diarization result check failed with ${resultResponse.status}`);
     if (result.status === "completed" && result.text) {
       const segments = normalizeDiarizedSegments(result.utterances ?? []);
-      if (segments.length === 0) {
-        throw new Error("Speaker diarization completed without speaker-labeled utterances");
-      }
-      return {
-        text: result.text,
-        language: result.language_code ?? "en",
-        segments,
-      };
+      if (segments.length === 0) throw new Error("Speaker diarization completed without speaker-labeled utterances");
+      return { text: result.text, language: result.language_code ?? "en", segments };
     }
-    if (result.status === "error") {
-      throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
-    }
+    if (result.status === "error") throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
     await wait(POLL_INTERVAL_MS);
   }
-
   throw new Error("Speaker diarization timed out while processing this recording");
+}
+
+export async function submitSpeakerDiarization(input: { audioUrl: string; webhookUrl: string }) {
+  if (!isAssemblyAiWebhookConfigured()) {
+    throw new Error("AssemblyAI webhook transcription is not configured");
+  }
+  const createResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
+    method: "POST",
+    headers: { ...getHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      audio_url: input.audioUrl,
+      language_detection: true,
+      speaker_labels: true,
+      webhook_url: input.webhookUrl,
+      webhook_auth_header_name: "X-StudyScribe-Webhook-Secret",
+      webhook_auth_header_value: process.env.ASSEMBLYAI_WEBHOOK_SECRET,
+    }),
+  });
+  const created = await readJson(createResponse);
+  if (!createResponse.ok || !created.id) {
+    throw new Error(`Speaker diarization request failed with ${createResponse.status}`);
+  }
+  return { providerId: created.id };
+}
+
+export async function retrieveSpeakerDiarization(providerId: string) {
+  const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${providerId}`, { headers: getHeaders() });
+  const result = await readJson(response);
+  if (!response.ok) throw new Error(`Speaker diarization result check failed with ${response.status}`);
+  if (result.status === "error") throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
+  if (result.status !== "completed" || !result.text) throw new Error("Speaker diarization result is not ready");
+
+  const segments = normalizeDiarizedSegments(result.utterances ?? []);
+  if (segments.length === 0) throw new Error("Speaker diarization completed without speaker-labeled utterances");
+  return { text: result.text, language: result.language_code ?? "en", segments };
 }

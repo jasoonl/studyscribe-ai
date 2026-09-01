@@ -5,6 +5,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerAuthRoutes } from "../authRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { handleAssemblyAiWebhook } from "../transcriptionWebhook";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -20,6 +21,7 @@ export function createApp() {
     res.status(200).json({ status: "ok" });
   });
 
+  app.post("/api/webhooks/assemblyai", handleAssemblyAiWebhook);
   registerStorageProxy(app);
   registerAuthRoutes(app);
   registerOAuthRoutes(app);

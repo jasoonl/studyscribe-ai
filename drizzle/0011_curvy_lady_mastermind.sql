@@ -1,0 +1,2 @@
+ALTER TABLE `recordings` ADD `transcriptionProviderId` varchar(128);--> statement-breakpoint
+ALTER TABLE `recordings` ADD CONSTRAINT `recordings_transcriptionProviderId_unique` UNIQUE(`transcriptionProviderId`);
