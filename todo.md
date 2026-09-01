@@ -393,13 +393,13 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Configure Vercel environment variables for the external origin, database, JWT sessions, Google OAuth, AssemblyAI, Resend, and VAPID without exposing secret values.
 - [ ] Replace or migrate Manus Forge-based file storage, default transcription, AI generation, and owner notifications before claiming full StudyScribe parity on Vercel.
 - [ ] Reconcile the Vercel environment-variable set against the portable provider requirements and remove reliance on Manus-only Forge/OAuth values.
-- [ ] Diagnose and repair the Manus deployment startup probe failure without affecting the Vercel migration work; production bootstrap hardening is staged pending deployment validation.
+- [x] Diagnose and repair the Manus deployment startup probe failure without affecting the Vercel migration work; the direct-entry bootstrap fix is deployed and the managed service is healthy.
 
 ## True Vercel Provider Migration
 
 - [x] Select portable providers and a secure architecture for user-file storage, general transcription, AI study generation, and owner notifications.
 - [ ] Replace Manus Forge storage with a private Vercel Blob provider, including direct upload, signed download, playback, and current recording ownership controls; implementation is staged pending live Vercel Blob validation.
-- [ ] Replace Manus Forge Whisper transcription and LLM calls with external Vercel-compatible APIs while preserving background status, study tools, and error handling.
-- [ ] Replace Manus owner notifications with a portable provider or documented operational equivalent suitable for Vercel.
+- [ ] Replace Manus Forge Whisper transcription and LLM calls with external Vercel-compatible APIs while preserving background status, study tools, and error handling; the OpenAI-compatible AI adapter is staged pending a configured project-owned key.
+- [ ] Replace Manus owner notifications with a portable provider or documented operational equivalent suitable for Vercel; secure outbound webhook support is staged pending the owner’s chosen endpoint.
 - [ ] Add provider configuration validation, tests, Vercel secrets documentation, and migration safeguards without committing credentials.
 - [ ] Validate recordings, uploads, transcription, study tools, email/password login, Google OAuth, notifications, speaker labels, and browser push on the Vercel deployment.
