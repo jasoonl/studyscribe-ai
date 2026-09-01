@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "pnpm build",
-  "installCommand": "corepack enable && pnpm install --no-frozen-lockfile",
+  "installCommand": "npm install --global pnpm@10.15.1 && pnpm install --no-frozen-lockfile",
   "framework": null,
   "outputDirectory": "dist/public",
   "functions": {
