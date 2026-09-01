@@ -399,6 +399,8 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Diagnose and fix the user-confirmed Vercel Google and email/password sign-in failures for an existing StudyScribe account.
 - [ ] Connect the newly created TiDB Cloud Starter instance to Vercel using a TLS-enabled `DATABASE_URL` and initialize the StudyScribe schema.
 - [x] Support TiDB Cloud’s generated `.env` connection fields directly in the database adapter so Vercel configuration does not require manual connection-string construction.
+- [ ] Diagnose and repair the Vercel TiDB migration-build failure after the generated environment fields are configured; Drizzle now derives its migration URL from those fields and awaits redeployment validation.
+- [x] Compare the repeated Vercel TiDB migration failure against the prior build log and isolate the exact unresolved configuration field or schema fault: runtime used TiDB fields, but Drizzle migration still required `DATABASE_URL`.
 - [ ] Restore Vercel email/password and Google authentication against the new TiDB database without weakening invite-gated account controls.
 - [ ] Plan and execute a controlled migration of existing Manus-hosted StudyScribe users and application data into the project-owned TiDB database before cutover.
 
