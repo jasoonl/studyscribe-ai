@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build",
-  "installCommand": "npm install --global pnpm@10.15.1 && pnpm install --no-frozen-lockfile",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --no-audit --no-fund",
   "framework": null,
   "outputDirectory": "dist/public",
   "functions": {
