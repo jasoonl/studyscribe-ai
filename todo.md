@@ -381,3 +381,12 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [x] Harden portable runtime configuration, health checks, build/start scripts, public-origin handling, and deployment documentation without migrating production yet.
 - [x] Run automated checks and review authenticated browser flows, documenting provider- and account-dependent external-host checks; external-host feature execution remains pending platform selection.
 - [x] Prepare a platform comparison and migration runbook for Railway and Render; do not select or migrate until the user chooses a platform and supplies account/domain configuration.
+- [ ] Fix Render Google OAuth so completed sign-in returns to the Render origin rather than the Manus domain.
+- [ ] Diagnose Render email/password sign-in against the intended production user database and session secret.
+- [ ] Document the exact Render environment variables and Google Cloud Console callback settings required for the corrected authentication flow.
+
+## Vercel Hosting Deployment
+
+- [x] Inspect the configured Vercel connector and determine whether the current application can run safely as Vercel serverless functions.
+- [x] Adapt the deployment configuration for Vercel without exposing secrets or changing the active Manus deployment.
+- [ ] Create a Vercel deployment from `jasoonl/studyscribe-ai`, then validate the public route and essential authentication flow.

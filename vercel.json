@@ -1,7 +1,19 @@
 {
   "version": 2,
-  "buildCommand": "rm -rf node_modules && pnpm build",
-  "installCommand": "npm install -g pnpm@10.4.1 && pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm build",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
   "framework": null,
-  "outputDirectory": "."
+  "outputDirectory": "dist/public",
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.mjs" },
+    { "src": "/manus-storage/(.*)", "dest": "/api/index.mjs" },
+    { "src": "/healthz", "dest": "/api/index.mjs" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
