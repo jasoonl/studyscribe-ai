@@ -49,6 +49,16 @@ Add secrets through the chosen host’s secret/environment interface. Never comm
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Server | Browser push delivery | The private key is server-only; the public key is returned through the protected configuration procedure |
 | `VITE_ANALYTICS_ENDPOINT`, `VITE_ANALYTICS_WEBSITE_ID` | Build | Optional analytics | Verify that the endpoint accepts the new origin |
 
+### TiDB Cloud connection correction
+
+The Vercel authentication logs confirmed that the configured database endpoint is reachable but rejects the database credentials. For TiDB Cloud Starter and Essential, the database username must include the instance-specific prefix supplied in the **Connect** dialog, for example `prefix.root`; an unprefixed `root` username is not valid. TiDB Cloud also requires a TLS-enabled connection. Copy the complete connection string from the target TiDB Cloud instance’s **Connect** dialog and replace `DATABASE_URL` in Vercel as one server-only secret. Do not assemble the URL manually or share it in chat. After saving it for Production, redeploy before testing sign-in again. [1]
+
+### First deployment to a new project-owned TiDB instance
+
+For an empty TiDB instance, set the server-only Vercel variable `RUN_DB_MIGRATIONS=true` for the Production environment in the same deployment as the new `DATABASE_URL`. The Vercel build configuration will run the committed, versioned Drizzle migrations before building the application. The migration runner records applied versions in the database, so a later redeploy does not repeat the applied schema changes. After the deployment is **Ready**, delete `RUN_DB_MIGRATIONS` or change it to `false` and redeploy once more; this leaves ordinary application builds free of schema-migration work.
+
+[1]: https://docs.pingcap.com/tidbcloud/select-cluster-tier#user-name-prefix "TiDB Cloud — User name prefix"
+
 ## Google sign-in cutover checklist
 
 Before testing Google sign-in on the external host, set `PUBLIC_APP_URL` to the exact HTTPS deployment origin. In Google Cloud Console, add the exact callback URL:

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "if [ \"$RUN_DB_MIGRATIONS\" = \"true\" ]; then npm run db:migrate; fi && npm run build",
   "installCommand": "npm install --include=dev --no-audit --no-fund",
   "framework": null,
   "outputDirectory": "dist/public",
