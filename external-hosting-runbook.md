@@ -51,11 +51,13 @@ Add secrets through the chosen host’s secret/environment interface. Never comm
 
 ### TiDB Cloud connection correction
 
+> **Current Vercel migration status:** The official TiDB Cloud Vercel integration has been approved with access restricted to the `studyscribe-ai` project and is awaiting the provider-side cluster/database link. Complete that setup before relying on integration-managed `TIDB_*` variables. Keep the existing manual `DB_*` variables until a successful Vercel deployment confirms that the integration credentials and schema migration work.
+
 The Vercel authentication logs confirmed that the configured database endpoint is reachable but rejects the database credentials. For TiDB Cloud Starter and Essential, the database username must include the instance-specific prefix supplied in the **Connect** dialog, for example `prefix.root`; an unprefixed `root` username is not valid. TiDB Cloud also requires a TLS-enabled connection. Copy the complete connection string from the target TiDB Cloud instance’s **Connect** dialog and replace `DATABASE_URL` in Vercel as one server-only secret. Do not assemble the URL manually or share it in chat. After saving it for Production, redeploy before testing sign-in again. [1]
 
 ### First deployment to a new project-owned TiDB instance
 
-For an empty TiDB instance, set the server-only Vercel variable `RUN_DB_MIGRATIONS=true` for the Production environment in the same deployment as the new `DATABASE_URL`. The Vercel build configuration will run the committed, versioned Drizzle migrations before building the application. The migration runner records applied versions in the database, so a later redeploy does not repeat the applied schema changes. After the deployment is **Ready**, delete `RUN_DB_MIGRATIONS` or change it to `false` and redeploy once more; this leaves ordinary application builds free of schema-migration work.
+For an empty TiDB instance, do **not** run schema migrations during Vercel’s build process. External database network diagnostics are difficult to recover from there and can prevent an otherwise healthy web deployment from being published. Use the controlled post-deploy initialization workflow documented with the Vercel migration release instead. The migration runner records applied versions in the database, so a later controlled run does not repeat applied schema changes.
 
 [1]: https://docs.pingcap.com/tidbcloud/select-cluster-tier#user-name-prefix "TiDB Cloud — User name prefix"
 

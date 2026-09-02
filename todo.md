@@ -401,6 +401,10 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [x] Support TiDB Cloud’s generated `.env` connection fields directly in the database adapter so Vercel configuration does not require manual connection-string construction.
 - [ ] Diagnose and repair the Vercel TiDB migration-build failure after the generated environment fields are configured; root cause identified: TiDB supplied `DB_*` names while the adapter initially expected `TIDB_*`, and alias support is pending redeployment validation.
 - [x] Compare the repeated Vercel TiDB migration failure against the prior build log and isolate the exact unresolved configuration field or schema fault: runtime used TiDB fields, but Drizzle migration still required `DATABASE_URL`.
+- [ ] Verify the effective TiDB firewall rule and database credential after the Vercel migration retry continued to return access denied.
+- [ ] Bypass the stalled Vercel Marketplace TiDB handoff and verify the existing manual `DB_*` configuration against the selected TiDB instance.
+- [ ] Replace the repeated build-time TiDB migration attempt with a controlled serverless initialization path if the latest diagnostics confirm build-time networking is the blocker.
+- [x] Remove the fragile build-time database migration from the Vercel build command so deployments are not blocked by schema initialization.
 - [ ] Restore Vercel email/password and Google authentication against the new TiDB database without weakening invite-gated account controls.
 - [ ] Plan and execute a controlled migration of existing Manus-hosted StudyScribe users and application data into the project-owned TiDB database before cutover.
 
