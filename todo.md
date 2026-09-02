@@ -416,3 +416,4 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Replace Manus owner notifications with a portable provider or documented operational equivalent suitable for Vercel; secure outbound webhook support is staged pending the owner’s chosen endpoint.
 - [ ] Add provider configuration validation, tests, Vercel secrets documentation, and migration safeguards without committing credentials.
 - [ ] Validate recordings, uploads, transcription, study tools, email/password login, Google OAuth, notifications, speaker labels, and browser push on the Vercel deployment.
+- [x] Fix the Vercel schema validation error caused by array-shaped functions.includeFiles; use a single valid glob string and redeploy. Local JSON validation, TypeScript, tests, and production build pass.
