@@ -17,4 +17,10 @@ describe("AssemblyAI webhook authorization", () => {
     vi.stubEnv("ASSEMBLYAI_WEBHOOK_SECRET", "");
     expect(isValidAssemblyAiWebhookSecret("anything")).toBe(false);
   });
+
+  it("accepts the securely injected project secret when available", () => {
+    const configuredSecret = process.env.ASSEMBLYAI_WEBHOOK_SECRET;
+    expect(configuredSecret, "ASSEMBLYAI_WEBHOOK_SECRET must be configured for this project").toBeTruthy();
+    expect(isValidAssemblyAiWebhookSecret(configuredSecret)).toBe(true);
+  });
 });

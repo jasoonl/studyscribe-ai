@@ -1,0 +1,57 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import express from "express";
+
+vi.mock("./db", () => ({
+  getDb: vi.fn(async () => null),
+}));
+
+import { registerSchemaInitRoute } from "./schemaInit";
+
+const originalEnabled = process.env.SCHEMA_INIT_ENABLED;
+const originalToken = process.env.SCHEMA_INIT_TOKEN;
+
+afterEach(() => {
+  if (originalEnabled === undefined) delete process.env.SCHEMA_INIT_ENABLED;
+  else process.env.SCHEMA_INIT_ENABLED = originalEnabled;
+  if (originalToken === undefined) delete process.env.SCHEMA_INIT_TOKEN;
+  else process.env.SCHEMA_INIT_TOKEN = originalToken;
+});
+
+async function request(path: string, token?: string) {
+  const app = express();
+  registerSchemaInitRoute(app);
+  const server = app.listen(0);
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Test server did not bind");
+  try {
+    return await fetch(`http://127.0.0.1:${address.port}${path}`, {
+      method: "POST",
+      headers: token ? { "x-schema-init-token": token } : undefined,
+    });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+}
+
+describe("schema initialization route", () => {
+  it("is not discoverable unless explicitly enabled", async () => {
+    delete process.env.SCHEMA_INIT_ENABLED;
+    const response = await request("/api/admin/initialize-database");
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects an invalid token before touching the database", async () => {
+    process.env.SCHEMA_INIT_ENABLED = "true";
+    process.env.SCHEMA_INIT_TOKEN = "expected-token";
+    const response = await request("/api/admin/initialize-database", "wrong-token");
+    expect(response.status).toBe(401);
+  });
+
+  it("authenticates with the securely injected schema token before checking database readiness", async () => {
+    const configuredToken = process.env.SCHEMA_INIT_TOKEN;
+    expect(configuredToken, "SCHEMA_INIT_TOKEN must be configured for this project").toBeTruthy();
+    process.env.SCHEMA_INIT_ENABLED = "true";
+    const response = await request("/api/admin/initialize-database", configuredToken);
+    expect(response.status).toBe(503);
+  });
+});

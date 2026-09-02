@@ -33,6 +33,8 @@ Add secrets through the chosen host’s secret/environment interface. Never comm
 | `PORT` | Runtime | All deployments | Let Railway/Render inject this; do not set a fixed value |
 | `PUBLIC_APP_URL` | Server | Auth and reset links | Set to the final HTTPS origin, including custom domain and no trailing path |
 | `DATABASE_URL` | Server | Login, recordings, study tools, notifications | MySQL/TiDB connection string; use the provider’s TLS-enabled form |
+| `SCHEMA_INIT_ENABLED` | Server, temporary | First TiDB schema initialization | Set to `true` only for the single initialization window, then disable/remove |
+| `SCHEMA_INIT_TOKEN` | Server, temporary | First TiDB schema initialization | Generate a strong random token; send only in the `x-schema-init-token` header, then rotate/remove |
 | `JWT_SECRET` | Server | Custom sessions | Generate a new strong value for a new environment; do not reuse casually |
 | `GOOGLE_CLIENT_ID` | Server | Google sign-in | Register the exact external-host origin and callback |
 | `GOOGLE_CLIENT_SECRET` | Server | Google sign-in | Server-only |
@@ -58,6 +60,8 @@ The Vercel authentication logs confirmed that the configured database endpoint i
 ### First deployment to a new project-owned TiDB instance
 
 For an empty TiDB instance, do **not** run schema migrations during Vercel’s build process. External database network diagnostics are difficult to recover from there and can prevent an otherwise healthy web deployment from being published. Use the controlled post-deploy initialization workflow documented with the Vercel migration release instead. The migration runner records applied versions in the database, so a later controlled run does not repeat applied schema changes.
+
+The Vercel release includes `POST /api/admin/initialize-database`. It is disabled unless `SCHEMA_INIT_ENABLED=true`, requires the server-only `SCHEMA_INIT_TOKEN` in the `x-schema-init-token` header, and writes a private marker after the migration completes. Configure both variables for the Production environment, call the endpoint once with the token kept out of logs and source control, confirm the `initialized` response, then immediately remove or disable `SCHEMA_INIT_ENABLED` and rotate/remove the initializer token. A repeat call returns a conflict rather than rerunning the initialization. If the request fails, preserve the response and Vercel function logs; do not retry repeatedly against an unknown database state.
 
 [1]: https://docs.pingcap.com/tidbcloud/select-cluster-tier#user-name-prefix "TiDB Cloud — User name prefix"
 
