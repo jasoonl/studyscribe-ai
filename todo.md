@@ -389,7 +389,7 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 
 - [x] Inspect the configured Vercel connector and determine whether the current application can run safely as Vercel serverless functions.
 - [x] Adapt the deployment configuration for Vercel without exposing secrets or changing the active Manus deployment.
-- [ ] Create a Vercel deployment from `jasoonl/studyscribe-ai`, then validate the public route and essential authentication flow.
+- [x] Create a Vercel deployment from `jasoonl/studyscribe-ai`, then validate the public route and essential authentication flow. Current deployment is Ready; `/healthz` returns 200, `/api/auth/me` correctly returns 401 without a session, and the Google OAuth start endpoint returns a callback on the Vercel origin. Credential-backed sign-in remains an account-side test.
 - [ ] Configure Vercel environment variables for the external origin, database, JWT sessions, Google OAuth, AssemblyAI, Resend, and VAPID without exposing secret values.
 - [ ] Replace or migrate Manus Forge-based file storage, default transcription, AI generation, and owner notifications before claiming full StudyScribe parity on Vercel.
 - [ ] Reconcile the Vercel environment-variable set against the portable provider requirements and remove reliance on Manus-only Forge/OAuth values.
@@ -417,3 +417,4 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Add provider configuration validation, tests, Vercel secrets documentation, and migration safeguards without committing credentials.
 - [ ] Validate recordings, uploads, transcription, study tools, email/password login, Google OAuth, notifications, speaker labels, and browser push on the Vercel deployment.
 - [x] Fix the Vercel schema validation error caused by array-shaped functions.includeFiles; use a single valid glob string and redeploy. Local JSON validation, TypeScript, tests, and production build pass.
+- [x] Remove the internal `kind` discriminator before passing TiDB connection options to MySQL2 so production logs stay warning-free. Regression coverage and full TypeScript, Vitest, and production build checks pass.

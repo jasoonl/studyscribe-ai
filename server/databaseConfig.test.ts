@@ -1,7 +1,20 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { getExternalDatabaseConfig } from "./db";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { createPool } from "mysql2";
+import { getDb, getExternalDatabaseConfig } from "./db";
+
+vi.mock("mysql2", () => ({
+  createPool: vi.fn(() => ({
+    end: vi.fn(),
+    query: vi.fn(),
+  })),
+}));
+
+vi.mock("drizzle-orm/mysql2", () => ({
+  drizzle: vi.fn((input: unknown) => input),
+}));
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.unstubAllEnvs();
 });
 
@@ -56,5 +69,27 @@ describe("external database configuration", () => {
     vi.stubEnv("TIDB_PASSWORD", "");
     vi.stubEnv("TIDB_DATABASE", "sys");
     expect(getExternalDatabaseConfig()).toBeNull();
+  });
+
+  it("does not forward the internal kind discriminator to MySQL2", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("TIDB_HOST", "gateway.example");
+    vi.stubEnv("TIDB_PORT", "4000");
+    vi.stubEnv("TIDB_USER", "prefix.root");
+    vi.stubEnv("TIDB_PASSWORD", "provider-password");
+    vi.stubEnv("TIDB_DATABASE", "sys");
+
+    await getDb();
+
+    expect(createPool).toHaveBeenCalledOnce();
+    expect(createPool).toHaveBeenCalledWith({
+      host: "gateway.example",
+      port: 4000,
+      user: "prefix.root",
+      password: "provider-password",
+      database: "sys",
+      ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    });
+    expect((createPool as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).not.toHaveProperty("kind");
   });
 });

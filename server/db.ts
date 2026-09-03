@@ -60,9 +60,12 @@ export async function getDb() {
   const config = getExternalDatabaseConfig();
   if (!_db && config) {
     try {
-      _db = config.kind === "url"
-        ? drizzle(config.url)
-        : drizzle({ client: createPool(config) });
+      if (config.kind === "url") {
+        _db = drizzle(config.url);
+      } else {
+        const { kind: _kind, ...poolConfig } = config;
+        _db = drizzle({ client: createPool(poolConfig) });
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
