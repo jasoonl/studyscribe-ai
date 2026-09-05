@@ -418,3 +418,4 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Validate recordings, uploads, transcription, study tools, email/password login, Google OAuth, notifications, speaker labels, and browser push on the Vercel deployment.
 - [x] Fix the Vercel schema validation error caused by array-shaped functions.includeFiles; use a single valid glob string and redeploy. Local JSON validation, TypeScript, tests, and production build pass.
 - [x] Remove the internal `kind` discriminator before passing TiDB connection options to MySQL2 so production logs stay warning-free. Regression coverage and full TypeScript, Vitest, and production build checks pass.
+- [x] Configure GitHub operations to use the user-owned `jasoonl` account: active `gh` identity verified, push remote is `https://github.com/jasoonl/studyscribe-ai.git`, and future local commits use `jasoonl` rather than `Manus`.
