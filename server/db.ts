@@ -63,8 +63,10 @@ export async function getDb() {
       if (config.kind === "url") {
         _db = drizzle(config.url);
       } else {
-        const { kind: _kind, ...poolConfig } = config;
-        _db = drizzle({ client: createPool(poolConfig) });
+        // `kind` is our discriminant, not a mysql2 connection option.
+        // Passing it through only warns today, but will become an error in mysql2.
+        const { kind: _kind, ...poolOptions } = config;
+        _db = drizzle({ client: createPool(poolOptions) });
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
