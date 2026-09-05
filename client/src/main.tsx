@@ -5,8 +5,13 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
+import { inject as injectVercelAnalytics } from "@vercel/analytics";
 
 import "./index.css";
+
+if (typeof window !== "undefined") {
+  injectVercelAnalytics({ mode: "auto" });
+}
 
 const queryClient = new QueryClient();
 

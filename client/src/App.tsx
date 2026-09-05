@@ -29,7 +29,6 @@ import Help from "./pages/Help";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
-import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
 
 /**
  * Protected Route Component
@@ -110,7 +109,6 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
-            <VercelAnalytics />
           </TooltipProvider>
         </NotificationProvider>
       </ThemeProvider>
