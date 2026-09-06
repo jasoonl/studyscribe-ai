@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createPool } from "mysql2";
-import { getDb, getExternalDatabaseConfig } from "./db";
+import { getDatabasePoolOptionsFromUrl, getDb, getExternalDatabaseConfig } from "./db";
 
 vi.mock("mysql2", () => ({
   createPool: vi.fn(() => ({
@@ -69,6 +69,27 @@ describe("external database configuration", () => {
     vi.stubEnv("TIDB_PASSWORD", "");
     vi.stubEnv("TIDB_DATABASE", "sys");
     expect(getExternalDatabaseConfig()).toBeNull();
+  });
+
+  it("enforces TLS for a TiDB Cloud DATABASE_URL", () => {
+    expect(getDatabasePoolOptionsFromUrl("mysql://prefix.root:p%40ss@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/test")).toEqual({
+      host: "gateway01.us-east-1.prod.aws.tidbcloud.com",
+      port: 4000,
+      user: "prefix.root",
+      password: "p@ss",
+      database: "test",
+      ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    });
+  });
+
+  it("does not add TiDB-specific TLS options to generic MySQL URLs", () => {
+    expect(getDatabasePoolOptionsFromUrl("mysql://user:pass@example.com:3306/app")).toEqual({
+      host: "example.com",
+      port: 3306,
+      user: "user",
+      password: "pass",
+      database: "app",
+    });
   });
 
   it("does not forward the internal kind discriminator to MySQL2", async () => {

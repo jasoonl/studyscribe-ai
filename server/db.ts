@@ -55,13 +55,43 @@ export function getExternalDatabaseConfig(): ExternalDatabaseConfig {
   return url ? { kind: "url", url } : null;
 }
 
+/**
+ * Convert a provider URL into explicit MySQL2 options when TiDB Cloud is the
+ * target. TiDB Cloud Starter/Essential require TLS, but a generic MySQL URL
+ * may intentionally rely on its own driver-level URL behavior.
+ */
+export function getDatabasePoolOptionsFromUrl(url: string) {
+  const parsed = new URL(url);
+  const options = {
+    host: parsed.hostname,
+    port: parsed.port ? Number.parseInt(parsed.port, 10) : 3306,
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: decodeURIComponent(parsed.pathname.replace(/^\/+/, "")),
+  };
+
+  if (parsed.hostname.toLowerCase().endsWith(".tidbcloud.com")) {
+    return {
+      ...options,
+      ssl: { minVersion: "TLSv1.2" as const, rejectUnauthorized: true as const },
+    };
+  }
+
+  return options;
+}
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   const config = getExternalDatabaseConfig();
   if (!_db && config) {
     try {
       if (config.kind === "url") {
-        _db = drizzle(config.url);
+        const parsed = new URL(config.url);
+        if (parsed.hostname.toLowerCase().endsWith(".tidbcloud.com")) {
+          _db = drizzle({ client: createPool(getDatabasePoolOptionsFromUrl(config.url)) });
+        } else {
+          _db = drizzle(config.url);
+        }
       } else {
         // `kind` is our discriminant, not a mysql2 connection option.
         // Passing it through only warns today, but will become an error in mysql2.
