@@ -1,0 +1,1 @@
+ALTER TABLE `studyGuides` MODIFY COLUMN `keyPoints` json;

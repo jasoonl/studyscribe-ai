@@ -85,6 +85,20 @@
       "when": 1788277655106,
       "tag": "0011_curvy_lady_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1788741817169,
+      "tag": "0012_unique_manta",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1788741850562,
+      "tag": "0013_old_power_man",
+      "breakpoints": true
     }
   ]
 }

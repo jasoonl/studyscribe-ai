@@ -292,7 +292,7 @@ export const studyGuides = mysqlTable("studyGuides", {
   userId: int("userId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(), // Markdown formatted study guide
-  keyPoints: json("keyPoints").$type<string[]>().default([]), // Array of key points
+  keyPoints: json("keyPoints").$type<string[]>(), // Array of key points
   status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
   generatedAt: timestamp("generatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -318,7 +318,7 @@ export const quizzes = mysqlTable("quizzes", {
     options?: string[];
     correctAnswer: string;
     explanation: string;
-  }>>().default([]),
+  }>>(),
   status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
   generatedAt: timestamp("generatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -335,7 +335,7 @@ export const quizAttempts = mysqlTable("quizAttempts", {
   id: int("id").autoincrement().primaryKey(),
   quizId: int("quizId").notNull(),
   userId: int("userId").notNull(),
-  answers: json("answers").$type<Record<string, string>>().default({}), // Question ID -> Answer
+  answers: json("answers").$type<Record<string, string>>(), // Question ID -> Answer
   score: int("score"), // Percentage score
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
