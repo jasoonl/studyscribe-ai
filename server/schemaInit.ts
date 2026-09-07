@@ -90,7 +90,15 @@ export function registerSchemaInitRoute(app: Express) {
       await db.execute(sql.raw(`INSERT INTO ${INIT_TABLE} (id) VALUES (1)`));
       return res.status(200).json({ status: "initialized" });
     } catch (error) {
-      console.error("[Database] Schema initialization failed:", error);
+      const cause = error && typeof error === "object" && "cause" in error
+        ? (error as { cause?: { code?: string; errno?: number; sqlMessage?: string } }).cause
+        : undefined;
+      console.error("[Database] Schema initialization failed:", {
+        code: cause?.code,
+        errno: cause?.errno,
+        sqlMessage: cause?.sqlMessage,
+        configuredDatabase: configuredDatabaseName(),
+      });
       return res.status(500).json({ error: "Schema initialization failed" });
     }
   });
