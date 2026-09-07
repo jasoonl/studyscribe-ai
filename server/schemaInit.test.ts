@@ -3,6 +3,8 @@ import express from "express";
 
 vi.mock("./db", () => ({
   getDb: vi.fn(async () => null),
+  getExternalDatabaseConfig: vi.fn(() => null),
+  getDatabasePoolOptionsFromUrl: vi.fn(),
 }));
 
 import { registerSchemaInitRoute } from "./schemaInit";
@@ -17,7 +19,7 @@ afterEach(() => {
   else process.env.SCHEMA_INIT_TOKEN = originalToken;
 });
 
-async function request(path: string, token?: string) {
+async function request(path: string, token?: string, method = "POST") {
   const app = express();
   registerSchemaInitRoute(app);
   const server = app.listen(0);
@@ -25,7 +27,7 @@ async function request(path: string, token?: string) {
   if (!address || typeof address === "string") throw new Error("Test server did not bind");
   try {
     return await fetch(`http://127.0.0.1:${address.port}${path}`, {
-      method: "POST",
+      method,
       headers: token ? { "x-schema-init-token": token } : undefined,
     });
   } finally {
@@ -44,6 +46,13 @@ describe("schema initialization route", () => {
     process.env.SCHEMA_INIT_ENABLED = "true";
     process.env.SCHEMA_INIT_TOKEN = "expected-token";
     const response = await request("/api/admin/initialize-database", "wrong-token");
+    expect(response.status).toBe(401);
+  });
+
+  it("protects the non-destructive database status route with the same token", async () => {
+    process.env.SCHEMA_INIT_ENABLED = "true";
+    process.env.SCHEMA_INIT_TOKEN = "expected-token";
+    const response = await request("/api/admin/database-status", "wrong-token", "GET");
     expect(response.status).toBe(401);
   });
 

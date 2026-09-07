@@ -1,9 +1,9 @@
-import crypto from "node:crypto";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { migrate } from "drizzle-orm/mysql2/migrator";
 import { sql } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDatabasePoolOptionsFromUrl, getDb, getExternalDatabaseConfig } from "./db";
 
 const INIT_TABLE = "_studyscribe_schema_init";
 
@@ -11,7 +11,32 @@ function tokensMatch(provided: string | undefined, expected: string | undefined)
   if (!provided || !expected) return false;
   const providedBuffer = Buffer.from(provided);
   const expectedBuffer = Buffer.from(expected);
-  return providedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(providedBuffer, expectedBuffer);
+  return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+function configuredDatabaseName() {
+  const config = getExternalDatabaseConfig();
+  if (!config) return null;
+  if (config.kind === "tidb") return config.database;
+  try {
+    return getDatabasePoolOptionsFromUrl(config.url).database || null;
+  } catch {
+    return null;
+  }
+}
+
+function authorizeRequest(req: Request, res: Response) {
+  if (process.env.SCHEMA_INIT_ENABLED !== "true") {
+    res.status(404).json({ error: "Not found" });
+    return false;
+  }
+
+  if (!tokensMatch(req.header("x-schema-init-token"), process.env.SCHEMA_INIT_TOKEN)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -20,14 +45,33 @@ function tokensMatch(provided: string | undefined, expected: string | undefined)
  * requests never run migrations.
  */
 export function registerSchemaInitRoute(app: Express) {
-  app.post("/api/admin/initialize-database", async (req: Request, res: Response) => {
-    if (process.env.SCHEMA_INIT_ENABLED !== "true") {
-      return res.status(404).json({ error: "Not found" });
+  app.get("/api/admin/database-status", async (req: Request, res: Response) => {
+    if (!authorizeRequest(req, res)) return;
+
+    const db = await getDb();
+    if (!db) {
+      return res.status(503).json({ error: "Database is not configured" });
     }
 
-    if (!tokensMatch(req.header("x-schema-init-token"), process.env.SCHEMA_INIT_TOKEN)) {
-      return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const result = await db.execute(sql.raw("SELECT DATABASE() AS database_name, CURRENT_USER() AS current_user, USER() AS connection_user"));
+      const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : [];
+      const row = rows[0] as Record<string, unknown> | undefined;
+      return res.status(200).json({
+        status: "connected",
+        configuredDatabase: configuredDatabaseName(),
+        serverDatabase: row?.database_name ?? null,
+        currentUser: row?.current_user ?? null,
+        connectionUser: row?.connection_user ?? null,
+      });
+    } catch (error) {
+      console.error("[Database] Status check failed:", error);
+      return res.status(500).json({ error: "Database status check failed" });
     }
+  });
+
+  app.post("/api/admin/initialize-database", async (req: Request, res: Response) => {
+    if (!authorizeRequest(req, res)) return;
 
     const db = await getDb();
     if (!db) {
