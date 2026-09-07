@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPool } from "mysql2";
 import { getDatabasePoolOptionsFromUrl, getDb, getExternalDatabaseConfig } from "./db";
 
@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("external database configuration", () => {
-  it("prefers the complete TIDB-prefixed environment fields and enforces TLS", () => {
+  it("prefers the complete TIDB-prefixed environment fields, redirects sys to test, and enforces TLS", () => {
     vi.stubEnv("DATABASE_URL", "mysql://stale.example/old");
     vi.stubEnv("TIDB_HOST", "gateway01.us-east-1.prod.aws.tidbcloud.com");
     vi.stubEnv("TIDB_PORT", "4000");
@@ -33,12 +33,12 @@ describe("external database configuration", () => {
       port: 4000,
       user: "prefix.root",
       password: "provider-password",
-      database: "sys",
+      database: "test",
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     });
   });
 
-  it("accepts TiDB Cloud's DB-prefixed .env names", () => {
+  it("accepts TiDB Cloud's DB-prefixed .env names and redirects sys to test", () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("TIDB_HOST", "");
     vi.stubEnv("DB_HOST", "gateway01.us-east-1.prod.aws.tidbcloud.com");
@@ -51,7 +51,7 @@ describe("external database configuration", () => {
       kind: "tidb",
       host: "gateway01.us-east-1.prod.aws.tidbcloud.com",
       user: "prefix.root",
-      database: "sys",
+      database: "test",
     });
   });
 
@@ -77,6 +77,13 @@ describe("external database configuration", () => {
       port: 4000,
       user: "prefix.root",
       password: "p@ss",
+      database: "test",
+      ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    });
+  });
+
+  it("redirects a TiDB Cloud URL pointed at the protected sys schema to test", () => {
+    expect(getDatabasePoolOptionsFromUrl("mysql://prefix.root:p%40ss@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/sys")).toMatchObject({
       database: "test",
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     });
@@ -108,7 +115,7 @@ describe("external database configuration", () => {
       port: 4000,
       user: "prefix.root",
       password: "provider-password",
-      database: "sys",
+      database: "test",
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     });
     expect((createPool as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0]).not.toHaveProperty("kind");

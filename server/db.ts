@@ -6,6 +6,14 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+const TIDB_PROTECTED_DATABASES = new Set(["", "sys", "mysql", "information_schema", "performance_schema"]);
+
+/** TiDB Cloud's default `sys` schema is protected; StudyScribe uses `test` by default. */
+export function normalizeTiDbDatabaseName(database: string) {
+  const normalized = database.trim();
+  return TIDB_PROTECTED_DATABASES.has(normalized.toLowerCase()) ? "test" : normalized;
+}
+
 type ExternalDatabaseConfig =
   | { kind: "url"; url: string }
   | {
@@ -46,7 +54,7 @@ export function getExternalDatabaseConfig(): ExternalDatabaseConfig {
       port: Number.isFinite(requestedPort) ? requestedPort : 4000,
       user: fields.user,
       password: fields.password,
-      database: fields.database,
+      database: normalizeTiDbDatabaseName(fields.database),
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     };
   }
@@ -73,6 +81,7 @@ export function getDatabasePoolOptionsFromUrl(url: string) {
   if (parsed.hostname.toLowerCase().endsWith(".tidbcloud.com")) {
     return {
       ...options,
+      database: normalizeTiDbDatabaseName(options.database),
       ssl: { minVersion: "TLSv1.2" as const, rejectUnauthorized: true as const },
     };
   }
