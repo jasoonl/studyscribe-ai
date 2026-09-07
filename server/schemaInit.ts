@@ -54,14 +54,14 @@ export function registerSchemaInitRoute(app: Express) {
     }
 
     try {
-      const result = await db.execute(sql.raw("SELECT DATABASE() AS database_name, CURRENT_USER() AS current_user, USER() AS connection_user"));
+      const result = await db.execute(sql.raw("SELECT DATABASE() AS database_name, CURRENT_USER() AS current_account, USER() AS connection_user"));
       const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : [];
       const row = rows[0] as Record<string, unknown> | undefined;
       return res.status(200).json({
         status: "connected",
         configuredDatabase: configuredDatabaseName(),
         serverDatabase: row?.database_name ?? null,
-        currentUser: row?.current_user ?? null,
+        currentUser: row?.current_account ?? null,
         connectionUser: row?.connection_user ?? null,
       });
     } catch (error) {

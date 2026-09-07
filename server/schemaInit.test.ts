@@ -8,6 +8,7 @@ vi.mock("./db", () => ({
 }));
 
 import { registerSchemaInitRoute } from "./schemaInit";
+import { getDb } from "./db";
 
 const originalEnabled = process.env.SCHEMA_INIT_ENABLED;
 const originalToken = process.env.SCHEMA_INIT_TOKEN;
@@ -54,6 +55,27 @@ describe("schema initialization route", () => {
     process.env.SCHEMA_INIT_TOKEN = "expected-token";
     const response = await request("/api/admin/database-status", "wrong-token", "GET");
     expect(response.status).toBe(401);
+  });
+
+  it("returns safe database identity metadata when the status query succeeds", async () => {
+    process.env.SCHEMA_INIT_ENABLED = "true";
+    process.env.SCHEMA_INIT_TOKEN = "expected-token";
+    vi.mocked(getDb).mockResolvedValueOnce({
+      execute: vi.fn(async () => [[{
+        database_name: "test",
+        current_account: "root@%",
+        connection_user: "root@127.0.0.1",
+      }], []]),
+    } as never);
+
+    const response = await request("/api/admin/database-status", "expected-token", "GET");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      status: "connected",
+      serverDatabase: "test",
+      currentUser: "root@%",
+      connectionUser: "root@127.0.0.1",
+    });
   });
 
   it("authenticates with the securely injected schema token before checking database readiness", async () => {
