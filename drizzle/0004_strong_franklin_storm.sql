@@ -7,6 +7,6 @@ CREATE TABLE `userNotifications` (
 	`recordingId` int,
 	`isRead` int NOT NULL DEFAULT 0,
 	`readAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `userNotifications_id` PRIMARY KEY(`id`)
 );

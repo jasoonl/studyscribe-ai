@@ -9,8 +9,8 @@ CREATE TABLE `emailDrafts` (
 	`status` enum('generating','completed','failed') DEFAULT 'generating',
 	`generatedAt` timestamp,
 	`sentAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `emailDrafts_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -21,7 +21,7 @@ CREATE TABLE `quizAttempts` (
 	`answers` json,
 	`score` int,
 	`completedAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `quizAttempts_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -34,8 +34,8 @@ CREATE TABLE `quizzes` (
 	`questions` json,
 	`status` enum('generating','completed','failed') DEFAULT 'generating',
 	`generatedAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `quizzes_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -48,7 +48,7 @@ CREATE TABLE `studyGuides` (
 	`keyPoints` json,
 	`status` enum('generating','completed','failed') DEFAULT 'generating',
 	`generatedAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `studyGuides_id` PRIMARY KEY(`id`)
 );

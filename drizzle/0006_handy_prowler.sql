@@ -8,6 +8,6 @@ CREATE TABLE `inviteRequests` (
 	`reviewedBy` int,
 	`reviewedAt` timestamp,
 	`reviewNote` text,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `inviteRequests_id` PRIMARY KEY(`id`)
 );

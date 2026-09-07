@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
@@ -25,9 +26,9 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   /** Whether email is verified */
   emailVerified: int("emailVerified").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -49,8 +50,8 @@ export const recordings = mysqlTable("recordings", {
   transcriptionProviderId: varchar("transcriptionProviderId", { length: 128 }).unique(),
   isDeleted: int("isDeleted").default(0).notNull(), // Soft delete flag
   deletedAt: timestamp("deletedAt"), // Timestamp when deleted
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type Recording = typeof recordings.$inferSelect;
@@ -74,8 +75,8 @@ export const transcripts = mysqlTable("transcripts", {
   }>>(), // Timestamped segments
   language: varchar("language", { length: 10 }).default("en"),
   status: mysqlEnum("status", ["processing", "completed", "failed"]).default("processing"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type Transcript = typeof transcripts.$inferSelect;
@@ -91,8 +92,8 @@ export const studyNotes = mysqlTable("studyNotes", {
   type: mysqlEnum("type", ["summary", "key_concepts", "action_items", "formulas", "study_guide"]).notNull(),
   content: text("content").notNull(),
   metadata: json("metadata").$type<Record<string, any>>(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type StudyNote = typeof studyNotes.$inferSelect;
@@ -108,8 +109,8 @@ export const flashcards = mysqlTable("flashcards", {
   question: text("question").notNull(),
   answer: text("answer").notNull(),
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).default("medium"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type Flashcard = typeof flashcards.$inferSelect;
@@ -127,8 +128,8 @@ export const flashcardReviews = mysqlTable("flashcardReviews", {
   reviewCount: int("reviewCount").default(0).notNull(),
   lastReviewedAt: timestamp("lastReviewedAt"),
   masteredAt: timestamp("masteredAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 }, (table) => [
   uniqueIndex("flashcardReviews_user_flashcard_unique").on(table.userId, table.flashcardId),
 ]);
@@ -145,7 +146,7 @@ export const chatHistory = mysqlTable("chatHistory", {
   userId: int("userId").notNull(),
   role: mysqlEnum("role", ["user", "assistant"]).notNull(),
   content: text("content").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type ChatMessage = typeof chatHistory.$inferSelect;
@@ -158,7 +159,7 @@ export const tags = mysqlTable("tags", {
   userId: int("userId").notNull(),
   name: varchar("name", { length: 100 }).notNull(),
   color: varchar("color", { length: 7 }).default("#3B82F6"), // Hex color
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type Tag = typeof tags.$inferSelect;
@@ -171,7 +172,7 @@ export const recordingTags = mysqlTable("recordingTags", {
   id: int("id").autoincrement().primaryKey(),
   recordingId: int("recordingId").notNull(),
   tagId: int("tagId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type RecordingTag = typeof recordingTags.$inferSelect;
@@ -184,7 +185,7 @@ export const noteTags = mysqlTable("noteTags", {
   id: int("id").autoincrement().primaryKey(),
   noteId: int("noteId").notNull(),
   tagId: int("tagId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type NoteTag = typeof noteTags.$inferSelect;
@@ -204,7 +205,7 @@ export const userNotifications = mysqlTable("userNotifications", {
   recordingId: int("recordingId"), // Optional: link to a recording
   isRead: int("isRead").default(0).notNull(),
   readAt: timestamp("readAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type UserNotification = typeof userNotifications.$inferSelect;
@@ -222,8 +223,8 @@ export const pushSubscriptions = mysqlTable("pushSubscriptions", {
   p256dh: varchar("p256dh", { length: 255 }).notNull(),
   auth: varchar("auth", { length: 255 }).notNull(),
   expirationTime: timestamp("expirationTime"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 }, (table) => [
   uniqueIndex("pushSubscriptions_endpoint_hash_unique").on(table.endpointHash),
   index("pushSubscriptions_user_id_idx").on(table.userId),
@@ -244,7 +245,7 @@ export const inviteCodes = mysqlTable("inviteCodes", {
   isUsed: int("isUsed").default(0).notNull(),
   usedAt: timestamp("usedAt"),
   expiresAt: timestamp("expiresAt").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type InviteCode = typeof inviteCodes.$inferSelect;
@@ -258,7 +259,7 @@ export const passwordResetTokens = mysqlTable("passwordResetTokens", {
   userId: int("userId").notNull(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   expiresAt: timestamp("expiresAt").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
@@ -277,7 +278,7 @@ export const inviteRequests = mysqlTable("inviteRequests", {
   reviewedBy: int("reviewedBy"), // Admin who reviewed
   reviewedAt: timestamp("reviewedAt"),
   reviewNote: text("reviewNote"), // Admin note on approval/denial
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type InviteRequest = typeof inviteRequests.$inferSelect;
@@ -295,8 +296,8 @@ export const studyGuides = mysqlTable("studyGuides", {
   keyPoints: json("keyPoints").$type<string[]>(), // Array of key points
   status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
   generatedAt: timestamp("generatedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type StudyGuide = typeof studyGuides.$inferSelect;
@@ -321,8 +322,8 @@ export const quizzes = mysqlTable("quizzes", {
   }>>(),
   status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
   generatedAt: timestamp("generatedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type Quiz = typeof quizzes.$inferSelect;
@@ -338,7 +339,7 @@ export const quizAttempts = mysqlTable("quizAttempts", {
   answers: json("answers").$type<Record<string, string>>(), // Question ID -> Answer
   score: int("score"), // Percentage score
   completedAt: timestamp("completedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
@@ -359,8 +360,8 @@ export const emailDrafts = mysqlTable("emailDrafts", {
   status: mysqlEnum("status", ["generating", "completed", "failed"]).default("generating"),
   generatedAt: timestamp("generatedAt"),
   sentAt: timestamp("sentAt"), // When email was sent (if applicable)
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
 });
 
 export type EmailDraft = typeof emailDrafts.$inferSelect;

@@ -99,6 +99,13 @@
       "when": 1788741850562,
       "tag": "0013_old_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1788742094553,
+      "tag": "0014_rare_manta",
+      "breakpoints": true
     }
   ]
 }

@@ -7,8 +7,8 @@ CREATE TABLE `flashcardReviews` (
 	`reviewCount` int NOT NULL DEFAULT 0,
 	`lastReviewedAt` timestamp,
 	`masteredAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `flashcardReviews_id` PRIMARY KEY(`id`),
 	CONSTRAINT `flashcardReviews_user_flashcard_unique` UNIQUE(`userId`,`flashcardId`)
 );

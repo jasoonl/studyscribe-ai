@@ -7,7 +7,7 @@ CREATE TABLE `inviteCodes` (
 	`isUsed` int NOT NULL DEFAULT 0,
 	`usedAt` timestamp,
 	`expiresAt` timestamp NOT NULL,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `inviteCodes_id` PRIMARY KEY(`id`),
 	CONSTRAINT `inviteCodes_code_unique` UNIQUE(`code`)
 );
@@ -17,7 +17,7 @@ CREATE TABLE `passwordResetTokens` (
 	`userId` int NOT NULL,
 	`token` varchar(255) NOT NULL,
 	`expiresAt` timestamp NOT NULL,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `passwordResetTokens_id` PRIMARY KEY(`id`),
 	CONSTRAINT `passwordResetTokens_token_unique` UNIQUE(`token`)
 );
