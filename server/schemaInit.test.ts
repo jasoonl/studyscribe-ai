@@ -70,11 +70,13 @@ describe("schema initialization route", () => {
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     });
     vi.mocked(getDb).mockResolvedValueOnce({
-      execute: vi.fn(async () => [[{
-        database_name: "test",
-        current_account: "root@%",
-        connection_user: "root@127.0.0.1",
-      }], []]),
+      execute: vi.fn()
+        .mockResolvedValueOnce([[{
+          database_name: "test",
+          current_account: "root@%",
+          connection_user: "root@127.0.0.1",
+        }], []])
+        .mockResolvedValueOnce([[{ table_name: "emailDrafts" }, { table_name: "__drizzle_migrations" }], []]),
     } as never);
 
     const response = await request("/api/admin/database-status", "expected-token", "GET");
@@ -85,6 +87,8 @@ describe("schema initialization route", () => {
       currentUser: "root@%",
       connectionUser: "root@127.0.0.1",
       endpoint: { host: "gateway01.tidbcloud.com", port: 4000, protocol: "mysql" },
+      tables: ["emailDrafts", "__drizzle_migrations"],
+      migrationTablePresent: true,
     });
   });
 
