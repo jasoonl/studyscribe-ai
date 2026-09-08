@@ -76,7 +76,8 @@ describe("schema initialization route", () => {
           current_account: "root@%",
           connection_user: "root@127.0.0.1",
         }], []])
-        .mockResolvedValueOnce([[{ table_name: "emailDrafts" }, { table_name: "__drizzle_migrations" }], []]),
+        .mockResolvedValueOnce([[{ table_name: "emailDrafts" }, { table_name: "__drizzle_migrations" }], []])
+        .mockResolvedValueOnce([[{ user_count: 0 }], []]),
     } as never);
 
     const response = await request("/api/admin/database-status", "expected-token", "GET");
@@ -89,6 +90,7 @@ describe("schema initialization route", () => {
       endpoint: { host: "gateway01.tidbcloud.com", port: 4000, protocol: "mysql" },
       tables: ["emailDrafts", "__drizzle_migrations"],
       migrationTablePresent: true,
+      userCount: 0,
     });
   });
 

@@ -74,8 +74,10 @@ export function registerSchemaInitRoute(app: Express) {
     try {
       const result = await db.execute(sql.raw("SELECT DATABASE() AS database_name, CURRENT_USER() AS current_account, USER() AS connection_user"));
       const tableResult = await db.execute(sql.raw("SELECT TABLE_NAME AS table_name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY TABLE_NAME"));
+      const userCountResult = await db.execute(sql.raw("SELECT COUNT(*) AS user_count FROM users"));
       const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : [];
       const tableRows = Array.isArray(tableResult) && Array.isArray(tableResult[0]) ? tableResult[0] : [];
+      const userCountRows = Array.isArray(userCountResult) && Array.isArray(userCountResult[0]) ? userCountResult[0] : [];
       const row = rows[0] as Record<string, unknown> | undefined;
       const tables = tableRows
         .map(value => (value as Record<string, unknown>).table_name)
@@ -86,6 +88,7 @@ export function registerSchemaInitRoute(app: Express) {
         endpoint: databaseEndpointMetadata(),
         tables,
         migrationTablePresent: tables.includes("__drizzle_migrations"),
+        userCount: Number((userCountRows[0] as Record<string, unknown> | undefined)?.user_count ?? 0),
         serverDatabase: row?.database_name ?? null,
         currentUser: row?.current_account ?? null,
         connectionUser: row?.connection_user ?? null,
