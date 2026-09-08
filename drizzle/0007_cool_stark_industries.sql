@@ -1,4 +1,4 @@
-CREATE TABLE `emailDrafts` (
+CREATE TABLE IF NOT EXISTS `emailDrafts` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`recordingId` int NOT NULL,
 	`userId` int NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE `emailDrafts` (
 	CONSTRAINT `emailDrafts_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `quizAttempts` (
+CREATE TABLE IF NOT EXISTS `quizAttempts` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`quizId` int NOT NULL,
 	`userId` int NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE `quizAttempts` (
 	CONSTRAINT `quizAttempts_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `quizzes` (
+CREATE TABLE IF NOT EXISTS `quizzes` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`recordingId` int NOT NULL,
 	`userId` int NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE `quizzes` (
 	CONSTRAINT `quizzes_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `studyGuides` (
+CREATE TABLE IF NOT EXISTS `studyGuides` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`recordingId` int NOT NULL,
 	`userId` int NOT NULL,
