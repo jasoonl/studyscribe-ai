@@ -14,6 +14,24 @@ function tokensMatch(provided: string | undefined, expected: string | undefined)
   return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
+function databaseEndpointMetadata() {
+  const config = getExternalDatabaseConfig();
+  if (!config) return null;
+  if (config.kind === "tidb") {
+    return { host: config.host, port: config.port, protocol: "mysql+tls" };
+  }
+  try {
+    const parsed = new URL(config.url);
+    return {
+      host: parsed.hostname,
+      port: parsed.port ? Number.parseInt(parsed.port, 10) : 3306,
+      protocol: parsed.protocol.replace(":", ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function configuredDatabaseName() {
   const config = getExternalDatabaseConfig();
   if (!config) return null;
@@ -60,6 +78,7 @@ export function registerSchemaInitRoute(app: Express) {
       return res.status(200).json({
         status: "connected",
         configuredDatabase: configuredDatabaseName(),
+        endpoint: databaseEndpointMetadata(),
         serverDatabase: row?.database_name ?? null,
         currentUser: row?.current_account ?? null,
         connectionUser: row?.connection_user ?? null,
@@ -98,6 +117,7 @@ export function registerSchemaInitRoute(app: Express) {
         errno: cause?.errno,
         sqlMessage: cause?.sqlMessage,
         configuredDatabase: configuredDatabaseName(),
+        endpoint: databaseEndpointMetadata(),
       });
       return res.status(500).json({ error: "Schema initialization failed" });
     }

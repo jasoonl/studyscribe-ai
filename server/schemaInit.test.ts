@@ -8,7 +8,7 @@ vi.mock("./db", () => ({
 }));
 
 import { registerSchemaInitRoute } from "./schemaInit";
-import { getDb } from "./db";
+import { getDb, getExternalDatabaseConfig, getDatabasePoolOptionsFromUrl } from "./db";
 
 const originalEnabled = process.env.SCHEMA_INIT_ENABLED;
 const originalToken = process.env.SCHEMA_INIT_TOKEN;
@@ -60,6 +60,15 @@ describe("schema initialization route", () => {
   it("returns safe database identity metadata when the status query succeeds", async () => {
     process.env.SCHEMA_INIT_ENABLED = "true";
     process.env.SCHEMA_INIT_TOKEN = "expected-token";
+    vi.mocked(getExternalDatabaseConfig).mockReturnValue({ kind: "url", url: "mysql://user:password@gateway01.tidbcloud.com:4000/test" });
+    vi.mocked(getDatabasePoolOptionsFromUrl).mockReturnValue({
+      host: "gateway01.tidbcloud.com",
+      port: 4000,
+      user: "user",
+      password: "password",
+      database: "test",
+      ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    });
     vi.mocked(getDb).mockResolvedValueOnce({
       execute: vi.fn(async () => [[{
         database_name: "test",
@@ -75,6 +84,7 @@ describe("schema initialization route", () => {
       serverDatabase: "test",
       currentUser: "root@%",
       connectionUser: "root@127.0.0.1",
+      endpoint: { host: "gateway01.tidbcloud.com", port: 4000, protocol: "mysql" },
     });
   });
 
