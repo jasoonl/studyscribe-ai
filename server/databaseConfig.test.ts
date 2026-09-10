@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPool } from "mysql2";
-import { getDatabasePoolOptionsFromUrl, getDb, getExternalDatabaseConfig } from "./db";
+import { getDatabasePoolOptionsFromUrl, getDb, getExternalDatabaseConfig, normalizeAuthEmail } from "./db";
 
 vi.mock("mysql2", () => ({
   createPool: vi.fn(() => ({
@@ -19,6 +19,10 @@ afterEach(() => {
 });
 
 describe("external database configuration", () => {
+  it("normalizes email input for existing-account authentication lookups", () => {
+    expect(normalizeAuthEmail("  Existing.User@Example.COM ")).toBe("existing.user@example.com");
+  });
+
   it("prefers the complete TIDB-prefixed environment fields, redirects sys to test, and enforces TLS", () => {
     vi.stubEnv("DATABASE_URL", "mysql://stale.example/old");
     vi.stubEnv("TIDB_HOST", "gateway01.us-east-1.prod.aws.tidbcloud.com");

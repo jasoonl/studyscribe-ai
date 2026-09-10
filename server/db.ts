@@ -1,6 +1,7 @@
 import { eq, and, like, or, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
+import { sql } from "drizzle-orm";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -116,6 +117,10 @@ export async function getDb() {
 }
 
 // Auth helpers
+export function normalizeAuthEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) {
@@ -123,7 +128,10 @@ export async function getUserByEmail(email: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const normalizedEmail = normalizeAuthEmail(email);
+  const result = await db.select().from(users)
+    .where(sql`LOWER(TRIM(${users.email})) = ${normalizedEmail}`)
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 

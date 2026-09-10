@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { getUserByEmail as dbGetUserByEmail, getUserByGoogleId, upsertUser, createInviteCode, getInviteCodeByCode, markInviteCodeAsUsed, createPasswordResetToken, getPasswordResetTokenByToken, deletePasswordResetToken, getDb } from './db';
+import { getUserByEmail as dbGetUserByEmail, getUserByGoogleId, upsertUser, createInviteCode, getInviteCodeByCode, markInviteCodeAsUsed, createPasswordResetToken, getPasswordResetTokenByToken, deletePasswordResetToken, getDb, normalizeAuthEmail } from './db';
 import { User } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { users } from '../drizzle/schema';
@@ -78,6 +78,7 @@ export async function registerWithEmailPassword(
   inviteCode: string
 ): Promise<{ user: User; error?: undefined } | { user?: undefined; error: string }> {
   try {
+    const normalizedEmail = normalizeAuthEmail(email);
     // Validate invite code
     const invite = await getInviteCodeByCode(inviteCode);
     
@@ -93,12 +94,12 @@ export async function registerWithEmailPassword(
       return { error: 'Invite code expired' };
     }
 
-    if (invite.email.toLowerCase() !== email.toLowerCase()) {
+    if (normalizeAuthEmail(invite.email) !== normalizedEmail) {
       return { error: 'Email does not match invite' };
     }
 
     // Check if user already exists
-    const existingUser = await dbGetUserByEmail(email);
+    const existingUser = await dbGetUserByEmail(normalizedEmail);
     if (existingUser) {
       return { error: 'Email already registered' };
     }
@@ -113,7 +114,7 @@ export async function registerWithEmailPassword(
     }
 
     await upsertUser({
-      email,
+      email: normalizedEmail,
       passwordHash,
       name: name || null,
       loginMethod: 'email',
@@ -122,12 +123,12 @@ export async function registerWithEmailPassword(
     });
 
     // Mark invite as used
-    const userId = (await dbGetUserByEmail(email))?.id;
+    const userId = (await dbGetUserByEmail(normalizedEmail))?.id;
     if (userId) {
       await markInviteCodeAsUsed(inviteCode, userId);
     }
 
-    const user = await dbGetUserByEmail(email);
+    const user = await dbGetUserByEmail(normalizedEmail);
     if (!user) {
       return { error: 'Failed to create user' };
     }
@@ -147,7 +148,7 @@ export async function loginWithEmailPassword(
   password: string
 ): Promise<{ user: User; error?: undefined } | { user?: undefined; error: string }> {
   try {
-    const user = await dbGetUserByEmail(email);
+    const user = await dbGetUserByEmail(normalizeAuthEmail(email));
 
     if (!user) {
       return { error: 'Invalid email or password' };
@@ -199,7 +200,7 @@ export async function loginWithGoogleExistingOnly(
     }
 
     // Check if user exists by email
-    user = await getUserByEmail(email);
+    user = await getUserByEmail(normalizeAuthEmail(email));
 
     if (user) {
       // Link Google ID to existing user
@@ -243,7 +244,7 @@ export async function loginWithGoogle(
     }
 
     // Check if user exists by email
-    user = await getUserByEmail(email);
+    user = await getUserByEmail(normalizeAuthEmail(email));
 
     if (user) {
       // Link Google ID to existing user
@@ -259,7 +260,7 @@ export async function loginWithGoogle(
 
     // Create new user
     await upsertUser({
-      email,
+      email: normalizeAuthEmail(email),
       googleId,
       name: name || null,
       loginMethod: 'google',
