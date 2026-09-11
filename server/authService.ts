@@ -151,16 +151,27 @@ export async function loginWithEmailPassword(
     const user = await dbGetUserByEmail(normalizeAuthEmail(email));
 
     if (!user) {
+      console.info('[Auth] Email login rejected', { reason: 'user_not_found' });
       return { error: 'Invalid email or password' };
     }
 
     if (!user.passwordHash) {
-      return { error: 'User does not have password set' };
+      console.info('[Auth] Email login rejected', {
+        reason: user.googleId ? 'google_only_account' : 'password_not_set',
+        hashLength: 0,
+        hashPrefix: null,
+      });
+      return { error: 'Invalid email or password' };
     }
 
     const isPasswordValid = await comparePassword(password, user.passwordHash);
 
     if (!isPasswordValid) {
+      console.info('[Auth] Email login rejected', {
+        reason: 'password_mismatch',
+        hashLength: user.passwordHash.length,
+        hashPrefix: user.passwordHash.slice(0, 4),
+      });
       return { error: 'Invalid email or password' };
     }
 

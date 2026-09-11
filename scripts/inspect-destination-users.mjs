@@ -13,6 +13,9 @@ try {
     role: row.role,
     emailVerified: row.emailVerified,
     hasPassword: Boolean(row.passwordHash),
+    passwordHashFingerprint: row.passwordHash ? crypto.createHash("sha256").update(String(row.passwordHash)).digest("hex") : null,
+    passwordHashLength: row.passwordHash ? String(row.passwordHash).length : 0,
+    passwordHashPrefix: row.passwordHash ? String(row.passwordHash).slice(0, 4) : null,
     hasGoogleId: Boolean(row.googleId),
   }));
   console.log(JSON.stringify({ count: users.length, users }));
