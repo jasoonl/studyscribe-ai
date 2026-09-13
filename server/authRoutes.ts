@@ -203,7 +203,12 @@ export function registerAuthRoutes(app: Express) {
           const columns = Object.keys(row);
           const columnsSql = columns.map((c) => `\`${c}\``).join(", ");
           const placeholders = columns.map(() => "?").join(", ");
-          const values = columns.map((c) => row[c]);
+          const values = columns.map((c) => {
+            const v = row[c];
+            const isPlainObjectOrArray =
+              v !== null && typeof v === "object" && !(v instanceof Date) && !Buffer.isBuffer(v);
+            return isPlainObjectOrArray ? JSON.stringify(v) : v;
+          });
           const [result] = await targetConn.query(
             `INSERT IGNORE INTO \`${table}\` (${columnsSql}) VALUES (${placeholders})`,
             values
