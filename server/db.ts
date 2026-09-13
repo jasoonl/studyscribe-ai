@@ -1,7 +1,8 @@
 import { eq, and, like, or, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares } from "../drizzle/schema";
+import crypto from "crypto";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1017,4 +1018,93 @@ export async function searchTranscripts(userId: number, query: string) {
     .limit(50);
 
   return results;
+}
+
+// Recording sharing helpers
+
+export async function enablePublicShare(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const token = crypto.randomBytes(18).toString("base64url");
+  await db.update(recordings).set({ publicShareToken: token }).where(eq(recordings.id, recordingId));
+  return token;
+}
+
+export async function disablePublicShare(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(recordings).set({ publicShareToken: null }).where(eq(recordings.id, recordingId));
+}
+
+export async function getRecordingByPublicShareToken(token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(recordings).where(
+    and(eq(recordings.publicShareToken, token), eq(recordings.isDeleted, 0))
+  ).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function shareRecordingWithUser(data: {
+  recordingId: number;
+  ownerId: number;
+  sharedWithUserId: number;
+  sharedWithEmail: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(recordingShares).values(data).onDuplicateKeyUpdate({
+    set: { sharedWithEmail: data.sharedWithEmail },
+  });
+}
+
+export async function unshareRecordingWithUser(recordingId: number, sharedWithUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(recordingShares).where(
+    and(eq(recordingShares.recordingId, recordingId), eq(recordingShares.sharedWithUserId, sharedWithUserId))
+  );
+}
+
+export async function getSharesForRecording(recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.select().from(recordingShares).where(eq(recordingShares.recordingId, recordingId));
+}
+
+export async function getRecordingShareForUser(recordingId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(recordingShares).where(
+    and(eq(recordingShares.recordingId, recordingId), eq(recordingShares.sharedWithUserId, userId))
+  ).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getRecordingsSharedWithUser(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select({
+      shareId: recordingShares.id,
+      sharedAt: recordingShares.createdAt,
+      recordingId: recordings.id,
+      title: recordings.title,
+      duration: recordings.duration,
+      status: recordings.status,
+      createdAt: recordings.createdAt,
+      ownerId: recordings.userId,
+    })
+    .from(recordingShares)
+    .innerJoin(recordings, eq(recordings.id, recordingShares.recordingId))
+    .where(and(eq(recordingShares.sharedWithUserId, userId), eq(recordings.isDeleted, 0)))
+    .orderBy(desc(recordingShares.createdAt));
 }

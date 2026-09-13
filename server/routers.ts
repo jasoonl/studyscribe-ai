@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { recordings, userNotifications } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
+import { sharingRouter } from "./sharingRouter";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
@@ -552,6 +553,7 @@ export const appRouter = router({
       }),
   }),
   notifications: notificationsRouter,
+  sharing: sharingRouter,
 
   studyGuides: router({
     list: protectedProcedure
