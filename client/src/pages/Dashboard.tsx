@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle } from "lucide-react";
+import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -94,7 +94,7 @@ function TrashTabContent() {
 }
 
 export default function Dashboard() {
-  const { user, logout, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading, isAdmin } = useAuth();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("library");
   const [searchQuery, setSearchQuery] = useState("");
@@ -287,6 +287,20 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Help</span>
             </button>
           </Link>
+          <Link href="/shared-with-me">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs sm:text-sm font-medium hover:bg-amber-100 transition-colors whitespace-nowrap">
+              <Users2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Shared with Me</span>
+            </button>
+          </Link>
+          {isAdmin && (
+            <Link href="/admin">
+              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-medium hover:bg-indigo-100 transition-colors whitespace-nowrap">
+                <ShieldCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </button>
+            </Link>
+          )}
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
