@@ -1,7 +1,6 @@
-import { eq, and, like, or, desc } from "drizzle-orm";
+import { eq, and, like, or, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
-import { sql } from "drizzle-orm";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
