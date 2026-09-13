@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
-import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
+import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken, getExternalDatabaseConfig } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
@@ -24,9 +24,24 @@ export function registerAuthRoutes(app: Express) {
         res.status(404).json({ error: "Not found" });
         return;
       }
+      const config = getExternalDatabaseConfig();
+      let hostInfo: { kind: string; host?: string; database?: string } | null = null;
+      if (config) {
+        if (config.kind === "tidb") {
+          hostInfo = { kind: "tidb-fields", host: config.host, database: config.database };
+        } else {
+          try {
+            const parsed = new URL(config.url);
+            hostInfo = { kind: "url", host: parsed.hostname, database: parsed.pathname.replace(/^\//, "") };
+          } catch {
+            hostInfo = { kind: "url", host: "unparseable" };
+          }
+        }
+      }
+
       const db = await getDb();
       if (!db) {
-        res.json({ dbAvailable: false });
+        res.json({ dbAvailable: false, hostInfo });
         return;
       }
       const all = await db.select({
@@ -63,6 +78,7 @@ export function registerAuthRoutes(app: Express) {
         }, {}),
         emailDomains: [...new Set(all.map((u) => u.email.split("@")[1]))],
         queryMatch: match,
+        hostInfo,
       });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : "Diagnostic failed" });
