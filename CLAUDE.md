@@ -1,0 +1,79 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+StudyScribe AI is a full-stack app (not just the marketing site the stale `README.md`/`PROJECT_GUIDE.md` describe): a React SPA + Express/tRPC API for recording or uploading lectures/meetings, transcribing them (AssemblyAI, with speaker diarization), and generating AI study tools (flashcards, study guides, quizzes, email drafts, an AI tutor chat) from the transcript. Auth is custom (invite-gated email/password + Google OAuth), backed by a TiDB Cloud (MySQL-compatible) database via Drizzle ORM.
+
+It runs on Vercel as serverless functions today; the code also supports a standalone Node server (Railway/Render) and still contains legacy references to its original "Manus" hosting platform.
+
+## Commands
+
+```bash
+npm install --include=dev --no-audit --no-fund   # Vercel's actual install command — use npm, not pnpm, despite packageManager: pnpm in package.json
+npm run dev        # tsx watch server/_core/dev.ts — Express + Vite middleware, picks first free port from 3000
+npm run build       # vite build (client) + esbuild bundles server/_core/index.ts and standalone.ts to dist/
+npm start          # runs the built standalone server (dist/standalone.js) — used by Railway/Render, not Vercel
+npm run check      # tsc --noEmit
+npm test           # vitest run
+npm run format     # prettier --write .
+npm run db:push    # drizzle-kit generate && drizzle-kit migrate
+npm run db:migrate # drizzle-kit migrate (applies committed migrations in drizzle/ only)
+```
+
+Run a single test file: `npx vitest run server/authService.test.ts` (or any path). Filter by name: `npx vitest run -t "some test name"`.
+
+There is no lint script and no CI workflow in this repo (only `.github/dependabot.yml`).
+
+## Architecture
+
+### Server bootstrapping — one Express app, three entry points
+
+`server/_core/app.ts` builds the single Express app (`createApp()`) shared by every runtime target. Three separate entry points wrap it:
+- `server/_core/index.ts` — the Vercel serverless handler (`api/index.mjs` imports the built `dist/index.js` and re-exports it as the default handler). It also starts a real listener if run directly (`isDirectNodeExecution`), which is how the standalone path works.
+- `server/_core/standalone.ts` — explicit standalone entry for Railway/Render (`npm start`).
+- `server/_core/dev.ts` — dev server: wires in Vite's middleware (`setupVite`) for HMR, and calls `resumeProcessingRecordings()` on boot to pick back up any transcriptions that were mid-flight.
+
+Because `app.ts` must stay importable by the Vercel function without pulling in Vite/static-serving code, don't add Vite-only imports there — put dev-only wiring in `dev.ts`.
+
+### Routing inside the Express app
+
+- REST routes for auth (`server/authRoutes.ts`), Google OAuth (`server/googleOAuthHandler.ts` + `oauth.ts`), the AssemblyAI webhook (`server/transcriptionWebhook.ts`), storage proxying (`server/storageProxy.ts`), and a gated one-time schema-init endpoint (`server/schemaInit.ts`).
+- Everything else goes through tRPC at `/api/trpc`, defined in `server/routers.ts` (`appRouter`), which composes `systemRouter`, `customAuthRouter`, `notificationsRouter`, and the main routers for recordings/transcripts/study notes/flashcards/quizzes/study guides/email drafts/chat/browser push.
+- tRPC procedure tiers (`server/_core/trpc.ts`): `publicProcedure`, `protectedProcedure` (requires `ctx.user`), `adminProcedure` (requires `role === 'admin'`). Auth state comes from a signed session cookie, resolved once per request in `server/_core/context.ts` (`createContext`) — there is no Manus OAuth fallback anymore, only the custom cookie session.
+
+### Auth model
+
+Invite-gated signup: `/api/auth/signup` requires a valid, unused, unexpired invite code tied to the signing-up email (`server/authService.ts`). Login supports email/password (bcrypt) and Google OAuth (`server/googleOAuthHandler.ts`); `loginWithGoogleExistingOnly` intentionally rejects unknown Google accounts on the login page (no silent account creation) while the signup path auto-creates. `getSafeApplicationOrigin` (`server/email.ts`) allowlists which origins the Google OAuth redirect/state and password-reset links may point to — extend `knownVercelOrigins`/`knownManusOrigins` there if the app moves to a new domain, since anything not on the allowlist silently falls back to the configured default origin.
+
+Admin-invite-approval UI exists (`client/src/pages/AdminInviteRequests.tsx`, `AdminInviteCodes.tsx`) for admins to review `/request-access` submissions and issue codes, gated by `adminProcedure`.
+
+### Database — TiDB Cloud via Drizzle, multiple env-var shapes
+
+`server/db.ts` is the single source of truth for the DB connection and every query helper (no repository classes — just exported functions per entity, e.g. `getUserByEmail`, `createRecording`). `getExternalDatabaseConfig()` resolves the connection in this precedence order, because TiDB Cloud's "Connect" dialog and Vercel's own conventions have both been used historically:
+1. `TIDB_HOST`/`TIDB_PORT`/`TIDB_USER` (or `TIDB_USERNAME`)/`TIDB_PASSWORD`/`TIDB_DATABASE` (or `TIDB_DB_NAME`) if *all* are present.
+2. Same shape with a `DB_` prefix instead of `TIDB_`.
+3. Otherwise falls back to `DATABASE_URL`.
+
+An incomplete `TIDB_*`/`DB_*` set must not shadow a working `DATABASE_URL` — that's a real regression that happened once already (see git history around `getExternalDatabaseConfig`). `normalizeTiDbDatabaseName` redirects TiDB's protected default schemas (`sys`, `mysql`, etc.) to `test`. `drizzle.config.ts` re-implements the same precedence independently for CLI commands (`db:push`/`db:migrate`) — keep both in sync if the resolution logic changes.
+
+Schema lives in `drizzle/schema.ts` (19 tables: users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags + join tables, userNotifications, pushSubscriptions, inviteCodes, inviteRequests, passwordResetTokens, studyGuides, quizzes, quizAttempts, emailDrafts). Migrations are committed SQL files under `drizzle/*.sql`; TiDB does not support every MySQL default expression (e.g. `DEFAULT (now())` and JSON column defaults have both caused migration failures before — use `DEFAULT CURRENT_TIMESTAMP` and no JSON defaults).
+
+### Provider abstractions (swap points if changing services)
+
+- **Storage**: `server/storage.ts` — Vercel Blob (`isVercelBlobStorageConfigured`) is primary; falls back to legacy "Forge" (Manus's built-in storage API, `BUILT_IN_FORGE_API_URL`/`_KEY`) if Blob isn't configured. Audio files are capped at 16MB.
+- **Transcription/diarization**: `server/speakerDiarization.ts` — AssemblyAI, submitted async with a webhook callback (`server/transcriptionWebhook.ts`) rather than polling in the request path.
+- **LLM**: `server/_core/llm.ts` — OpenAI-compatible chat completion client (`OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`), used for summaries, flashcards, quizzes, study guides, email drafts, and the AI tutor chat.
+- **Transactional email**: `server/email.ts` — Resend (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`); the sending domain must be one the owner controls and has verified in Resend (the historical default, `studyscribe-ai.manus.space`, is Manus-managed and can't be used for this).
+- **Browser push**: `server/pushNotifications.ts` — Web Push with VAPID keys.
+
+### Frontend
+
+Vite + React 19, routed with `wouter` (not react-router) in `client/src/App.tsx`. `ProtectedRoute` wraps authenticated pages and reads auth state from `useCustomAuth` (`client/src/_core/hooks/useCustomAuth.ts`), which talks to the custom REST session endpoints, not tRPC, for the initial auth check. Data fetching for everything else goes through the tRPC client + TanStack Query. UI components are shadcn/ui (`client/src/components/ui`) on Tailwind v4. Path aliases (`@` → `client/src`, `@shared` → `shared/`) are defined in both `vite.config.ts` and `tsconfig.json` — keep them in sync if either changes; `vitest.config.ts` also duplicates them for tests.
+
+`shared/` holds code imported by both client and server (`shared/const.ts` for shared string constants, `shared/types.ts`) — put cross-cutting constants there rather than duplicating them.
+
+### Deployment
+
+Vercel is the active production target: `vercel.json` builds with `npm run build`, routes `/api/*` to the bundled `api/index.mjs` handler, and serves the SPA for everything else. Deploys are automatic on push to `main` via Vercel's GitHub integration — there is no separate deploy step or CI gate to run manually; check deploy status via the GitHub commit status API (`context: "Vercel"`) or the Vercel dashboard. `render.yaml`/`railway.json`/`railway.toml`/`Procfile`/`render-build.sh` exist from an evaluated-but-not-completed migration off Vercel; don't assume they're current.
