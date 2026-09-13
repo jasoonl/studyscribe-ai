@@ -7,7 +7,66 @@ import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 
+const TEMP_DIAG_TOKEN = "578b9640d0df376872029f64d0627380e98148b9d7268a82";
+
 export function registerAuthRoutes(app: Express) {
+  /**
+   * TEMPORARY read-only diagnostic route. No secrets are exposed: only a
+   * user count, the DB host suffix in use, and whether a queried email
+   * exists (boolean + login method), never a hash or full email of anyone
+   * else. Remove after the current launch-readiness investigation.
+   */
+  app.get("/api/admin/diag", async (req: Request, res: Response) => {
+    try {
+      if (req.query.token !== TEMP_DIAG_TOKEN) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const db = await getDb();
+      if (!db) {
+        res.json({ dbAvailable: false });
+        return;
+      }
+      const all = await db.select({
+        id: users.id,
+        email: users.email,
+        loginMethod: users.loginMethod,
+        hasPasswordHash: users.passwordHash,
+        hasGoogleId: users.googleId,
+        role: users.role,
+      }).from(users);
+
+      const queryEmail = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : undefined;
+      let match: any = null;
+      if (queryEmail) {
+        const found = all.find((u) => u.email.trim().toLowerCase() === queryEmail);
+        match = found
+          ? {
+              found: true,
+              loginMethod: found.loginMethod,
+              hasPassword: Boolean(found.hasPasswordHash),
+              hasGoogleId: Boolean(found.hasGoogleId),
+              role: found.role,
+            }
+          : { found: false };
+      }
+
+      res.json({
+        dbAvailable: true,
+        userCount: all.length,
+        loginMethods: all.reduce((acc: Record<string, number>, u) => {
+          const key = u.loginMethod || "unknown";
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {}),
+        emailDomains: [...new Set(all.map((u) => u.email.split("@")[1]))],
+        queryMatch: match,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Diagnostic failed" });
+    }
+  });
+
   /**
    * POST /api/auth/login
    * Email/password login
