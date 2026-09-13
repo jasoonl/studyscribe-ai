@@ -17,6 +17,10 @@ import Invite from "./pages/Invite";
 import RequestAccess from "./pages/RequestAccess";
 import AdminInviteRequests from "./pages/AdminInviteRequests";
 import AdminInviteCodes from "./pages/AdminInviteCodes";
+import Admin from "./pages/Admin";
+import PublicSharedRecording from "./pages/PublicSharedRecording";
+import SharedWithMe from "./pages/SharedWithMe";
+import SharedWithMeRecording from "./pages/SharedWithMeRecording";
 import RecordOrUpload from "./pages/RecordOrUpload";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -65,16 +69,20 @@ function Router() {
       <Route path="/request-access" component={RequestAccess} />
       <Route path="/demo" component={Demo} />
       <Route path="/billing" component={Billing} />
-      
+      <Route path="/shared/:token" component={PublicSharedRecording} />
+
       {/* Protected routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/record" component={() => <ProtectedRoute component={Record} />} />
       <Route path="/upload" component={() => <ProtectedRoute component={Upload} />} />
       <Route path="/recording/:id" component={() => <ProtectedRoute component={RecordingDetail} />} />
+      <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
       <Route path="/admin/invite-requests" component={() => <ProtectedRoute component={AdminInviteRequests} />} />
       <Route path="/admin/invite-codes" component={() => <ProtectedRoute component={AdminInviteCodes} />} />
       <Route path="/record-or-upload" component={() => <ProtectedRoute component={RecordOrUpload} />} />
       <Route path="/knowledge-base" component={() => <ProtectedRoute component={KnowledgeBase} />} />
+      <Route path="/shared-with-me" component={() => <ProtectedRoute component={SharedWithMe} />} />
+      <Route path="/shared-with-me/:id" component={() => <ProtectedRoute component={SharedWithMeRecording} />} />
       <Route path="/recordings/:recordingId/study-guides" component={() => <ProtectedRoute component={StudyGuides} />} />
       <Route path="/recordings/:recordingId/quizzes" component={() => <ProtectedRoute component={QuizPage} />} />
       <Route path="/recordings/:recordingId/email-drafts" component={() => <ProtectedRoute component={EmailDrafts} />} />

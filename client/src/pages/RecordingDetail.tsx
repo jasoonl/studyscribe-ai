@@ -4,7 +4,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
-import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText, ClipboardCheck, Layers3, NotebookPen } from "lucide-react";
+import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText, ClipboardCheck, Layers3, NotebookPen, Share2 } from "lucide-react";
+import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { FlashcardReview } from "@/components/FlashcardReview";
@@ -28,6 +29,7 @@ export default function RecordingDetail() {
   const [isReviewingFlashcards, setIsReviewingFlashcards] = useState(false);
   const [activeStudyTab, setActiveStudyTab] = useState("transcript");
   const [playbackTime, setPlaybackTime] = useState(0);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const audioPlayerRef = useRef<AudioPlayerHandle>(null);
 
   const { data: recording, isLoading: recordingLoading } = trpc.recordings.get.useQuery(
@@ -194,9 +196,20 @@ export default function RecordingDetail() {
               Back
             </Button>
           </Link>
-          <h1 className="text-xl font-bold flex-1 ml-4">{recording.title}</h1>
+          <h1 className="text-xl font-bold flex-1 ml-4 truncate">{recording.title}</h1>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsShareDialogOpen(true)}>
+            <Share2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Share</span>
+          </Button>
         </div>
       </header>
+      {recordingId && (
+        <ShareRecordingDialog
+          recordingId={recordingId}
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+        />
+      )}
 
       {/* Main Content */}
       <main className="container py-8">
