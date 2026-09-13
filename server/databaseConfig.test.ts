@@ -75,6 +75,18 @@ describe("external database configuration", () => {
     expect(getExternalDatabaseConfig()).toBeNull();
   });
 
+  it("falls back to DATABASE_URL when provider fields are incomplete", () => {
+    vi.stubEnv("DATABASE_URL", "mysql://user:pass@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/test");
+    vi.stubEnv("TIDB_HOST", "gateway01.us-east-1.prod.aws.tidbcloud.com");
+    vi.stubEnv("TIDB_USER", "prefix.root");
+    vi.stubEnv("TIDB_PASSWORD", "");
+    vi.stubEnv("TIDB_DATABASE", "test");
+    expect(getExternalDatabaseConfig()).toEqual({
+      kind: "url",
+      url: "mysql://user:pass@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/test",
+    });
+  });
+
   it("enforces TLS for a TiDB Cloud DATABASE_URL", () => {
     expect(getDatabasePoolOptionsFromUrl("mysql://prefix.root:p%40ss@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/test")).toEqual({
       host: "gateway01.us-east-1.prod.aws.tidbcloud.com",

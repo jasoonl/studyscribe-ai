@@ -42,19 +42,22 @@ export function getExternalDatabaseConfig(): ExternalDatabaseConfig {
   });
   const tidbFields = getTiDbFields("TIDB");
   const dbFields = getTiDbFields("DB");
-  const fields = tidbFields.host || tidbFields.user || tidbFields.password || tidbFields.database
+  const hasCompleteFields = (fields: ReturnType<typeof getTiDbFields>) =>
+    Boolean(fields.host && fields.user && fields.password && fields.database);
+  const fields = hasCompleteFields(tidbFields)
     ? tidbFields
-    : dbFields;
-  if (fields.host || fields.user || fields.password || fields.database) {
-    if (!fields.host || !fields.user || !fields.password || !fields.database) return null;
+    : hasCompleteFields(dbFields)
+      ? dbFields
+      : null;
+  if (fields) {
     const requestedPort = Number.parseInt(fields.port || "4000", 10);
     return {
       kind: "tidb",
-      host: fields.host,
+      host: fields.host!,
       port: Number.isFinite(requestedPort) ? requestedPort : 4000,
-      user: fields.user,
-      password: fields.password,
-      database: normalizeTiDbDatabaseName(fields.database),
+      user: fields.user!,
+      password: fields.password!,
+      database: normalizeTiDbDatabaseName(fields.database!),
       ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
     };
   }
