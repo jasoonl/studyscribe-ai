@@ -6,6 +6,8 @@ import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
+import { createInviteCode } from "./db";
+import { generateInviteCode } from "./authService";
 
 const TEMP_DIAG_TOKEN = "578b9640d0df376872029f64d0627380e98148b9d7268a82";
 
@@ -64,6 +66,45 @@ export function registerAuthRoutes(app: Express) {
       });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : "Diagnostic failed" });
+    }
+  });
+
+  /**
+   * TEMPORARY bootstrap route. Only usable while the users table is empty
+   * (this production database currently has zero accounts, which is why no
+   * one can sign in yet). Generates a real invite code for the given email
+   * so the owner can sign up through the normal /signup flow. Remove after
+   * the owner has an account.
+   */
+  app.post("/api/admin/bootstrap-invite", async (req: Request, res: Response) => {
+    try {
+      if (req.query.token !== TEMP_DIAG_TOKEN) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const email = typeof req.query.email === "string" ? req.query.email.trim() : undefined;
+      if (!email) {
+        res.status(400).json({ error: "email query param required" });
+        return;
+      }
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ error: "Database not available" });
+        return;
+      }
+      const existing = await db.select({ id: users.id }).from(users).limit(1);
+      if (existing.length > 0) {
+        res.status(409).json({ error: "Users already exist; refusing to bootstrap again" });
+        return;
+      }
+
+      const code = generateInviteCode();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await createInviteCode({ code, email, createdBy: 0, expiresAt });
+
+      res.json({ inviteCode: code, email, expiresAt });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Bootstrap failed" });
     }
   });
 
