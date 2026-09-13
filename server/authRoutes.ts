@@ -8,6 +8,8 @@ import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleR
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 import { createInviteCode } from "./db";
 import { generateInviteCode } from "./authService";
+import path from "node:path";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 
 const TEMP_DIAG_TOKEN = "578b9640d0df376872029f64d0627380e98148b9d7268a82";
 
@@ -121,6 +123,41 @@ export function registerAuthRoutes(app: Express) {
       res.json({ inviteCode: code, email, expiresAt });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : "Bootstrap failed" });
+    }
+  });
+
+  /**
+   * TEMPORARY schema-migration route. This app's normal schema-init
+   * endpoint (server/schemaInit.ts) is disabled by default and, even when
+   * enabled, only runs once ever (guarded by a sentinel row) — it will not
+   * pick up new migrations added after the first run. drizzle-orm's
+   * migrate() tracks applied migrations by file hash in its own
+   * `__drizzle_migrations` table, so calling this repeatedly is safe: it
+   * only applies migrations that haven't run yet. Remove once schema
+   * changes stop needing manual triggering, or wire SCHEMA_INIT_ENABLED
+   * properly instead.
+   */
+  app.post("/api/admin/run-migrations", async (req: Request, res: Response) => {
+    try {
+      if (req.query.token !== TEMP_DIAG_TOKEN) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ error: "Database not available" });
+        return;
+      }
+      await migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+      res.json({ success: true });
+    } catch (error) {
+      const cause = error && typeof error === "object" && "cause" in error
+        ? (error as { cause?: { code?: string; sqlMessage?: string } }).cause
+        : undefined;
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Migration failed",
+        sqlMessage: cause?.sqlMessage,
+      });
     }
   });
 
