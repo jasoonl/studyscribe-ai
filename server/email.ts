@@ -6,6 +6,10 @@ const knownManusOrigins = new Set([
   "https://scribesync-asvcfial.manus.space",
 ]);
 
+const knownVercelOrigins = new Set([
+  "https://studyscribe-ai.vercel.app",
+]);
+
 function getConfiguredApplicationOrigin() {
   const configured = process.env.PUBLIC_APP_URL || process.env.APP_URL;
   if (!configured) return defaultApplicationOrigin;
@@ -34,7 +38,7 @@ export function getSafeApplicationOrigin(candidate: string | undefined) {
     const parsed = new URL(candidate);
     const isPreview = /^https:\/\/3000-[a-z0-9-]+\.us\d+\.manus\.computer$/i.test(parsed.origin);
     const isLocal = /^http:\/\/localhost:\d+$/i.test(parsed.origin);
-    if (knownManusOrigins.has(parsed.origin) || parsed.origin === configuredOrigin || isPreview || isLocal) return parsed.origin;
+    if (knownManusOrigins.has(parsed.origin) || knownVercelOrigins.has(parsed.origin) || parsed.origin === configuredOrigin || isPreview || isLocal) return parsed.origin;
   } catch {
     // Use the configured origin below when an untrusted string cannot be parsed.
   }

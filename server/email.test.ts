@@ -11,6 +11,7 @@ describe("transactional password-reset email", () => {
     expect(getSafeApplicationOrigin("https://studyscribe-ai.manus.space")).toBe("https://studyscribe-ai.manus.space");
     expect(getSafeApplicationOrigin("https://untrusted.example/reset")).toBe("https://studyscribe-ai.manus.space");
     expect(getSafeApplicationOrigin("https://3000-local-preview.us4.manus.computer")).toBe("https://3000-local-preview.us4.manus.computer");
+    expect(getSafeApplicationOrigin("https://studyscribe-ai.vercel.app")).toBe("https://studyscribe-ai.vercel.app");
   });
 
   it("uses PUBLIC_APP_URL for an external deployment and rejects spoofed origins", () => {

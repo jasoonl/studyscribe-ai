@@ -148,16 +148,19 @@ export async function loginWithEmailPassword(
   password: string
 ): Promise<{ user: User; error?: undefined } | { user?: undefined; error: string }> {
   try {
-    const user = await dbGetUserByEmail(normalizeAuthEmail(email));
+    const normalizedEmail = normalizeAuthEmail(email);
+    const emailFingerprint = crypto.createHash('sha256').update(normalizedEmail).digest('hex');
+    const user = await dbGetUserByEmail(normalizedEmail);
 
     if (!user) {
-      console.info('[Auth] Email login rejected', { reason: 'user_not_found' });
+      console.info('[Auth] Email login rejected', { reason: 'user_not_found', emailFingerprint });
       return { error: 'Invalid email or password' };
     }
 
     if (!user.passwordHash) {
       console.info('[Auth] Email login rejected', {
         reason: user.googleId ? 'google_only_account' : 'password_not_set',
+        emailFingerprint,
         hashLength: 0,
         hashPrefix: null,
       });
@@ -169,6 +172,7 @@ export async function loginWithEmailPassword(
     if (!isPasswordValid) {
       console.info('[Auth] Email login rejected', {
         reason: 'password_mismatch',
+        emailFingerprint,
         hashLength: user.passwordHash.length,
         hashPrefix: user.passwordHash.slice(0, 4),
       });
