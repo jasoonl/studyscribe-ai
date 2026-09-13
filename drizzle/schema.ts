@@ -48,6 +48,7 @@ export const recordings = mysqlTable("recordings", {
   audience: mysqlEnum("audience", ["student", "professional"]).default("student"),
   status: mysqlEnum("status", ["processing", "completed", "failed"]).default("processing"),
   transcriptionProviderId: varchar("transcriptionProviderId", { length: 128 }).unique(),
+  publicShareToken: varchar("publicShareToken", { length: 64 }).unique(), // Set when the owner has an active public share link
   isDeleted: int("isDeleted").default(0).notNull(), // Soft delete flag
   deletedAt: timestamp("deletedAt"), // Timestamp when deleted
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -367,3 +368,23 @@ export const emailDrafts = mysqlTable("emailDrafts", {
 export type EmailDraft = typeof emailDrafts.$inferSelect;
 export type EmailDraftTone = "formal" | "casual" | "technical" | "persuasive";
 export type InsertEmailDraft = typeof emailDrafts.$inferInsert;
+
+/**
+ * Recording shares table — grants a specific registered account read-only
+ * access to a recording (transcript, notes, flashcards, quizzes, study
+ * guides). Independent of `recordings.publicShareToken`, which is a
+ * no-login public link instead of a targeted share.
+ */
+export const recordingShares = mysqlTable("recordingShares", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  ownerId: int("ownerId").notNull(),
+  sharedWithUserId: int("sharedWithUserId").notNull(),
+  sharedWithEmail: varchar("sharedWithEmail", { length: 320 }).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("recordingShares_recording_user_unique").on(table.recordingId, table.sharedWithUserId),
+]);
+
+export type RecordingShare = typeof recordingShares.$inferSelect;
+export type InsertRecordingShare = typeof recordingShares.$inferInsert;
