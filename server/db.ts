@@ -129,10 +129,22 @@ export async function getUserByEmail(email: string) {
   }
 
   const normalizedEmail = normalizeAuthEmail(email);
-  const result = await db.select().from(users)
+  const trimmedEmail = email.trim();
+
+  const exactResult = await db.select().from(users)
+    .where(eq(users.email, trimmedEmail))
+    .limit(1);
+  if (exactResult.length > 0) return exactResult[0];
+
+  const caseInsensitiveResult = await db.select().from(users)
+    .where(sql`LOWER(${users.email}) = ${normalizedEmail}`)
+    .limit(1);
+  if (caseInsensitiveResult.length > 0) return caseInsensitiveResult[0];
+
+  const trimmedCaseInsensitiveResult = await db.select().from(users)
     .where(sql`LOWER(TRIM(${users.email})) = ${normalizedEmail}`)
     .limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return trimmedCaseInsensitiveResult.length > 0 ? trimmedCaseInsensitiveResult[0] : undefined;
 }
 
 export async function getUserByGoogleId(googleId: string) {

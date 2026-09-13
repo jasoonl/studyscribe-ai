@@ -439,3 +439,4 @@ AssemblyAI speaker diarization is implemented and has passed a live provider tes
 - [ ] Compare Manus and Vercel authentication identity/session behavior because both existing email/password and Google accounts work on Manus but fail on Vercel.
 - [ ] Add temporary non-sensitive authentication rejection diagnostics that log only the failure category and hash metadata, never email addresses, passwords, or hashes, then remove the diagnostics after identifying the Vercel failure.
 - [ ] Fix the Vercel Google callback failure and the simultaneous email/password failure for existing migrated accounts, then remove temporary login diagnostics.
+- [ ] Inspect the latest Vercel authentication retry logs and fix the remaining Google callback and email/password failures based on their exact non-sensitive categories.
