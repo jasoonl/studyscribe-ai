@@ -125,6 +125,103 @@ export function registerAuthRoutes(app: Express) {
   });
 
   /**
+   * TEMPORARY one-time data migration route. Copies every row from the
+   * owner's old Manus-hosted TiDB database into this production database,
+   * table by table, preserving primary keys so foreign-key-style columns
+   * (userId, recordingId, etc.) stay consistent. Source credentials are
+   * supplied per-request in the POST body — never stored in the repo or
+   * logged. Uses INSERT IGNORE so it is safe to re-run. Remove this route
+   * once the migration is verified.
+   */
+  app.post("/api/admin/migrate-from-manus", async (req: Request, res: Response) => {
+    try {
+      if (req.query.token !== TEMP_DIAG_TOKEN) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const { host, port, user, password, database } = req.body || {};
+      if (!host || !port || !user || !password || !database) {
+        res.status(400).json({ error: "host, port, user, password, database required in JSON body" });
+        return;
+      }
+
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ error: "Target database not available" });
+        return;
+      }
+      const targetPool = (db as any).$client;
+      if (!targetPool || typeof targetPool.promise !== "function") {
+        res.status(500).json({ error: "Could not access target database client" });
+        return;
+      }
+      const targetConn = targetPool.promise();
+
+      const { createConnection } = await import("mysql2/promise");
+      const source = await createConnection({
+        host,
+        port: Number(port),
+        user,
+        password,
+        database,
+        ssl: { rejectUnauthorized: true },
+      });
+
+      const tableOrder = [
+        "users",
+        "recordings",
+        "transcripts",
+        "studyNotes",
+        "flashcards",
+        "flashcardReviews",
+        "chatHistory",
+        "tags",
+        "recordingTags",
+        "noteTags",
+        "userNotifications",
+        "pushSubscriptions",
+        "inviteCodes",
+        "passwordResetTokens",
+        "inviteRequests",
+        "studyGuides",
+        "quizzes",
+        "quizAttempts",
+        "emailDrafts",
+      ];
+
+      // Clear the earlier temporary bootstrap invite (createdBy sentinel 0) so
+      // its auto-incremented id cannot collide with a real migrated invite code.
+      await targetConn.query("DELETE FROM `inviteCodes` WHERE createdBy = 0");
+
+      const summary: Record<string, { sourceRows: number; inserted: number }> = {};
+
+      for (const table of tableOrder) {
+        const [rows] = await source.query(`SELECT * FROM \`${table}\``);
+        const rowList = rows as Record<string, any>[];
+        let inserted = 0;
+        for (const row of rowList) {
+          const columns = Object.keys(row);
+          const columnsSql = columns.map((c) => `\`${c}\``).join(", ");
+          const placeholders = columns.map(() => "?").join(", ");
+          const values = columns.map((c) => row[c]);
+          const [result] = await targetConn.query(
+            `INSERT IGNORE INTO \`${table}\` (${columnsSql}) VALUES (${placeholders})`,
+            values
+          );
+          if ((result as any).affectedRows > 0) inserted++;
+        }
+        summary[table] = { sourceRows: rowList.length, inserted };
+      }
+
+      await source.end();
+
+      res.json({ success: true, summary });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Migration failed" });
+    }
+  });
+
+  /**
    * POST /api/auth/login
    * Email/password login
    */
