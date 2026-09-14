@@ -21,7 +21,7 @@ const AUDIO_MIME_TYPES = new Set([
  * Every upload through this path is audio-only by construction (recording
  * or an audio file picker).
  */
-function normalizeAudioMimeType(mimeType: string): string {
+export function normalizeAudioMimeType(mimeType: string): string {
   const base = mimeType.split(";")[0].trim().toLowerCase();
   if (base === "video/webm") return "audio/webm";
   if (base === "video/mp4") return "audio/mp4";
