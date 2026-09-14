@@ -5,16 +5,27 @@ const MAX_AUDIO_SIZE_BYTES = 16 * 1024 * 1024;
 const AUDIO_MIME_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
   "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a", "audio/x-m4a",
-  "video/mp4", "video/webm",
 ]);
 
 /**
  * Browsers report MediaRecorder.mimeType with codec parameters attached
  * (e.g. `audio/webm;codecs=opus`), which never matches AUDIO_MIME_TYPES
  * exactly. Strip parameters before validating or allow-listing the type.
+ *
+ * Some browsers also report an audio-only recording's container under a
+ * `video/*` label (e.g. `video/webm` with no video track at all) — a known
+ * MediaRecorder quirk, not an actual video upload. Vercel Blob's storage
+ * enforces its own content-type policy independent of what we allow-list
+ * and rejects `video/*` outright with 403 "contentType ... is not
+ * allowed", so relabel to the audio equivalent before it ever reaches Blob.
+ * Every upload through this path is audio-only by construction (recording
+ * or an audio file picker).
  */
 function normalizeAudioMimeType(mimeType: string): string {
-  return mimeType.split(";")[0].trim().toLowerCase();
+  const base = mimeType.split(";")[0].trim().toLowerCase();
+  if (base === "video/webm") return "audio/webm";
+  if (base === "video/mp4") return "audio/mp4";
+  return base;
 }
 
 export function isVercelBlobStorageConfigured() {
