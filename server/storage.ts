@@ -61,11 +61,6 @@ function publicStorageProxyUrl(key: string) {
   return `/api/storage?key=${encodeURIComponent(key)}`;
 }
 
-function safeFileName(fileName: string) {
-  const cleaned = fileName.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
-  return cleaned.slice(-100) || "recording.webm";
-}
-
 const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   mp3: "audio/mpeg",
   wav: "audio/wav",
@@ -76,29 +71,57 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
 };
 
 /**
- * Since uploads are stored with a generic Content-Type (see
- * BLOB_UPLOAD_CONTENT_TYPE below), playback must derive the real
- * Content-Type itself rather than trusting Blob's stored metadata. The
- * storage key always ends in the original file's extension (from
- * safeFileName), which is reliable enough for this.
+ * Short labels embedded in the storage key (see createDirectAudioUpload)
+ * so playback can recover the real audio type without the key itself
+ * ending in a `.webm`/`.mp4` extension — those are the exact extensions
+ * that made Vercel Blob's presigned PUT reject the upload as "video/webm
+ * is not allowed" even after every other content-type declaration (the
+ * PUT header, the signed token's allowedContentTypes) was changed to a
+ * generic type. Vercel Blob infers/validates a presigned upload's content
+ * type from the pathname extension independent of those declarations, and
+ * .webm/.mp4 are canonically registered as video/* in the standard MIME
+ * database — so any key ending in one, even for audio-only content, was
+ * doomed regardless of what we told Blob to expect. Keeping the key
+ * extension a neutral `.bin` avoids that inference entirely.
+ */
+const AUDIO_TYPE_LABELS: Record<string, string> = {
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/wav": "wav",
+  "audio/wave": "wav",
+  "audio/x-wav": "wav",
+  "audio/ogg": "ogg",
+  "audio/webm": "webm",
+  "audio/mp4": "mp4",
+  "audio/m4a": "m4a",
+  "audio/x-m4a": "m4a",
+};
+
+/**
+ * Since uploads are stored with a generic Content-Type and a neutral `.bin`
+ * key extension, playback must derive the real Content-Type itself rather
+ * than trusting Blob's stored metadata or the pathname. Keys created by
+ * createDirectAudioUpload embed the real type as a `-<label>.bin` suffix;
+ * older keys (from the base64 fallback path) still end in a real
+ * extension, so fall back to that lookup for those.
  */
 export function contentTypeFromStorageKey(key: string): string {
-  const extension = key.split(".").pop()?.toLowerCase() ?? "";
+  const base = key.split("/").pop() ?? "";
+  const labelMatch = base.match(/-([a-z0-9]+)\.bin$/i);
+  if (labelMatch) {
+    const label = EXTENSION_CONTENT_TYPES[labelMatch[1].toLowerCase()];
+    if (label) return label;
+  }
+  const extension = base.split(".").pop()?.toLowerCase() ?? "";
   return EXTENSION_CONTENT_TYPES[extension] || "application/octet-stream";
 }
 
 /**
- * Vercel Blob's storage enforces its own content-type acceptance policy
- * independent of whatever we pass as `allowedContentTypes` — it has
- * rejected `audio/webm` uploads (after both the declared header and the
- * uploaded Blob's own `.type` were made to match exactly) with 403
- * "contentType ... is not allowed", for reasons opaque from the client
- * side. Rather than chase that policy further, every direct upload
- * declares this universally-accepted generic type instead; the real,
- * validated audio MIME type is still returned separately (as `mimeType`)
- * for the caller to use, and playback serves the correct Content-Type
- * from the file extension (see storageProxy's GET /api/storage) rather
- * than trusting Blob's stored metadata.
+ * Declared on both the signed token and the PUT header for every direct
+ * upload (see the AUDIO_TYPE_LABELS comment above for why the key's own
+ * extension is neutral too — belt and braces against Blob's content-type
+ * handling). The real, validated audio MIME type is still returned
+ * separately (as `mimeType`) for the caller to use.
  */
 const BLOB_UPLOAD_CONTENT_TYPE = "application/octet-stream";
 
@@ -115,7 +138,8 @@ export async function createDirectAudioUpload(input: {
     throw new Error("Audio file must be between 1 byte and 500MB");
   }
 
-  const key = `${input.userId}/recordings/${crypto.randomUUID()}-${safeFileName(input.fileName)}`;
+  const label = AUDIO_TYPE_LABELS[mimeType] || "audio";
+  const key = `${input.userId}/recordings/${crypto.randomUUID()}-${label}.bin`;
   const validUntil = Date.now() + 10 * 60 * 1_000;
   const signedToken = await issueSignedToken({
     pathname: key,

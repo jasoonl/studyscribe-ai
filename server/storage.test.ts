@@ -73,7 +73,7 @@ describe("normalizeAudioMimeType", () => {
 });
 
 describe("contentTypeFromStorageKey", () => {
-  it("maps every supported extension to its playback Content-Type", () => {
+  it("maps every supported extension to its playback Content-Type (legacy dot-extension keys)", () => {
     expect(contentTypeFromStorageKey("1/recordings/abc-lecture.mp3")).toBe("audio/mpeg");
     expect(contentTypeFromStorageKey("1/recordings/abc-lecture.wav")).toBe("audio/wav");
     expect(contentTypeFromStorageKey("1/recordings/abc-lecture.ogg")).toBe("audio/ogg");
@@ -89,6 +89,21 @@ describe("contentTypeFromStorageKey", () => {
   it("falls back to a generic type for an unknown or missing extension", () => {
     expect(contentTypeFromStorageKey("1/recordings/abc-lecture.xyz")).toBe("application/octet-stream");
     expect(contentTypeFromStorageKey("1/recordings/no-extension")).toBe("application/octet-stream");
+  });
+
+  it("recovers the real audio type from the neutral-extension label keys createDirectAudioUpload produces", () => {
+    // These keys deliberately end in .bin, not .webm/.mp4 (see
+    // createDirectAudioUpload), so playback must read the embedded label.
+    expect(contentTypeFromStorageKey("1/recordings/abc123-webm.bin")).toBe("audio/webm");
+    expect(contentTypeFromStorageKey("1/recordings/abc123-mp4.bin")).toBe("audio/mp4");
+    expect(contentTypeFromStorageKey("1/recordings/abc123-mp3.bin")).toBe("audio/mpeg");
+    expect(contentTypeFromStorageKey("1/recordings/abc123-wav.bin")).toBe("audio/wav");
+    expect(contentTypeFromStorageKey("1/recordings/abc123-ogg.bin")).toBe("audio/ogg");
+    expect(contentTypeFromStorageKey("1/recordings/abc123-m4a.bin")).toBe("audio/mp4");
+  });
+
+  it("falls back to a generic type for a .bin key with an unrecognized label", () => {
+    expect(contentTypeFromStorageKey("1/recordings/abc123-audio.bin")).toBe("application/octet-stream");
   });
 });
 
@@ -141,9 +156,26 @@ describe("createDirectAudioUpload", () => {
     );
   });
 
+  it("never gives the storage key a .webm or .mp4 extension, even for those exact input formats", async () => {
+    // The storage key's own extension is what Vercel Blob's presigned PUT
+    // actually validates the content type against (independent of the
+    // declared header/allowedContentTypes) — .webm/.mp4 are canonically
+    // registered as video/* in the standard MIME database, so a key ending
+    // in either was rejected outright regardless of any other fix. This is
+    // the assertion that pins the real root cause of the recurring bug.
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    const webm = await createDirectAudioUpload({ ...baseInput, mimeType: "video/webm" });
+    const mp4 = await createDirectAudioUpload({ ...baseInput, mimeType: "video/mp4" });
+    expect(webm?.key).not.toMatch(/\.webm$/);
+    expect(mp4?.key).not.toMatch(/\.mp4$/);
+    expect(webm?.key).toMatch(/-webm\.bin$/);
+    expect(mp4?.key).toMatch(/-mp4\.bin$/);
+  });
+
   it("scopes the storage key to the uploading user", async () => {
     vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
     const result = await createDirectAudioUpload({ ...baseInput, userId: 42, mimeType: "audio/mp3" });
     expect(result?.key).toMatch(/^42\/recordings\//);
+    expect(result?.key).toMatch(/-mp3\.bin$/);
   });
 });
