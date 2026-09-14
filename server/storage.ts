@@ -8,6 +8,15 @@ const AUDIO_MIME_TYPES = new Set([
   "video/mp4", "video/webm",
 ]);
 
+/**
+ * Browsers report MediaRecorder.mimeType with codec parameters attached
+ * (e.g. `audio/webm;codecs=opus`), which never matches AUDIO_MIME_TYPES
+ * exactly. Strip parameters before validating or allow-listing the type.
+ */
+function normalizeAudioMimeType(mimeType: string): string {
+  return mimeType.split(";")[0].trim().toLowerCase();
+}
+
 export function isVercelBlobStorageConfigured() {
   return Boolean(
     process.env.BLOB_READ_WRITE_TOKEN ||
@@ -53,7 +62,8 @@ export async function createDirectAudioUpload(input: {
   size: number;
 }): Promise<{ key: string; mimeType: string; uploadUrl: string } | null> {
   if (!isVercelBlobStorageConfigured()) return null;
-  if (!AUDIO_MIME_TYPES.has(input.mimeType)) throw new Error("Unsupported audio format");
+  const mimeType = normalizeAudioMimeType(input.mimeType);
+  if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
   if (!Number.isFinite(input.size) || input.size <= 0 || input.size > MAX_AUDIO_SIZE_BYTES) {
     throw new Error("Audio file must be between 1 byte and 16MB");
   }
@@ -63,7 +73,7 @@ export async function createDirectAudioUpload(input: {
   const signedToken = await issueSignedToken({
     pathname: key,
     operations: ["put"],
-    allowedContentTypes: [input.mimeType],
+    allowedContentTypes: [mimeType],
     maximumSizeInBytes: MAX_AUDIO_SIZE_BYTES,
     validUntil,
   });
@@ -71,14 +81,14 @@ export async function createDirectAudioUpload(input: {
     operation: "put",
     pathname: key,
     access: "private",
-    allowedContentTypes: [input.mimeType],
+    allowedContentTypes: [mimeType],
     maximumSizeInBytes: MAX_AUDIO_SIZE_BYTES,
     allowOverwrite: false,
     addRandomSuffix: false,
     validUntil,
   });
 
-  return { key, mimeType: input.mimeType, uploadUrl: presignedUrl };
+  return { key, mimeType, uploadUrl: presignedUrl };
 }
 
 export async function storagePut(

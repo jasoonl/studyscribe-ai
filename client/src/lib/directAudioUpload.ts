@@ -28,7 +28,8 @@ export async function uploadAudioDirectly(
 
   if (preparationResponse.status === 409) return null;
   if (!preparationResponse.ok) {
-    throw new Error("Could not prepare a secure audio upload");
+    const body = await preparationResponse.json().catch(() => null);
+    throw new Error(body?.error || "Could not prepare a secure audio upload");
   }
 
   const prepared = (await preparationResponse.json()) as UploadPreparationResponse;
