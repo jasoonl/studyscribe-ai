@@ -195,9 +195,9 @@ export default function RecordOrUpload() {
       return;
     }
 
-    const maxSize = 16 * 1024 * 1024;
+    const maxSize = 500 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("File size must be less than 16MB");
+      toast.error("File size must be less than 500MB");
       return;
     }
 
@@ -337,7 +337,7 @@ export default function RecordOrUpload() {
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Up to 16MB file size
+                        Up to 500MB file size
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
@@ -602,7 +602,7 @@ export default function RecordOrUpload() {
                     <div>
                       <h3 className="text-xl font-bold mb-2">Drag and drop your file here</h3>
                       <p className="text-muted-foreground mb-2">or click to browse</p>
-                      <p className="text-sm text-muted-foreground">Supported formats: MP3, WAV, OGG, MP4, WebM (Max 16MB)</p>
+                      <p className="text-sm text-muted-foreground">Supported formats: MP3, WAV, OGG, MP4, WebM (Max 500MB)</p>
                     </div>
                     {selectedFile && (
                       <div className="pt-4 border-t border-border">

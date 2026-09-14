@@ -53,9 +53,9 @@ export default function Upload() {
       toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, or WebM)");
       return;
     }
-    const maxSize = 16 * 1024 * 1024;
+    const maxSize = 500 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("File size must be less than 16MB");
+      toast.error("File size must be less than 500MB");
       return;
     }
     setSelectedFile(file);
@@ -232,7 +232,7 @@ export default function Upload() {
                     <UploadCloud className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
                     <p className="font-medium mb-1">Click to select file</p>
                     <p className="text-sm text-muted-foreground">or drag and drop an audio file</p>
-                    <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, MP4, or WebM • Max 16MB</p>
+                    <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, MP4, or WebM • Max 500MB</p>
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept="audio/*,video/mp4,video/webm" onChange={handleFileSelect} className="hidden" disabled={isUploading || uploadComplete} />
@@ -303,7 +303,7 @@ export default function Upload() {
 
           <Card className="mt-6 p-6 border-2 border-border">
             <h3 className="font-bold mb-3">Supported Formats</h3>
-            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4 — max 16MB</p>
+            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4 — max 500MB</p>
           </Card>
         </div>
       </main>

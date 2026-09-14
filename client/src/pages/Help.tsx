@@ -23,7 +23,7 @@ const faqs: FAQItem[] = [
   {
     category: "Getting Started",
     question: "What audio file formats can I upload?",
-    answer: "StudyScribe AI supports MP3, WAV, OGG, WebM, and MP4 audio files up to 16MB. Use the 'Upload' tab in the Recorder section or navigate to /upload to drag-and-drop your file.",
+    answer: "StudyScribe AI supports MP3, WAV, OGG, WebM, and MP4 audio files up to 500MB. Use the 'Upload' tab in the Recorder section or navigate to /upload to drag-and-drop your file.",
   },
   {
     category: "Getting Started",
@@ -81,7 +81,7 @@ const categories = ["All", ...Array.from(new Set(faqs.map(f => f.category)))];
 
 const features = [
   { icon: Mic, title: "Audio Recording", desc: "Record lectures, meetings, and notes directly in your browser with pause/resume support.", color: "bg-blue-50 text-blue-600" },
-  { icon: Upload, title: "File Upload", desc: "Upload existing audio files (MP3, WAV, OGG, WebM, MP4) up to 16MB.", color: "bg-green-50 text-green-600" },
+  { icon: Upload, title: "File Upload", desc: "Upload existing audio files (MP3, WAV, OGG, WebM, MP4) up to 500MB.", color: "bg-green-50 text-green-600" },
   { icon: FileText, title: "AI Transcription", desc: "Automatic speech-to-text powered by Whisper AI with language detection.", color: "bg-purple-50 text-purple-600" },
   { icon: Zap, title: "Flashcards", desc: "Auto-generate study flashcards from any transcript with one click.", color: "bg-yellow-50 text-yellow-600" },
   { icon: BookOpen, title: "Study Guides", desc: "Generate comprehensive, structured study guides in markdown format.", color: "bg-orange-50 text-orange-600" },

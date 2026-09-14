@@ -1,7 +1,7 @@
 import { issueSignedToken, presignUrl, put } from "@vercel/blob";
 import { ENV } from "./_core/env";
 
-const MAX_AUDIO_SIZE_BYTES = 16 * 1024 * 1024;
+const MAX_AUDIO_SIZE_BYTES = 500 * 1024 * 1024;
 const AUDIO_MIME_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
   "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a", "audio/x-m4a",
@@ -112,7 +112,7 @@ export async function createDirectAudioUpload(input: {
   const mimeType = normalizeAudioMimeType(input.mimeType);
   if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
   if (!Number.isFinite(input.size) || input.size <= 0 || input.size > MAX_AUDIO_SIZE_BYTES) {
-    throw new Error("Audio file must be between 1 byte and 16MB");
+    throw new Error("Audio file must be between 1 byte and 500MB");
   }
 
   const key = `${input.userId}/recordings/${crypto.randomUUID()}-${safeFileName(input.fileName)}`;
