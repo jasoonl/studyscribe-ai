@@ -43,7 +43,11 @@ export async function uploadAudioDirectly(
   });
 
   if (!uploadResponse.ok) {
-    throw new Error("The audio upload could not be completed");
+    const detail = await uploadResponse.text().catch(() => "");
+    console.error("[uploadAudioDirectly] PUT failed", uploadResponse.status, detail);
+    throw new Error(
+      `The audio upload could not be completed (${uploadResponse.status}${detail ? `: ${detail.slice(0, 200)}` : ""})`
+    );
   }
 
   onProgress?.(65);
