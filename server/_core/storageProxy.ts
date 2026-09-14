@@ -4,7 +4,7 @@ import { get as getVercelBlob } from "@vercel/blob";
 import { Readable } from "node:stream";
 import { getSessionFromCookie } from "../sessionManager";
 import { getRecordingByAudioKeyForUser } from "../db";
-import { createDirectAudioUpload, isVercelBlobStorageConfigured } from "../storage";
+import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey } from "../storage";
 
 export function registerStorageProxy(app: Express) {
   app.post("/api/storage/upload-url", async (req, res) => {
@@ -55,7 +55,7 @@ export function registerStorageProxy(app: Express) {
         res.status(404).send("Recording file not found");
         return;
       }
-      res.setHeader("Content-Type", result.blob.contentType);
+      res.setHeader("Content-Type", contentTypeFromStorageKey(key));
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Cache-Control", "private, no-cache");
       Readable.fromWeb(result.stream as never).pipe(res);

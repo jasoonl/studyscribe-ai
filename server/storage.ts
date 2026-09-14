@@ -66,12 +66,48 @@ function safeFileName(fileName: string) {
   return cleaned.slice(-100) || "recording.webm";
 }
 
+const EXTENSION_CONTENT_TYPES: Record<string, string> = {
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  webm: "audio/webm",
+  mp4: "audio/mp4",
+  m4a: "audio/mp4",
+};
+
+/**
+ * Since uploads are stored with a generic Content-Type (see
+ * BLOB_UPLOAD_CONTENT_TYPE below), playback must derive the real
+ * Content-Type itself rather than trusting Blob's stored metadata. The
+ * storage key always ends in the original file's extension (from
+ * safeFileName), which is reliable enough for this.
+ */
+export function contentTypeFromStorageKey(key: string): string {
+  const extension = key.split(".").pop()?.toLowerCase() ?? "";
+  return EXTENSION_CONTENT_TYPES[extension] || "application/octet-stream";
+}
+
+/**
+ * Vercel Blob's storage enforces its own content-type acceptance policy
+ * independent of whatever we pass as `allowedContentTypes` — it has
+ * rejected `audio/webm` uploads (after both the declared header and the
+ * uploaded Blob's own `.type` were made to match exactly) with 403
+ * "contentType ... is not allowed", for reasons opaque from the client
+ * side. Rather than chase that policy further, every direct upload
+ * declares this universally-accepted generic type instead; the real,
+ * validated audio MIME type is still returned separately (as `mimeType`)
+ * for the caller to use, and playback serves the correct Content-Type
+ * from the file extension (see storageProxy's GET /api/storage) rather
+ * than trusting Blob's stored metadata.
+ */
+const BLOB_UPLOAD_CONTENT_TYPE = "application/octet-stream";
+
 export async function createDirectAudioUpload(input: {
   userId: number;
   fileName: string;
   mimeType: string;
   size: number;
-}): Promise<{ key: string; mimeType: string; uploadUrl: string } | null> {
+}): Promise<{ key: string; mimeType: string; uploadUrl: string; uploadContentType: string } | null> {
   if (!isVercelBlobStorageConfigured()) return null;
   const mimeType = normalizeAudioMimeType(input.mimeType);
   if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
@@ -84,7 +120,7 @@ export async function createDirectAudioUpload(input: {
   const signedToken = await issueSignedToken({
     pathname: key,
     operations: ["put"],
-    allowedContentTypes: [mimeType],
+    allowedContentTypes: [BLOB_UPLOAD_CONTENT_TYPE],
     maximumSizeInBytes: MAX_AUDIO_SIZE_BYTES,
     validUntil,
   });
@@ -92,14 +128,14 @@ export async function createDirectAudioUpload(input: {
     operation: "put",
     pathname: key,
     access: "private",
-    allowedContentTypes: [mimeType],
+    allowedContentTypes: [BLOB_UPLOAD_CONTENT_TYPE],
     maximumSizeInBytes: MAX_AUDIO_SIZE_BYTES,
     allowOverwrite: false,
     addRandomSuffix: false,
     validUntil,
   });
 
-  return { key, mimeType, uploadUrl: presignedUrl };
+  return { key, mimeType, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE };
 }
 
 export async function storagePut(

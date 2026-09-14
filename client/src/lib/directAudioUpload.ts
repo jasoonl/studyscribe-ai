@@ -2,6 +2,7 @@ export type PreparedAudioUpload = {
   key: string;
   mimeType: string;
   uploadUrl: string;
+  uploadContentType: string;
 };
 
 type UploadPreparationResponse =
@@ -36,10 +37,19 @@ export async function uploadAudioDirectly(
   if (!prepared.enabled) return null;
 
   onProgress?.(25);
+  // Upload with the server-assigned generic content type, not the audio
+  // MIME type — Vercel Blob's storage has rejected specific audio/video
+  // content types outright (403) even when explicitly allow-listed. Also
+  // re-wrap in a Blob whose own `.type` matches that header exactly, since
+  // `file.type` may still be the browser's raw, unnormalized value (e.g.
+  // "video/webm" for an audio-only MediaRecorder quirk) and some layers
+  // derive the upload's actual content type from the body's own Blob
+  // metadata rather than (or in addition to) the explicit header.
+  const uploadBody = new Blob([file], { type: prepared.upload.uploadContentType });
   const uploadResponse = await fetch(prepared.upload.uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": prepared.upload.mimeType },
-    body: file,
+    headers: { "Content-Type": prepared.upload.uploadContentType },
+    body: uploadBody,
   });
 
   if (!uploadResponse.ok) {
