@@ -1,8 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
-import { createTranscript, getRecordingByTranscriptionProviderId, getTranscriptByRecordingId, updateRecordingStatus } from "./db";
+import { createTranscript, getDb, getRecordingByTranscriptionProviderId, getTranscriptByRecordingId, updateRecordingStatus } from "./db";
 import { retrieveSpeakerDiarization, type AssemblyAiWebhookPayload } from "./speakerDiarization";
 import { sendBrowserPush } from "./pushNotifications";
+import { userNotifications } from "../drizzle/schema";
 
 export function isValidAssemblyAiWebhookSecret(receivedValue: string | undefined) {
   const expectedValue = process.env.ASSEMBLYAI_WEBHOOK_SECRET;
@@ -42,7 +43,31 @@ export async function handleAssemblyAiWebhook(req: Request, res: Response) {
   }
 
   if (req.body.status === "error") {
+    // The webhook payload itself carries no error detail, only the status —
+    // fetch the transcript record to recover the provider's actual reason
+    // instead of leaving every failure as an unexplained "failed" status.
+    let reason = "The transcription provider could not process this recording.";
+    try {
+      await retrieveSpeakerDiarization(req.body.transcript_id);
+    } catch (error) {
+      if (error instanceof Error && error.message) reason = error.message;
+    }
     await updateRecordingStatus(recording.id, "failed");
+    try {
+      const db = await getDb();
+      if (db) {
+        await db.insert(userNotifications).values({
+          userId: recording.userId,
+          type: "error",
+          title: "Transcription Failed",
+          message: `Transcription failed for "${recording.title}": ${reason}`,
+          recordingId: recording.id,
+          isRead: 0,
+        });
+      }
+    } catch (notifError) {
+      console.error("[Transcription] Failed to create failure notification", notifError);
+    }
     res.status(204).end();
     return;
   }

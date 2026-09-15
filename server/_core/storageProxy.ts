@@ -56,6 +56,8 @@ export function registerStorageProxy(app: Express) {
         return;
       }
       res.setHeader("Content-Type", contentTypeFromStorageKey(key));
+      res.setHeader("Content-Length", String(result.blob.size));
+      res.setHeader("Accept-Ranges", "none");
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Cache-Control", "private, no-cache");
       Readable.fromWeb(result.stream as never).pipe(res);

@@ -1077,13 +1077,14 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
       // Create failure notification
       const recording = await getRecordingByIdDb(recordingId);
       if (recording) {
+        const reason = error instanceof Error ? error.message : "Unknown error";
         const db = await getDb();
         if (db) {
           await db.insert(userNotifications).values({
             userId: recording.userId,
             type: "error",
             title: "Transcription Failed",
-            message: `Transcription failed for "${recording.title}". Please try uploading again.`,
+            message: `Transcription failed for "${recording.title}": ${reason}`,
             recordingId,
             isRead: 0,
           });
