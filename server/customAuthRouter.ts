@@ -1,170 +1,15 @@
 import { router, publicProcedure, protectedProcedure } from './_core/trpc';
 import { z } from 'zod';
-import {
-  registerWithEmailPassword,
-  loginWithEmailPassword,
-  loginWithGoogle,
-  resetPasswordWithToken,
-  createPasswordResetRequest,
-  createInvite,
-  getUserByEmail,
-} from './authService';
-import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode, getAllInviteCodes, getInviteCodeById, updateInviteCodeExpiry, revokeInviteCode, deleteInviteCode, deletePasswordResetToken } from './db';
+import { TRPCError } from '@trpc/server';
+import { createInvite } from './authService';
+import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode, getAllInviteCodes, getInviteCodeById, updateInviteCodeExpiry, revokeInviteCode, deleteInviteCode } from './db';
 import { eq } from 'drizzle-orm';
 import { users, inviteCodes } from '../drizzle/schema';
 import { notifyOwner } from './_core/notification';
 import { nanoid } from 'nanoid';
-import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from './email';
+import { checkTrpcRateLimit } from './_core/rateLimit';
 
 export const customAuthRouter = router({
-  /**
-   * Register with email and password
-   * Requires a valid invite code
-   */
-  registerEmailPassword: publicProcedure
-    .input(
-      z.object({
-        email: z.string().email(),
-        password: z.string().min(8, 'Password must be at least 8 characters'),
-        name: z.string().min(1, 'Name is required'),
-        inviteCode: z.string(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const result = await registerWithEmailPassword(
-        input.email,
-        input.password,
-        input.name,
-        input.inviteCode
-      );
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      return {
-        user: {
-          id: result.user!.id,
-          email: result.user!.email,
-          name: result.user!.name,
-          role: result.user!.role,
-        },
-      };
-    }),
-
-  /**
-   * Login with email and password
-   */
-  loginEmailPassword: publicProcedure
-    .input(
-      z.object({
-        email: z.string().email(),
-        password: z.string(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const result = await loginWithEmailPassword(input.email, input.password);
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      return {
-        user: {
-          id: result.user!.id,
-          email: result.user!.email,
-          name: result.user!.name,
-          role: result.user!.role,
-        },
-      };
-    }),
-
-  /**
-   * Login with Google OAuth
-   */
-  loginGoogle: publicProcedure
-    .input(
-      z.object({
-        googleId: z.string(),
-        email: z.string().email(),
-        name: z.string(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const result = await loginWithGoogle(input.googleId, input.email, input.name);
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      return {
-        user: {
-          id: result.user!.id,
-          email: result.user!.email,
-          name: result.user!.name,
-          role: result.user!.role,
-        },
-        isNewUser: result.isNewUser,
-      };
-    }),
-
-  /**
-   * Request password reset
-   */
-  requestPasswordReset: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input, ctx }) => {
-      if (!isTransactionalEmailConfigured()) {
-        throw new Error('Password reset email delivery is temporarily unavailable. Please try again later.');
-      }
-
-      const resetRequest = await createPasswordResetRequest(input.email);
-      if (resetRequest.error) {
-        throw new Error('Password reset email delivery is temporarily unavailable. Please try again later.');
-      }
-
-      if (resetRequest.token && resetRequest.recipient) {
-        const origin = getSafeApplicationOrigin(ctx.req.headers.origin);
-        const resetUrl = new URL('/reset-password', origin);
-        resetUrl.searchParams.set('token', resetRequest.token);
-        try {
-          await sendPasswordResetEmail({ to: resetRequest.recipient, resetUrl: resetUrl.toString() });
-        } catch (error) {
-          await deletePasswordResetToken(resetRequest.token);
-          console.error('[Auth] Password reset email delivery failed', error);
-          throw new Error('Password reset email delivery is temporarily unavailable. Please try again later.');
-        }
-      }
-
-      return {
-        success: true,
-        message: 'If an eligible account exists, a password reset link has been sent.',
-      };
-    }),
-
-  /**
-   * Reset password with token
-   */
-  resetPassword: publicProcedure
-    .input(
-      z.object({
-        token: z.string(),
-        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const result = await resetPasswordWithToken(input.token, input.newPassword);
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      return {
-        success: true,
-        message: 'Password reset successfully',
-      };
-    }),
-
   /**
    * Create invite code (admin only)
    */
@@ -273,53 +118,6 @@ export const customAuthRouter = router({
       return { success: true };
     }),
 
-  /**
-   * Validate invite code
-   */
-  validateInviteCode: publicProcedure
-    .input(z.object({ code: z.string() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) {
-        throw new Error('Database not available');
-      }
-
-      const invite = await db
-        .select()
-        .from(inviteCodes)
-        .where(eq(inviteCodes.code, input.code))
-        .limit(1);
-
-      if (!invite || invite.length === 0) {
-        return { valid: false, error: 'Invalid invite code' };
-      }
-
-      const inviteCode = invite[0];
-
-      if (inviteCode.isUsed) {
-        return { valid: false, error: 'Invite code already used' };
-      }
-
-      if (new Date() > inviteCode.expiresAt) {
-        return { valid: false, error: 'Invite code expired' };
-      }
-
-      return {
-        valid: true,
-        email: inviteCode.email,
-      };
-    }),
-
-  /**
-   * Check if email is available
-   */
-  checkEmailAvailable: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .query(async ({ input }) => {
-      const user = await getUserByEmail(input.email);
-      return { available: !user };
-    }),
-
   // ─── Invite Request Procedures ───────────────────────────────────────────
 
   /**
@@ -331,7 +129,12 @@ export const customAuthRouter = router({
       name: z.string().min(1, 'Name is required').max(255),
       reason: z.string().max(1000).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const ip = ctx.req.ip ?? "unknown";
+      if (!checkTrpcRateLimit(`requestInvite:${ip}`, 60 * 60 * 1000, 10)) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many requests. Please try again later.' });
+      }
+
       await createInviteRequest({
         email: input.email,
         name: input.name,

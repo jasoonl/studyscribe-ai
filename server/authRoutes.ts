@@ -6,13 +6,14 @@ import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
+import { authLimiter, passwordResetLimiter } from "./_core/rateLimit";
 
 export function registerAuthRoutes(app: Express) {
   /**
    * POST /api/auth/login
    * Email/password login
    */
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
+  app.post("/api/auth/login", authLimiter, async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
 
@@ -61,7 +62,7 @@ export function registerAuthRoutes(app: Express) {
    * POST /api/auth/signup
    * Email/password signup with invite code
    */
-  app.post("/api/auth/signup", async (req: Request, res: Response) => {
+  app.post("/api/auth/signup", authLimiter, async (req: Request, res: Response) => {
     try {
       const { email, password, name, inviteCode } = req.body;
 
@@ -168,7 +169,7 @@ export function registerAuthRoutes(app: Express) {
    * POST /api/auth/validate-invite
    * Validate an invite code
    */
-  app.post("/api/auth/validate-invite", async (req: Request, res: Response) => {
+  app.post("/api/auth/validate-invite", authLimiter, async (req: Request, res: Response) => {
     try {
       const { code } = req.body;
 
@@ -302,7 +303,7 @@ export function registerAuthRoutes(app: Express) {
    * POST /api/auth/forgot-password
    * Request a password reset token
    */
-  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/forgot-password", passwordResetLimiter, async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
 
@@ -348,7 +349,7 @@ export function registerAuthRoutes(app: Express) {
    * POST /api/auth/reset-password
    * Reset password with token
    */
-  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/reset-password", passwordResetLimiter, async (req: Request, res: Response) => {
     try {
       const { token, newPassword } = req.body;
 

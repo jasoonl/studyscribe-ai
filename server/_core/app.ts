@@ -15,6 +15,12 @@ import { registerSchemaInitRoute } from "../schemaInit";
 export function createApp() {
   const app = express();
 
+  // Vercel puts exactly one reverse proxy in front of the function, so trust
+  // that one hop's X-Forwarded-For — otherwise req.ip resolves to Vercel's
+  // internal address for every request, and per-IP rate limiting below would
+  // either throttle everyone as one client or no one at all.
+  app.set("trust proxy", 1);
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
