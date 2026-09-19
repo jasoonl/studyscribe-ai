@@ -12,6 +12,8 @@ It runs on Vercel as serverless functions today; the code also supports a standa
 
 ```bash
 npm install --include=dev --no-audit --no-fund   # Vercel's actual install command — use npm, not pnpm, despite packageManager: pnpm in package.json
+                                                   # package-lock.json is committed so this is reproducible; keep it in sync with pnpm-lock.yaml
+                                                   # (regenerate both — `pnpm install` then `npm install` — after any dependency/override change)
 npm run dev        # tsx watch server/_core/dev.ts — Express + Vite middleware, picks first free port from 3000
 npm run build       # vite build (client) + esbuild bundles server/_core/index.ts and standalone.ts to dist/
 npm start          # runs the built standalone server (dist/standalone.js) — used by Railway/Render, not Vercel
