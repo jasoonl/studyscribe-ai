@@ -130,9 +130,15 @@ export async function transcribeWithSpeakerDiarization(input: { audioUrl: string
     const result = await readJson(resultResponse);
     if (!resultResponse.ok) throw new Error(`Speaker diarization result check failed with ${resultResponse.status}`);
     if (result.status === "completed" && result.text) {
-      const segments = normalizeDiarizedSegments(result.utterances ?? []);
-      if (segments.length === 0) throw new Error("Speaker diarization completed without speaker-labeled utterances");
-      return { text: result.text, language: result.language_code ?? "en", segments };
+      // Speaker labels are a bonus, not a requirement. Short clips, single
+      // speakers, and languages without diarization support all return a
+      // perfectly good transcript with no utterances — discarding that and
+      // failing the recording loses work the user already paid for.
+      return {
+        text: result.text,
+        language: result.language_code ?? "en",
+        segments: normalizeDiarizedSegments(result.utterances ?? []),
+      };
     }
     if (result.status === "error") throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
     await wait(POLL_INTERVAL_MS);
@@ -144,23 +150,41 @@ export async function submitSpeakerDiarization(input: { audioUrl: string; webhoo
   if (!isAssemblyAiWebhookConfigured()) {
     throw new Error("AssemblyAI webhook transcription is not configured");
   }
-  const createResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
-    method: "POST",
-    headers: { ...getHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      audio_url: input.audioUrl,
-      language_detection: true,
-      speaker_labels: true,
-      webhook_url: input.webhookUrl,
-      webhook_auth_header_name: "X-StudyScribe-Webhook-Secret",
-      webhook_auth_header_value: process.env.ASSEMBLYAI_WEBHOOK_SECRET,
-    }),
-  });
-  const created = await readJson(createResponse);
-  if (!createResponse.ok || !created.id) {
-    throw new Error(`Speaker diarization request failed with ${createResponse.status}`);
+
+  const submit = async (withSpeakerLabels: boolean) => {
+    const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
+      method: "POST",
+      headers: { ...getHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audio_url: input.audioUrl,
+        language_detection: true,
+        ...(withSpeakerLabels ? { speaker_labels: true } : {}),
+        webhook_url: input.webhookUrl,
+        webhook_auth_header_name: "X-StudyScribe-Webhook-Secret",
+        webhook_auth_header_value: process.env.ASSEMBLYAI_WEBHOOK_SECRET,
+      }),
+    });
+    return { response, body: await readJson(response) };
+  };
+
+  let { response, body } = await submit(true);
+
+  // Speaker labels aren't supported for every detected language, and the
+  // provider rejects the whole request when they clash. A transcript without
+  // speaker labels beats no transcript, so retry once without them.
+  if (!response.ok && response.status === 400) {
+    console.warn(`[Transcription] Retrying without speaker labels: ${body.error ?? response.status}`);
+    ({ response, body } = await submit(false));
   }
-  return { providerId: created.id };
+
+  if (!response.ok || !body.id) {
+    // The response body carries the actual reason; dropping it was why these
+    // failures were unexplainable.
+    throw new Error(
+      `Transcription provider rejected the request (${response.status})${body.error ? `: ${body.error}` : ""}`,
+    );
+  }
+  return { providerId: body.id };
 }
 
 export async function retrieveSpeakerDiarization(providerId: string) {
@@ -170,7 +194,10 @@ export async function retrieveSpeakerDiarization(providerId: string) {
   if (result.status === "error") throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
   if (result.status !== "completed" || !result.text) throw new Error("Speaker diarization result is not ready");
 
-  const segments = normalizeDiarizedSegments(result.utterances ?? []);
-  if (segments.length === 0) throw new Error("Speaker diarization completed without speaker-labeled utterances");
-  return { text: result.text, language: result.language_code ?? "en", segments };
+  // As above: a transcript without speaker labels is still a transcript.
+  return {
+    text: result.text,
+    language: result.language_code ?? "en",
+    segments: normalizeDiarizedSegments(result.utterances ?? []),
+  };
 }

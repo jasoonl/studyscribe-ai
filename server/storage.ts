@@ -24,7 +24,10 @@ const AUDIO_MIME_TYPES = new Set([
 export function normalizeAudioMimeType(mimeType: string): string {
   const base = mimeType.split(";")[0].trim().toLowerCase();
   if (base === "video/webm") return "audio/webm";
-  if (base === "video/mp4") return "audio/mp4";
+  // MP4, QuickTime and M4V all carry their audio in an MP4-family container,
+  // so they store and play back as audio/mp4. Imported video links land here
+  // too — the transcription provider extracts the audio track itself.
+  if (base === "video/mp4" || base === "video/quicktime" || base === "video/x-m4v") return "audio/mp4";
   return base;
 }
 

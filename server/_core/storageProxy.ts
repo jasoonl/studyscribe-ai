@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import { getSessionFromCookie } from "../sessionManager";
 import { getRecordingByAudioKey, getRecordingShareForUser } from "../db";
 import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
+import { verifyTranscriptionAudioToken } from "../transcriptionAudioLink";
 
 /** Largest object we're willing to buffer in order to answer a range ourselves. */
 const RANGE_FALLBACK_MAX_BYTES = 32 * 1024 * 1024;
@@ -62,6 +63,52 @@ async function serveRangeFromFullBody(
   res.setHeader("Content-Length", String(slice.byteLength));
   res.end(slice);
   return true;
+}
+
+/**
+ * Streams a stored object to the client with the real audio content type and
+ * full byte-range semantics. Media elements expect range support — Safari in
+ * particular sends `Range: bytes=0-1` before it will play anything and
+ * refuses the source outright if the server does not honor it — and relaying
+ * ranges also keeps each response under the serverless response size limit
+ * for long recordings.
+ */
+async function streamStoredAudio(req: import("express").Request, res: import("express").Response, key: string) {
+  const signedUrl = await storageGetSignedUrl(key);
+  const rangeHeader = req.headers.range;
+  const upstream = await fetch(signedUrl, rangeHeader ? { headers: { Range: rangeHeader } } : undefined);
+
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    console.error(`[StorageProxy] signed read for ${key} returned ${upstream.status}`);
+    res.status(502).send("Recording storage is temporarily unavailable");
+    return;
+  }
+
+  res.setHeader("Content-Type", contentTypeFromStorageKey(key));
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "private, no-cache");
+
+  // If a Range was asked for but storage answered with the whole object,
+  // satisfying it here keeps the contract we advertise honest. Safari treats
+  // a 200 reply to a ranged media request as non-seekable and can refuse the
+  // source outright, so silently relaying it is not an option.
+  if (rangeHeader && upstream.status === 200) {
+    const served = await serveRangeFromFullBody(req, res, upstream, rangeHeader);
+    if (served) return;
+  }
+
+  res.status(upstream.status);
+  res.setHeader("Accept-Ranges", "bytes");
+  const contentLength = upstream.headers.get("content-length");
+  if (contentLength) res.setHeader("Content-Length", contentLength);
+  const contentRange = upstream.headers.get("content-range");
+  if (contentRange) res.setHeader("Content-Range", contentRange);
+
+  if (!upstream.body) {
+    res.end();
+    return;
+  }
+  Readable.fromWeb(upstream.body as never).pipe(res);
 }
 
 export function registerStorageProxy(app: Express) {
@@ -126,50 +173,31 @@ export function registerStorageProxy(app: Express) {
         res.status(session ? 403 : 401).send("You do not have access to this recording");
         return;
       }
-      // Relay the read from a short-lived signed URL rather than reading the
-      // whole object into the function. Media elements expect byte-range
-      // support — Safari in particular sends `Range: bytes=0-1` before it
-      // will play anything and refuses the source outright if the server
-      // does not honor it — and passing the client's Range header straight
-      // through also keeps each response well under the serverless response
-      // size limit for long recordings.
-      const signedUrl = await storageGetSignedUrl(key);
-      const rangeHeader = req.headers.range;
-      const upstream = await fetch(signedUrl, rangeHeader ? { headers: { Range: rangeHeader } } : undefined);
-
-      if (upstream.status !== 200 && upstream.status !== 206) {
-        console.error(`[StorageProxy] signed read for ${key} returned ${upstream.status}`);
-        res.status(502).send("Recording storage is temporarily unavailable");
-        return;
-      }
-
-      res.setHeader("Content-Type", contentTypeFromStorageKey(key));
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      res.setHeader("Cache-Control", "private, no-cache");
-
-      // If a Range was asked for but storage answered with the whole object,
-      // satisfying it here keeps the contract we advertise honest. Safari
-      // treats a 200 reply to a ranged media request as non-seekable and can
-      // refuse the source outright, so silently relaying it is not an option.
-      if (rangeHeader && upstream.status === 200) {
-        const served = await serveRangeFromFullBody(req, res, upstream, rangeHeader);
-        if (served) return;
-      }
-
-      res.status(upstream.status);
-      res.setHeader("Accept-Ranges", "bytes");
-      const contentLength = upstream.headers.get("content-length");
-      if (contentLength) res.setHeader("Content-Length", contentLength);
-      const contentRange = upstream.headers.get("content-range");
-      if (contentRange) res.setHeader("Content-Range", contentRange);
-
-      if (!upstream.body) {
-        res.end();
-        return;
-      }
-      Readable.fromWeb(upstream.body as never).pipe(res);
+      await streamStoredAudio(req, res, key);
     } catch (error) {
       console.error("[StorageProxy] private Blob read failed:", error);
+      res.status(502).send("Recording storage is temporarily unavailable");
+    }
+  });
+
+  /**
+   * Fetch target handed to the transcription provider. Authorization is the
+   * signed token in the path, so this must not require a session — the
+   * provider is an anonymous third party. Unlike the raw storage URL, this
+   * ends in a real audio extension and serves the real content type, which
+   * is what lets the provider identify the format.
+   */
+  app.get("/api/transcription-audio/:token/:filename", async (req, res) => {
+    const key = verifyTranscriptionAudioToken(req.params.token);
+    if (!key) {
+      res.status(403).send("This transcription link is invalid or has expired");
+      return;
+    }
+
+    try {
+      await streamStoredAudio(req, res, key);
+    } catch (error) {
+      console.error("[StorageProxy] transcription audio read failed:", error);
       res.status(502).send("Recording storage is temporarily unavailable");
     }
   });

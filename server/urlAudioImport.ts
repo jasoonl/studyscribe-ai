@@ -14,13 +14,23 @@ import net from "node:net";
 const MAX_REDIRECTS = 3;
 export const MAX_IMPORT_BYTES = 200 * 1024 * 1024;
 
+/** Player pages whose terms prohibit extracting the underlying media stream. */
+const STREAMING_PAGE_HOSTS = [
+  "youtube.com", "youtu.be", "music.youtube.com",
+  "spotify.com", "open.spotify.com",
+  "netflix.com", "hulu.com", "vimeo.com", "twitch.tv",
+  "soundcloud.com", "tiktok.com", "instagram.com", "facebook.com",
+];
+
 const IMPORTABLE_CONTENT_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
   "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a", "audio/x-m4a",
   "audio/aac", "audio/flac", "audio/x-flac",
-  // Some hosts serve audio-only media under a video container type, and many
-  // static hosts fall back to a generic type for .mp3/.m4a files.
-  "video/mp4", "video/webm", "application/octet-stream", "binary/octet-stream",
+  // Video links are accepted too — the transcription provider extracts the
+  // audio track itself, so a talk published as MP4 works the same as one
+  // published as MP3. Many static hosts also fall back to a generic type.
+  "video/mp4", "video/webm", "video/quicktime", "video/x-m4v",
+  "application/octet-stream", "binary/octet-stream",
 ]);
 
 const EXTENSION_MIME_TYPES: Record<string, string> = {
@@ -34,6 +44,10 @@ const EXTENSION_MIME_TYPES: Record<string, string> = {
   m4b: "audio/mp4",
   aac: "audio/mp4",
   flac: "audio/flac",
+  // Video containers map to their audio-equivalent type; the provider pulls
+  // the audio track out and the browser plays it back the same way.
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
 };
 
 function ipv4ToInt(ip: string): number {
@@ -96,6 +110,16 @@ export async function assertPublicHttpUrl(rawUrl: string): Promise<URL> {
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("Only http and https links can be imported.");
+  }
+
+  // These return a player page, not a media file, and their terms prohibit
+  // extracting the underlying stream. Saying so beats a confusing
+  // "that link is text/html, not an audio file".
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  if (STREAMING_PAGE_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`))) {
+    throw new Error(
+      `${host} links can't be imported — their terms don't allow downloading the media. Use a direct link to an audio or video file instead.`,
+    );
   }
 
   const literal = url.hostname.replace(/^\[|\]$/g, "");

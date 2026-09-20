@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
+import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
 import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
@@ -1055,9 +1056,13 @@ async function startTranscription(
   if (isAssemblyAiWebhookConfigured()) {
     try {
       const webhookUrl = buildAssemblyAiWebhookUrl();
-      const signedUrl = await storageGetSignedUrl(audioKey);
-      await assertSignedAudioUrlIsFetchable(signedUrl);
-      const { providerId } = await submitSpeakerDiarization({ audioUrl: signedUrl, webhookUrl });
+      // Hand the provider a link served by this app rather than the raw
+      // storage URL: it ends in a real audio extension and serves the real
+      // content type, where the stored object is a generic `.bin`, and it
+      // outlives storage's short-lived signed URLs for queued jobs.
+      const providerAudioUrl = buildTranscriptionAudioUrl(audioKey, mimeType, process.env.PUBLIC_APP_URL!);
+      await assertSignedAudioUrlIsFetchable(providerAudioUrl);
+      const { providerId } = await submitSpeakerDiarization({ audioUrl: providerAudioUrl, webhookUrl });
       await setRecordingTranscriptionProviderId(recording.id, providerId);
     } catch (error) {
       await updateRecordingStatus(recording.id, "failed");
@@ -1091,7 +1096,12 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
     console.log(`[Transcription] Starting for recording ${recordingId}, audioKey: ${audioKey}`);
     
     // Get a short-lived signed URL for the asynchronous transcription provider.
-    const signedUrl = await storageGetSignedUrl(audioKey);
+    // Prefer the self-served link (real extension + content type) whenever an
+    // absolute app URL is available; fall back to the raw storage URL only
+    // when it isn't.
+    const signedUrl = process.env.PUBLIC_APP_URL
+      ? buildTranscriptionAudioUrl(audioKey, mimeType ?? "audio/mpeg", process.env.PUBLIC_APP_URL)
+      : await storageGetSignedUrl(audioKey);
     await assertSignedAudioUrlIsFetchable(signedUrl);
     console.log(`[Transcription] Requesting speaker-labeled transcript for recording ${recordingId}`);
     const result = await transcribeWithSpeakerDiarization({ audioUrl: signedUrl });

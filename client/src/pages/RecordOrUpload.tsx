@@ -401,7 +401,7 @@ export default function RecordOrUpload() {
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        MP3, M4A, WAV, OGG
+                        Audio or video files
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
@@ -666,7 +666,12 @@ export default function RecordOrUpload() {
                       className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      Must be a direct link to an audio file on a public website. Private and internal addresses are not allowed.
+                      A direct link to an audio or video file (MP3, M4A, WAV, OGG, MP4, MOV, WebM) on a public website.
+                      The audio track of a video is transcribed automatically.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Streaming pages such as YouTube links are not supported — their terms prohibit downloading the
+                      media. Use a direct file link, or a platform that offers one.
                     </p>
                   </div>
 

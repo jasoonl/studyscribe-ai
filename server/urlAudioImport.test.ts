@@ -10,6 +10,7 @@ import {
   limitStreamSize,
   fetchAudioFromUrl,
 } from "./urlAudioImport";
+import { normalizeAudioMimeType } from "./storage";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -95,6 +96,24 @@ describe("assertPublicHttpUrl", () => {
     const url = await assertPublicHttpUrl("https://example.com/talk.mp3");
     expect(url.hostname).toBe("example.com");
   });
+
+  it("explains why streaming pages can't be imported instead of failing cryptically", async () => {
+    for (const link of [
+      "https://www.youtube.com/watch?v=abc123",
+      "https://youtu.be/abc123",
+      "https://open.spotify.com/episode/abc",
+      "https://vimeo.com/12345",
+    ]) {
+      await expect(assertPublicHttpUrl(link), link).rejects.toThrow(/can't be imported/i);
+    }
+  });
+
+  it("does not block a lookalike hostname that merely contains a blocked name", async () => {
+    publicDns();
+    // "myyoutube.com" is a different site and must not be swept up.
+    const url = await assertPublicHttpUrl("https://myyoutube.com/talk.mp3");
+    expect(url.hostname).toBe("myyoutube.com");
+  });
 });
 
 describe("guessMimeTypeFromUrl", () => {
@@ -107,6 +126,40 @@ describe("guessMimeTypeFromUrl", () => {
 
   it("returns null for a non-audio extension", () => {
     expect(guessMimeTypeFromUrl("https://example.com/page.html")).toBeNull();
+  });
+
+  it("maps video containers, whose audio track is what gets transcribed", () => {
+    expect(guessMimeTypeFromUrl("https://example.com/talk.mp4")).toBe("audio/mp4");
+    expect(guessMimeTypeFromUrl("https://example.com/lecture.mov")).toBe("video/quicktime");
+    expect(guessMimeTypeFromUrl("https://example.com/keynote.webm")).toBe("audio/webm");
+  });
+});
+
+describe("importing video links", () => {
+  it("accepts an MP4 video talk and normalizes it to an audio container", async () => {
+    lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("video", { status: 200, headers: { "content-type": "video/mp4" } }),
+    ));
+    const result = await fetchAudioFromUrl("https://example.com/conference-talk.mp4");
+    expect(normalizeAudioMimeType(result.mimeType)).toBe("audio/mp4");
+  });
+
+  it("accepts a QuickTime link", async () => {
+    lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("video", { status: 200, headers: { "content-type": "video/quicktime" } }),
+    ));
+    const result = await fetchAudioFromUrl("https://example.com/lecture.mov");
+    expect(normalizeAudioMimeType(result.mimeType)).toBe("audio/mp4");
+  });
+
+  it("still refuses a web page that merely links to media", async () => {
+    lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("<html/>", { status: 200, headers: { "content-type": "text/html" } }),
+    ));
+    await expect(fetchAudioFromUrl("https://example.com/watch")).rejects.toThrow(/not an audio file/i);
   });
 });
 
