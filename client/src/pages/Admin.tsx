@@ -32,6 +32,9 @@ export default function Admin() {
   const { data: requests } = trpc.customAuth.listInviteRequests.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
+  const { data: transcriptionConfig } = trpc.diagnostics.transcription.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
 
   const updateRoleMutation = trpc.customAuth.updateUserRole.useMutation({
     onSuccess: () => {
@@ -117,6 +120,44 @@ export default function Admin() {
             </div>
           </Card>
         </div>
+
+        {/* Transcription provider health */}
+        {transcriptionConfig && (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Transcription
+            </h2>
+            <Card className="p-5 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={transcriptionConfig.hasApiKey ? "default" : "destructive"}>
+                  API key {transcriptionConfig.hasApiKey ? "set" : "missing"}
+                </Badge>
+                <Badge variant={transcriptionConfig.hasWebhookSecret ? "default" : "destructive"}>
+                  Webhook secret {transcriptionConfig.hasWebhookSecret ? "set" : "missing"}
+                </Badge>
+                <Badge variant="outline">Mode: {transcriptionConfig.mode}</Badge>
+              </div>
+
+              {transcriptionConfig.publicAppUrlError ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                  <p className="text-xs leading-relaxed text-destructive">
+                    {transcriptionConfig.publicAppUrlError}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 break-all">
+                  Results are delivered to <span className="font-mono">{transcriptionConfig.webhookUrl}</span>
+                </p>
+              )}
+
+              {!transcriptionConfig.hasApiKey && (
+                <p className="text-xs text-gray-500">
+                  Without an AssemblyAI API key no transcript can be produced for any recording.
+                </p>
+              )}
+            </Card>
+          </section>
+        )}
 
         {/* Users table */}
         <section>

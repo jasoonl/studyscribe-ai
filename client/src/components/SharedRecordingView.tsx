@@ -68,7 +68,7 @@ export function SharedRecordingView({ bundle }: { bundle: SharedBundle }) {
       </div>
 
       <Card className="p-4">
-        <AudioPlayer src={recording.audioUrl} title={recording.title} />
+        <AudioPlayer src={recording.audioUrl} title={recording.title} fallbackDuration={recording.duration ?? undefined} />
       </Card>
 
       <Tabs defaultValue="transcript" className="w-full">

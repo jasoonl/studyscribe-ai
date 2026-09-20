@@ -7,6 +7,8 @@ interface AudioPlayerProps {
   src: string;
   title?: string;
   onTimeUpdate?: (time: number) => void;
+  /** Duration recorded at capture time, used when the file has no duration header. */
+  fallbackDuration?: number;
 }
 
 export interface AudioPlayerHandle {
@@ -43,7 +45,7 @@ function describeMediaError(error: MediaError | null): string | null {
   }
 }
 
-export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate }: AudioPlayerProps, ref) {
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration }: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -72,9 +74,35 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       setCurrentTime(audio.currentTime);
       onTimeUpdate?.(audio.currentTime);
     };
+    // MediaRecorder writes its container as a live stream, so the duration
+    // header is never filled in — Safari's fragmented MP4 and Chrome's WebM
+    // both report Infinity/NaN here. Seeking to a position past the end
+    // forces the browser to scan for the real end and fire `durationchange`,
+    // which is what makes the total time appear and the scrub bar usable.
+    const resolveStreamedDuration = () => {
+      const onDurationChange = () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          setDuration(audio.duration);
+          audio.removeEventListener("durationchange", onDurationChange);
+          audio.currentTime = 0;
+        }
+      };
+      audio.addEventListener("durationchange", onDurationChange);
+      try {
+        audio.currentTime = 1e101;
+      } catch {
+        audio.removeEventListener("durationchange", onDurationChange);
+      }
+    };
+
     const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
       setLoadError(null);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      } else {
+        if (fallbackDuration && fallbackDuration > 0) setDuration(fallbackDuration);
+        resolveStreamedDuration();
+      }
     };
     const handleEnded = () => setIsPlaying(false);
     // Without this the element fails silently: the file 404s or can't be
@@ -110,7 +138,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);
     };
-  }, [onTimeUpdate, src]);
+  }, [onTimeUpdate, src, fallbackDuration]);
 
   const togglePlayPause = async () => {
     const audio = audioRef.current;

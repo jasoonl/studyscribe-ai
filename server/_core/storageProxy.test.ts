@@ -131,4 +131,37 @@ describe("audio playback proxy", () => {
     const response = await request(url);
     expect(response.status).toBe(403);
   });
+
+  it("answers the range itself when storage ignores the header, rather than replying 200 to a ranged request", async () => {
+    // Safari treats a 200 answer to a ranged media request as non-seekable and
+    // can refuse the source outright, so this case must still yield a 206.
+    upstream = () =>
+      new Response("0123456789", { status: 200, headers: { "content-length": "10" } });
+
+    const response = await request(url, { Range: "bytes=2-5" });
+    expect(response.status).toBe(206);
+    expect(response.headers.get("content-range")).toBe("bytes 2-5/10");
+    expect(await response.text()).toBe("2345");
+  });
+
+  it("supports an open-ended range when storage ignores the header", async () => {
+    upstream = () => new Response("0123456789", { status: 200, headers: { "content-length": "10" } });
+    const response = await request(url, { Range: "bytes=7-" });
+    expect(response.status).toBe(206);
+    expect(await response.text()).toBe("789");
+  });
+
+  it("supports a suffix range asking for the final bytes", async () => {
+    upstream = () => new Response("0123456789", { status: 200, headers: { "content-length": "10" } });
+    const response = await request(url, { Range: "bytes=-3" });
+    expect(response.status).toBe(206);
+    expect(await response.text()).toBe("789");
+  });
+
+  it("returns 416 for a range that starts past the end of the file", async () => {
+    upstream = () => new Response("0123456789", { status: 200, headers: { "content-length": "10" } });
+    const response = await request(url, { Range: "bytes=50-60" });
+    expect(response.status).toBe(416);
+    expect(response.headers.get("content-range")).toBe("bytes */10");
+  });
 });

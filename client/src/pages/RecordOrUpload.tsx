@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle, AlertCircle, UploadCloud, FileAudio, Zap } from "lucide-react";
+import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle, AlertCircle, UploadCloud, FileAudio, Zap, Link as LinkIcon } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 
-type Mode = "choose" | "record" | "upload";
+type Mode = "choose" | "record" | "upload" | "link";
 
 export default function RecordOrUpload() {
   const { user } = useCustomAuth();
@@ -36,9 +36,17 @@ export default function RecordOrUpload() {
   const [uploadFileComplete, setUploadFileComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Link import state
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkAudience, setLinkAudience] = useState<"student" | "professional">("student");
+  const [isImporting, setIsImporting] = useState(false);
+  const [linkComplete, setLinkComplete] = useState(false);
+
   const [createdRecordingId, setCreatedRecordingId] = useState<number | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const createRecordingMutation = trpc.recordings.create.useMutation();
+  const createFromUrlMutation = trpc.recordings.createFromUrl.useMutation();
 
   // Poll for transcription status after upload/record
   const { data: statusData } = trpc.recordings.getStatus.useQuery(
@@ -260,6 +268,32 @@ export default function RecordOrUpload() {
     }
   };
 
+  const handleImportLink = async () => {
+    if (!linkUrl.trim()) {
+      toast.error("Paste a link to an audio file");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const recording = await createFromUrlMutation.mutateAsync({
+        url: linkUrl.trim(),
+        title: linkTitle.trim() || undefined,
+        audience: linkAudience,
+      });
+      setLinkComplete(true);
+      setCreatedRecordingId(recording.id);
+      setIsPolling(true);
+      toast.success("Audio imported! Waiting for transcription...");
+      setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
+    } catch (error) {
+      console.error("Failed to import link:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to import that link");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -290,7 +324,7 @@ export default function RecordOrUpload() {
               <p className="text-lg text-muted-foreground">Choose to record a live lecture or upload an existing audio file</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
               {/* Record Option */}
               <Card className="p-8 border-2 border-border hover:border-accent/50 transition-all cursor-pointer hover:shadow-lg" onClick={() => setMode("record")}>
                 <div className="flex flex-col items-center text-center space-y-6">
@@ -347,6 +381,36 @@ export default function RecordOrUpload() {
                   </div>
                   <Button size="lg" className="w-full bg-accent hover:bg-accent/90">
                     Upload File
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Link Option */}
+              <Card className="p-8 border-2 border-border hover:border-accent/50 transition-all cursor-pointer hover:shadow-lg" onClick={() => setMode("link")}>
+                <div className="flex flex-col items-center text-center space-y-6">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    <LinkIcon className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">From a Link</h3>
+                    <p className="text-muted-foreground mb-4">Paste a link to a talk or lecture recording and we'll fetch and transcribe it</p>
+                    <ul className="space-y-2 text-sm text-muted-foreground text-left mb-6">
+                      <li className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-accent" />
+                        No download needed
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-accent" />
+                        MP3, M4A, WAV, OGG
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-accent" />
+                        Up to 200MB
+                      </li>
+                    </ul>
+                  </div>
+                  <Button size="lg" className="w-full bg-accent hover:bg-accent/90">
+                    Import Link
                   </Button>
                 </div>
               </Card>
@@ -555,6 +619,106 @@ export default function RecordOrUpload() {
                   </Card>
                 )}
               </>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Link import mode
+  if (mode === "link") {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+          <div className="container h-16 flex items-center justify-between">
+            <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <h1 className="text-xl font-bold">Import from Link</h1>
+            <div className="w-20" />
+          </div>
+        </header>
+
+        <main className="container py-12">
+          <div className="max-w-2xl mx-auto space-y-8">
+            {linkComplete ? (
+              <Card className="p-8 border-2 border-accent bg-gradient-to-br from-accent/5 to-primary/5">
+                <div className="text-center space-y-4">
+                  <CheckCircle className="w-16 h-16 text-accent mx-auto" />
+                  <h3 className="text-2xl font-bold">Audio imported successfully!</h3>
+                  <p className="text-muted-foreground">It's being transcribed now. You'll be redirected shortly.</p>
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent" />
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-6 border-2 border-border">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Audio Link *</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/lecture.mp3"
+                      value={linkUrl}
+                      onChange={(e) => setLinkUrl(e.target.value)}
+                      disabled={isImporting}
+                      className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Must be a direct link to an audio file on a public website. Private and internal addresses are not allowed.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Title (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Defaults to the file name"
+                      value={linkTitle}
+                      onChange={(e) => setLinkTitle(e.target.value)}
+                      disabled={isImporting}
+                      className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Content Type</label>
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                      {(["student", "professional"] as const).map((val) => (
+                        <label key={val} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="link-audience"
+                            value={val}
+                            checked={linkAudience === val}
+                            onChange={() => setLinkAudience(val)}
+                            disabled={isImporting}
+                            className="w-4 h-4"
+                          />
+                          <span>{val === "student" ? "Student Lecture" : "Professional Meeting"}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button
+                    size="lg"
+                    className="w-full bg-accent hover:bg-accent/90"
+                    onClick={handleImportLink}
+                    disabled={isImporting || !linkUrl.trim()}
+                  >
+                    {isImporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Fetching audio...
+                      </>
+                    ) : (
+                      "Import & Transcribe"
+                    )}
+                  </Button>
+                </div>
+              </Card>
             )}
           </div>
         </main>

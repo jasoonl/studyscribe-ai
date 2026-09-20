@@ -251,7 +251,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} />
                   </div>
                 )}
               </div>

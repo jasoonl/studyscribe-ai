@@ -5,6 +5,65 @@ import { getSessionFromCookie } from "../sessionManager";
 import { getRecordingByAudioKey, getRecordingShareForUser } from "../db";
 import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
 
+/** Largest object we're willing to buffer in order to answer a range ourselves. */
+const RANGE_FALLBACK_MAX_BYTES = 32 * 1024 * 1024;
+
+function parseByteRange(header: string, size: number): { start: number; end: number } | null {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return null;
+  const [, rawStart, rawEnd] = match;
+
+  if (rawStart === "" && rawEnd === "") return null;
+  // A suffix range ("bytes=-500") asks for the final N bytes.
+  if (rawStart === "") {
+    const suffix = Number(rawEnd);
+    if (!Number.isFinite(suffix) || suffix <= 0) return null;
+    return { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+
+  const start = Number(rawStart);
+  const end = rawEnd === "" ? size - 1 : Math.min(Number(rawEnd), size - 1);
+  if (!Number.isFinite(start) || start >= size || end < start) return null;
+  return { start, end };
+}
+
+/**
+ * Answers a Range request from a full 200 body when storage ignored the
+ * header. Returns false when it declines (too large to buffer), leaving the
+ * caller to stream the full response instead.
+ */
+async function serveRangeFromFullBody(
+  _req: unknown,
+  res: import("express").Response,
+  upstream: Response,
+  rangeHeader: string,
+): Promise<boolean> {
+  const declaredLength = Number(upstream.headers.get("content-length") ?? NaN);
+  if (Number.isFinite(declaredLength) && declaredLength > RANGE_FALLBACK_MAX_BYTES) {
+    await upstream.body?.cancel().catch(() => undefined);
+    return false;
+  }
+
+  const buffer = Buffer.from(await upstream.arrayBuffer());
+  if (buffer.byteLength > RANGE_FALLBACK_MAX_BYTES) return false;
+
+  const range = parseByteRange(rangeHeader, buffer.byteLength);
+  if (!range) {
+    res.status(416);
+    res.setHeader("Content-Range", `bytes */${buffer.byteLength}`);
+    res.end();
+    return true;
+  }
+
+  const slice = buffer.subarray(range.start, range.end + 1);
+  res.status(206);
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${buffer.byteLength}`);
+  res.setHeader("Content-Length", String(slice.byteLength));
+  res.end(slice);
+  return true;
+}
+
 export function registerStorageProxy(app: Express) {
   app.post("/api/storage/upload-url", async (req, res) => {
     const session = getSessionFromCookie(req);
@@ -84,15 +143,25 @@ export function registerStorageProxy(app: Express) {
         return;
       }
 
-      res.status(upstream.status);
       res.setHeader("Content-Type", contentTypeFromStorageKey(key));
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "private, no-cache");
+
+      // If a Range was asked for but storage answered with the whole object,
+      // satisfying it here keeps the contract we advertise honest. Safari
+      // treats a 200 reply to a ranged media request as non-seekable and can
+      // refuse the source outright, so silently relaying it is not an option.
+      if (rangeHeader && upstream.status === 200) {
+        const served = await serveRangeFromFullBody(req, res, upstream, rangeHeader);
+        if (served) return;
+      }
+
+      res.status(upstream.status);
       res.setHeader("Accept-Ranges", "bytes");
       const contentLength = upstream.headers.get("content-length");
       if (contentLength) res.setHeader("Content-Length", contentLength);
       const contentRange = upstream.headers.get("content-range");
       if (contentRange) res.setHeader("Content-Range", contentRange);
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      res.setHeader("Cache-Control", "private, no-cache");
 
       if (!upstream.body) {
         res.end();

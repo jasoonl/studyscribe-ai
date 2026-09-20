@@ -1,11 +1,12 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
-import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable } from "./storage";
-import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization } from "./speakerDiarization";
+import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream } from "./storage";
+import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
+import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
@@ -20,6 +21,14 @@ import { createHash } from "crypto";
 
 export const appRouter = router({
   system: systemRouter,
+  /**
+   * Admin-only view of transcription provider configuration. Reports presence
+   * of credentials, never their values — a misconfigured PUBLIC_APP_URL (no
+   * scheme) silently failed every transcript with no way to see why.
+   */
+  diagnostics: router({
+    transcription: adminProcedure.query(() => getTranscriptionConfigStatus()),
+  }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -154,25 +163,54 @@ export const appRouter = router({
           throw new Error("Failed to create recording");
         }
 
-        // Vercel uses an authenticated provider webhook; Manus retains the tested
-        // in-process fallback while external provider settings are being completed.
-        if (isAssemblyAiWebhookConfigured()) {
-          try {
-            const signedUrl = await storageGetSignedUrl(actualFileKey);
-            await assertSignedAudioUrlIsFetchable(signedUrl);
-            const webhookUrl = new URL("/api/webhooks/assemblyai", process.env.PUBLIC_APP_URL).toString();
-            const { providerId } = await submitSpeakerDiarization({ audioUrl: signedUrl, webhookUrl });
-            await setRecordingTranscriptionProviderId(recording.id, providerId);
-          } catch (error) {
-            await updateRecordingStatus(recording.id, "failed");
-            throw error;
-          }
-        } else {
-          console.log(`[Upload] Starting background transcription for recording ${recording.id}, mimeType: ${mimeType}`);
-          transcribeRecordingInBackground(recording.id, actualFileKey, input.audience, mimeType).catch(err => {
-            console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
-          });
-        }
+        await startTranscription(recording, actualFileKey, input.audience, mimeType);
+
+        return recording;
+      }),
+
+    /**
+     * Imports audio from a public link. This exists mainly so transcription can
+     * be exercised without a microphone — paste a lecture/talk URL and the
+     * whole pipeline (storage, provider submission, webhook) runs exactly as
+     * it does for a recording.
+     */
+    createFromUrl: protectedProcedure
+      .input(z.object({
+        url: z.string().min(1).max(2048),
+        title: z.string().min(1).optional(),
+        audience: z.enum(["student", "professional"]).default("student"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { body, mimeType: sourceMimeType, finalUrl } = await fetchAudioFromUrl(input.url);
+        const stored = await putAudioStream({
+          userId: ctx.user.id,
+          mimeType: sourceMimeType,
+          body: limitStreamSize(body, MAX_IMPORT_BYTES),
+        });
+
+        const verified = await verifyUploadedAudio(stored.key);
+        console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes)`);
+
+        const fallbackTitle = decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() || "Imported audio")
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[-_]+/g, " ")
+          .trim();
+
+        await createRecording({
+          userId: ctx.user.id,
+          title: input.title?.trim() || fallbackTitle || "Imported audio",
+          description: `Imported from ${finalUrl}`,
+          audience: input.audience,
+          audioUrl: stored.url,
+          audioKey: stored.key,
+          duration: 0,
+        });
+
+        const userRecordings = await getRecordingsByUserId(ctx.user.id);
+        const recording = userRecordings.find(r => r.audioKey === stored.key);
+        if (!recording) throw new Error("Failed to create recording");
+
+        await startTranscription(recording, stored.key, input.audience, stored.mimeType);
 
         return recording;
       }),
@@ -1002,6 +1040,36 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
+/**
+ * Hands a stored recording to the transcription provider. Vercel uses an
+ * authenticated provider webhook; the in-process poll remains the fallback
+ * when webhook settings aren't configured.
+ */
+async function startTranscription(
+  recording: { id: number },
+  audioKey: string,
+  audience: "student" | "professional",
+  mimeType: string,
+): Promise<void> {
+  if (isAssemblyAiWebhookConfigured()) {
+    try {
+      const webhookUrl = buildAssemblyAiWebhookUrl();
+      const signedUrl = await storageGetSignedUrl(audioKey);
+      await assertSignedAudioUrlIsFetchable(signedUrl);
+      const { providerId } = await submitSpeakerDiarization({ audioUrl: signedUrl, webhookUrl });
+      await setRecordingTranscriptionProviderId(recording.id, providerId);
+    } catch (error) {
+      await updateRecordingStatus(recording.id, "failed");
+      throw error;
+    }
+  } else {
+    console.log(`[Upload] Starting background transcription for recording ${recording.id}, mimeType: ${mimeType}`);
+    transcribeRecordingInBackground(recording.id, audioKey, audience, mimeType).catch(err => {
+      console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
+    });
+  }
+}
 
 // Helper function to transcribe recording in background
 export async function resumeProcessingRecordings(): Promise<void> {

@@ -163,6 +163,34 @@ export async function createDirectAudioUpload(input: {
 }
 
 /**
+ * Server-side counterpart to createDirectAudioUpload, for audio this server
+ * fetched itself (link imports) rather than received from the browser. Uses
+ * the same neutral-extension key convention so playback recovers the real
+ * content type the same way.
+ */
+export async function putAudioStream(input: {
+  userId: number;
+  mimeType: string;
+  body: ReadableStream<Uint8Array>;
+}): Promise<{ key: string; mimeType: string; url: string }> {
+  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
+
+  const mimeType = normalizeAudioMimeType(input.mimeType);
+  if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
+
+  const label = AUDIO_TYPE_LABELS[mimeType] || "audio";
+  const key = `${input.userId}/recordings/${crypto.randomUUID()}-${label}.bin`;
+  const result = await put(key, input.body, {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: BLOB_UPLOAD_CONTENT_TYPE,
+    multipart: true,
+  });
+
+  return { key: result.pathname, mimeType, url: publicStorageProxyUrl(result.pathname) };
+}
+
+/**
  * The browser uploads straight to Blob, so a PUT that returns OK is the only
  * signal the client has that the audio actually landed. Nothing downstream
  * checked that, which meant a failed or empty upload produced a recording row
