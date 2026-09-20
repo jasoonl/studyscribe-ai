@@ -32,8 +32,15 @@ export async function handleAssemblyAiWebhook(req: Request, res: Response) {
 
   const recording = await getRecordingByTranscriptionProviderId(req.body.transcript_id);
   if (!recording) {
-    // Returning 2xx stops provider retries for a deleted or safely unknown recording.
-    res.status(204).end();
+    // The provider id is written only after submission returns, so a short
+    // recording can finish and call back before that write lands. Answering
+    // 2xx here told the provider the result was delivered and stopped it
+    // retrying, permanently losing the transcript and leaving the recording
+    // stuck in "processing". A 503 asks it to redeliver; by then the id is
+    // saved. A genuinely deleted recording simply exhausts the provider's
+    // bounded retries, which is harmless.
+    console.warn(`[Transcription] No recording yet for transcript ${req.body.transcript_id}; asking for redelivery`);
+    res.status(503).json({ error: "Recording not ready for this transcript yet" });
     return;
   }
 

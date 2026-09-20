@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
-import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream } from "./storage";
+import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
 import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus } from "./speakerDiarization";
@@ -214,6 +214,32 @@ export const appRouter = router({
         await startTranscription(recording, stored.key, input.audience, stored.mimeType);
 
         return recording;
+      }),
+
+    /**
+     * Re-submits an existing recording for transcription. A failed or stuck
+     * recording previously had no way forward except re-uploading the audio,
+     * which is already stored and fine.
+     */
+    retryTranscription: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.id);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+        if (!recording.audioKey) {
+          throw new Error("This recording has no stored audio to transcribe");
+        }
+
+        await updateRecordingStatus(input.id, "processing");
+        await startTranscription(
+          recording,
+          recording.audioKey,
+          (recording.audience as "student" | "professional") ?? "student",
+          contentTypeFromStorageKey(recording.audioKey),
+        );
+        return { success: true };
       }),
 
     delete: protectedProcedure

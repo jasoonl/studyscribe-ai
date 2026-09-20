@@ -76,6 +76,13 @@ export default function RecordingDetail() {
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
   const updateTranscriptMutation = trpc.transcription.update.useMutation();
   const utils = trpc.useUtils();
+  const retryTranscription = trpc.recordings.retryTranscription.useMutation({
+    onSuccess: () => {
+      toast.success("Transcription restarted");
+      utils.recordings.get.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "Could not restart transcription"),
+  });
 
   // Initialize messages from chat history
   useEffect(() => {
@@ -244,6 +251,28 @@ export default function RecordingDetail() {
                     </p>
                   </div>
                 </div>
+
+                {/* Transcription failure + recovery */}
+                {recording.status === "failed" && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Transcription failed</AlertTitle>
+                    <AlertDescription className="space-y-3">
+                      <p className="text-xs leading-relaxed">
+                        The audio is still stored, so this can be retried without re-uploading. Check your
+                        notifications for the reason the provider gave.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={retryTranscription.isPending}
+                        onClick={() => retryTranscription.mutate({ id: recording.id })}
+                      >
+                        {retryTranscription.isPending ? "Retrying…" : "Retry transcription"}
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {/* Audio Player */}
                 {recording.audioUrl && (
