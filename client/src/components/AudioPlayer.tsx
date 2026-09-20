@@ -13,6 +13,20 @@ export interface AudioPlayerHandle {
   seekTo: (time: number, options?: { play?: boolean }) => void;
 }
 
+/** Reads one byte to learn the real HTTP status behind an opaque media error. */
+async function probeSource(src: string): Promise<string | null> {
+  try {
+    const response = await fetch(src, { headers: { Range: "bytes=0-0" }, credentials: "include" });
+    if (response.ok || response.status === 206) {
+      return `server returned ${response.status}, type ${response.headers.get("content-type") || "unknown"}`;
+    }
+    const body = await response.text().catch(() => "");
+    return `server returned ${response.status}${body ? `: ${body.slice(0, 120)}` : ""}`;
+  } catch {
+    return null;
+  }
+}
+
 function describeMediaError(error: MediaError | null): string | null {
   if (!error) return null;
   switch (error.code) {
@@ -69,6 +83,13 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
     const handleError = () => {
       setIsPlaying(false);
       setLoadError(describeMediaError(audio.error));
+      // The media element never reports *why* the fetch failed, so probe the
+      // same URL for the real status. A 401/403/404/502 here is a server
+      // problem, not an unplayable file, and saying so turns an unactionable
+      // "cannot play" into something diagnosable.
+      void probeSource(src).then((detail) => {
+        if (detail) setLoadError((current) => (current ? `${current} (${detail})` : detail));
+      });
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
@@ -89,7 +110,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);
     };
-  }, [onTimeUpdate]);
+  }, [onTimeUpdate, src]);
 
   const togglePlayPause = async () => {
     const audio = audioRef.current;

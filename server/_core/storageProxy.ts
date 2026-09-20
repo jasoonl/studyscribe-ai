@@ -1,10 +1,9 @@
 import type { Express } from "express";
 import { ENV } from "./env";
-import { get as getVercelBlob } from "@vercel/blob";
 import { Readable } from "node:stream";
 import { getSessionFromCookie } from "../sessionManager";
 import { getRecordingByAudioKey, getRecordingShareForUser } from "../db";
-import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey } from "../storage";
+import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
 
 export function registerStorageProxy(app: Express) {
   app.post("/api/storage/upload-url", async (req, res) => {
@@ -68,17 +67,38 @@ export function registerStorageProxy(app: Express) {
         res.status(session ? 403 : 401).send("You do not have access to this recording");
         return;
       }
-      const result = await getVercelBlob(key, { access: "private" });
-      if (!result || result.statusCode !== 200 || !result.stream) {
-        res.status(404).send("Recording file not found");
+      // Relay the read from a short-lived signed URL rather than reading the
+      // whole object into the function. Media elements expect byte-range
+      // support — Safari in particular sends `Range: bytes=0-1` before it
+      // will play anything and refuses the source outright if the server
+      // does not honor it — and passing the client's Range header straight
+      // through also keeps each response well under the serverless response
+      // size limit for long recordings.
+      const signedUrl = await storageGetSignedUrl(key);
+      const rangeHeader = req.headers.range;
+      const upstream = await fetch(signedUrl, rangeHeader ? { headers: { Range: rangeHeader } } : undefined);
+
+      if (upstream.status !== 200 && upstream.status !== 206) {
+        console.error(`[StorageProxy] signed read for ${key} returned ${upstream.status}`);
+        res.status(502).send("Recording storage is temporarily unavailable");
         return;
       }
+
+      res.status(upstream.status);
       res.setHeader("Content-Type", contentTypeFromStorageKey(key));
-      res.setHeader("Content-Length", String(result.blob.size));
-      res.setHeader("Accept-Ranges", "none");
+      res.setHeader("Accept-Ranges", "bytes");
+      const contentLength = upstream.headers.get("content-length");
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+      const contentRange = upstream.headers.get("content-range");
+      if (contentRange) res.setHeader("Content-Range", contentRange);
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Cache-Control", "private, no-cache");
-      Readable.fromWeb(result.stream as never).pipe(res);
+
+      if (!upstream.body) {
+        res.end();
+        return;
+      }
+      Readable.fromWeb(upstream.body as never).pipe(res);
     } catch (error) {
       console.error("[StorageProxy] private Blob read failed:", error);
       res.status(502).send("Recording storage is temporarily unavailable");
