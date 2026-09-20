@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
-import { storageGet, storagePut, storageGetSignedUrl } from "./storage";
+import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable } from "./storage";
 import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
@@ -121,6 +121,8 @@ export const appRouter = router({
           }
           mimeType = input.audioUpload.mimeType;
           actualFileKey = input.audioUpload.key;
+          const uploaded = await verifyUploadedAudio(actualFileKey);
+          console.log(`[Upload] Verified blob ${actualFileKey}: ${uploaded.size} bytes, stored as ${uploaded.contentType}`);
           ({ url: audioUrl } = await storageGet(actualFileKey));
         } else {
           const audioBase64 = input.audioBase64!;
@@ -157,6 +159,7 @@ export const appRouter = router({
         if (isAssemblyAiWebhookConfigured()) {
           try {
             const signedUrl = await storageGetSignedUrl(actualFileKey);
+            await assertSignedAudioUrlIsFetchable(signedUrl);
             const webhookUrl = new URL("/api/webhooks/assemblyai", process.env.PUBLIC_APP_URL).toString();
             const { providerId } = await submitSpeakerDiarization({ audioUrl: signedUrl, webhookUrl });
             await setRecordingTranscriptionProviderId(recording.id, providerId);
@@ -1021,6 +1024,7 @@ async function transcribeRecordingInBackground(recordingId: number, audioKey: st
     
     // Get a short-lived signed URL for the asynchronous transcription provider.
     const signedUrl = await storageGetSignedUrl(audioKey);
+    await assertSignedAudioUrlIsFetchable(signedUrl);
     console.log(`[Transcription] Requesting speaker-labeled transcript for recording ${recordingId}`);
     const result = await transcribeWithSpeakerDiarization({ audioUrl: signedUrl });
 

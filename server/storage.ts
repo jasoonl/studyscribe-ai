@@ -1,4 +1,4 @@
-import { issueSignedToken, presignUrl, put } from "@vercel/blob";
+import { head, issueSignedToken, presignUrl, put } from "@vercel/blob";
 import { ENV } from "./_core/env";
 
 const MAX_AUDIO_SIZE_BYTES = 500 * 1024 * 1024;
@@ -160,6 +160,58 @@ export async function createDirectAudioUpload(input: {
   });
 
   return { key, mimeType, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE };
+}
+
+/**
+ * The browser uploads straight to Blob, so a PUT that returns OK is the only
+ * signal the client has that the audio actually landed. Nothing downstream
+ * checked that, which meant a failed or empty upload produced a recording row
+ * that looked fine, played silence, and failed transcription with no
+ * explanation. Confirm the object really exists and has bytes before we
+ * commit a recording to it.
+ */
+export async function verifyUploadedAudio(key: string): Promise<{ size: number; contentType: string }> {
+  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
+
+  let metadata;
+  try {
+    metadata = await head(key);
+  } catch (error) {
+    throw new Error(
+      `The uploaded audio could not be found in storage (${error instanceof Error ? error.message : "unknown error"}). Please try recording or uploading again.`,
+    );
+  }
+
+  if (!metadata || metadata.size <= 0) {
+    throw new Error("The uploaded audio file is empty. Please try recording or uploading again.");
+  }
+
+  return { size: metadata.size, contentType: metadata.contentType };
+}
+
+/**
+ * The transcription provider fetches the audio itself from a signed URL, so a
+ * URL it cannot read shows up only as an opaque provider-side failure much
+ * later. Reading the first byte ourselves first turns that into a precise,
+ * immediate error naming the actual status the provider would have hit.
+ */
+export async function assertSignedAudioUrlIsFetchable(signedUrl: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(signedUrl, { headers: { Range: "bytes=0-0" } });
+  } catch (error) {
+    throw new Error(
+      `The audio could not be retrieved for transcription: ${error instanceof Error ? error.message : "network error"}`,
+    );
+  }
+
+  if (!response.ok && response.status !== 206) {
+    throw new Error(
+      `The audio could not be retrieved for transcription (storage returned ${response.status}). The recording may be missing from storage.`,
+    );
+  }
+
+  await response.body?.cancel().catch(() => undefined);
 }
 
 export async function storagePut(

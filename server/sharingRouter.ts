@@ -31,11 +31,21 @@ async function assertOwner(recordingId: number, userId: number) {
   return recording;
 }
 
-async function buildSharedBundle(recordingId: number) {
+/**
+ * `publicShareToken` is appended to the audio URL for no-login viewers — the
+ * storage proxy has no session to authorize them with, so the token is the
+ * only proof they're allowed to stream it. Signed-in recipients are
+ * authorized by their share row instead and need no token.
+ */
+async function buildSharedBundle(recordingId: number, publicShareToken?: string) {
   const recording = await getRecordingById(recordingId);
   if (!recording || recording.isDeleted) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Recording not found" });
   }
+  const audioUrl =
+    recording.audioUrl && publicShareToken
+      ? `${recording.audioUrl}${recording.audioUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(publicShareToken)}`
+      : recording.audioUrl;
   const [transcript, studyNotes, flashcards, studyGuides, quizzes] = await Promise.all([
     getTranscriptByRecordingId(recordingId),
     getStudyNotesByRecordingId(recordingId),
@@ -49,7 +59,7 @@ async function buildSharedBundle(recordingId: number) {
       id: recording.id,
       title: recording.title,
       description: recording.description,
-      audioUrl: recording.audioUrl,
+      audioUrl,
       duration: recording.duration,
       createdAt: recording.createdAt,
     },
@@ -155,6 +165,6 @@ export const sharingRouter = router({
       if (!recording) {
         throw new TRPCError({ code: "NOT_FOUND", message: "This share link is invalid or has been turned off" });
       }
-      return buildSharedBundle(recording.id);
+      return buildSharedBundle(recording.id, input.token);
     }),
 });

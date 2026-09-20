@@ -6,10 +6,12 @@ const issueSignedToken = vi.fn(async () => ({
   validUntil: Date.now() + 60_000,
 }));
 const presignUrl = vi.fn(async () => ({ presignedUrl: "https://blob.example/presigned-put-url" }));
+const head = vi.fn(async () => ({ size: 1024, contentType: "application/octet-stream" }));
 
 vi.mock("@vercel/blob", () => ({
   issueSignedToken: (...args: unknown[]) => issueSignedToken(...args),
   presignUrl: (...args: unknown[]) => presignUrl(...args),
+  head: (...args: unknown[]) => head(...args),
   put: vi.fn(),
   get: vi.fn(),
 }));
@@ -20,12 +22,17 @@ import {
   normalizeAudioMimeType,
   contentTypeFromStorageKey,
   createDirectAudioUpload,
+  verifyUploadedAudio,
+  assertSignedAudioUrlIsFetchable,
 } from "./storage";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
   issueSignedToken.mockClear();
   presignUrl.mockClear();
+  head.mockClear();
+  head.mockResolvedValue({ size: 1024, contentType: "application/octet-stream" });
 });
 
 describe("portable storage selection", () => {
@@ -177,5 +184,57 @@ describe("createDirectAudioUpload", () => {
     const result = await createDirectAudioUpload({ ...baseInput, userId: 42, mimeType: "audio/mp3" });
     expect(result?.key).toMatch(/^42\/recordings\//);
     expect(result?.key).toMatch(/-mp3\.bin$/);
+  });
+});
+
+describe("verifyUploadedAudio", () => {
+  it("returns the stored size and content type for a real upload", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    head.mockResolvedValue({ size: 52_000, contentType: "application/octet-stream" });
+    await expect(verifyUploadedAudio("1/recordings/abc-webm.bin")).resolves.toEqual({
+      size: 52_000,
+      contentType: "application/octet-stream",
+    });
+  });
+
+  it("rejects an upload that stored zero bytes instead of creating a silently broken recording", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    head.mockResolvedValue({ size: 0, contentType: "application/octet-stream" });
+    await expect(verifyUploadedAudio("1/recordings/abc-webm.bin")).rejects.toThrow(/empty/i);
+  });
+
+  it("rejects when the blob is missing from storage entirely", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    head.mockRejectedValue(new Error("The requested blob does not exist"));
+    await expect(verifyUploadedAudio("1/recordings/missing-webm.bin")).rejects.toThrow(/could not be found/i);
+  });
+
+  it("does not claim success when storage isn't configured at all", async () => {
+    vi.stubEnv("BLOB_STORE_ID", "");
+    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "");
+    await expect(verifyUploadedAudio("1/recordings/abc-webm.bin")).rejects.toThrow(/not configured/i);
+  });
+});
+
+describe("assertSignedAudioUrlIsFetchable", () => {
+  it("accepts a ranged read that returns partial content", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("x", { status: 206 })));
+    await expect(assertSignedAudioUrlIsFetchable("https://blob.example/signed")).resolves.toBeUndefined();
+  });
+
+  it("accepts a plain 200 for storage that ignores the Range header", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("x", { status: 200 })));
+    await expect(assertSignedAudioUrlIsFetchable("https://blob.example/signed")).resolves.toBeUndefined();
+  });
+
+  it("surfaces the real status when the provider would be refused", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("denied", { status: 403 })));
+    await expect(assertSignedAudioUrlIsFetchable("https://blob.example/signed")).rejects.toThrow(/403/);
+  });
+
+  it("surfaces a network failure rather than letting transcription fail opaquely", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("getaddrinfo ENOTFOUND"); }));
+    await expect(assertSignedAudioUrlIsFetchable("https://blob.example/signed")).rejects.toThrow(/ENOTFOUND/);
   });
 });

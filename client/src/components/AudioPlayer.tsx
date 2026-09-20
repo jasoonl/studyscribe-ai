@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Play, Pause, Volume2 } from "lucide-react";
+import { Play, Pause, Volume2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
@@ -13,12 +13,29 @@ export interface AudioPlayerHandle {
   seekTo: (time: number, options?: { play?: boolean }) => void;
 }
 
+function describeMediaError(error: MediaError | null): string | null {
+  if (!error) return null;
+  switch (error.code) {
+    case MediaError.MEDIA_ERR_ABORTED:
+      return "Playback was cancelled before the recording finished loading.";
+    case MediaError.MEDIA_ERR_NETWORK:
+      return "The recording could not be downloaded. Check your connection and try again.";
+    case MediaError.MEDIA_ERR_DECODE:
+      return "The recording is corrupted or incomplete and could not be decoded.";
+    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+      return "The recording is missing from storage or is in a format this browser cannot play.";
+    default:
+      return error.message || "This recording could not be played.";
+  }
+}
+
 export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate }: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const seekTo = useCallback((time: number, options?: { play?: boolean }) => {
     const audio = audioRef.current;
@@ -41,28 +58,59 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       setCurrentTime(audio.currentTime);
       onTimeUpdate?.(audio.currentTime);
     };
-    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setLoadError(null);
+    };
     const handleEnded = () => setIsPlaying(false);
+    // Without this the element fails silently: the file 404s or can't be
+    // decoded, the play button still flips to "Pause", and the user just
+    // hears nothing with no indication anything went wrong.
+    const handleError = () => {
+      setIsPlaying(false);
+      setLoadError(describeMediaError(audio.error));
+    };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    // The element starts loading as soon as it mounts, so a cached or fast
+    // response can fire `error`/`loadedmetadata` before this effect ever runs.
+    // Without replaying them here the error banner only appeared after the
+    // user clicked play and hit silence, and the duration stayed at 0:00.
+    if (audio.error) handleError();
+    else if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) handleLoadedMetadata();
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
     };
   }, [onTimeUpdate]);
 
-  const togglePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
+  const togglePlayPause = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    try {
+      await audio.play();
+      setIsPlaying(true);
+      setLoadError(null);
+    } catch (error) {
+      setIsPlaying(false);
+      setLoadError(
+        describeMediaError(audio.error) ||
+          (error instanceof Error ? error.message : "This recording could not be played."),
+      );
     }
   };
 
@@ -92,7 +140,14 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
         </div>
       </div>
 
-      <audio ref={audioRef} src={src} />
+      <audio ref={audioRef} src={src} preload="metadata" />
+
+      {loadError && (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
+          <p className="text-xs leading-relaxed text-destructive">{loadError}</p>
+        </div>
+      )}
 
       {/* Play/Pause Button */}
       <div className="flex items-center gap-4">
@@ -100,6 +155,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
           size="sm"
           variant="outline"
           onClick={togglePlayPause}
+          disabled={!!loadError}
           className="gap-2"
         >
           {isPlaying ? (

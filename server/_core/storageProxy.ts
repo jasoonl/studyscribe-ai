@@ -3,7 +3,7 @@ import { ENV } from "./env";
 import { get as getVercelBlob } from "@vercel/blob";
 import { Readable } from "node:stream";
 import { getSessionFromCookie } from "../sessionManager";
-import { getRecordingByAudioKeyForUser } from "../db";
+import { getRecordingByAudioKey, getRecordingShareForUser } from "../db";
 import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey } from "../storage";
 
 export function registerStorageProxy(app: Express) {
@@ -38,16 +38,34 @@ export function registerStorageProxy(app: Express) {
       return;
     }
     const key = typeof req.query.key === "string" ? req.query.key : "";
+    const shareToken = typeof req.query.token === "string" ? req.query.token : "";
     const session = getSessionFromCookie(req);
-    if (!key || !session) {
-      res.status(401).send("Sign in to access this recording");
+    if (!key) {
+      res.status(400).send("Missing storage key");
       return;
     }
 
     try {
-      const recording = await getRecordingByAudioKeyForUser(key, session.userId);
+      const recording = await getRecordingByAudioKey(key);
       if (!recording) {
         res.status(404).send("Recording not found");
+        return;
+      }
+
+      // Playback has to work for everyone the recording is legitimately
+      // shared with, not just its owner: a public share link carries a token
+      // and has no session at all, and a direct recipient has a session but
+      // does not own the row.
+      const isOwner = Boolean(session && recording.userId === session.userId);
+      const hasValidPublicToken = Boolean(
+        shareToken && recording.publicShareToken && recording.publicShareToken === shareToken,
+      );
+      const isSharedRecipient = Boolean(
+        session && !isOwner && (await getRecordingShareForUser(recording.id, session.userId)),
+      );
+
+      if (!isOwner && !hasValidPublicToken && !isSharedRecipient) {
+        res.status(session ? 403 : 401).send("You do not have access to this recording");
         return;
       }
       const result = await getVercelBlob(key, { access: "private" });
