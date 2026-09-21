@@ -8,7 +8,7 @@ import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, asser
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
-import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus } from "./speakerDiarization";
+import { isAssemblyAiWebhookConfigured, submitTranscriptionJob, checkTranscriptionStatus, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus, type SpeakerSegment } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
 import { eq } from "drizzle-orm";
@@ -165,7 +165,7 @@ export const appRouter = router({
           throw new Error("Failed to create recording");
         }
 
-        await startTranscription(recording, actualFileKey, input.audience, mimeType);
+        await startTranscription(recording, actualFileKey, mimeType);
 
         return recording;
       }),
@@ -217,7 +217,7 @@ export const appRouter = router({
         const recording = userRecordings.find(r => r.audioKey === stored.key);
         if (!recording) throw new Error("Failed to create recording");
 
-        await startTranscription(recording, stored.key, input.audience, stored.mimeType);
+        await startTranscription(recording, stored.key, stored.mimeType);
 
         return recording;
       }),
@@ -239,12 +239,7 @@ export const appRouter = router({
         }
 
         await updateRecordingStatus(input.id, "processing");
-        await startTranscription(
-          recording,
-          recording.audioKey,
-          (recording.audience as "student" | "professional") ?? "student",
-          contentTypeFromStorageKey(recording.audioKey),
-        );
+        await startTranscription(recording, recording.audioKey, contentTypeFromStorageKey(recording.audioKey));
         return { success: true };
       }),
 
@@ -295,6 +290,21 @@ export const appRouter = router({
         if (!recording || recording.userId !== ctx.user.id) {
           throw new Error("Recording not found");
         }
+
+        // The client already refetches this every 3s while waiting, so in
+        // polling mode (no AssemblyAI webhook secret) this is also what
+        // actually drives completion: each call does one quick,
+        // non-throwing status check and persists the result if the job
+        // just finished. That replaces a single long-lived server-side
+        // poll loop, which Vercel does not reliably keep running after a
+        // mutation's HTTP response has been sent -- see
+        // submitTranscriptionJob's comment for what that caused.
+        if (recording.status === "processing" && recording.transcriptionProviderId && !isAssemblyAiWebhookConfigured()) {
+          await advancePollingTranscription(recording);
+          const refreshed = await getRecordingByIdDb(input.id);
+          if (refreshed) return { id: refreshed.id, status: refreshed.status };
+        }
+
         return { id: recording.id, status: recording.status };
       }),
   }),
@@ -1074,47 +1084,51 @@ export const appRouter = router({
 
 export type AppRouter = typeof appRouter;
 
+type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
+
 /**
- * Hands a stored recording to the transcription provider. Vercel uses an
- * authenticated provider webhook; the in-process poll remains the fallback
- * when webhook settings aren't configured.
+ * Submits a stored recording's audio to the transcription provider and
+ * records the returned job id. Deliberately does only this and returns --
+ * it does not itself wait for the result. In webhook mode AssemblyAI calls
+ * /api/webhooks/assemblyai back when done; otherwise recordings.getStatus
+ * (already polled by the client every 3s) drives completion via
+ * advancePollingTranscription below. A submission alone takes a fraction
+ * of a second, so unlike the old approach -- submitting AND polling for up
+ * to several minutes inside one fire-and-forget call from this mutation --
+ * it reliably finishes within the request's own lifecycle regardless of
+ * how long transcription ends up taking. That mattered because Vercel does
+ * not guarantee unawaited work continues once the HTTP response has been
+ * sent, and this function has a 60s maxDuration budget; a poll that
+ * outlived it left the recording silently stuck in "processing" forever,
+ * with no error and no way to know why.
  */
-async function startTranscription(
-  recording: { id: number },
-  audioKey: string,
-  audience: "student" | "professional",
-  mimeType: string,
-): Promise<void> {
-  if (isAssemblyAiWebhookConfigured()) {
-    try {
-      const webhookUrl = buildAssemblyAiWebhookUrl();
-      // Hand the provider a link served by this app rather than the raw
-      // storage URL: it ends in a real audio extension and serves the real
-      // content type, where the stored object is a generic `.bin`, and it
-      // outlives storage's short-lived signed URLs for queued jobs.
-      const providerAudioUrl = buildTranscriptionAudioUrl(audioKey, mimeType, process.env.PUBLIC_APP_URL!);
-      await assertSignedAudioUrlIsFetchable(providerAudioUrl);
-      const { providerId } = await submitSpeakerDiarization({ audioUrl: providerAudioUrl, webhookUrl });
-      await setRecordingTranscriptionProviderId(recording.id, providerId);
-    } catch (error) {
-      await updateRecordingStatus(recording.id, "failed");
-      throw error;
-    }
-  } else {
-    console.log(`[Upload] Starting background transcription for recording ${recording.id}, mimeType: ${mimeType}`);
-    transcribeRecordingInBackground(recording.id, audioKey, audience, mimeType).catch(err => {
-      console.error(`[Upload] Unhandled error in background transcription for recording ${recording.id}:`, err);
-    });
+async function startTranscription(recording: { id: number }, audioKey: string, mimeType: string): Promise<void> {
+  try {
+    // Hand the provider a link served by this app rather than the raw
+    // storage URL: it ends in a real audio extension and serves the real
+    // content type, where the stored object is a generic `.bin`, and it
+    // outlives storage's short-lived signed URLs for queued jobs.
+    const providerAudioUrl = process.env.PUBLIC_APP_URL
+      ? buildTranscriptionAudioUrl(audioKey, mimeType, process.env.PUBLIC_APP_URL)
+      : await storageGetSignedUrl(audioKey);
+    await assertSignedAudioUrlIsFetchable(providerAudioUrl);
+
+    const webhookUrl = isAssemblyAiWebhookConfigured() ? buildAssemblyAiWebhookUrl() : undefined;
+    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl });
+    await setRecordingTranscriptionProviderId(recording.id, providerId);
+  } catch (error) {
+    await updateRecordingStatus(recording.id, "failed");
+    throw error;
   }
 }
 
-// Helper function to transcribe recording in background
+/** Recovers recordings that never got as far as a provider submission, e.g. if the process restarted mid-request. */
 export async function resumeProcessingRecordings(): Promise<void> {
   const processing = await getProcessingRecordings();
   for (const recording of processing) {
     if (!recording.audioKey) continue;
     if (recording.transcriptionProviderId) continue;
-    transcribeRecordingInBackground(recording.id, recording.audioKey, recording.audience ?? "student").catch((error) => {
+    startTranscription(recording, recording.audioKey, contentTypeFromStorageKey(recording.audioKey)).catch((error) => {
       console.error(`[Transcription] Recovery failed for recording ${recording.id}:`, error);
     });
   }
@@ -1123,95 +1137,93 @@ export async function resumeProcessingRecordings(): Promise<void> {
   }
 }
 
-async function transcribeRecordingInBackground(recordingId: number, audioKey: string, _audience: "student" | "professional", mimeType?: string): Promise<void> {
+/**
+ * Called from recordings.getStatus while a polling-mode transcription is in
+ * flight. Does one quick, non-throwing check against the provider and
+ * persists the result if the job just finished -- this IS the poll now;
+ * there is no separate long-lived background loop (see startTranscription).
+ */
+export async function advancePollingTranscription(recording: RecordingRow): Promise<void> {
+  if (!recording.transcriptionProviderId) return;
+
+  let result;
   try {
-    console.log(`[Transcription] Starting for recording ${recordingId}, audioKey: ${audioKey}`);
-    
-    // Get a short-lived signed URL for the asynchronous transcription provider.
-    // Prefer the self-served link (real extension + content type) whenever an
-    // absolute app URL is available; fall back to the raw storage URL only
-    // when it isn't.
-    const signedUrl = process.env.PUBLIC_APP_URL
-      ? buildTranscriptionAudioUrl(audioKey, mimeType ?? "audio/mpeg", process.env.PUBLIC_APP_URL)
-      : await storageGetSignedUrl(audioKey);
-    await assertSignedAudioUrlIsFetchable(signedUrl);
-    console.log(`[Transcription] Requesting speaker-labeled transcript for recording ${recordingId}`);
-    const result = await transcribeWithSpeakerDiarization({ audioUrl: signedUrl });
+    result = await checkTranscriptionStatus(recording.transcriptionProviderId);
+  } catch (error) {
+    // A transient network/API hiccup checking status must not fail the
+    // recording outright -- the next poll (3s away, client-driven) tries again.
+    console.error(`[Transcription] Status check failed for recording ${recording.id}:`, error);
+    return;
+  }
 
-    // Get recording to get userId
-    const recording = await getRecordingByIdDb(recordingId);
-    if (!recording) {
-      console.error("Recording not found:", recordingId);
-      await updateRecordingStatus(recordingId, "failed");
-      return;
-    }
+  if (result.status === "processing") return;
+  if (result.status === "error") {
+    await finalizeFailedTranscription(recording, result.error);
+    return;
+  }
+  await finalizeCompletedTranscription(recording, result);
+}
 
-    // Save the normalized, timestamped speaker turns with the full transcript.
-    console.log(`[Transcription] Saving speaker-labeled transcript for recording ${recordingId}`);
+async function finalizeCompletedTranscription(
+  recording: RecordingRow,
+  result: { text: string; language: string; segments: SpeakerSegment[] },
+): Promise<void> {
+  const existingTranscript = await getTranscriptByRecordingId(recording.id);
+  if (!existingTranscript) {
     await createTranscript({
-      recordingId,
+      recordingId: recording.id,
       userId: recording.userId,
       fullText: result.text,
       segments: result.segments,
       language: result.language || "en",
     });
+  }
+  await updateRecordingStatus(recording.id, "completed");
 
-    // Update recording status
-    console.log(`[Transcription] Marking recording ${recordingId} as completed`);
-    await updateRecordingStatus(recordingId, "completed");
-    console.log(`[Transcription] Successfully completed recording ${recordingId}`);
-
-    // Keep the existing in-app notification and deliver a push notification to opted-in devices.
-    const completedMessage = `"${recording.title}" has been transcribed successfully. You can now use AI study tools.`;
-    try {
-      const db = await getDb();
-      if (db) {
-        await db.insert(userNotifications).values({
-          userId: recording.userId,
-          type: "success",
-          title: "Transcription Complete",
-          message: completedMessage,
-          recordingId,
-          isRead: 0,
-        });
-      }
-      await sendBrowserPush(recording.userId, {
-        title: "Transcription complete",
-        body: `Your speaker-labeled transcript for “${recording.title}” is ready.`,
-        url: `/recording/${recordingId}`,
-        tag: `recording-${recordingId}`,
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.insert(userNotifications).values({
+        userId: recording.userId,
+        type: "success",
+        title: "Transcription Complete",
+        message: `"${recording.title}" has been transcribed successfully. You can now use AI study tools.`,
+        recordingId: recording.id,
+        isRead: 0,
       });
-    } catch (notifError) {
-      console.error(`[Transcription] Failed to create or deliver completion notification:`, notifError);
     }
-  } catch (error) {
-    console.error(`[Transcription] Failed for recording ${recordingId}:`, error);
-    try {
-      await updateRecordingStatus(recordingId, "failed");
-      // Create failure notification
-      const recording = await getRecordingByIdDb(recordingId);
-      if (recording) {
-        const reason = error instanceof Error ? error.message : "Unknown error";
-        const db = await getDb();
-        if (db) {
-          await db.insert(userNotifications).values({
-            userId: recording.userId,
-            type: "error",
-            title: "Transcription Failed",
-            message: `Transcription failed for "${recording.title}": ${reason}`,
-            recordingId,
-            isRead: 0,
-          });
-        }
-        await sendBrowserPush(recording.userId, {
-          title: "Transcription needs attention",
-          body: `We could not transcribe “${recording.title}”. Please try uploading it again.`,
-          url: `/recording/${recordingId}`,
-          tag: `recording-${recordingId}`,
-        });
-      }
-    } catch (updateError) {
-      console.error(`[Transcription] Failed to update status for recording ${recordingId}:`, updateError);
+    await sendBrowserPush(recording.userId, {
+      title: "Transcription complete",
+      body: `Your speaker-labeled transcript for "${recording.title}" is ready.`,
+      url: `/recording/${recording.id}`,
+      tag: `recording-${recording.id}`,
+    });
+  } catch (notifError) {
+    console.error(`[Transcription] Failed to create or deliver completion notification:`, notifError);
+  }
+}
+
+async function finalizeFailedTranscription(recording: RecordingRow, reason: string): Promise<void> {
+  await updateRecordingStatus(recording.id, "failed");
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.insert(userNotifications).values({
+        userId: recording.userId,
+        type: "error",
+        title: "Transcription Failed",
+        message: `Transcription failed for "${recording.title}": ${reason}`,
+        recordingId: recording.id,
+        isRead: 0,
+      });
     }
+    await sendBrowserPush(recording.userId, {
+      title: "Transcription needs attention",
+      body: `We could not transcribe "${recording.title}". Please try uploading it again.`,
+      url: `/recording/${recording.id}`,
+      tag: `recording-${recording.id}`,
+    });
+  } catch (notifError) {
+    console.error(`[Transcription] Failed to create or deliver failure notification:`, notifError);
   }
 }

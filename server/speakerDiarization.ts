@@ -1,6 +1,4 @@
 const ASSEMBLYAI_BASE_URL = "https://api.assemblyai.com/v2";
-const POLL_INTERVAL_MS = 3_000;
-const POLL_TIMEOUT_MS = 12 * 60 * 1_000;
 
 type AssemblyAiUtterance = {
   speaker: string;
@@ -109,48 +107,25 @@ async function readJson(response: Response): Promise<AssemblyAiTranscript> {
   }
 }
 
-function wait(milliseconds: number) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-export async function transcribeWithSpeakerDiarization(input: { audioUrl: string }) {
-  const createResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
-    method: "POST",
-    headers: { ...getHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ audio_url: input.audioUrl, language_detection: true, speaker_labels: true }),
-  });
-  const created = await readJson(createResponse);
-  if (!createResponse.ok || !created.id) {
-    throw new Error(`Speaker diarization request failed with ${createResponse.status}`);
-  }
-
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resultResponse = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${created.id}`, { headers: getHeaders() });
-    const result = await readJson(resultResponse);
-    if (!resultResponse.ok) throw new Error(`Speaker diarization result check failed with ${resultResponse.status}`);
-    if (result.status === "completed" && result.text) {
-      // Speaker labels are a bonus, not a requirement. Short clips, single
-      // speakers, and languages without diarization support all return a
-      // perfectly good transcript with no utterances — discarding that and
-      // failing the recording loses work the user already paid for.
-      return {
-        text: result.text,
-        language: result.language_code ?? "en",
-        segments: normalizeDiarizedSegments(result.utterances ?? []),
-      };
-    }
-    if (result.status === "error") throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
-    await wait(POLL_INTERVAL_MS);
-  }
-  throw new Error("Speaker diarization timed out while processing this recording");
-}
-
-export async function submitSpeakerDiarization(input: { audioUrl: string; webhookUrl: string }) {
-  if (!isAssemblyAiWebhookConfigured()) {
-    throw new Error("AssemblyAI webhook transcription is not configured");
-  }
-
+/**
+ * Submits a transcription job and returns immediately with its provider id.
+ * Used by both the webhook path (AssemblyAI calls back when done) and the
+ * polling fallback (the client drives repeated short status checks — see
+ * checkTranscriptionStatus). Deliberately does not itself wait for
+ * completion: earlier, transcribeWithSpeakerDiarization submitted AND
+ * polled — sometimes for minutes — inside one fire-and-forget call from a
+ * tRPC mutation. Vercel does not guarantee unawaited work continues once
+ * the HTTP response has been sent, and this function has a 60s maxDuration
+ * budget; a poll that outlived it left the recording silently stuck in
+ * "processing" forever, with no error and no way to know why. A submission
+ * alone takes a fraction of a second, so it reliably completes within the
+ * mutation's own request lifecycle regardless of how long transcription
+ * itself ends up taking.
+ */
+export async function submitTranscriptionJob(input: {
+  audioUrl: string;
+  webhookUrl?: string;
+}): Promise<{ providerId: string }> {
   const submit = async (withSpeakerLabels: boolean) => {
     const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
       method: "POST",
@@ -159,9 +134,13 @@ export async function submitSpeakerDiarization(input: { audioUrl: string; webhoo
         audio_url: input.audioUrl,
         language_detection: true,
         ...(withSpeakerLabels ? { speaker_labels: true } : {}),
-        webhook_url: input.webhookUrl,
-        webhook_auth_header_name: "X-StudyScribe-Webhook-Secret",
-        webhook_auth_header_value: process.env.ASSEMBLYAI_WEBHOOK_SECRET,
+        ...(input.webhookUrl
+          ? {
+              webhook_url: input.webhookUrl,
+              webhook_auth_header_name: "X-StudyScribe-Webhook-Secret",
+              webhook_auth_header_value: process.env.ASSEMBLYAI_WEBHOOK_SECRET,
+            }
+          : {}),
       }),
     });
     return { response, body: await readJson(response) };
@@ -187,17 +166,42 @@ export async function submitSpeakerDiarization(input: { audioUrl: string; webhoo
   return { providerId: body.id };
 }
 
-export async function retrieveSpeakerDiarization(providerId: string) {
+export type TranscriptionStatusResult =
+  | { status: "processing" }
+  | { status: "completed"; text: string; language: string; segments: SpeakerSegment[] }
+  | { status: "error"; error: string };
+
+/**
+ * Non-throwing status peek, safe to call from a short-lived request (a
+ * client-driven poll) as often as needed — "still processing" is a normal
+ * result, not a failure. This is what actually resolves a polling-mode
+ * transcription now: see recordings.getStatus, which calls this once per
+ * client refetch instead of one server function trying to wait out the
+ * whole job itself.
+ */
+export async function checkTranscriptionStatus(providerId: string): Promise<TranscriptionStatusResult> {
   const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${providerId}`, { headers: getHeaders() });
   const result = await readJson(response);
   if (!response.ok) throw new Error(`Speaker diarization result check failed with ${response.status}`);
-  if (result.status === "error") throw new Error(result.error || "Speaker diarization provider could not transcribe this recording");
-  if (result.status !== "completed" || !result.text) throw new Error("Speaker diarization result is not ready");
 
-  // As above: a transcript without speaker labels is still a transcript.
-  return {
-    text: result.text,
-    language: result.language_code ?? "en",
-    segments: normalizeDiarizedSegments(result.utterances ?? []),
-  };
+  if (result.status === "error") {
+    return { status: "error", error: result.error || "Speaker diarization provider could not transcribe this recording" };
+  }
+  if (result.status === "completed" && result.text) {
+    // Speaker labels are a bonus, not a requirement — see normalizeDiarizedSegments callers.
+    return {
+      status: "completed",
+      text: result.text,
+      language: result.language_code ?? "en",
+      segments: normalizeDiarizedSegments(result.utterances ?? []),
+    };
+  }
+  return { status: "processing" };
+}
+
+export async function retrieveSpeakerDiarization(providerId: string) {
+  const result = await checkTranscriptionStatus(providerId);
+  if (result.status === "error") throw new Error(result.error);
+  if (result.status === "processing") throw new Error("Speaker diarization result is not ready");
+  return { text: result.text, language: result.language, segments: result.segments };
 }
