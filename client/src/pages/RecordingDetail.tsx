@@ -14,6 +14,7 @@ import { FlashcardTestMode } from "@/components/FlashcardTestMode";
 import { type AudioPlayerHandle } from "@/components/AudioPlayer";
 import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
 import { downloadFlashcardExport } from "@/lib/flashcardExports";
+import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useState, useEffect, useRef } from "react";
 import { Link, useRoute } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -233,7 +234,7 @@ export default function RecordingDetail() {
                   <div className="space-y-2 text-sm">
                     <p>
                       <span className="font-medium">Duration:</span>{" "}
-                      {recording.duration ? `${Math.round(recording.duration / 60)} minutes` : "N/A"}
+                      {formatRecordingDuration(recording.duration)}
                     </p>
                     <p>
                       <span className="font-medium">Audience:</span>{" "}

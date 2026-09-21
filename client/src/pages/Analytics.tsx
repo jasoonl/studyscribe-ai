@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,13 +8,6 @@ import {
   Mic, FileText, Zap, BookOpen, HelpCircle, Mail,
   MessageSquare, TrendingUp, ArrowLeft, Clock, CheckCircle, AlertCircle
 } from "lucide-react";
-
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -117,7 +111,7 @@ export default function Analytics() {
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {formatDuration(r.duration)}
+                            {formatRecordingDuration(r.duration)}
                           </span>
                           <span className="text-xs text-muted-foreground">·</span>
                           <span className="text-xs text-muted-foreground">{timeAgo(r.createdAt)}</span>

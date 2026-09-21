@@ -7,6 +7,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
+import { probeAudioDuration } from "@/lib/probeAudioDuration";
 
 type Mode = "choose" | "record" | "upload" | "link";
 
@@ -245,13 +246,16 @@ export default function RecordOrUpload() {
 
     setIsUploadingFile(true);
     try {
-      const directUpload = await uploadAudioDirectly(selectedFile, selectedFile.name);
+      const [directUpload, duration] = await Promise.all([
+        uploadAudioDirectly(selectedFile, selectedFile.name),
+        probeAudioDuration(selectedFile),
+      ]);
       const base64String = directUpload ? undefined : await readAsBase64(selectedFile);
       const recording = await createRecordingMutation.mutateAsync({
         title: uploadTitle,
         audience: uploadAudience,
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
-        duration: 0,
+        duration,
       });
       setUploadFileComplete(true);
       setCreatedRecordingId(recording.id);

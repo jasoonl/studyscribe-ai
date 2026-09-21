@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
+import { probeAudioDuration } from "./audioDuration";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
 import { isAssemblyAiWebhookConfigured, submitSpeakerDiarization, transcribeWithSpeakerDiarization, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
@@ -182,15 +183,20 @@ export const appRouter = router({
         audience: z.enum(["student", "professional"]).default("student"),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { body, mimeType: sourceMimeType, finalUrl } = await fetchAudioFromUrl(input.url);
-        const stored = await putAudioStream({
-          userId: ctx.user.id,
-          mimeType: sourceMimeType,
-          body: limitStreamSize(body, MAX_IMPORT_BYTES),
-        });
+        const { body, mimeType: sourceMimeType, contentLength, finalUrl } = await fetchAudioFromUrl(input.url);
+        const limited = limitStreamSize(body, MAX_IMPORT_BYTES);
+        // Tee so duration can be read from the audio's own headers without
+        // affecting the bytes actually stored — a failed or partial duration
+        // read must never touch the upload.
+        const [uploadStream, probeStream] = limited.tee();
+
+        const [stored, duration] = await Promise.all([
+          putAudioStream({ userId: ctx.user.id, mimeType: sourceMimeType, body: uploadStream }),
+          probeAudioDuration(probeStream, sourceMimeType, contentLength),
+        ]);
 
         const verified = await verifyUploadedAudio(stored.key);
-        console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes)`);
+        console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
 
         const fallbackTitle = decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() || "Imported audio")
           .replace(/\.[^/.]+$/, "")
@@ -204,7 +210,7 @@ export const appRouter = router({
           audience: input.audience,
           audioUrl: stored.url,
           audioKey: stored.key,
-          duration: 0,
+          duration: duration ?? 0,
         });
 
         const userRecordings = await getRecordingsByUserId(ctx.user.id);

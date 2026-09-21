@@ -41,7 +41,7 @@ Because `app.ts` must stay importable by the Vercel function without pulling in 
 
 ### Routing inside the Express app
 
-- REST routes for auth (`server/authRoutes.ts`), Google OAuth (`server/googleOAuthHandler.ts` + `oauth.ts`), the AssemblyAI webhook (`server/transcriptionWebhook.ts`), storage proxying (`server/storageProxy.ts`), and a gated one-time schema-init endpoint (`server/schemaInit.ts`).
+- REST routes for auth (`server/authRoutes.ts`), Google OAuth (`server/googleOAuthHandler.ts` + `server/_core/oauth.ts`), the AssemblyAI webhook (`server/transcriptionWebhook.ts`), storage proxying (`server/_core/storageProxy.ts`, registered via `registerStorageProxy`), and a gated one-time schema-init endpoint (`server/schemaInit.ts`).
 - Everything else goes through tRPC at `/api/trpc`, defined in `server/routers.ts` (`appRouter`), which composes `systemRouter`, `customAuthRouter`, `notificationsRouter`, and the main routers for recordings/transcripts/study notes/flashcards/quizzes/study guides/email drafts/chat/browser push.
 - tRPC procedure tiers (`server/_core/trpc.ts`): `publicProcedure`, `protectedProcedure` (requires `ctx.user`), `adminProcedure` (requires `role === 'admin'`). Auth state comes from a signed session cookie, resolved once per request in `server/_core/context.ts` (`createContext`) — there is no Manus OAuth fallback anymore, only the custom cookie session.
 
@@ -65,7 +65,11 @@ Schema lives in `drizzle/schema.ts` (19 tables: users, recordings, transcripts, 
 ### Provider abstractions (swap points if changing services)
 
 - **Storage**: `server/storage.ts` — Vercel Blob (`isVercelBlobStorageConfigured`) is primary; falls back to legacy "Forge" (Manus's built-in storage API, `BUILT_IN_FORGE_API_URL`/`_KEY`) if Blob isn't configured. Audio files are capped at 16MB.
-- **Transcription/diarization**: `server/speakerDiarization.ts` — AssemblyAI, submitted async with a webhook callback (`server/transcriptionWebhook.ts`) rather than polling in the request path.
+- **Transcription/diarization**: `server/speakerDiarization.ts` — AssemblyAI, submitted async with a webhook callback (`server/transcriptionWebhook.ts`) rather than polling in the request path. Three pieces of this pipeline exist for non-obvious reasons and shouldn't be simplified away:
+  - `server/transcriptionAudioLink.ts` issues HMAC-signed, 24h links for the provider to fetch audio from *this* server. Stored objects deliberately use a neutral `.bin` key and generic content type to satisfy storage's content-type policy, so the provider would otherwise get no format hint; storage's own signed URLs also expire before a queued job downloads.
+  - `server/urlAudioImport.ts` fetches user-supplied links, so it is an SSRF surface: every hostname is DNS-resolved and rejected if it lands in private/loopback/link-local space, and redirects are followed manually (max 3) so each hop is re-checked. Streaming-page hosts whose terms forbid media extraction are blocklisted.
+  - The webhook answers an **unknown transcript id with 503, not 204** — the provider id is written only after submission returns, so a short clip can call back first; a 204 would tell the provider delivery succeeded and permanently lose the transcript. Failed recordings recover via `recordings.retryTranscription` rather than re-upload.
+- **Audio playback**: `server/_core/storageProxy.ts` serves recording audio with HTTP byte-range support — required or Safari won't play or seek at all.
 - **LLM**: `server/_core/llm.ts` — OpenAI-compatible chat completion client (`OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`), used for summaries, flashcards, quizzes, study guides, email drafts, and the AI tutor chat.
 - **Transactional email**: `server/email.ts` — Resend (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`); the sending domain must be one the owner controls and has verified in Resend (the historical default, `studyscribe-ai.manus.space`, is Manus-managed and can't be used for this).
 - **Browser push**: `server/pushNotifications.ts` — Web Push with VAPID keys.

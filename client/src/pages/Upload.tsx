@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
+import { probeAudioDuration } from "@/lib/probeAudioDuration";
 
 export default function Upload() {
   // ALL hooks must be called unconditionally at the top
@@ -96,7 +97,10 @@ export default function Upload() {
     setUploadProgress(5);
 
     try {
-      const directUpload = await uploadAudioDirectly(selectedFile, selectedFile.name, setUploadProgress);
+      const [directUpload, duration] = await Promise.all([
+        uploadAudioDirectly(selectedFile, selectedFile.name, setUploadProgress),
+        probeAudioDuration(selectedFile),
+      ]);
       const base64String = directUpload ? undefined : await readFileAsBase64(selectedFile);
       setUploadProgress(40);
 
@@ -107,7 +111,7 @@ export default function Upload() {
         title,
         audience,
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
-        duration: 0,
+        duration,
       });
 
       setUploadProgress(80);
