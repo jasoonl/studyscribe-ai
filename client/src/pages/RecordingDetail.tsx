@@ -43,6 +43,23 @@ export default function RecordingDetail() {
     { enabled: !!recordingId }
   );
 
+  // In polling mode (no AssemblyAI webhook secret) recordings.getStatus is
+  // what actually advances a job to completion, one check per call -- see
+  // its server-side comment. Without something polling it here, a recording
+  // opened straight from the library (rather than from the upload flow,
+  // which already polls this) could sit at "processing" forever with no way
+  // for anything to ever check on it again.
+  const utilsForStatusPoll = trpc.useUtils();
+  const { data: statusPoll } = trpc.recordings.getStatus.useQuery(
+    { id: recordingId || 0 },
+    { enabled: !!recordingId && recording?.status === "processing", refetchInterval: 3000 }
+  );
+  useEffect(() => {
+    if (!statusPoll || statusPoll.status === "processing") return;
+    utilsForStatusPoll.recordings.get.invalidate({ id: recordingId || 0 });
+    utilsForStatusPoll.transcription.get.invalidate({ recordingId: recordingId || 0 });
+  }, [statusPoll, recordingId, utilsForStatusPoll]);
+
   // Update edited transcript when transcript loads
   useEffect(() => {
     if (transcript?.fullText) {
@@ -253,15 +270,22 @@ export default function RecordingDetail() {
                   </div>
                 </div>
 
-                {/* Transcription failure + recovery */}
-                {recording.status === "failed" && (
+                {/* Transcription failure + recovery. A "processing" recording with no
+                    transcriptionProviderId was never actually submitted to a
+                    provider -- there is no in-flight job anything could still be
+                    waiting on, so it is stuck exactly like a failed one and needs
+                    the same manual nudge, not a spinner that never resolves. */}
+                {(recording.status === "failed" ||
+                  (recording.status === "processing" && !recording.transcriptionProviderId)) && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Transcription failed</AlertTitle>
+                    <AlertTitle>
+                      {recording.status === "failed" ? "Transcription failed" : "Transcription never started"}
+                    </AlertTitle>
                     <AlertDescription className="space-y-3">
                       <p className="text-xs leading-relaxed">
-                        The audio is still stored, so this can be retried without re-uploading. Check your
-                        notifications for the reason the provider gave.
+                        The audio is still stored, so this can be retried without re-uploading.
+                        {recording.status === "failed" && " Check your notifications for the reason the provider gave."}
                       </p>
                       <Button
                         size="sm"
