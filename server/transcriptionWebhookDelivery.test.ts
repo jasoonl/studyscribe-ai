@@ -17,6 +17,7 @@ vi.mock("./db", () => ({
 }));
 
 vi.mock("./speakerDiarization", () => ({
+  NO_SPEECH_ERROR: "No speech was detected in this recording.",
   retrieveSpeakerDiarization: (...a: unknown[]) => retrieveSpeakerDiarization(...a),
 }));
 
@@ -88,6 +89,33 @@ describe("AssemblyAI webhook delivery", () => {
 
     expect(createTranscript).toHaveBeenCalled();
     expect(updateRecordingStatus).toHaveBeenCalledWith(5, "completed");
+  });
+
+  it("fails the recording, rather than asking for endless redelivery, when the job finished with no speech", async () => {
+    getRecordingByTranscriptionProviderId.mockResolvedValue({
+      id: 5, userId: 9, title: "Music only", status: "processing",
+    });
+    retrieveSpeakerDiarization.mockRejectedValue(new Error("No speech was detected in this recording."));
+
+    const res = mockRes();
+    await handleAssemblyAiWebhook(mockReq({ transcript_id: "t_1", status: "completed" }), res as never);
+
+    expect(updateRecordingStatus).toHaveBeenCalledWith(5, "failed");
+    expect(createTranscript).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  it("still asks for redelivery on a genuinely transient processing failure", async () => {
+    getRecordingByTranscriptionProviderId.mockResolvedValue({
+      id: 5, userId: 9, title: "Lecture", status: "processing",
+    });
+    retrieveSpeakerDiarization.mockRejectedValue(new Error("Speaker diarization result check failed with 500"));
+
+    const res = mockRes();
+    await handleAssemblyAiWebhook(mockReq({ transcript_id: "t_1", status: "completed" }), res as never);
+
+    expect(updateRecordingStatus).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(500);
   });
 
   it("rejects a webhook carrying the wrong secret", async () => {

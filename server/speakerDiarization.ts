@@ -1,11 +1,19 @@
 const ASSEMBLYAI_BASE_URL = "https://api.assemblyai.com/v2";
 
+type AssemblyAiWord = {
+  text: string;
+  start: number;
+  end: number;
+  confidence?: number;
+};
+
 type AssemblyAiUtterance = {
   speaker: string;
   text: string;
   start: number;
   end: number;
   confidence?: number;
+  words?: AssemblyAiWord[];
 };
 
 type AssemblyAiTranscript = {
@@ -80,17 +88,55 @@ export function getTranscriptionConfigStatus() {
   };
 }
 
+// A lecture is usually one speaker, and the provider returns one utterance per
+// speaker turn, so a 40-minute monologue arrives as a single "segment" and the
+// click-a-timestamp-to-seek transcript becomes one unusable block. Long turns
+// are split at sentence ends using the per-word timings the provider includes.
+const TARGET_SEGMENT_MS = 15_000;
+const MAX_SEGMENT_MS = 40_000;
+const SPLIT_ABOVE_MS = 30_000;
+
+function splitLongUtterance(utterance: AssemblyAiUtterance): Array<Omit<SpeakerSegment, "id">> {
+  const words = utterance.words ?? [];
+  const whole = {
+    start: utterance.start / 1_000,
+    end: utterance.end / 1_000,
+    text: utterance.text.trim(),
+    speaker: utterance.speaker ? `Speaker ${utterance.speaker}` : undefined,
+    confidence: utterance.confidence,
+  };
+  if (words.length === 0 || utterance.end - utterance.start <= SPLIT_ABOVE_MS) return [whole];
+
+  const pieces: Array<Omit<SpeakerSegment, "id">> = [];
+  let chunk: AssemblyAiWord[] = [];
+  const flush = () => {
+    if (chunk.length === 0) return;
+    const scored = chunk.map((word) => word.confidence).filter((value): value is number => typeof value === "number");
+    pieces.push({
+      ...whole,
+      start: chunk[0].start / 1_000,
+      end: chunk[chunk.length - 1].end / 1_000,
+      text: chunk.map((word) => word.text).join(" ").trim(),
+      confidence: scored.length ? scored.reduce((sum, value) => sum + value, 0) / scored.length : whole.confidence,
+    });
+    chunk = [];
+  };
+
+  for (const word of words) {
+    chunk.push(word);
+    const length = word.end - chunk[0].start;
+    const endsSentence = /[.!?]["')\]]*$/.test(word.text);
+    if ((endsSentence && length >= TARGET_SEGMENT_MS) || length >= MAX_SEGMENT_MS) flush();
+  }
+  flush();
+  return pieces.filter((piece) => piece.text.length > 0);
+}
+
 export function normalizeDiarizedSegments(utterances: AssemblyAiUtterance[]): SpeakerSegment[] {
   return utterances
     .filter((utterance) => utterance.text.trim().length > 0)
-    .map((utterance, index) => ({
-      id: `speaker-${index + 1}`,
-      start: utterance.start / 1_000,
-      end: utterance.end / 1_000,
-      text: utterance.text.trim(),
-      speaker: utterance.speaker ? `Speaker ${utterance.speaker}` : undefined,
-      confidence: utterance.confidence,
-    }));
+    .flatMap(splitLongUtterance)
+    .map((segment, index) => ({ id: `speaker-${index + 1}`, ...segment }));
 }
 
 function getHeaders() {
@@ -166,6 +212,8 @@ export async function submitTranscriptionJob(input: {
   return { providerId: body.id };
 }
 
+export const NO_SPEECH_ERROR = "No speech was detected in this recording.";
+
 export type TranscriptionStatusResult =
   | { status: "processing" }
   | { status: "completed"; text: string; language: string; segments: SpeakerSegment[] }
@@ -187,7 +235,12 @@ export async function checkTranscriptionStatus(providerId: string): Promise<Tran
   if (result.status === "error") {
     return { status: "error", error: result.error || "Speaker diarization provider could not transcribe this recording" };
   }
-  if (result.status === "completed" && result.text) {
+  if (result.status === "completed") {
+    // A finished job with no text (silence, music, unintelligible audio) used to
+    // fall through to "processing" below, leaving the recording spinning forever.
+    if (!result.text?.trim()) {
+      return { status: "error", error: NO_SPEECH_ERROR };
+    }
     // Speaker labels are a bonus, not a requirement — see normalizeDiarizedSegments callers.
     return {
       status: "completed",

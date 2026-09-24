@@ -463,7 +463,7 @@ export default function RecordingDetail() {
                                         {formatTranscriptTimestamp(segment.start)}
                                       </span>
                                       <span className="min-w-0 text-sm leading-relaxed">
-                                        {segment.speaker && (
+                                        {segment.speaker && segment.speaker !== (transcript.segments as TranscriptSegment[])[index - 1]?.speaker && (
                                           <span className={`mb-1 mr-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? "bg-primary-foreground/15 text-primary-foreground" : "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-200"}`}>
                                             {segment.speaker}
                                           </span>

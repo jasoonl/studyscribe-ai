@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { createTranscript, getDb, getRecordingByTranscriptionProviderId, getTranscriptByRecordingId, updateRecordingStatus } from "./db";
-import { retrieveSpeakerDiarization, type AssemblyAiWebhookPayload } from "./speakerDiarization";
+import { NO_SPEECH_ERROR, retrieveSpeakerDiarization, type AssemblyAiWebhookPayload } from "./speakerDiarization";
 import { sendBrowserPush } from "./pushNotifications";
 import { userNotifications } from "../drizzle/schema";
 
@@ -17,6 +17,25 @@ function isWebhookPayload(value: unknown): value is AssemblyAiWebhookPayload {
   if (!value || typeof value !== "object") return false;
   const payload = value as Record<string, unknown>;
   return typeof payload.transcript_id === "string" && (payload.status === "completed" || payload.status === "error");
+}
+
+async function failRecording(recording: { id: number; userId: number; title: string }, reason: string) {
+  await updateRecordingStatus(recording.id, "failed");
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.insert(userNotifications).values({
+        userId: recording.userId,
+        type: "error",
+        title: "Transcription Failed",
+        message: `Transcription failed for "${recording.title}": ${reason}`,
+        recordingId: recording.id,
+        isRead: 0,
+      });
+    }
+  } catch (notifError) {
+    console.error("[Transcription] Failed to create failure notification", notifError);
+  }
 }
 
 export async function handleAssemblyAiWebhook(req: Request, res: Response) {
@@ -59,22 +78,7 @@ export async function handleAssemblyAiWebhook(req: Request, res: Response) {
     } catch (error) {
       if (error instanceof Error && error.message) reason = error.message;
     }
-    await updateRecordingStatus(recording.id, "failed");
-    try {
-      const db = await getDb();
-      if (db) {
-        await db.insert(userNotifications).values({
-          userId: recording.userId,
-          type: "error",
-          title: "Transcription Failed",
-          message: `Transcription failed for "${recording.title}": ${reason}`,
-          recordingId: recording.id,
-          isRead: 0,
-        });
-      }
-    } catch (notifError) {
-      console.error("[Transcription] Failed to create failure notification", notifError);
-    }
+    await failRecording(recording, reason);
     res.status(204).end();
     return;
   }
@@ -101,6 +105,14 @@ export async function handleAssemblyAiWebhook(req: Request, res: Response) {
     }).catch(error => console.error("[Transcription] Browser push delivery failed", error));
     res.status(204).end();
   } catch (error) {
+    // The job finished but there was nothing to transcribe. Redelivery can't
+    // change that, so fail the recording with the reason instead of 500ing
+    // until the provider gives up and the recording spins forever.
+    if (error instanceof Error && error.message === NO_SPEECH_ERROR) {
+      await failRecording(recording, NO_SPEECH_ERROR);
+      res.status(204).end();
+      return;
+    }
     console.error("[Transcription] AssemblyAI webhook processing failed", error);
     // A 500 asks AssemblyAI to retry the transient callback delivery.
     res.status(500).json({ error: "Transcript processing failed" });

@@ -130,6 +130,18 @@ describe("checkTranscriptionStatus", () => {
     expect(result).toMatchObject({ status: "completed", text: "done talking" });
   });
 
+  it("reports an error instead of 'processing' forever when the job completes with no text", async () => {
+    // Silence, music or unintelligible audio completes with an empty transcript.
+    // That used to fall through to "processing", so the recording spun forever
+    // with no failure, no notification and nothing to retry.
+    process.env.ASSEMBLYAI_API_KEY = "k";
+    for (const text of ["", "   ", null]) {
+      vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ status: "completed", text, utterances: [] })));
+      const result = await checkTranscriptionStatus("transcript_1");
+      expect(result).toEqual({ status: "error", error: "No speech was detected in this recording." });
+    }
+  });
+
   it("reports 'error' with the provider's reason rather than throwing", async () => {
     process.env.ASSEMBLYAI_API_KEY = "k";
     vi.stubGlobal("fetch", vi.fn(async () =>
