@@ -163,6 +163,146 @@ describe("importing video links", () => {
   });
 });
 
+describe("importing from a page that publishes the media", () => {
+  function html(body: string) {
+    return new Response(body, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
+  }
+  function audio() {
+    return new Response("bytes", { status: 200, headers: { "content-type": "audio/mpeg" } });
+  }
+
+  it("follows an Open Graph media link on a page to the real file", async () => {
+    publicDns();
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.endsWith("/details/talk")) {
+        return html('<meta property="og:video" content="https://cdn.example/talk_64kb.mp3">');
+      }
+      return audio();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchAudioFromUrl("https://archive.example/details/talk");
+    expect(result.finalUrl).toBe("https://cdn.example/talk_64kb.mp3");
+    expect(result.mimeType).toBe("audio/mpeg");
+  });
+
+  it("sends the page as Referer and identifies itself, as hotlink-protected hosts expect", async () => {
+    publicDns();
+    const seen: Array<Record<string, string>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: unknown, init?: RequestInit) => {
+      seen.push({ url: String(input), ...(init?.headers as Record<string, string>) });
+      return String(input).endsWith("/page") ? html('<audio src="/a.mp3"></audio>') : audio();
+    }));
+
+    await fetchAudioFromUrl("https://host.example/page");
+    expect(seen[1].Referer).toBe("https://host.example/page");
+    expect(seen[0]["User-Agent"]).toMatch(/StudyScribe/);
+  });
+
+  it("falls through to the next candidate when the first can't be downloaded", async () => {
+    publicDns();
+    vi.stubGlobal("fetch", vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.endsWith("/page")) return html('<a href="/broken.mp3">a</a><a href="/works.mp3">b</a>');
+      if (url.endsWith("/broken.mp3")) return new Response("gone", { status: 404 });
+      return audio();
+    }));
+
+    const result = await fetchAudioFromUrl("https://host.example/page");
+    expect(result.finalUrl).toBe("https://host.example/works.mp3");
+  });
+
+  it("explains a page that has no downloadable media", async () => {
+    publicDns();
+    vi.stubGlobal("fetch", vi.fn(async () => html("<html><body>Watch on the site</body></html>")));
+    await expect(fetchAudioFromUrl("https://host.example/watch")).rejects.toThrow(/not an audio file.*no downloadable/i);
+  });
+
+  it("explains a page whose only video is an HLS/DASH stream", async () => {
+    publicDns();
+    vi.stubGlobal("fetch", vi.fn(async () => html('<video src="https://cdn.example/master.m3u8"></video>')));
+    await expect(fetchAudioFromUrl("https://host.example/watch")).rejects.toThrow(/HLS\/DASH/);
+  });
+
+  it("does not follow a page that links to another page", async () => {
+    publicDns();
+    const fetchMock = vi.fn(async (input: unknown) =>
+      String(input).endsWith("/page") ? html('<a href="/next.mp3">x</a>') : html("<html>another page</html>"),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(fetchAudioFromUrl("https://host.example/page")).rejects.toThrow(/couldn't download it/i);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("still blocks a page whose media link points at a private address", async () => {
+    // The page is public, but the media URL it names resolves to loopback:
+    // the same SSRF check that guards the pasted link must guard this one.
+    lookup.mockImplementation(async (host: string) =>
+      host === "internal.example"
+        ? [{ address: "127.0.0.1", family: 4 }]
+        : [{ address: "93.184.216.34", family: 4 }],
+    );
+    vi.stubGlobal("fetch", vi.fn(async () => html('<audio src="http://internal.example/secret.mp3"></audio>')));
+    await expect(fetchAudioFromUrl("https://host.example/page")).rejects.toThrow(/private address/i);
+  });
+
+  it("caps how much of a page it will read", async () => {
+    publicDns();
+    let pulled = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++;
+        controller.enqueue(new TextEncoder().encode("<p>filler</p>".repeat(1000)));
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(endless, { status: 200, headers: { "content-type": "text/html" } }),
+    ));
+    await expect(fetchAudioFromUrl("https://host.example/huge")).rejects.toThrow(/no downloadable/i);
+    expect(pulled).toBeLessThan(400);
+  });
+});
+
+describe("other video and audio containers", () => {
+  it("maps extensions for containers beyond mp3/mp4", () => {
+    const expectations: Record<string, string> = {
+      "https://x.example/a.opus": "audio/ogg",
+      "https://x.example/a.ogv": "video/ogg",
+      "https://x.example/a.mkv": "video/x-matroska",
+      "https://x.example/a.avi": "video/x-msvideo",
+      "https://x.example/a.mpg": "video/mpeg",
+      "https://x.example/a.3gp": "video/3gpp",
+      "https://x.example/a.wma": "audio/x-ms-wma",
+      "https://x.example/a.aiff": "audio/aiff",
+      "https://x.example/a.flac": "audio/flac",
+    };
+    for (const [url, type] of Object.entries(expectations)) {
+      expect(guessMimeTypeFromUrl(url), url).toBe(type);
+    }
+  });
+
+  it("stores every importable container type instead of failing at the storage step", () => {
+    // fetchAudioFromUrl accepting a type is worthless if storage then throws
+    // "Unsupported audio format" — that was the case for .flac before.
+    for (const type of ["audio/flac", "audio/ogg", "video/ogg", "audio/opus", "video/x-matroska", "video/x-msvideo", "video/mpeg", "video/3gpp", "audio/x-ms-wma", "audio/aiff"]) {
+      const normalized = normalizeAudioMimeType(type);
+      expect(["audio/flac", "audio/ogg", "video/x-matroska", "video/x-msvideo", "video/mpeg", "video/3gpp", "audio/x-ms-wma", "audio/aiff"], type).toContain(normalized);
+    }
+    expect(normalizeAudioMimeType("video/ogg")).toBe("audio/ogg");
+    expect(normalizeAudioMimeType("audio/opus")).toBe("audio/ogg");
+  });
+
+  it("accepts an MKV link", async () => {
+    publicDns();
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("video", { status: 200, headers: { "content-type": "video/x-matroska" } }),
+    ));
+    const result = await fetchAudioFromUrl("https://example.com/panel.mkv");
+    expect(result.mimeType).toBe("video/x-matroska");
+  });
+});
+
 describe("limitStreamSize", () => {
   it("passes through a stream under the cap", async () => {
     const source = new ReadableStream<Uint8Array>({

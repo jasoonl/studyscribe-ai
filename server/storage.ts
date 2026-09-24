@@ -5,6 +5,10 @@ const MAX_AUDIO_SIZE_BYTES = 500 * 1024 * 1024;
 const AUDIO_MIME_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
   "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a", "audio/x-m4a",
+  // Formats that only arrive through link imports. The transcription provider
+  // decodes them itself; browsers may not be able to play some back.
+  "audio/flac", "audio/aac", "audio/aiff", "audio/x-ms-wma",
+  "video/x-matroska", "video/x-msvideo", "video/mpeg", "video/3gpp", "video/x-ms-wmv",
 ]);
 
 /**
@@ -28,6 +32,10 @@ export function normalizeAudioMimeType(mimeType: string): string {
   // so they store and play back as audio/mp4. Imported video links land here
   // too — the transcription provider extracts the audio track itself.
   if (base === "video/mp4" || base === "video/quicktime" || base === "video/x-m4v") return "audio/mp4";
+  // Ogg video (.ogv) and Opus-in-Ogg (.opus) are Ogg containers.
+  if (base === "video/ogg" || base === "audio/opus") return "audio/ogg";
+  if (base === "audio/x-flac") return "audio/flac";
+  if (base === "audio/x-aiff") return "audio/aiff";
   return base;
 }
 
@@ -71,6 +79,15 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   webm: "audio/webm",
   mp4: "audio/mp4",
   m4a: "audio/mp4",
+  flac: "audio/flac",
+  aac: "audio/aac",
+  aiff: "audio/aiff",
+  wma: "audio/x-ms-wma",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  mpeg: "video/mpeg",
+  "3gp": "video/3gpp",
+  wmv: "video/x-ms-wmv",
 };
 
 /**
@@ -98,6 +115,15 @@ const AUDIO_TYPE_LABELS: Record<string, string> = {
   "audio/mp4": "mp4",
   "audio/m4a": "m4a",
   "audio/x-m4a": "m4a",
+  "audio/flac": "flac",
+  "audio/aac": "aac",
+  "audio/aiff": "aiff",
+  "audio/x-ms-wma": "wma",
+  "video/x-matroska": "mkv",
+  "video/x-msvideo": "avi",
+  "video/mpeg": "mpeg",
+  "video/3gpp": "3gp",
+  "video/x-ms-wmv": "wmv",
 };
 
 /**

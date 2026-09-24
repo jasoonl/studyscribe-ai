@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
+import { extractMediaCandidates, readTextLimited } from "./mediaPageResolver";
 
 /**
  * Importing audio from a user-supplied link means this server makes an
@@ -13,6 +14,8 @@ import net from "node:net";
 
 const MAX_REDIRECTS = 3;
 export const MAX_IMPORT_BYTES = 200 * 1024 * 1024;
+const MAX_PAGE_BYTES = 2 * 1024 * 1024;
+const USER_AGENT = "StudyScribeImporter/1.0 (+https://studyscribe-ai.vercel.app)";
 
 /** Player pages whose terms prohibit extracting the underlying media stream. */
 const STREAMING_PAGE_HOSTS = [
@@ -30,6 +33,9 @@ const IMPORTABLE_CONTENT_TYPES = new Set([
   // audio track itself, so a talk published as MP4 works the same as one
   // published as MP3. Many static hosts also fall back to a generic type.
   "video/mp4", "video/webm", "video/quicktime", "video/x-m4v",
+  "audio/opus", "audio/aiff", "audio/x-aiff", "audio/x-ms-wma",
+  "video/ogg", "video/x-matroska", "video/x-msvideo", "video/mpeg",
+  "video/3gpp", "video/x-ms-wmv",
   "application/octet-stream", "binary/octet-stream",
 ]);
 
@@ -38,6 +44,8 @@ const EXTENSION_MIME_TYPES: Record<string, string> = {
   wav: "audio/wav",
   ogg: "audio/ogg",
   oga: "audio/ogg",
+  opus: "audio/ogg",
+  weba: "audio/webm",
   webm: "audio/webm",
   mp4: "audio/mp4",
   m4a: "audio/mp4",
@@ -48,6 +56,16 @@ const EXTENSION_MIME_TYPES: Record<string, string> = {
   // the audio track out and the browser plays it back the same way.
   mov: "video/quicktime",
   m4v: "video/x-m4v",
+  ogv: "video/ogg",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  mpg: "video/mpeg",
+  mpeg: "video/mpeg",
+  "3gp": "video/3gpp",
+  wmv: "video/x-ms-wmv",
+  wma: "audio/x-ms-wma",
+  aif: "audio/aiff",
+  aiff: "audio/aiff",
 };
 
 function ipv4ToInt(ip: string): number {
@@ -118,7 +136,7 @@ export async function assertPublicHttpUrl(rawUrl: string): Promise<URL> {
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
   if (STREAMING_PAGE_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`))) {
     throw new Error(
-      `${host} links can't be imported — their terms don't allow downloading the media. Use a direct link to an audio or video file instead.`,
+      `${host} links can't be imported — their terms don't allow downloading the media. Use a direct link to an audio or video file, or a page that hosts the file itself (like archive.org). If it's your own video, download the file from the site and upload it instead.`,
     );
   }
 
@@ -159,24 +177,40 @@ export function guessMimeTypeFromUrl(url: string): string | null {
   return EXTENSION_MIME_TYPES[extension] ?? null;
 }
 
-/**
- * Resolves the final response for a link, validating every redirect hop.
- * Returns the response body stream plus what we could learn about the audio.
- */
-export async function fetchAudioFromUrl(rawUrl: string): Promise<{
+type FetchedAudio = {
   body: ReadableStream<Uint8Array>;
   mimeType: string;
   contentLength: number | null;
   finalUrl: string;
-}> {
+};
+
+const PAGE_CONTENT_TYPES = new Set(["text/html", "application/xhtml+xml"]);
+const MAX_PAGE_CANDIDATE_TRIES = 4;
+
+/**
+ * Resolves the final response for a link, validating every redirect hop.
+ * Returns the response body stream plus what we could learn about the audio.
+ *
+ * A link may also be a web page that publishes the media (an archive.org or
+ * Wikimedia Commons item, a course page with an embedded player). In that
+ * case the page's own media links are tried in order — one level deep only,
+ * and each candidate goes through the same address checks as the original.
+ */
+export async function fetchAudioFromUrl(
+  rawUrl: string,
+  options: { fromPage?: string } = {},
+): Promise<FetchedAudio> {
   let currentUrl = rawUrl;
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const url = await assertPublicHttpUrl(currentUrl);
 
+    const headers: Record<string, string> = { Accept: "audio/*,video/*,text/html;q=0.8,*/*;q=0.5", "User-Agent": USER_AGENT };
+    if (options.fromPage) headers.Referer = options.fromPage;
+
     let response: Response;
     try {
-      response = await fetch(url, { redirect: "manual", headers: { Accept: "audio/*,*/*" } });
+      response = await fetch(url, { redirect: "manual", headers });
     } catch (error) {
       throw new Error(`Could not download that link: ${error instanceof Error ? error.message : "network error"}`);
     }
@@ -196,6 +230,12 @@ export async function fetchAudioFromUrl(rawUrl: string): Promise<{
 
     const declaredType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
     const guessedType = guessMimeTypeFromUrl(url.toString());
+
+    // Trust the response over the URL: a ".mp3" link that answers with HTML is
+    // a soft-404, login wall or hotlink-protection page, never the audio.
+    if (PAGE_CONTENT_TYPES.has(declaredType)) {
+      return resolveMediaFromPage(response, url, options.fromPage !== undefined);
+    }
 
     if (declaredType && !IMPORTABLE_CONTENT_TYPES.has(declaredType) && !guessedType) {
       await response.body?.cancel().catch(() => undefined);
@@ -219,6 +259,35 @@ export async function fetchAudioFromUrl(rawUrl: string): Promise<{
   }
 
   throw new Error("That link redirected too many times.");
+}
+
+async function resolveMediaFromPage(response: Response, pageUrl: URL, alreadyOnPage: boolean): Promise<FetchedAudio> {
+  const notMedia = "That link is a web page, not an audio file";
+  if (alreadyOnPage || !response.body) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error(`${notMedia}.`);
+  }
+
+  const html = await readTextLimited(response.body, MAX_PAGE_BYTES);
+  const { candidates, hasStreamingManifest } = extractMediaCandidates(html, pageUrl.toString());
+
+  if (candidates.length === 0) {
+    throw new Error(
+      hasStreamingManifest
+        ? `${notMedia}, and the video on it is a live-style stream (HLS/DASH) that can't be downloaded as a file. Use a link to the audio or video file itself.`
+        : `${notMedia}, and no downloadable audio or video file was found on it. If the page only has an embedded player (YouTube, Vimeo, etc.), paste a direct link to the file instead.`,
+    );
+  }
+
+  let lastError = "";
+  for (const candidate of candidates.slice(0, MAX_PAGE_CANDIDATE_TRIES)) {
+    try {
+      return await fetchAudioFromUrl(candidate, { fromPage: pageUrl.toString() });
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "download failed";
+    }
+  }
+  throw new Error(`Found audio or video on that page, but couldn't download it: ${lastError}`);
 }
 
 /** Caps an in-flight download so an unbounded or lying Content-Length can't exhaust memory. */

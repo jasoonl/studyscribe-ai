@@ -274,7 +274,7 @@ export default function RecordOrUpload() {
 
   const handleImportLink = async () => {
     if (!linkUrl.trim()) {
-      toast.error("Paste a link to an audio file");
+      toast.error("Paste a link to an audio or video file");
       return;
     }
 
@@ -660,7 +660,7 @@ export default function RecordOrUpload() {
               <Card className="p-6 border-2 border-border">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Audio Link *</label>
+                    <label className="text-sm font-medium mb-2 block">Audio or Video Link *</label>
                     <input
                       type="url"
                       placeholder="https://example.com/lecture.mp3"
@@ -670,12 +670,13 @@ export default function RecordOrUpload() {
                       className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      A direct link to an audio or video file (MP3, M4A, WAV, OGG, MP4, MOV, WebM) on a public website.
-                      The audio track of a video is transcribed automatically.
+                      A link to an audio or video file (MP3, M4A, WAV, FLAC, OGG, MP4, MOV, WebM, MKV and more) or to a
+                      public page that hosts one, such as an archive.org or Wikimedia Commons item. The audio track of
+                      a video is transcribed automatically.
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Streaming pages such as YouTube links are not supported — their terms prohibit downloading the
-                      media. Use a direct file link, or a platform that offers one.
+                      YouTube, Vimeo, SoundCloud and other streaming sites aren't supported — their terms prohibit
+                      downloading the media. If it's your own video, download the file and use Upload instead.
                     </p>
                   </div>
 

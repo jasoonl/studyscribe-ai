@@ -61,6 +61,14 @@ const LABEL_EXTENSIONS: Record<string, string> = {
   "audio/m4a": "m4a",
   "audio/x-m4a": "m4a",
   "audio/flac": "flac",
+  "audio/aac": "aac",
+  "audio/aiff": "aiff",
+  "audio/x-ms-wma": "wma",
+  "video/x-matroska": "mkv",
+  "video/x-msvideo": "avi",
+  "video/mpeg": "mpeg",
+  "video/3gpp": "3gp",
+  "video/x-ms-wmv": "wmv",
 };
 
 /** Builds the absolute URL a provider should fetch, ending in a real extension. */

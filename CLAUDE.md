@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-StudyScribe AI is a full-stack app (not just the marketing site the stale `README.md`/`PROJECT_GUIDE.md` describe): a React SPA + Express/tRPC API for recording or uploading lectures/meetings, transcribing them (AssemblyAI, with speaker diarization), and generating AI study tools (flashcards, study guides, quizzes, email drafts, an AI tutor chat) from the transcript. Auth is custom (invite-gated email/password + Google OAuth), backed by a TiDB Cloud (MySQL-compatible) database via Drizzle ORM.
+StudyScribe AI is a full-stack app: a React SPA + Express/tRPC API for recording, uploading, or importing-by-link lectures/meetings, transcribing them (AssemblyAI, with speaker diarization), and generating AI study tools (flashcards, study guides, quizzes, email drafts, an AI tutor chat) from the transcript. Auth is custom (invite-gated email/password + Google OAuth), backed by a TiDB Cloud (MySQL-compatible) database via Drizzle ORM.
 
 It runs on Vercel as serverless functions today; the code also supports a standalone Node server (Railway/Render) and still contains legacy references to its original "Manus" hosting platform.
 
@@ -26,6 +26,8 @@ npm run db:migrate # drizzle-kit migrate (applies committed migrations in drizzl
 
 Run a single test file: `npx vitest run server/authService.test.ts` (or any path). Filter by name: `npx vitest run -t "some test name"`.
 
+A handful of server tests (e.g. `server/providerCredentials.test.ts`) call real services and fail locally without production secrets; that is expected, not a regression. The live AssemblyAI test (`server/speakerDiarization.provider.test.ts`) is skipped unless `RUN_PROVIDER_INTEGRATION_TESTS=true` and `ASSEMBLYAI_API_KEY` are set.
+
 There is no lint script and no CI workflow in this repo (only `.github/dependabot.yml`).
 
 ## Architecture
@@ -41,7 +43,7 @@ Because `app.ts` must stay importable by the Vercel function without pulling in 
 
 ### Routing inside the Express app
 
-- REST routes for auth (`server/authRoutes.ts`), Google OAuth (`server/googleOAuthHandler.ts` + `server/_core/oauth.ts`), the AssemblyAI webhook (`server/transcriptionWebhook.ts`), storage proxying (`server/_core/storageProxy.ts`, registered via `registerStorageProxy`), and a gated one-time schema-init endpoint (`server/schemaInit.ts`).
+- REST routes for auth (`server/authRoutes.ts`), Google OAuth (`server/googleOAuthHandler.ts` + `server/_core/oauth.ts`), the AssemblyAI webhook (`server/transcriptionWebhook.ts`), storage proxying (`server/_core/storageProxy.ts`, registered via `registerStorageProxy`), and a gated one-time schema-init endpoint (`server/schemaInit.ts`). Auth endpoints are rate-limited (`server/_core/rateLimit.ts`, `express-rate-limit`), which depends on `app.set("trust proxy", 1)` in `server/_core/app.ts` so limits key on the real client IP behind Vercel's proxy; the tRPC `requestInvite` mutation uses `checkTrpcRateLimit` for the same reason.
 - Everything else goes through tRPC at `/api/trpc`, defined in `server/routers.ts` (`appRouter`), which composes `systemRouter`, `customAuthRouter`, `notificationsRouter`, and the main routers for recordings/transcripts/study notes/flashcards/quizzes/study guides/email drafts/chat/browser push.
 - tRPC procedure tiers (`server/_core/trpc.ts`): `publicProcedure`, `protectedProcedure` (requires `ctx.user`), `adminProcedure` (requires `role === 'admin'`). Auth state comes from a signed session cookie, resolved once per request in `server/_core/context.ts` (`createContext`) — there is no Manus OAuth fallback anymore, only the custom cookie session.
 
@@ -64,19 +66,25 @@ Schema lives in `drizzle/schema.ts` (19 tables: users, recordings, transcripts, 
 
 ### Provider abstractions (swap points if changing services)
 
-- **Storage**: `server/storage.ts` — Vercel Blob (`isVercelBlobStorageConfigured`) is primary; falls back to legacy "Forge" (Manus's built-in storage API, `BUILT_IN_FORGE_API_URL`/`_KEY`) if Blob isn't configured. Audio files are capped at 16MB.
-- **Transcription/diarization**: `server/speakerDiarization.ts` — AssemblyAI, submitted async with a webhook callback (`server/transcriptionWebhook.ts`) rather than polling in the request path. Three pieces of this pipeline exist for non-obvious reasons and shouldn't be simplified away:
+- **Storage**: `server/storage.ts` — Vercel Blob (`isVercelBlobStorageConfigured`) is primary; falls back to legacy "Forge" (Manus's built-in storage API, `BUILT_IN_FORGE_API_URL`/`_KEY`) if Blob isn't configured. Browser uploads go directly to Blob via presigned tokens (`createDirectAudioUpload`, `client/src/lib/directAudioUpload.ts`), capped at 500MB; link imports are capped at 200MB.
+- **Transcription/diarization**: `server/speakerDiarization.ts` — AssemblyAI. Submission (`submitTranscriptionJob`) and status (`checkTranscriptionStatus`) are separate calls, and **no request may wait out a whole transcription**: Vercel functions have a 60s `maxDuration` and don't guarantee unawaited work runs after the response is sent, so a long in-request poll silently strands the recording in "processing" (this happened). Completion is instead driven one of two ways, chosen by `isAssemblyAiWebhookConfigured()` (needs `ASSEMBLYAI_WEBHOOK_SECRET` + `PUBLIC_APP_URL`, not just the API key):
+  - **Webhook mode**: AssemblyAI calls back `server/transcriptionWebhook.ts`.
+  - **Polling mode** (the fallback when the webhook isn't configured): the client polls `recordings.getStatus` every 3s while a recording is `processing`, and each call runs one `advancePollingTranscription` check. Every page that shows a processing recording (`Record`, `Upload`, `RecordOrUpload`, `RecordingDetail`) must keep polling, or that recording never resolves in polling mode. `finalizeCompletedTranscription`/`finalizeFailedTranscription` in `server/routers.ts` are the single completion path for both modes.
+  - The admin-only `diagnostics.transcription` procedure (shown on the Admin page) reports which mode and which env vars are active. Check it first when transcripts fail: a missing `ASSEMBLYAI_API_KEY` otherwise looks like a generic failure.
+
+  Three more pieces of this pipeline exist for non-obvious reasons and shouldn't be simplified away:
   - `server/transcriptionAudioLink.ts` issues HMAC-signed, 24h links for the provider to fetch audio from *this* server. Stored objects deliberately use a neutral `.bin` key and generic content type to satisfy storage's content-type policy, so the provider would otherwise get no format hint; storage's own signed URLs also expire before a queued job downloads.
-  - `server/urlAudioImport.ts` fetches user-supplied links, so it is an SSRF surface: every hostname is DNS-resolved and rejected if it lands in private/loopback/link-local space, and redirects are followed manually (max 3) so each hop is re-checked. Streaming-page hosts whose terms forbid media extraction are blocklisted.
+  - `server/urlAudioImport.ts` fetches user-supplied links, so it is an SSRF surface: every hostname is DNS-resolved and rejected if it lands in private/loopback/link-local space, and redirects are followed manually (max 3) so each hop is re-checked. Streaming-page hosts whose terms forbid media extraction (YouTube etc., `STREAMING_PAGE_HOSTS`) are refused with an explanatory error rather than scraped. Direct media links work, and so do ordinary web pages that publish a media file: `server/mediaPageResolver.ts` pulls candidates from Open Graph tags, `<audio>/<video>/<source>`, JSON-LD and download links, then each candidate is fetched through the same SSRF checks (one level deep only). An HTML response is never treated as audio even if the URL ends in `.mp3`. `recordings.createFromUrl` tees the fetched stream into Blob storage and the duration probe in a single pass.
   - The webhook answers an **unknown transcript id with 503, not 204** — the provider id is written only after submission returns, so a short clip can call back first; a 204 would tell the provider delivery succeeded and permanently lose the transcript. Failed recordings recover via `recordings.retryTranscription` rather than re-upload.
-- **Audio playback**: `server/_core/storageProxy.ts` serves recording audio with HTTP byte-range support — required or Safari won't play or seek at all.
+- **Audio playback**: `server/_core/storageProxy.ts` serves recording audio with HTTP byte-range support — required or Safari won't play or seek at all. It also falls back to slicing the full body (206/416) if the storage backend ignores `Range`.
+- **Recording duration**: `MediaRecorder` output (WebM/MP4) carries no duration header, so `<audio>.duration` can be `Infinity`/NaN, and Safari never resolves it on its own. Duration is therefore measured explicitly: `client/src/lib/probeAudioDuration.ts` for uploads/recordings, `server/audioDuration.ts` (`music-metadata`) for link imports, and `AudioPlayer` resolves streamed-length audio itself. `duration` of `0` means "unknown" and `formatRecordingDuration` (`client/src/lib/formatDuration.ts`) renders it as "Unknown" — always use that helper rather than formatting minutes inline.
 - **LLM**: `server/_core/llm.ts` — OpenAI-compatible chat completion client (`OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`), used for summaries, flashcards, quizzes, study guides, email drafts, and the AI tutor chat.
 - **Transactional email**: `server/email.ts` — Resend (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`); the sending domain must be one the owner controls and has verified in Resend (the historical default, `studyscribe-ai.manus.space`, is Manus-managed and can't be used for this).
 - **Browser push**: `server/pushNotifications.ts` — Web Push with VAPID keys.
 
 ### Frontend
 
-Vite + React 19, routed with `wouter` (not react-router) in `client/src/App.tsx`. `ProtectedRoute` wraps authenticated pages and reads auth state from `useCustomAuth` (`client/src/_core/hooks/useCustomAuth.ts`), which talks to the custom REST session endpoints, not tRPC, for the initial auth check. Data fetching for everything else goes through the tRPC client + TanStack Query. UI components are shadcn/ui (`client/src/components/ui`) on Tailwind v4. Path aliases (`@` → `client/src`, `@shared` → `shared/`) are defined in both `vite.config.ts` and `tsconfig.json` — keep them in sync if either changes; `vitest.config.ts` also duplicates them for tests.
+Vite + React 19, routed with `wouter` (not react-router) in `client/src/App.tsx`, where page components are `React.lazy` code-split — add new pages the same way. `ProtectedRoute` wraps authenticated pages and reads auth state from `useCustomAuth` (`client/src/_core/hooks/useCustomAuth.ts`), which talks to the custom REST session endpoints, not tRPC, for the initial auth check. Data fetching for everything else goes through the tRPC client + TanStack Query. UI components are shadcn/ui (`client/src/components/ui`) on Tailwind v4. Path aliases (`@` → `client/src`, `@shared` → `shared/`) are defined in both `vite.config.ts` and `tsconfig.json` — keep them in sync if either changes; `vitest.config.ts` also duplicates them for tests.
 
 `shared/` holds code imported by both client and server (`shared/const.ts` for shared string constants, `shared/types.ts`) — put cross-cutting constants there rather than duplicating them.
 
