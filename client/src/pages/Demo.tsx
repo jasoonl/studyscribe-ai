@@ -218,7 +218,7 @@ export default function Demo() {
                 },
                 {
                   q: "What file formats are supported?",
-                  a: "We support MP3, WAV, OGG, MP4, and WebM formats. Maximum file size is 500MB."
+                  a: "We support MP3, WAV, OGG, MP4, and WebM formats. Maximum file size is 1GB."
                 },
                 {
                   q: "Can I export my study materials?",

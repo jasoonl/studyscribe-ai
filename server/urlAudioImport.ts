@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
+import { MAX_LINK_IMPORT_BYTES } from "@shared/const";
 import { extractMediaCandidates, readTextLimited } from "./mediaPageResolver";
 
 /**
@@ -13,7 +14,7 @@ import { extractMediaCandidates, readTextLimited } from "./mediaPageResolver";
  */
 
 const MAX_REDIRECTS = 3;
-export const MAX_IMPORT_BYTES = 200 * 1024 * 1024;
+export const MAX_IMPORT_BYTES = MAX_LINK_IMPORT_BYTES;
 const MAX_PAGE_BYTES = 2 * 1024 * 1024;
 const USER_AGENT = "StudyScribeImporter/1.0 (+https://studyscribe-ai.vercel.app)";
 

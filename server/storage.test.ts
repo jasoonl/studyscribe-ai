@@ -8,7 +8,16 @@ const issueSignedToken = vi.fn(async () => ({
 const presignUrl = vi.fn(async () => ({ presignedUrl: "https://blob.example/presigned-put-url" }));
 const head = vi.fn(async () => ({ size: 1024, contentType: "application/octet-stream" }));
 
+const { list, del, BlobNotFoundError } = vi.hoisted(() => ({
+  list: vi.fn(),
+  del: vi.fn(async (..._args: unknown[]) => undefined),
+  BlobNotFoundError: class BlobNotFoundError extends Error {},
+}));
+
 vi.mock("@vercel/blob", () => ({
+  BlobNotFoundError,
+  list: (...args: unknown[]) => list(...args),
+  del: (...args: unknown[]) => del(...args),
   issueSignedToken: (...args: unknown[]) => issueSignedToken(...args),
   presignUrl: (...args: unknown[]) => presignUrl(...args),
   head: (...args: unknown[]) => head(...args),
@@ -24,6 +33,8 @@ import {
   createDirectAudioUpload,
   verifyUploadedAudio,
   assertSignedAudioUrlIsFetchable,
+  getBlobUsage,
+  deleteStoredAudio,
 } from "./storage";
 
 afterEach(() => {
@@ -32,6 +43,9 @@ afterEach(() => {
   issueSignedToken.mockClear();
   presignUrl.mockClear();
   head.mockClear();
+  list.mockReset();
+  del.mockReset();
+  del.mockResolvedValue(undefined);
   head.mockResolvedValue({ size: 1024, contentType: "application/octet-stream" });
 });
 
@@ -137,10 +151,10 @@ describe("createDirectAudioUpload", () => {
     vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
     await expect(
       createDirectAudioUpload({ ...baseInput, mimeType: "audio/webm", size: 0 })
-    ).rejects.toThrow(/500MB/);
+    ).rejects.toThrow(/1GB/);
     await expect(
-      createDirectAudioUpload({ ...baseInput, mimeType: "audio/webm", size: 600 * 1024 * 1024 })
-    ).rejects.toThrow(/500MB/);
+      createDirectAudioUpload({ ...baseInput, mimeType: "audio/webm", size: 1200 * 1024 * 1024 })
+    ).rejects.toThrow(/1GB/);
     expect(issueSignedToken).not.toHaveBeenCalled();
   });
 
@@ -236,5 +250,63 @@ describe("assertSignedAudioUrlIsFetchable", () => {
   it("surfaces a network failure rather than letting transcription fail opaquely", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("getaddrinfo ENOTFOUND"); }));
     await expect(assertSignedAudioUrlIsFetchable("https://blob.example/signed")).rejects.toThrow(/ENOTFOUND/);
+  });
+});
+
+describe("getBlobUsage", () => {
+  it("sums every page of the store, not just the first", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    list
+      .mockResolvedValueOnce({ blobs: [{ size: 1000 }, { size: 2000 }], hasMore: true, cursor: "next" })
+      .mockResolvedValueOnce({ blobs: [{ size: 500 }], hasMore: false });
+    await expect(getBlobUsage()).resolves.toMatchObject({ configured: true, totalBytes: 3500, objectCount: 3 });
+    expect(list).toHaveBeenLastCalledWith({ limit: 1000, cursor: "next" });
+  });
+
+  it("defaults the limit to the Hobby plan's 1GB and honours an override", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    list.mockResolvedValue({ blobs: [], hasMore: false });
+    expect((await getBlobUsage()).limitBytes).toBe(1024 * 1024 * 1024);
+    vi.stubEnv("BLOB_STORAGE_LIMIT_BYTES", "5368709120");
+    expect((await getBlobUsage()).limitBytes).toBe(5368709120);
+  });
+
+  it("reports unconfigured storage without calling Blob", async () => {
+    vi.stubEnv("BLOB_STORE_ID", "");
+    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "");
+    await expect(getBlobUsage()).resolves.toMatchObject({ configured: false, totalBytes: 0 });
+    expect(list).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteStoredAudio", () => {
+  it("deletes in batches and ignores blanks and duplicates", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    const keys = Array.from({ length: 250 }, (_, i) => `1/recordings/${i}-mp3.bin`);
+    await deleteStoredAudio([...keys, ...keys.slice(0, 10), ""]);
+    expect(del).toHaveBeenCalledTimes(3);
+    expect(del.mock.calls[0][0]).toHaveLength(100);
+    expect(del.mock.calls[2][0]).toHaveLength(50);
+  });
+
+  it("treats an already-missing object as deleted", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    del.mockRejectedValueOnce(new BlobNotFoundError("gone"));
+    await expect(deleteStoredAudio(["1/recordings/a-mp3.bin"])).resolves.toBeUndefined();
+  });
+
+  it("surfaces a real failure so the caller doesn't drop rows and orphan the file", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    del.mockRejectedValueOnce(new Error("store suspended"));
+    await expect(deleteStoredAudio(["1/recordings/a-mp3.bin"])).rejects.toThrow(/suspended/);
+  });
+
+  it("does nothing when storage isn't configured", async () => {
+    vi.stubEnv("BLOB_STORE_ID", "");
+    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "");
+    await deleteStoredAudio(["1/recordings/a-mp3.bin"]);
+    expect(del).not.toHaveBeenCalled();
   });
 });

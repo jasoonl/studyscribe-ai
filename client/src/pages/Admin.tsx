@@ -35,6 +35,10 @@ export default function Admin() {
   const { data: transcriptionConfig } = trpc.diagnostics.transcription.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
+  const { data: storageUsage } = trpc.diagnostics.storage.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+    refetchOnWindowFocus: false,
+  });
 
   const updateRoleMutation = trpc.customAuth.updateUserRole.useMutation({
     onSuccess: () => {
@@ -155,6 +159,43 @@ export default function Admin() {
                   Without an AssemblyAI API key no transcript can be produced for any recording.
                 </p>
               )}
+            </Card>
+          </section>
+        )}
+
+        {/* File storage capacity */}
+        {storageUsage?.configured && (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              File storage
+            </h2>
+            <Card className="p-5 space-y-3">
+              {(() => {
+                const percent = Math.min(100, (storageUsage.totalBytes / storageUsage.limitBytes) * 100);
+                const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(bytes >= 1024 * 1024 * 100 ? 0 : 1);
+                return (
+                  <>
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm font-medium">
+                        {mb(storageUsage.totalBytes)} MB of {mb(storageUsage.limitBytes)} MB used
+                      </p>
+                      <p className="text-xs text-gray-500">{storageUsage.objectCount} files</p>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${percent >= 90 ? "bg-red-500" : percent >= 70 ? "bg-amber-500" : "bg-indigo-500"}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    {percent >= 80 && (
+                      <p className="text-xs text-amber-700">
+                        Nearly full. Once the store is over its limit every upload and import fails. Delete recordings
+                        forever from the Trash tab to free space, or upgrade the storage plan.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </Card>
           </section>
         )}

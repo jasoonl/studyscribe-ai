@@ -4,15 +4,15 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
-import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey } from "./storage";
+import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
 import { isAssemblyAiWebhookConfigured, submitTranscriptionJob, checkTranscriptionStatus, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus, type SpeakerSegment } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
-import { eq } from "drizzle-orm";
-import { recordings, userNotifications } from "../drizzle/schema";
+import { eq, inArray } from "drizzle-orm";
+import { recordings, userNotifications, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, recordingTags, studyGuides, quizzes, emailDrafts, recordingShares } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
 import { sharingRouter } from "./sharingRouter";
@@ -30,6 +30,7 @@ export const appRouter = router({
    */
   diagnostics: router({
     transcription: adminProcedure.query(() => getTranscriptionConfigStatus()),
+    storage: adminProcedure.query(() => getBlobUsage()),
   }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -276,11 +277,14 @@ export const appRouter = router({
         if (!recording || recording.userId !== ctx.user.id) {
           throw new Error("Recording not found");
         }
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        await db.delete(recordings).where(eq(recordings.id, input.id));
-        return { success: true };
+        return purgeRecordings([recording]);
       }),
+
+    emptyTrash: protectedProcedure.mutation(async ({ ctx }) => {
+      const trashed = await getDeletedRecordingsByUserId(ctx.user.id);
+      if (trashed.length === 0) return { deleted: 0 };
+      return purgeRecordings(trashed);
+    }),
 
     // Lightweight status poll — used by Upload/Record pages to detect transcription completion
     getStatus: protectedProcedure
@@ -1083,6 +1087,38 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
+/**
+ * Permanently removes recordings: the stored audio first, then every row that
+ * hangs off them. The audio goes first and a failure stops everything, because
+ * dropping the rows while the file survives orphans it with nothing left that
+ * points at it, still counting against the storage limit forever.
+ */
+async function purgeRecordings(rows: Array<{ id: number; audioKey: string | null }>): Promise<{ deleted: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const ids = rows.map((row) => row.id);
+  await deleteStoredAudio(rows.map((row) => row.audioKey ?? ""));
+
+  for (let i = 0; i < ids.length; i += 500) {
+    const batch = ids.slice(i, i + 500);
+    await db.delete(transcripts).where(inArray(transcripts.recordingId, batch));
+    await db.delete(studyNotes).where(inArray(studyNotes.recordingId, batch));
+    await db.delete(flashcards).where(inArray(flashcards.recordingId, batch));
+    await db.delete(flashcardReviews).where(inArray(flashcardReviews.recordingId, batch));
+    await db.delete(chatHistory).where(inArray(chatHistory.recordingId, batch));
+    await db.delete(recordingTags).where(inArray(recordingTags.recordingId, batch));
+    await db.delete(studyGuides).where(inArray(studyGuides.recordingId, batch));
+    await db.delete(quizzes).where(inArray(quizzes.recordingId, batch));
+    await db.delete(emailDrafts).where(inArray(emailDrafts.recordingId, batch));
+    await db.delete(recordingShares).where(inArray(recordingShares.recordingId, batch));
+    await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));
+    await db.delete(recordings).where(inArray(recordings.id, batch));
+  }
+  return { deleted: ids.length };
+}
+
 
 type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
 

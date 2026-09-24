@@ -1,7 +1,8 @@
-import { head, issueSignedToken, presignUrl, put } from "@vercel/blob";
+import { BlobNotFoundError, del, head, issueSignedToken, list, presignUrl, put } from "@vercel/blob";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 import { ENV } from "./_core/env";
 
-const MAX_AUDIO_SIZE_BYTES = 500 * 1024 * 1024;
+const MAX_AUDIO_SIZE_BYTES = MAX_UPLOAD_BYTES;
 const AUDIO_MIME_TYPES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
   "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a", "audio/x-m4a",
@@ -164,7 +165,7 @@ export async function createDirectAudioUpload(input: {
   const mimeType = normalizeAudioMimeType(input.mimeType);
   if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
   if (!Number.isFinite(input.size) || input.size <= 0 || input.size > MAX_AUDIO_SIZE_BYTES) {
-    throw new Error("Audio file must be between 1 byte and 500MB");
+    throw new Error(`Audio file must be between 1 byte and ${MAX_UPLOAD_LABEL}`);
   }
 
   const label = AUDIO_TYPE_LABELS[mimeType] || "audio";
@@ -217,6 +218,54 @@ export async function putAudioStream(input: {
   });
 
   return { key: result.pathname, mimeType, url: publicStorageProxyUrl(result.pathname) };
+}
+
+/**
+ * Total bytes held in the Blob store. Blob storage is the binding capacity
+ * limit (Hobby includes 1GB; a store over its limit is suspended and every
+ * upload fails), and nothing surfaced it, so it was found only by hitting it.
+ * The limit itself isn't readable from the API, so it comes from config.
+ */
+export async function getBlobUsage(): Promise<{
+  configured: boolean;
+  totalBytes: number;
+  objectCount: number;
+  limitBytes: number;
+}> {
+  const limitBytes = Number(process.env.BLOB_STORAGE_LIMIT_BYTES) || 1024 * 1024 * 1024;
+  if (!isVercelBlobStorageConfigured()) return { configured: false, totalBytes: 0, objectCount: 0, limitBytes };
+
+  let totalBytes = 0;
+  let objectCount = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await list({ limit: 1000, cursor });
+    for (const blob of page.blobs) {
+      totalBytes += blob.size;
+      objectCount += 1;
+    }
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+
+  return { configured: true, totalBytes, objectCount, limitBytes };
+}
+
+/**
+ * Removes stored audio. "Delete forever" used to drop only the database row,
+ * so the file kept counting against the storage limit with nothing left that
+ * pointed at it. A missing object is fine (already gone); any other failure is
+ * reported to the caller rather than swallowed.
+ */
+export async function deleteStoredAudio(keys: string[]): Promise<void> {
+  const unique = Array.from(new Set(keys.filter(Boolean)));
+  if (unique.length === 0 || !isVercelBlobStorageConfigured()) return;
+  for (let i = 0; i < unique.length; i += 100) {
+    try {
+      await del(unique.slice(i, i + 100));
+    } catch (error) {
+      if (!(error instanceof BlobNotFoundError)) throw error;
+    }
+  }
 }
 
 /**

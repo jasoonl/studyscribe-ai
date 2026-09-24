@@ -16,7 +16,21 @@ function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
   const restoreMutation = trpc.recordings.restore.useMutation();
   const permanentDeleteMutation = trpc.recordings.permanentDelete.useMutation();
+  const emptyTrashMutation = trpc.recordings.emptyTrash.useMutation();
   const utils = trpc.useUtils();
+
+  const handleEmptyTrash = async (count: number) => {
+    if (!confirm(`Permanently delete all ${count} recordings in the trash, including their audio files? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      const result = await emptyTrashMutation.mutateAsync();
+      toast.success(`Permanently deleted ${result.deleted} recording${result.deleted === 1 ? "" : "s"} and freed their storage`);
+      await utils.recordings.listDeleted.invalidate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to empty the trash");
+    }
+  };
 
   const handleRestore = async (id: number) => {
     try {
@@ -63,6 +77,19 @@ function TrashTabContent() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {deletedRecordings.length} recording{deletedRecordings.length === 1 ? "" : "s"} in the trash. Deleting forever also frees the stored audio.
+        </p>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => handleEmptyTrash(deletedRecordings.length)}
+          disabled={emptyTrashMutation.isPending}
+        >
+          {emptyTrashMutation.isPending ? "Deleting..." : "Delete all forever"}
+        </Button>
+      </div>
       {deletedRecordings.map((recording) => (
         <Card key={recording.id} className="p-4 flex items-start justify-between">
           <div>
