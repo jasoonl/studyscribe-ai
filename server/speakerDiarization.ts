@@ -95,6 +95,10 @@ export function getTranscriptionConfigStatus() {
 const TARGET_SEGMENT_MS = 15_000;
 const MAX_SEGMENT_MS = 40_000;
 const SPLIT_ABOVE_MS = 30_000;
+// A long stretch with no words (music, silence, an ad break) inside one
+// speaker's turn must not be absorbed into a segment: one real recording
+// produced a single 752-second "segment" holding a handful of words.
+const GAP_SPLIT_MS = 6_000;
 
 function splitLongUtterance(utterance: AssemblyAiUtterance): Array<Omit<SpeakerSegment, "id">> {
   const words = utterance.words ?? [];
@@ -123,6 +127,7 @@ function splitLongUtterance(utterance: AssemblyAiUtterance): Array<Omit<SpeakerS
   };
 
   for (const word of words) {
+    if (chunk.length > 0 && word.start - chunk[chunk.length - 1].end > GAP_SPLIT_MS) flush();
     chunk.push(word);
     const length = word.end - chunk[0].start;
     const endsSentence = /[.!?]["')\]]*$/.test(word.text);

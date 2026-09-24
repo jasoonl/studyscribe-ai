@@ -63,6 +63,32 @@ describe("speaker diarization normalization", () => {
       for (const segment of segments) expect(segment.end - segment.start).toBeLessThanOrEqual(40.5);
     });
 
+    it("does not let a segment span a long stretch with no speech", () => {
+      // Speech, a 10-minute gap (music / dead air) inside the same speaker's
+      // turn, then speech again. Previously the gap was swallowed into one
+      // huge segment holding only a few words.
+      const talk = (offsetMs: number, count: number) =>
+        Array.from({ length: count }, (_, i) => ({
+          text: i === count - 1 ? `w${offsetMs}-${i}.` : `w${offsetMs}-${i}`,
+          start: offsetMs + i * 500,
+          end: offsetMs + i * 500 + 400,
+          confidence: 0.9,
+        }));
+      const words = [...talk(0, 12), ...talk(600_000, 12)];
+      const utterance = {
+        speaker: "A",
+        text: words.map((w) => w.text).join(" "),
+        start: words[0].start,
+        end: words[words.length - 1].end,
+        words,
+      };
+      const segments = normalizeDiarizedSegments([utterance]);
+      expect(segments).toHaveLength(2);
+      expect(segments[0].end).toBeLessThan(10);
+      expect(segments[1].start).toBe(600);
+      for (const segment of segments) expect(segment.end - segment.start).toBeLessThan(10);
+    });
+
     it("leaves a short turn untouched", () => {
       const segments = normalizeDiarizedSegments([monologue(20, 5)]);
       expect(segments).toHaveLength(1);
