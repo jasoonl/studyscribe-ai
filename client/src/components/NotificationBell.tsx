@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, BellRing, Check, CheckCheck, Info, AlertTriangle, X, XCircle, CheckCircle } from "lucide-react";
+import { Bell, BellRing, CheckCheck, Info, AlertTriangle, X, XCircle, CheckCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,24 +8,30 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { CreateNotificationDialog } from "./CreateNotificationDialog";
 import { createBrowserPushSubscription, isBrowserPushSupported } from "@/lib/browserPush";
 import { toast } from "sonner";
 
+const ICON_STYLES: Record<string, { Icon: typeof Info; tone: string }> = {
+  success: { Icon: CheckCircle, tone: "bg-green-500/10 text-green-600" },
+  warning: { Icon: AlertTriangle, tone: "bg-yellow-500/10 text-yellow-600" },
+  error: { Icon: XCircle, tone: "bg-red-500/10 text-red-600" },
+  info: { Icon: Info, tone: "bg-blue-500/10 text-blue-600" },
+};
+
 function NotificationIcon({ type }: { type: string }) {
-  switch (type) {
-    case "success":
-      return <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />;
-    case "warning":
-      return <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />;
-    case "error":
-      return <XCircle className="w-4 h-4 text-red-500 shrink-0" />;
-    default:
-      return <Info className="w-4 h-4 text-blue-500 shrink-0" />;
-  }
+  const { Icon, tone } = ICON_STYLES[type] ?? ICON_STYLES.info;
+  return (
+    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone}`}>
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </span>
+  );
+}
+
+function timeAgo(date: string | Date) {
+  return formatDistanceToNow(new Date(date), { addSuffix: true }).replace(/^about /, "");
 }
 
 export function NotificationBell() {
@@ -94,93 +100,102 @@ export function NotificationBell() {
     }
   };
 
+  const pushAvailable = browserPushConfig ? browserPushConfig.supported : true;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <Badge
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground"
-            >
+            <Badge className="absolute -top-1 -right-1 h-4 min-w-4 justify-center px-1 text-[10px] leading-none bg-primary text-primary-foreground">
               {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b">
-          <h3 className="font-semibold text-sm">Notifications</h3>
-          <div className="flex items-center gap-1">
-            <CreateNotificationDialog />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs gap-1"
-              onClick={enableBrowserPush}
-              disabled={isEnablingPush}
-              title="Enable browser notifications on this device"
-            >
-              <BellRing className="w-3 h-3" />
-              {isEnablingPush ? "Enabling..." : "Enable push"}
-            </Button>
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        collisionPadding={12}
+        className="flex w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(34rem,calc(100dvh-5rem))] flex-col overflow-hidden rounded-xl p-0 shadow-lg motion-reduce:animate-none"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold tracking-tight">Notifications</h3>
             {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => markAllRead.mutate()}
-                disabled={markAllRead.isPending}
-              >
-                <CheckCheck className="w-3 h-3" />
-                Mark all read
-              </Button>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {unreadCount} new
+              </span>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary"
+            onClick={() => markAllRead.mutate()}
+            disabled={unreadCount === 0 || markAllRead.isPending}
+          >
+            <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            Mark all as read
+          </Button>
         </div>
-        <ScrollArea className="max-h-80">
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {isLoading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Loading notifications...
+            <div className="space-y-4 p-4" aria-label="Loading notifications">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex animate-pulse gap-3">
+                  <div className="h-8 w-8 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-2/5 rounded bg-muted" />
+                    <div className="h-3 w-4/5 rounded bg-muted/70" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : !notifications || notifications.length === 0 ? (
-            <div className="p-6 text-center">
-              <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-sm text-muted-foreground">No notifications yet</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                You'll be notified when transcriptions complete
+            <div className="px-6 py-10 text-center">
+              <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Bell className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm font-medium">You're all caught up</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                We'll let you know when a transcription finishes.
               </p>
             </div>
           ) : (
-            <div className="divide-y">
-              {notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`flex gap-3 p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
-                    notif.isRead === 0 ? "bg-primary/5" : ""
-                  }`}
-                  onClick={() => {
-                    if (notif.isRead === 0) {
-                      markRead.mutate({ id: notif.id });
-                    }
-                  }}
-                >
-                  <div className="mt-0.5">
+            <ul className="divide-y divide-border/60">
+              {notifications.map((notif) => {
+                const unread = notif.isRead === 0;
+                return (
+                  <li
+                    key={notif.id}
+                    className={`group relative flex gap-3 px-4 py-3 transition-colors hover:bg-primary/[0.04] ${unread ? "bg-primary/[0.05]" : ""}`}
+                    onClick={() => {
+                      if (unread) markRead.mutate({ id: notif.id });
+                    }}
+                  >
+                    {unread && (
+                      <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary" aria-label="Unread" />
+                    )}
                     <NotificationIcon type={notif.type ?? "info"} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm font-medium leading-tight ${notif.isRead === 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                        {notif.title}
-                      </p>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {notif.isRead === 0 && <div className="mt-1 h-2 w-2 rounded-full bg-primary" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-sm leading-snug ${unread ? "font-semibold text-foreground" : "font-medium text-foreground/70"}`}>
+                          {notif.title}
+                        </p>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          className="-mr-1 -mt-1 h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                           aria-label={`Dismiss ${notif.title} notification`}
-                          title="Dismiss notification"
+                          title="Dismiss"
                           onClick={(event) => {
                             event.stopPropagation();
                             dismiss.mutate({ id: notif.id });
@@ -190,28 +205,51 @@ export function NotificationBell() {
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                      <p className="mt-0.5 break-words text-[13px] leading-snug text-muted-foreground line-clamp-2">
+                        {notif.message}
+                      </p>
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground/80">
+                        <span>{timeAgo(notif.createdAt)}</span>
+                        {notif.recordingId && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <Link
+                              href={`/recording/${notif.recordingId}`}
+                              className="font-medium text-primary hover:underline"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setOpen(false);
+                              }}
+                            >
+                              View recording
+                            </Link>
+                          </>
+                        )}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {notif.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">
-                      {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
-                    </p>
-                    {notif.recordingId && (
-                      <Link
-                        href={`/recording/${notif.recordingId}`}
-                        className="text-xs text-primary hover:underline mt-1 inline-block"
-                        onClick={() => setOpen(false)}
-                      >
-                        View recording →
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </ScrollArea>
+        </div>
+
+        <div className={`grid shrink-0 gap-1 border-t bg-muted/20 p-2 ${pushAvailable ? "grid-cols-2" : "grid-cols-1"}`}>
+          <CreateNotificationDialog triggerClassName="h-9 w-full justify-center gap-1.5 text-xs font-medium" />
+          {pushAvailable && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-full justify-center gap-1.5 text-xs font-medium"
+              onClick={enableBrowserPush}
+              disabled={isEnablingPush}
+              title="Get notified on this device even when StudyScribe is closed"
+            >
+              <BellRing className="h-3.5 w-3.5" aria-hidden="true" />
+              {isEnablingPush ? "Enabling..." : "Enable push"}
+            </Button>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

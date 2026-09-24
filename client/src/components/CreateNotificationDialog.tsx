@@ -18,7 +18,7 @@ const categoryLabels: Record<NotificationCategory, string> = {
   error: "Important",
 };
 
-export function CreateNotificationDialog() {
+export function CreateNotificationDialog({ triggerClassName }: { triggerClassName?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -56,7 +56,7 @@ export function CreateNotificationDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+        <Button variant="ghost" size="sm" className={triggerClassName ?? "h-7 gap-1 px-2 text-xs"}>
           <BellPlus className="h-3.5 w-3.5" />
           Add reminder
         </Button>
