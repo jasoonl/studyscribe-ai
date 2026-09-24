@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Play, Zap, BookOpen, MessageSquare, Download } from "lucide-react";
+import { ArrowLeft, Zap, BookOpen, MessageSquare, Download } from "lucide-react";
 import { Link } from "wouter";
+import DemoWalkthrough from "@/components/DemoWalkthrough";
 
 export default function Demo() {
   return (
@@ -29,25 +30,13 @@ export default function Demo() {
               See StudyScribe AI in Action
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Watch how students and professionals transform their learning and productivity with AI-powered transcription and study tools.
+              See how students and professionals transform their learning and productivity with AI-powered transcription and study tools.
             </p>
           </div>
 
-          {/* Video Section */}
-          <Card className="p-8 border-2 border-border">
-            <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6">
-              <video
-                src="/manus-storage/studyscribe-demo_6524ba2b.mp4"
-                controls
-                className="w-full h-full"
-                controlsList="nodownload"
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              A comprehensive walkthrough of all StudyScribe AI features
-            </p>
+          {/* Product walkthrough */}
+          <Card className="p-6 border-2 border-border">
+            <DemoWalkthrough />
           </Card>
 
           {/* Features Showcase */}
