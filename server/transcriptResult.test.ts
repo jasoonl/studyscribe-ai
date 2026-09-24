@@ -142,6 +142,17 @@ describe("checkTranscriptionStatus", () => {
     }
   });
 
+  it("words the provider's no-spoken-audio error the same as an empty transcript", async () => {
+    process.env.ASSEMBLYAI_API_KEY = "k";
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      jsonResponse({ status: "error", error: "language_detection cannot be performed on files with no spoken audio." }),
+    ));
+    await expect(checkTranscriptionStatus("transcript_1")).resolves.toEqual({
+      status: "error",
+      error: "No speech was detected in this recording.",
+    });
+  });
+
   it("reports 'error' with the provider's reason rather than throwing", async () => {
     process.env.ASSEMBLYAI_API_KEY = "k";
     vi.stubGlobal("fetch", vi.fn(async () =>

@@ -264,6 +264,39 @@ describe("importing from a page that publishes the media", () => {
   });
 });
 
+describe("content types servers use for the same audio", () => {
+  it("treats application/ogg (what Wikimedia serves for .ogg) as audio/ogg", async () => {
+    publicDns();
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("ogg", { status: 200, headers: { "content-type": "application/ogg" } }),
+    ));
+    const result = await fetchAudioFromUrl("https://upload.example/speech.ogg");
+    expect(result.mimeType).toBe("audio/ogg");
+    // Whatever the import step hands storage must actually be storable.
+    expect(normalizeAudioMimeType(result.mimeType)).toBe("audio/ogg");
+  });
+
+  it("falls back to the file extension when the declared type is one we don't recognise", async () => {
+    publicDns();
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("mp3", { status: 200, headers: { "content-type": "audio/x-strange-thing" } }),
+    ));
+    const result = await fetchAudioFromUrl("https://example.com/talk.mp3");
+    expect(result.mimeType).toBe("audio/mpeg");
+  });
+
+  it("normalises common alternate MP3 and WAV labels", async () => {
+    publicDns();
+    for (const [declared, expected] of [["audio/x-mp3", "audio/mpeg"], ["audio/mpeg3", "audio/mpeg"], ["audio/vnd.wave", "audio/wav"]]) {
+      vi.stubGlobal("fetch", vi.fn(async () =>
+        new Response("x", { status: 200, headers: { "content-type": declared } }),
+      ));
+      const result = await fetchAudioFromUrl("https://example.com/file");
+      expect(result.mimeType, declared).toBe(expected);
+    }
+  });
+});
+
 describe("other video and audio containers", () => {
   it("maps extensions for containers beyond mp3/mp4", () => {
     const expectations: Record<string, string> = {

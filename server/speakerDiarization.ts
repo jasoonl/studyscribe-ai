@@ -233,6 +233,10 @@ export async function checkTranscriptionStatus(providerId: string): Promise<Tran
   if (!response.ok) throw new Error(`Speaker diarization result check failed with ${response.status}`);
 
   if (result.status === "error") {
+    // With language detection on, silent or music-only audio errors out with
+    // this provider-worded message rather than completing empty. Same situation,
+    // so report it the same way.
+    if (/no spoken audio/i.test(result.error ?? "")) return { status: "error", error: NO_SPEECH_ERROR };
     return { status: "error", error: result.error || "Speaker diarization provider could not transcribe this recording" };
   }
   if (result.status === "completed") {

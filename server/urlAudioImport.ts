@@ -39,6 +39,26 @@ const IMPORTABLE_CONTENT_TYPES = new Set([
   "application/octet-stream", "binary/octet-stream",
 ]);
 
+/**
+ * Servers label the same audio in several ways. Wikimedia, for one, serves
+ * every .ogg as application/ogg (the IANA-registered Ogg type), which storage
+ * doesn't know and rejected even though the URL plainly said ".ogg".
+ */
+const CONTENT_TYPE_ALIASES: Record<string, string> = {
+  "application/ogg": "audio/ogg",
+  "audio/x-ogg": "audio/ogg",
+  "video/x-ogg": "video/ogg",
+  "audio/x-mp3": "audio/mpeg",
+  "audio/mpeg3": "audio/mpeg",
+  "audio/x-mpeg": "audio/mpeg",
+  "audio/x-mpeg-3": "audio/mpeg",
+  "audio/vnd.wave": "audio/wav",
+  "audio/x-pn-wav": "audio/wav",
+  "audio/x-aac": "audio/aac",
+  "audio/x-matroska": "video/x-matroska",
+  "video/x-flac": "audio/flac",
+};
+
 const EXTENSION_MIME_TYPES: Record<string, string> = {
   mp3: "audio/mpeg",
   wav: "audio/wav",
@@ -228,7 +248,8 @@ export async function fetchAudioFromUrl(
       throw new Error(`That link returned ${response.status} and could not be downloaded.`);
     }
 
-    const declaredType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    const rawDeclaredType = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    const declaredType = CONTENT_TYPE_ALIASES[rawDeclaredType] ?? rawDeclaredType;
     const guessedType = guessMimeTypeFromUrl(url.toString());
 
     // Trust the response over the URL: a ".mp3" link that answers with HTML is
@@ -251,9 +272,10 @@ export async function fetchAudioFromUrl(
 
     if (!response.body) throw new Error("That link returned an empty response.");
 
-    // Prefer a concrete type from the URL over a generic server-declared one.
-    const isGeneric = !declaredType || declaredType.endsWith("octet-stream");
-    const mimeType = (isGeneric ? guessedType : declaredType) ?? guessedType ?? "audio/mpeg";
+    // Prefer a concrete type from the URL over a generic or unrecognised
+    // server-declared one; only trust the header when it names a type we handle.
+    const isUsable = declaredType && !declaredType.endsWith("octet-stream") && IMPORTABLE_CONTENT_TYPES.has(declaredType);
+    const mimeType = (isUsable ? declaredType : guessedType) ?? guessedType ?? "audio/mpeg";
 
     return { body: response.body, mimeType, contentLength, finalUrl: url.toString() };
   }
