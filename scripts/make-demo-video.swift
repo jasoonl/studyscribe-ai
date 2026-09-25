@@ -74,6 +74,7 @@ let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
 let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
     kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: W, kCVPixelBufferHeightKey as String: H,
 ])
+writer.shouldOptimizeForNetworkUse = true // moov atom first, so browsers can start playing before the whole file arrives
 writer.add(input)
 guard writer.startWriting() else { fail("cannot start writing: \(String(describing: writer.error))") }
 writer.startSession(atSourceTime: .zero)
