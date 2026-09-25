@@ -176,6 +176,8 @@ async function readJson(response: Response): Promise<AssemblyAiTranscript> {
 export async function submitTranscriptionJob(input: {
   audioUrl: string;
   webhookUrl?: string;
+  /** Explicit spoken language; omitted means the provider detects it. */
+  language?: string;
 }): Promise<{ providerId: string }> {
   const submit = async (withSpeakerLabels: boolean) => {
     const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
@@ -183,7 +185,7 @@ export async function submitTranscriptionJob(input: {
       headers: { ...getHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({
         audio_url: input.audioUrl,
-        language_detection: true,
+        ...(input.language ? { language_code: input.language } : { language_detection: true }),
         ...(withSpeakerLabels ? { speaker_labels: true } : {}),
         ...(input.webhookUrl
           ? {

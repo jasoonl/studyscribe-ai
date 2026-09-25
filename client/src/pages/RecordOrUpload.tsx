@@ -1,3 +1,4 @@
+import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle, AlertCircle, UploadCloud, FileAudio, Zap, Link as LinkIcon } from "lucide-react";
@@ -42,6 +43,7 @@ export default function RecordOrUpload() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
   const [linkAudience, setLinkAudience] = useState<"student" | "professional">("student");
+  const [language, setLanguage] = useState<string>("auto");
   const [isImporting, setIsImporting] = useState(false);
   const [linkComplete, setLinkComplete] = useState(false);
 
@@ -181,6 +183,7 @@ export default function RecordOrUpload() {
         audience,
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration,
+        language: languageForRequest(language),
       });
       setUploadComplete(true);
       setCreatedRecordingId(recording.id);
@@ -257,6 +260,7 @@ export default function RecordOrUpload() {
         audience: uploadAudience,
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration,
+        language: languageForRequest(language),
       });
       setUploadFileComplete(true);
       setCreatedRecordingId(recording.id);
@@ -285,6 +289,7 @@ export default function RecordOrUpload() {
         url: linkUrl.trim(),
         title: linkTitle.trim() || undefined,
         audience: linkAudience,
+        language: languageForRequest(language),
       });
       setLinkComplete(true);
       setCreatedRecordingId(recording.id);
@@ -591,6 +596,8 @@ export default function RecordOrUpload() {
                         </div>
                       </div>
 
+                      <LanguageSelect value={language} onChange={setLanguage} id="record-language" />
+
                       <div className="flex gap-4">
                         <Button
                           size="lg"
@@ -712,6 +719,8 @@ export default function RecordOrUpload() {
                       ))}
                     </div>
                   </div>
+
+                  <LanguageSelect value={language} onChange={setLanguage} id="link-language" />
 
                   <Button
                     size="lg"
@@ -843,6 +852,8 @@ export default function RecordOrUpload() {
                           </label>
                         </div>
                       </div>
+
+                      <LanguageSelect value={language} onChange={setLanguage} id="upload-language" />
 
                       <div className="flex gap-4">
                         <Button

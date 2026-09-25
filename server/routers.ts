@@ -9,6 +9,7 @@ import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudio
 import { probeAudioDuration } from "./audioDuration";
 import { isYouTubeProxyConfigured, probeYouTubeClients } from "./youtubeAudio";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
+import { TRANSCRIPTION_LANGUAGE_CODES } from "@shared/languages";
 import { isAssemblyAiWebhookConfigured, submitTranscriptionJob, checkTranscriptionStatus, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus, type SpeakerSegment } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
@@ -21,6 +22,9 @@ import { customNotificationInputSchema, dismissNotificationInputSchema } from ".
 import { transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
 import { createHash } from "crypto";
+
+// "auto" (or omitted) lets the provider detect the language.
+const languageInput = z.enum(TRANSCRIPTION_LANGUAGE_CODES).optional();
 
 export const appRouter = router({
   system: systemRouter,
@@ -104,6 +108,7 @@ export const appRouter = router({
           mimeType: z.string().min(1).max(100),
         }).optional(),
         duration: z.number().optional(),
+        language: languageInput,
       }).refine((value) => Boolean(value.audioBase64 || value.audioUpload), {
         message: "Audio data is required",
       }))
@@ -170,7 +175,7 @@ export const appRouter = router({
           throw new Error("Failed to create recording");
         }
 
-        await startTranscription(recording, actualFileKey, mimeType);
+        await startTranscription(recording, actualFileKey, mimeType, input.language);
 
         return recording;
       }),
@@ -186,6 +191,7 @@ export const appRouter = router({
         url: z.string().min(1).max(2048),
         title: z.string().min(1).optional(),
         audience: z.enum(["student", "professional"]).default("student"),
+        language: languageInput,
       }))
       .mutation(async ({ input, ctx }) => {
         const { body, mimeType: sourceMimeType, contentLength, finalUrl, title: sourceTitle, durationSec: sourceDuration } = await fetchAudioFromUrl(input.url);
@@ -222,7 +228,7 @@ export const appRouter = router({
         const recording = userRecordings.find(r => r.audioKey === stored.key);
         if (!recording) throw new Error("Failed to create recording");
 
-        await startTranscription(recording, stored.key, stored.mimeType);
+        await startTranscription(recording, stored.key, stored.mimeType, input.language);
 
         return recording;
       }),
@@ -233,7 +239,7 @@ export const appRouter = router({
      * which is already stored and fine.
      */
     retryTranscription: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), language: languageInput }))
       .mutation(async ({ input, ctx }) => {
         const recording = await getRecordingByIdDb(input.id);
         if (!recording || recording.userId !== ctx.user.id) {
@@ -244,7 +250,7 @@ export const appRouter = router({
         }
 
         await updateRecordingStatus(input.id, "processing");
-        await startTranscription(recording, recording.audioKey, contentTypeFromStorageKey(recording.audioKey));
+        await startTranscription(recording, recording.audioKey, contentTypeFromStorageKey(recording.audioKey), input.language);
         return { success: true };
       }),
 
@@ -1142,7 +1148,7 @@ type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
  * outlived it left the recording silently stuck in "processing" forever,
  * with no error and no way to know why.
  */
-async function startTranscription(recording: { id: number }, audioKey: string, mimeType: string): Promise<void> {
+async function startTranscription(recording: { id: number }, audioKey: string, mimeType: string, language?: string): Promise<void> {
   try {
     // Hand the provider a link served by this app rather than the raw
     // storage URL: it ends in a real audio extension and serves the real
@@ -1154,7 +1160,7 @@ async function startTranscription(recording: { id: number }, audioKey: string, m
     await assertSignedAudioUrlIsFetchable(providerAudioUrl);
 
     const webhookUrl = isAssemblyAiWebhookConfigured() ? buildAssemblyAiWebhookUrl() : undefined;
-    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl });
+    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl, language });
     await setRecordingTranscriptionProviderId(recording.id, providerId);
   } catch (error) {
     await updateRecordingStatus(recording.id, "failed");

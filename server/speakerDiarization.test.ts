@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { normalizeDiarizedSegments } from "./speakerDiarization";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { normalizeDiarizedSegments, submitTranscriptionJob } from "./speakerDiarization";
+import { TRANSCRIPTION_LANGUAGES } from "../shared/languages";
 
 describe("speaker diarization normalization", () => {
   it("converts provider millisecond utterances into app timestamp segments with visible speaker labels", () => {
@@ -100,5 +101,34 @@ describe("speaker diarization normalization", () => {
         { id: "speaker-1", start: 0, end: 600, text: "long talk", speaker: "Speaker A", confidence: undefined },
       ]);
     });
+  });
+});
+
+describe("transcription language selection", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function submittedBody(language?: string) {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "t1" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("ASSEMBLYAI_API_KEY", "test-key");
+    await submitTranscriptionJob({ audioUrl: "https://example.com/a.mp3", language });
+    return JSON.parse(fetchMock.mock.calls[0][1].body);
+  }
+
+  it("detects the language automatically when none is chosen", async () => {
+    const body = await submittedBody();
+    expect(body.language_detection).toBe(true);
+    expect(body.language_code).toBeUndefined();
+  });
+
+  it("sends the chosen language instead of detecting", async () => {
+    const body = await submittedBody("ko");
+    expect(body.language_code).toBe("ko");
+    expect(body.language_detection).toBeUndefined();
+  });
+
+  it("offers the requested languages", () => {
+    const codes = TRANSCRIPTION_LANGUAGES.map((l) => l.code);
+    for (const code of ["zh", "es", "fr", "la", "de", "ko"]) expect(codes).toContain(code);
   });
 });

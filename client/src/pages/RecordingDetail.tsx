@@ -1,3 +1,4 @@
+import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -94,6 +95,7 @@ export default function RecordingDetail() {
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
   const updateTranscriptMutation = trpc.transcription.update.useMutation();
   const utils = trpc.useUtils();
+  const [retryLanguage, setRetryLanguage] = useState("auto");
   const retryTranscription = trpc.recordings.retryTranscription.useMutation({
     onSuccess: () => {
       toast.success("Transcription restarted");
@@ -287,11 +289,12 @@ export default function RecordingDetail() {
                         The audio is still stored, so this can be retried without re-uploading.
                         {recording.status === "failed" && " Check your notifications for the reason the provider gave."}
                       </p>
+                      <LanguageSelect value={retryLanguage} onChange={setRetryLanguage} id="retry-language" />
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={retryTranscription.isPending}
-                        onClick={() => retryTranscription.mutate({ id: recording.id })}
+                        onClick={() => retryTranscription.mutate({ id: recording.id, language: languageForRequest(retryLanguage) })}
                       >
                         {retryTranscription.isPending ? "Retrying…" : "Retry transcription"}
                       </Button>
