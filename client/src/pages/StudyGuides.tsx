@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { BookOpen, ArrowLeft, Sparkles, Clock, ChevronRight, FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
 
+/** Key points come back from the model with markdown emphasis (`**Term:** …`); show them as plain text. */
+const plainKeyPoint = (text: string) => text.replace(/[*_`#]+/g, "").trim();
+
 export default function StudyGuides() {
   const { recordingId } = useParams<{ recordingId: string }>();
   const recId = parseInt(recordingId || "0", 10);
@@ -117,7 +120,7 @@ export default function StudyGuides() {
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(guide.keyPoints as string[]).slice(0, 2).map((kp, i) => (
                       <Badge key={i} variant="secondary" className="text-xs truncate max-w-[120px]">
-                        {kp}
+                        {plainKeyPoint(kp)}
                       </Badge>
                     ))}
                   </div>
@@ -179,8 +182,8 @@ export default function StudyGuides() {
                 {Array.isArray(selectedGuide.keyPoints) && (selectedGuide.keyPoints as string[]).length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {(selectedGuide.keyPoints as string[]).map((kp, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {kp}
+                      <Badge key={i} variant="secondary" className="text-xs h-auto max-w-full whitespace-normal text-left">
+                        {plainKeyPoint(kp)}
                       </Badge>
                     ))}
                   </div>
