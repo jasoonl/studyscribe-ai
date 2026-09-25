@@ -184,7 +184,7 @@ export const appRouter = router({
         audience: z.enum(["student", "professional"]).default("student"),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { body, mimeType: sourceMimeType, contentLength, finalUrl } = await fetchAudioFromUrl(input.url);
+        const { body, mimeType: sourceMimeType, contentLength, finalUrl, title: sourceTitle, durationSec: sourceDuration } = await fetchAudioFromUrl(input.url);
         const limited = limitStreamSize(body, MAX_IMPORT_BYTES);
         // Tee so duration can be read from the audio's own headers without
         // affecting the bytes actually stored — a failed or partial duration
@@ -199,7 +199,7 @@ export const appRouter = router({
         const verified = await verifyUploadedAudio(stored.key);
         console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
 
-        const fallbackTitle = decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() || "Imported audio")
+        const fallbackTitle = sourceTitle?.trim() || decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() || "Imported audio")
           .replace(/\.[^/.]+$/, "")
           .replace(/[-_]+/g, " ")
           .trim();
@@ -211,7 +211,7 @@ export const appRouter = router({
           audience: input.audience,
           audioUrl: stored.url,
           audioKey: stored.key,
-          duration: duration ?? 0,
+          duration: duration ?? Math.round(sourceDuration ?? 0),
         });
 
         const userRecordings = await getRecordingsByUserId(ctx.user.id);

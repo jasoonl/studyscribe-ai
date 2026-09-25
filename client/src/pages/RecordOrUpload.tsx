@@ -406,7 +406,7 @@ export default function RecordOrUpload() {
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Audio or video files
+                        YouTube, audio or video
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
@@ -664,20 +664,20 @@ export default function RecordOrUpload() {
                     <label className="text-sm font-medium mb-2 block">Audio or Video Link *</label>
                     <input
                       type="url"
-                      placeholder="https://example.com/lecture.mp3"
+                      placeholder="https://youtube.com/watch?v=… or https://example.com/lecture.mp3"
                       value={linkUrl}
                       onChange={(e) => setLinkUrl(e.target.value)}
                       disabled={isImporting}
                       className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      A link to an audio or video file (MP3, M4A, WAV, FLAC, OGG, MP4, MOV, WebM, MKV and more) or to a
-                      public page that hosts one, such as an archive.org or Wikimedia Commons item. The audio track of
-                      a video is transcribed automatically.
+                      A YouTube link, a link to an audio or video file (MP3, M4A, WAV, FLAC, OGG, MP4, MOV, WebM, MKV and
+                      more), or a public page that hosts one, such as an archive.org or Wikimedia Commons item. The
+                      audio track of a video is transcribed automatically.
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      YouTube, Vimeo, SoundCloud and other streaming sites aren't supported — their terms prohibit
-                      downloading the media. If it's your own video, download the file and use Upload instead.
+                      Private, age-restricted and live YouTube videos can't be imported, and Vimeo, SoundCloud and
+                      other streaming sites aren't supported. For those, download the file and use Upload instead.
                     </p>
                   </div>
 

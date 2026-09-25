@@ -99,8 +99,7 @@ describe("assertPublicHttpUrl", () => {
 
   it("explains why streaming pages can't be imported instead of failing cryptically", async () => {
     for (const link of [
-      "https://www.youtube.com/watch?v=abc123",
-      "https://youtu.be/abc123",
+      "https://music.youtube.com/watch?v=abc123",
       "https://open.spotify.com/episode/abc",
       "https://vimeo.com/12345",
     ]) {

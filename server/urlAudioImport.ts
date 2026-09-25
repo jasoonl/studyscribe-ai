@@ -2,6 +2,7 @@ import { lookup } from "node:dns/promises";
 import net from "node:net";
 import { MAX_LINK_IMPORT_BYTES } from "@shared/const";
 import { extractMediaCandidates, readTextLimited } from "./mediaPageResolver";
+import { isYouTubeNonVideoLink, parseYouTubeVideoId, resolveYouTubeAudio, youtubeAudioStream } from "./youtubeAudio";
 
 /**
  * Importing audio from a user-supplied link means this server makes an
@@ -20,7 +21,7 @@ const USER_AGENT = "StudyScribeImporter/1.0 (+https://studyscribe-ai.vercel.app)
 
 /** Player pages whose terms prohibit extracting the underlying media stream. */
 const STREAMING_PAGE_HOSTS = [
-  "youtube.com", "youtu.be", "music.youtube.com",
+  "music.youtube.com",
   "spotify.com", "open.spotify.com",
   "netflix.com", "hulu.com", "vimeo.com", "twitch.tv",
   "soundcloud.com", "tiktok.com", "instagram.com", "facebook.com",
@@ -203,7 +204,25 @@ type FetchedAudio = {
   mimeType: string;
   contentLength: number | null;
   finalUrl: string;
+  /** Known only for sources that publish it (YouTube), used to name and time the recording. */
+  title?: string;
+  durationSec?: number | null;
 };
+
+async function fetchYouTubeAudio(videoId: string): Promise<FetchedAudio> {
+  const audio = await resolveYouTubeAudio(videoId);
+  if (audio.contentLength !== null && audio.contentLength > MAX_IMPORT_BYTES) {
+    throw new Error(`That video's audio is larger than ${Math.floor(MAX_IMPORT_BYTES / (1024 * 1024))}MB.`);
+  }
+  return {
+    body: youtubeAudioStream(audio),
+    mimeType: audio.mimeType,
+    contentLength: audio.contentLength,
+    finalUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    title: audio.title || undefined,
+    durationSec: audio.durationSec,
+  };
+}
 
 const PAGE_CONTENT_TYPES = new Set(["text/html", "application/xhtml+xml"]);
 const MAX_PAGE_CANDIDATE_TRIES = 4;
@@ -221,6 +240,14 @@ export async function fetchAudioFromUrl(
   rawUrl: string,
   options: { fromPage?: string } = {},
 ): Promise<FetchedAudio> {
+  if (!options.fromPage) {
+    const videoId = parseYouTubeVideoId(rawUrl);
+    if (videoId) return fetchYouTubeAudio(videoId);
+    if (isYouTubeNonVideoLink(rawUrl)) {
+      throw new Error("That YouTube link doesn't point to a single video. Paste the link to the video itself.");
+    }
+  }
+
   let currentUrl = rawUrl;
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
