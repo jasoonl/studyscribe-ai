@@ -23,6 +23,9 @@ export const DEMO_SLIDES: Slide[] = [
   { image: "/demo/analytics.jpg", title: "Track your progress", caption: "See your recordings, transcripts, flashcards and quizzes at a glance." },
 ];
 
+/** Built by scripts/make-demo-video.swift from the same screenshots. */
+const DEMO_VIDEO = "/demo/studyscribe-demo.mp4";
+
 const SLIDE_MS = 6000;
 const TICK_MS = 100;
 
@@ -31,12 +34,28 @@ function prefersReducedMotion() {
 }
 
 export default function DemoWalkthrough() {
+  const [hasVideo, setHasVideo] = useState<boolean | null>(null);
   const [slides, setSlides] = useState<Slide[] | null>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(() => !prefersReducedMotion());
   const [held, setHeld] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const regionRef = useRef<HTMLDivElement>(null);
+
+  // Missing files fall through to the SPA's index.html, so check the type, not just the status.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(DEMO_VIDEO, { method: "HEAD" })
+      .then((response) => {
+        if (!cancelled) setHasVideo(response.ok && (response.headers.get("content-type") ?? "").startsWith("video/"));
+      })
+      .catch(() => {
+        if (!cancelled) setHasVideo(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Keep only the slides whose image actually loads, in their original order.
   useEffect(() => {
@@ -82,8 +101,22 @@ export default function DemoWalkthrough() {
     if (elapsed >= SLIDE_MS) go(index + 1);
   }, [elapsed, index, go]);
 
-  if (slides === null) {
+  if (hasVideo === null || slides === null) {
     return <div className="aspect-video animate-pulse rounded-lg bg-muted" aria-label="Loading demo" />;
+  }
+
+  if (hasVideo) {
+    return (
+      <video
+        src={DEMO_VIDEO}
+        controls
+        playsInline
+        preload="metadata"
+        className="aspect-[1600/1080] w-full rounded-lg border border-border bg-black"
+      >
+        Your browser does not support the video tag.
+      </video>
+    );
   }
 
   if (slides.length === 0) {

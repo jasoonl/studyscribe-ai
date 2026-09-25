@@ -88,6 +88,8 @@ Schema lives in `drizzle/schema.ts` (19 tables: users, recordings, transcripts, 
 
 Vite + React 19, routed with `wouter` (not react-router) in `client/src/App.tsx`, where page components are `React.lazy` code-split — add new pages the same way. `ProtectedRoute` wraps authenticated pages and reads auth state from `useCustomAuth` (`client/src/_core/hooks/useCustomAuth.ts`), which talks to the custom REST session endpoints, not tRPC, for the initial auth check. Data fetching for everything else goes through the tRPC client + TanStack Query. UI components are shadcn/ui (`client/src/components/ui`) on Tailwind v4. Path aliases (`@` → `client/src`, `@shared` → `shared/`) are defined in both `vite.config.ts` and `tsconfig.json` — keep them in sync if either changes; `vitest.config.ts` also duplicates them for tests.
 
+The `/demo` page plays `client/public/demo/studyscribe-demo.mp4` when present (built from screenshots by `scripts/make-demo-video.swift`: `swiftc -O scripts/make-demo-video.swift -o /tmp/mkvideo && /tmp/mkvideo slides.json client/public/demo/studyscribe-demo.mp4`, macOS only) and otherwise falls back to a slideshow of `client/public/demo/*.jpg` (`DemoWalkthrough.tsx`).
+
 `shared/` holds code imported by both client and server (`shared/const.ts` for shared string constants, `shared/types.ts`) — put cross-cutting constants there rather than duplicating them.
 
 ### Deployment
