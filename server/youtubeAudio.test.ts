@@ -8,6 +8,7 @@ import {
   isYouTubeNonVideoLink,
   parseYouTubeVideoId,
   pickAudioFormat,
+  probeYouTubeClients,
   resolveYouTubeAudio,
   youtubeAudioStream,
 } from "./youtubeAudio";
@@ -129,14 +130,22 @@ describe("resolveYouTubeAudio", () => {
     expect(audio.title).toBe("Me at the zoo");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const clients = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1].body)).context.client.clientName);
-    expect(clients).toEqual(["IOS", "ANDROID_VR"]);
+    expect(clients.slice(0, 2)).toEqual(["IOS", "ANDROID_VR"]);
   });
 
-  it("stops early for a video no client can play", async () => {
+  it("stops early for a private video that no client can play", async () => {
+    const fetchMock = vi.fn(async () => json({ playabilityStatus: { status: "ERROR", reason: "This video is private" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(resolveYouTubeAudio(ID)).rejects.toThrow(/private/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an unavailable video after trying every client", async () => {
+    // Some clients say "unavailable" for healthy videos, so that alone isn't final.
     const fetchMock = vi.fn(async () => json({ playabilityStatus: { status: "ERROR", reason: "Video unavailable" } }));
     vi.stubGlobal("fetch", fetchMock);
     await expect(resolveYouTubeAudio(ID)).rejects.toThrow(/Video unavailable/);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
   });
 
   it("explains the bot challenge when every client is refused", async () => {
@@ -233,5 +242,20 @@ describe("importing a YouTube link", () => {
 
   it("explains a channel or playlist link instead of trying to scrape it", async () => {
     await expect(fetchAudioFromUrl("https://www.youtube.com/@somechannel")).rejects.toThrow(/single video/i);
+  });
+});
+
+describe("probeYouTubeClients", () => {
+  it("reports each client's outcome so an admin can see what this network is allowed", async () => {
+    let call = 0;
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      ++call === 1
+        ? json(okPlayer())
+        : json({ playabilityStatus: { status: "LOGIN_REQUIRED", reason: "Sign in to confirm you’re not a bot" } }),
+    ));
+    const results = await probeYouTubeClients(ID);
+    expect(results.length).toBeGreaterThan(2);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    expect(results.find((r) => !r.ok)?.detail).toMatch(/bot/i);
   });
 });

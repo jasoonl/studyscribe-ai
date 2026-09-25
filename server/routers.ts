@@ -7,6 +7,7 @@ import { createRecording, getRecordingsByUserId, getRecordingById as getRecordin
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
+import { probeYouTubeClients } from "./youtubeAudio";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
 import { isAssemblyAiWebhookConfigured, submitTranscriptionJob, checkTranscriptionStatus, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus, type SpeakerSegment } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
@@ -31,6 +32,9 @@ export const appRouter = router({
   diagnostics: router({
     transcription: adminProcedure.query(() => getTranscriptionConfigStatus()),
     storage: adminProcedure.query(() => getBlobUsage()),
+    youtube: adminProcedure
+      .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
+      .query(({ input }) => probeYouTubeClients(input.videoId)),
   }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

@@ -14,29 +14,32 @@ const CHUNK_BYTES = 4 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 20_000;
 
 type ClientProfile = {
+  name: string;
   nameId: number;
   userAgent: string;
   context: Record<string, string | number>;
 };
 
-// Tried in order. The iOS client currently hands out plain (unencrypted) audio
-// URLs; the Android VR client is the fallback when a host is challenged.
-const CLIENTS: ClientProfile[] = [
+// Tried in order. YouTube decides per client (and per requesting IP) whether to
+// hand out a stream or a bot check, so more than one is kept and the first that
+// works wins. The embedded-player and mobile-web clients were tried and dropped:
+// they answer "unavailable" or "reload the page" for healthy videos, which
+// would mask the real reason.
+export const CLIENTS: ClientProfile[] = [
   {
-    nameId: 5,
+    name: "IOS", nameId: 5,
     userAgent: "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)",
-    context: {
-      clientName: "IOS", clientVersion: "20.10.4", deviceMake: "Apple", deviceModel: "iPhone16,2",
-      osName: "iPhone", osVersion: "18.3.2.22D82", hl: "en", gl: "US",
-    },
+    context: { clientName: "IOS", clientVersion: "20.10.4", deviceMake: "Apple", deviceModel: "iPhone16,2", osName: "iPhone", osVersion: "18.3.2.22D82", hl: "en", gl: "US" },
   },
   {
-    nameId: 28,
+    name: "ANDROID_VR", nameId: 28,
     userAgent: "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
-    context: {
-      clientName: "ANDROID_VR", clientVersion: "1.60.19", deviceMake: "Oculus", deviceModel: "Quest 3",
-      osName: "Android", osVersion: "12L", androidSdkVersion: 32, hl: "en", gl: "US",
-    },
+    context: { clientName: "ANDROID_VR", clientVersion: "1.60.19", deviceMake: "Oculus", deviceModel: "Quest 3", osName: "Android", osVersion: "12L", androidSdkVersion: 32, hl: "en", gl: "US" },
+  },
+  {
+    name: "TV", nameId: 7,
+    userAgent: "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version",
+    context: { clientName: "TVHTML5", clientVersion: "7.20250312.16.00", hl: "en", gl: "US" },
   },
 ];
 
@@ -126,79 +129,105 @@ export type YouTubeAudio = {
   userAgent: string;
 };
 
-export async function resolveYouTubeAudio(videoId: string): Promise<YouTubeAudio> {
-  let lastFailure = "YouTube did not return any audio for that video.";
+type PlayerAttempt =
+  | { ok: true; audio: YouTubeAudio }
+  | { ok: false; reason: string; final?: boolean; live?: boolean };
 
-  for (const client of CLIENTS) {
-    let response: Response;
-    try {
-      response = await fetch(PLAYER_URL, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "user-agent": client.userAgent,
-          "x-youtube-client-name": String(client.nameId),
-          "x-youtube-client-version": String(client.context.clientVersion),
-        },
-        body: JSON.stringify({ context: { client: client.context }, videoId, contentCheckOk: true, racyCheckOk: true }),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-    } catch (error) {
-      lastFailure = `Could not reach YouTube: ${error instanceof Error ? error.message : "network error"}`;
-      continue;
-    }
+async function requestPlayer(client: ClientProfile, videoId: string): Promise<PlayerAttempt> {
+  let response: Response;
+  try {
+    response = await fetch(PLAYER_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": client.userAgent,
+        "x-youtube-client-name": String(client.nameId),
+        "x-youtube-client-version": String(client.context.clientVersion),
+      },
+      body: JSON.stringify({
+        context: { client: client.context },
+        videoId,
+        contentCheckOk: true,
+        racyCheckOk: true,
+      }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    return { ok: false, reason: `Could not reach YouTube: ${error instanceof Error ? error.message : "network error"}` };
+  }
 
-    let data: any;
-    try {
-      data = await response.json();
-    } catch {
-      lastFailure = `YouTube returned an unexpected response (${response.status}).`;
-      continue;
-    }
+  let data: any;
+  try {
+    data = await response.json();
+  } catch {
+    return { ok: false, reason: `YouTube returned an unexpected response (${response.status}).` };
+  }
 
-    const playability = data?.playabilityStatus;
-    if (playability?.status !== "OK") {
-      lastFailure = describePlayabilityFailure(playability?.status, playability?.reason);
-      // Private, removed and members-only videos fail identically on every client.
-      if (/private|removed|unavailable|members|terminated|copyright/i.test(playability?.reason ?? "")) break;
-      continue;
-    }
-
-    const details = data?.videoDetails ?? {};
-    if (details.isLive || (details.isLiveContent === true && !details.lengthSeconds)) {
-      throw new Error("That is a live stream. Import it after the stream has ended.");
-    }
-
-    const format = pickAudioFormat(data?.streamingData?.adaptiveFormats ?? []);
-    if (!format) {
-      lastFailure = "YouTube did not offer a downloadable audio track for that video.";
-      continue;
-    }
-
-    let host = "";
-    try {
-      host = new URL(format.url).hostname;
-    } catch {
-      // handled below
-    }
-    if (host !== "googlevideo.com" && !host.endsWith(".googlevideo.com")) {
-      lastFailure = "YouTube returned an unexpected download address.";
-      continue;
-    }
-
-    const length = Number(format.contentLength);
-    const duration = Number(details.lengthSeconds);
+  const playability = data?.playabilityStatus;
+  if (playability?.status !== "OK") {
     return {
+      ok: false,
+      reason: describePlayabilityFailure(playability?.status, playability?.reason),
+      // Private, removed and members-only videos fail identically on every client.
+      final: /private|removed|members|terminated|copyright/i.test(playability?.reason ?? ""),
+    };
+  }
+
+  const details = data?.videoDetails ?? {};
+  if (details.isLive || (details.isLiveContent === true && !details.lengthSeconds)) {
+    return { ok: false, reason: "That is a live stream. Import it after the stream has ended.", final: true, live: true };
+  }
+
+  const format = pickAudioFormat(data?.streamingData?.adaptiveFormats ?? []);
+  if (!format) return { ok: false, reason: "YouTube did not offer a downloadable audio track for that video." };
+
+  let host = "";
+  try {
+    host = new URL(format.url).hostname;
+  } catch {
+    // handled below
+  }
+  if (host !== "googlevideo.com" && !host.endsWith(".googlevideo.com")) {
+    return { ok: false, reason: "YouTube returned an unexpected download address." };
+  }
+
+  const length = Number(format.contentLength);
+  const duration = Number(details.lengthSeconds);
+  return {
+    ok: true,
+    audio: {
       url: format.url,
       mimeType: (format.mimeType ?? "audio/mp4").split(";")[0].trim(),
       contentLength: Number.isFinite(length) && length > 0 ? length : null,
       title: typeof details.title === "string" ? details.title : "",
       durationSec: Number.isFinite(duration) && duration > 0 ? duration : null,
       userAgent: client.userAgent,
-    };
-  }
+    },
+  };
+}
 
+export async function resolveYouTubeAudio(videoId: string): Promise<YouTubeAudio> {
+  let lastFailure = "YouTube did not return any audio for that video.";
+  for (const client of CLIENTS) {
+    const attempt = await requestPlayer(client, videoId);
+    if (attempt.ok) return attempt.audio;
+    lastFailure = attempt.reason;
+    if (attempt.live) throw new Error(attempt.reason);
+    if (attempt.final) break;
+  }
   throw new Error(lastFailure);
+}
+
+/** Admin diagnostic: what each client gets from this server's network right now. */
+export async function probeYouTubeClients(videoId: string) {
+  return Promise.all(
+    CLIENTS.map(async (client) => {
+      const attempt = await requestPlayer(client, videoId);
+      return attempt.ok
+        ? { client: client.name, ok: true as const, detail: `${attempt.audio.mimeType}, ${attempt.audio.contentLength ?? "unknown"} bytes` }
+        : { client: client.name, ok: false as const, detail: attempt.reason };
+    }),
+  );
 }
 
 /**
