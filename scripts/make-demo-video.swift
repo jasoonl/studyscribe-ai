@@ -69,7 +69,7 @@ try? FileManager.default.removeItem(atPath: CommandLine.arguments[2])
 let writer = try AVAssetWriter(outputURL: URL(fileURLWithPath: CommandLine.arguments[2]), fileType: .mp4)
 let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
     AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: W, AVVideoHeightKey: H,
-    AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 2_500_000, AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel],
+    AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 900_000, AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel],
 ])
 let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
     kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: W, kCVPixelBufferHeightKey as String: H,
