@@ -3,143 +3,346 @@
   "rate": 165,
   "scenes": [
     {
-      "image": "dashboard.jpg", "zoom": 1.08, "lead": 0.9,
+      "image": "dashboard.jpg",
+      "zoom": 1.08,
+      "lead": 0.9,
       "title": "Meet StudyScribe AI",
       "caption": "Record a lecture once. Get everything you need to study.",
       "narration": "Meet StudyScribe AI. Record a lecture once, and turn it into everything you need to study. Let's take a look.",
-      "origin": [1500, 620],
+      "origin": [
+        1500,
+        620
+      ],
       "cursor": [
-        { "f": 0.30, "x": 160, "y": 185 },
-        { "f": 0.55, "x": 1090, "y": 190 },
-        { "at": -0.55, "x": 458, "y": 352, "click": true }
+        {
+          "f": 0.3,
+          "x": 185,
+          "y": 207
+        },
+        {
+          "f": 0.55,
+          "x": 615,
+          "y": 207
+        },
+        {
+          "at": -0.55,
+          "x": 433,
+          "y": 376,
+          "click": true
+        }
       ]
     },
     {
-      "image": "add-recording.jpg", "zoom": 1.15,
+      "image": "add-recording.jpg",
+      "zoom": 1.15,
       "title": "Add a lecture your way",
       "caption": "Record live, upload a file, or paste a link. Transcription starts automatically.",
       "narration": "Start by adding a lecture. Record live in your browser, upload an audio or video file, or paste a link to a talk. Transcription starts automatically, in over twenty languages.",
       "cursor": [
-        { "f": 0.22, "x": 510, "y": 330 },
-        { "f": 0.42, "x": 800, "y": 330 },
-        { "f": 0.62, "x": 1089, "y": 330 },
-        { "at": -0.55, "x": 1089, "y": 567, "click": true }
+        {
+          "f": 0.22,
+          "x": 491,
+          "y": 517
+        },
+        {
+          "f": 0.42,
+          "x": 800,
+          "y": 517
+        },
+        {
+          "f": 0.62,
+          "x": 1109,
+          "y": 517
+        },
+        {
+          "at": -0.55,
+          "x": 1109,
+          "y": 773,
+          "click": true
+        }
       ]
     },
     {
-      "image": "transcript.jpg", "zoom": 1.18,
+      "image": "transcript.jpg",
+      "zoom": 1.18,
       "title": "Accurate, timestamped transcripts",
       "caption": "Speaker labels on every turn. Click any timestamp to jump to that moment.",
       "narration": "In moments, you get a full transcript with speaker labels and timestamps. Click any timestamp to jump right to that moment in the audio.",
       "cursor": [
-        { "f": 0.30, "x": 176, "y": 800, "click": true },
-        { "f": 0.62, "x": 620, "y": 838 },
-        { "at": -0.55, "x": 565, "y": 528, "click": true }
+        {
+          "f": 0.3,
+          "x": 99,
+          "y": 857,
+          "click": true
+        },
+        {
+          "f": 0.62,
+          "x": 520,
+          "y": 880
+        },
+        {
+          "at": -0.55,
+          "x": 549,
+          "y": 565,
+          "click": true
+        }
       ]
     },
     {
-      "image": "study-notes.jpg", "zoom": 1.18,
+      "image": "study-notes.jpg",
+      "zoom": 1.18,
       "title": "Study notes in seconds",
       "caption": "Key concepts and summaries, generated from the transcript.",
       "narration": "One click gives you study notes, with the key concepts and summaries pulled straight from the transcript.",
       "cursor": [
-        { "f": 0.35, "x": 420, "y": 770 },
-        { "f": 0.65, "x": 600, "y": 905 },
-        { "at": -0.55, "x": 870, "y": 528, "click": true }
+        {
+          "f": 0.35,
+          "x": 300,
+          "y": 800
+        },
+        {
+          "f": 0.65,
+          "x": 600,
+          "y": 860
+        },
+        {
+          "at": -0.55,
+          "x": 876,
+          "y": 565,
+          "click": true
+        }
       ]
     },
     {
-      "image": "flashcards.jpg", "zoom": 1.18,
+      "image": "flashcards.jpg",
+      "zoom": 1.18,
       "title": "Flashcards, made for you",
       "caption": "Export to Quizlet, Anki or Notion, or start a review right here.",
       "narration": "Flashcards are created for you automatically. Export them to Quizlet, Anki, or Notion, or start reviewing right here.",
       "cursor": [
-        { "f": 0.28, "x": 697, "y": 713 },
-        { "f": 0.50, "x": 845, "y": 713 },
-        { "f": 0.68, "x": 300, "y": 850 },
-        { "at": -0.55, "x": 683, "y": 752, "click": true }
+        {
+          "f": 0.28,
+          "x": 678,
+          "y": 763
+        },
+        {
+          "f": 0.5,
+          "x": 836,
+          "y": 763
+        },
+        {
+          "f": 0.68,
+          "x": 300,
+          "y": 830
+        },
+        {
+          "at": -0.55,
+          "x": 223,
+          "y": 669,
+          "click": true
+        }
       ]
     },
     {
-      "image": "learn-mode.jpg", "zoom": 1.18,
+      "image": "learn-mode.jpg",
+      "zoom": 1.18,
       "title": "Learn mode",
       "caption": "Start with recognition, then graduate to written recall.",
       "narration": "Learn mode starts with recognition, then graduates to written recall as your confidence grows.",
       "cursor": [
-        { "f": 0.30, "x": 565, "y": 608, "click": true, "select": [140, 583, 851, 50] },
-        { "f": 0.62, "x": 920, "y": 880, "click": true },
-        { "at": -0.55, "x": 565, "y": 167, "click": true }
+        {
+          "f": 0.3,
+          "x": 549,
+          "y": 721,
+          "click": true,
+          "select": [
+            94,
+            694,
+            911,
+            54
+          ]
+        },
+        {
+          "f": 0.62,
+          "x": 400,
+          "y": 450
+        },
+        {
+          "at": -0.55,
+          "x": 549,
+          "y": 249,
+          "click": true
+        }
       ]
     },
     {
-      "image": "test-mode.jpg", "zoom": 1.15,
+      "image": "test-mode.jpg",
+      "zoom": 1.15,
       "title": "Practice tests",
       "caption": "A mixed-format test built from your flashcards. Answers appear after you submit.",
       "narration": "When you're ready, take a practice test built from your flashcards. Answers are revealed only after you submit.",
       "cursor": [
-        { "f": 0.30, "x": 348, "y": 506, "click": true, "select": [136, 485, 426, 42] },
-        { "f": 0.55, "x": 781, "y": 801, "click": true, "select": [569, 780, 426, 43] },
-        { "f": 0.85, "x": 940, "y": 909 }
+        {
+          "f": 0.3,
+          "x": 317,
+          "y": 612,
+          "click": true,
+          "select": [
+            90,
+            589,
+            455,
+            46
+          ]
+        },
+        {
+          "f": 0.55,
+          "x": 780,
+          "y": 612
+        },
+        {
+          "f": 0.85,
+          "x": 700,
+          "y": 760
+        }
       ]
     },
     {
-      "image": "quiz.jpg", "zoom": 1.185,
+      "image": "quiz.jpg",
+      "zoom": 1.185,
       "title": "Practice quizzes",
       "caption": "Ten AI-written questions with instant scoring and explanations.",
       "narration": "Or take an A.I. written quiz, with ten questions, instant scoring, and explanations.",
       "cursor": [
-        { "f": 0.35, "x": 800, "y": 224, "click": true, "select": [479, 205, 642, 39] },
-        { "f": 0.65, "x": 1094, "y": 455, "click": true },
-        { "f": 0.88, "x": 968, "y": 523 }
+        {
+          "f": 0.35,
+          "x": 800,
+          "y": 240,
+          "click": true,
+          "select": [
+            457,
+            219,
+            686,
+            42
+          ]
+        },
+        {
+          "f": 0.65,
+          "x": 1115,
+          "y": 487,
+          "click": true
+        },
+        {
+          "f": 0.88,
+          "x": 984,
+          "y": 560
+        }
       ]
     },
     {
-      "image": "study-guide.jpg", "zoom": 1.1,
+      "image": "study-guide.jpg",
+      "zoom": 1.1,
       "title": "Study guides",
       "caption": "An overview, key concepts, and the details that matter.",
       "narration": "Study guides organize an overview, the key concepts, and the details that matter.",
       "cursor": [
-        { "f": 0.30, "x": 640, "y": 424 },
-        { "f": 0.58, "x": 700, "y": 551 },
-        { "f": 0.86, "x": 700, "y": 768 }
+        {
+          "f": 0.3,
+          "x": 700,
+          "y": 193
+        },
+        {
+          "f": 0.58,
+          "x": 700,
+          "y": 500
+        },
+        {
+          "f": 0.86,
+          "x": 700,
+          "y": 676
+        }
       ]
     },
     {
-      "image": "ai-tutor.jpg", "zoom": 1.18,
+      "image": "ai-tutor.jpg",
+      "zoom": 1.18,
       "title": "AI tutor",
       "caption": "Ask questions and get answers grounded in what was actually said.",
       "narration": "Stuck on something? Ask the A.I. tutor. Its answers are grounded in what was actually said in your lecture.",
       "cursor": [
-        { "f": 0.30, "x": 520, "y": 790 },
-        { "f": 0.60, "x": 900, "y": 864 },
-        { "f": 0.86, "x": 520, "y": 925 }
+        {
+          "f": 0.3,
+          "x": 520,
+          "y": 520
+        },
+        {
+          "f": 0.6,
+          "x": 900,
+          "y": 600
+        },
+        {
+          "f": 0.86,
+          "x": 520,
+          "y": 780
+        }
       ]
     },
     {
-      "image": "email-drafts.jpg", "zoom": 1.18,
+      "image": "email-drafts.jpg",
+      "zoom": 1.18,
       "title": "Emails and documents",
       "caption": "Turn a lecture into a summary email, a document, or a formal report.",
       "narration": "Turn any lecture into a summary email, a document, or a formal report, in the tone you choose.",
       "cursor": [
-        { "f": 0.22, "x": 410, "y": 155 },
-        { "f": 0.42, "x": 363, "y": 219, "click": true },
-        { "f": 0.68, "x": 945, "y": 340 },
-        { "f": 0.90, "x": 1262, "y": 118 }
+        {
+          "f": 0.22,
+          "x": 384,
+          "y": 155
+        },
+        {
+          "f": 0.42,
+          "x": 384,
+          "y": 234,
+          "click": true
+        },
+        {
+          "f": 0.68,
+          "x": 945,
+          "y": 330
+        },
+        {
+          "f": 0.9,
+          "x": 1294,
+          "y": 126
+        }
       ]
     },
     {
-      "image": "analytics.jpg", "zoom": 1.4,
+      "image": "analytics.jpg",
+      "zoom": 1.4,
       "title": "Track your progress",
       "caption": "Recordings, transcripts, flashcards and quizzes at a glance.",
       "narration": "And keep track of your progress, with your recordings, transcripts, flashcards, and quizzes, all in one place.",
       "cursor": [
-        { "f": 0.25, "x": 375, "y": 235 },
-        { "f": 0.50, "x": 835, "y": 235 },
-        { "f": 0.78, "x": 1070, "y": 410 }
+        {
+          "f": 0.25,
+          "x": 375,
+          "y": 235
+        },
+        {
+          "f": 0.5,
+          "x": 835,
+          "y": 235
+        },
+        {
+          "f": 0.78,
+          "x": 1070,
+          "y": 410
+        }
       ]
     },
     {
-      "endcard": true, "tail": 2.2,
+      "endcard": true,
+      "tail": 2.2,
       "title": "StudyScribe AI",
       "caption": "Record once. Study smarter.",
       "narration": "StudyScribe AI. Record once, study smarter. Try it today."
