@@ -35,6 +35,11 @@ export default function Admin() {
   const { data: transcriptionConfig } = trpc.diagnostics.transcription.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
+  const youtubeCheck = trpc.diagnostics.youtube.useQuery({ videoId: "jNQXAC9IVRw" }, {
+    enabled: false,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const { data: storageUsage } = trpc.diagnostics.storage.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
     refetchOnWindowFocus: false,
@@ -199,6 +204,46 @@ export default function Admin() {
             </Card>
           </section>
         )}
+
+        {/* YouTube import access */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            YouTube import
+          </h2>
+          <Card className="p-5 space-y-3">
+            <p className="text-xs text-gray-500">
+              YouTube blocks most server networks (including Vercel's) unless requests go through a residential
+              proxy set in <span className="font-mono">YOUTUBE_PROXY_URL</span>. This asks YouTube for a short public video
+              from this server and shows what comes back.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => youtubeCheck.refetch()}
+              disabled={youtubeCheck.isFetching}
+            >
+              {youtubeCheck.isFetching ? "Checking…" : "Check YouTube access"}
+            </Button>
+            {youtubeCheck.data && (
+              <div className="space-y-2">
+                <Badge variant={youtubeCheck.data.proxyConfigured ? "default" : "outline"}>
+                  Proxy {youtubeCheck.data.proxyConfigured ? "configured" : "not configured"}
+                </Badge>
+                <ul className="space-y-1.5">
+                  {youtubeCheck.data.clients.map((result) => (
+                    <li key={result.client} className="flex items-start gap-2 text-xs">
+                      <Badge variant={result.ok ? "default" : "destructive"} className="shrink-0">
+                        {result.client}
+                      </Badge>
+                      <span className="text-gray-600">{result.ok ? `Works (${result.detail})` : result.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {youtubeCheck.error && <p className="text-xs text-destructive">{youtubeCheck.error.message}</p>}
+          </Card>
+        </section>
 
         {/* Users table */}
         <section>

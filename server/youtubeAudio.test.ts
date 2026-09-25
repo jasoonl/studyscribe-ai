@@ -108,7 +108,7 @@ describe("pickAudioFormat", () => {
 
 describe("describePlayabilityFailure", () => {
   it("explains the bot challenge and age gate in plain terms", () => {
-    expect(describePlayabilityFailure("LOGIN_REQUIRED", "Sign in to confirm you’re not a bot")).toMatch(/bot/i);
+    expect(describePlayabilityFailure("LOGIN_REQUIRED", "Sign in to confirm you’re not a bot")).toMatch(/blocks this server's network/i);
     expect(describePlayabilityFailure("LOGIN_REQUIRED", "This video may be inappropriate. Sign in to confirm your age")).toMatch(/age-restricted/i);
     expect(describePlayabilityFailure("ERROR", "Video unavailable")).toMatch(/Video unavailable/);
   });
@@ -150,7 +150,7 @@ describe("resolveYouTubeAudio", () => {
 
   it("explains the bot challenge when every client is refused", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => json({ playabilityStatus: { status: "LOGIN_REQUIRED", reason: "Sign in to confirm you’re not a bot" } })));
-    await expect(resolveYouTubeAudio(ID)).rejects.toThrow(/prove it isn't a bot/i);
+    await expect(resolveYouTubeAudio(ID)).rejects.toThrow(/without a proxy/i);
   });
 
   it("refuses a live stream", async () => {
@@ -256,6 +256,38 @@ describe("probeYouTubeClients", () => {
     const results = await probeYouTubeClients(ID);
     expect(results.length).toBeGreaterThan(2);
     expect(results.filter((r) => r.ok)).toHaveLength(1);
-    expect(results.find((r) => !r.ok)?.detail).toMatch(/bot/i);
+    expect(results.find((r) => !r.ok)?.detail).toMatch(/proxy/i);
+  });
+});
+
+describe("YOUTUBE_PROXY_URL", () => {
+  it("routes YouTube requests through the configured proxy", async () => {
+    const net = await import("node:net");
+    const connects: string[] = [];
+    const proxy = net.createServer((socket) => {
+      socket.once("data", (data) => {
+        connects.push(data.toString().split("\r\n")[0]);
+        socket.end("HTTP/1.1 502 Bad Gateway\r\n\r\n");
+      });
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+    const port = (proxy.address() as import("node:net").AddressInfo).port;
+    vi.stubEnv("YOUTUBE_PROXY_URL", `http://127.0.0.1:${port}`);
+    try {
+      await expect(resolveYouTubeAudio(ID)).rejects.toThrow();
+      // A CONNECT to YouTube's player host proves the request tried the proxy, not the direct route.
+      expect(connects.some((line) => line.startsWith("CONNECT www.youtube.com:443"))).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      proxy.close();
+    }
+  });
+
+  it("tells the user what is wrong when no proxy is configured versus when one is", () => {
+    vi.stubEnv("YOUTUBE_PROXY_URL", "");
+    expect(describePlayabilityFailure("LOGIN_REQUIRED", "Sign in to confirm you’re not a bot")).toMatch(/without a proxy/i);
+    vi.stubEnv("YOUTUBE_PROXY_URL", "http://proxy.example:8000");
+    expect(describePlayabilityFailure("LOGIN_REQUIRED", "Sign in to confirm you’re not a bot")).toMatch(/even through the configured proxy/i);
+    vi.unstubAllEnvs();
   });
 });

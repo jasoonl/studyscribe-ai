@@ -9,6 +9,8 @@
  * therefore ends in an explanatory error rather than a hang.
  */
 
+import { fetch as undiciFetch, ProxyAgent } from "undici";
+
 const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
 const CHUNK_BYTES = 4 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -42,6 +44,28 @@ export const CLIENTS: ClientProfile[] = [
     context: { clientName: "TVHTML5", clientVersion: "7.20250312.16.00", hl: "en", gl: "US" },
   },
 ];
+
+let proxyAgent: { url: string; agent: ProxyAgent } | null = null;
+
+export function isYouTubeProxyConfigured() {
+  return Boolean(process.env.YOUTUBE_PROXY_URL);
+}
+
+/**
+ * YouTube answers requests from datacenter networks (Vercel, AWS and the like)
+ * with a "confirm you're not a bot" challenge no matter which client is used,
+ * so from a serverless host nothing works without an egress that looks like a
+ * home connection. When YOUTUBE_PROXY_URL is set (http://user:pass@host:port,
+ * ideally a residential proxy with a sticky session) every YouTube request,
+ * including the audio download, goes through it. The stream URL YouTube issues
+ * is bound to the address that asked for it, so both must use the same egress.
+ */
+function youtubeFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  const proxyUrl = process.env.YOUTUBE_PROXY_URL;
+  if (!proxyUrl) return fetch(input, init);
+  if (!proxyAgent || proxyAgent.url !== proxyUrl) proxyAgent = { url: proxyUrl, agent: new ProxyAgent(proxyUrl) };
+  return undiciFetch(input as any, { ...(init as any), dispatcher: proxyAgent.agent }) as unknown as Promise<Response>;
+}
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
@@ -114,7 +138,9 @@ export function describePlayabilityFailure(status: string | undefined, reason: s
     return "That video is age-restricted, which YouTube only serves to signed-in viewers. Download the audio and upload the file instead.";
   }
   if (/not a bot|sign in to confirm/i.test(detail)) {
-    return "YouTube asked our server to prove it isn't a bot, so that video couldn't be fetched right now. Try again later, or download the audio and upload the file instead.";
+    return isYouTubeProxyConfigured()
+      ? "YouTube still asked our server to prove it isn't a bot, even through the configured proxy. The proxy's address may be flagged; try again later, or download the audio and upload the file instead."
+      : "YouTube blocks this server's network (it asks it to prove it isn't a bot), so YouTube links can't be fetched from here without a proxy. Download the audio and upload the file instead.";
   }
   if (detail) return `YouTube can't provide that video: ${detail}`;
   return `YouTube can't provide that video (${status ?? "unavailable"}).`;
@@ -136,7 +162,7 @@ type PlayerAttempt =
 async function requestPlayer(client: ClientProfile, videoId: string): Promise<PlayerAttempt> {
   let response: Response;
   try {
-    response = await fetch(PLAYER_URL, {
+    response = await youtubeFetch(PLAYER_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -249,7 +275,7 @@ export function youtubeAudioStream(audio: Pick<YouTubeAudio, "url" | "contentLen
       let response: Response | null = null;
       for (let attempt = 0; attempt < 2 && !response?.ok; attempt++) {
         try {
-          response = await fetch(url, { headers: { "user-agent": audio.userAgent }, signal: AbortSignal.timeout(30_000) });
+          response = await youtubeFetch(url, { headers: { "user-agent": audio.userAgent }, signal: AbortSignal.timeout(30_000) });
         } catch {
           response = null;
         }
