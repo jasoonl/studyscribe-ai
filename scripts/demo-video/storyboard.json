@@ -2,6 +2,7 @@
   "voice": "Samantha",
   "rate": 165,
   "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+  "duration": 102,
   "scenes": [
     {
       "image": "dashboard.jpg",
