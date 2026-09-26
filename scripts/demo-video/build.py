@@ -14,16 +14,21 @@ work = sys.argv[1]
 os.makedirs(work, exist_ok=True)
 SR = 44100
 board = json.load(open(os.path.join(here, "storyboard.json")))
-API_KEY = os.environ.get("ELEVENLABS_API_KEY", "sk_b35d800dd5d067695dfbbe655f11ebd6e409770eb987168e")
+API_KEY = os.environ.get("ELEVENLABS_API_KEY", "sk_9c9ea5eafb960e42943eb890a86ea89c6cf9174ecf4a9aba")
 
-# --- narration ---------------------------------------------------------------
+# --- narration via ElevenLabs ------------------------------------------------
 t = 0.0
 voice_segments = []
 for i, scene in enumerate(board["scenes"]):
-    aiff = os.path.join(work, f"v{i:02d}.aiff")
+    mp3 = os.path.join(work, f"v{i:02d}.mp3")
     wav = os.path.join(work, f"v{i:02d}.wav")
-    subprocess.run(["say", "-v", board["voice"], "-r", str(board["rate"]), "-o", aiff, scene["narration"]], check=True)
-    subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", aiff, wav], check=True)
+    voice_id = "JBFqnCBsd6RMkjVDRZzb"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    data = json.dumps({"text": scene["narration"], "model_id": "eleven_flash_v2_5"}).encode()
+    req = urllib.request.Request(url, data=data, headers={"xi-api-key": API_KEY, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        with open(mp3, "wb") as f: f.write(resp.read())
+    subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
     with wave.open(wav) as w:
         samples = array.array("h", w.readframes(w.getnframes()))
         dur = w.getnframes() / SR
