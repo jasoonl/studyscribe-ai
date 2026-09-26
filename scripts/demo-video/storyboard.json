@@ -1,6 +1,7 @@
 {
   "voice": "Samantha",
   "rate": 165,
+  "voice_id": "JBFqnCBsd6RMkjVDRZzb",
   "scenes": [
     {
       "image": "dashboard.jpg",
