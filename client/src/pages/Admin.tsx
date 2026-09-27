@@ -226,9 +226,16 @@ export default function Admin() {
             </Button>
             {youtubeCheck.data && (
               <div className="space-y-2">
-                <Badge variant={youtubeCheck.data.proxyConfigured ? "default" : "outline"}>
-                  Proxy {youtubeCheck.data.proxyConfigured ? "configured" : "not configured"}
-                </Badge>
+                {youtubeCheck.data.relay.configured ? (
+                  <Badge variant={youtubeCheck.data.relay.online ? "default" : "destructive"}>
+                    Relay {youtubeCheck.data.relay.online ? "online" : "offline"}
+                    {youtubeCheck.data.relay.lastSeenAt && ` · last check-in ${new Date(youtubeCheck.data.relay.lastSeenAt).toLocaleString()}`}
+                  </Badge>
+                ) : (
+                  <Badge variant={youtubeCheck.data.proxyConfigured ? "default" : "outline"}>
+                    Proxy {youtubeCheck.data.proxyConfigured ? "configured" : "not configured"}
+                  </Badge>
+                )}
                 <ul className="space-y-1.5">
                   {youtubeCheck.data.clients.map((result) => (
                     <li key={result.client} className="flex items-start gap-2 text-xs">

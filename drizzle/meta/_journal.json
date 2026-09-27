@@ -113,6 +113,13 @@
       "when": 1789342449599,
       "tag": "0015_share_recordings",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1790481718554,
+      "tag": "0016_app_settings",
+      "breakpoints": true
     }
   ]
 }

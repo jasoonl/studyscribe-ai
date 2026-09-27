@@ -1,7 +1,7 @@
 import { eq, and, like, or, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares, appSettings } from "../drizzle/schema";
 import crypto from "crypto";
 import { ENV } from './_core/env';
 
@@ -1118,4 +1118,24 @@ export async function getRecordingsSharedWithUser(userId: number) {
     .innerJoin(recordings, eq(recordings.id, recordingShares.recordingId))
     .where(and(eq(recordingShares.sharedWithUserId, userId), eq(recordings.isDeleted, 0)))
     .orderBy(desc(recordingShares.createdAt));
+}
+
+// Server-owned settings: never return these through any client-facing procedure.
+export async function getAppSetting(key: string): Promise<{ value: string; updatedAt: Date } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(appSettings).where(eq(appSettings.key, key)).limit(1);
+  return rows[0] ? { value: rows[0].value, updatedAt: rows[0].updatedAt } : null;
+}
+
+export async function setAppSetting(key: string, value: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(appSettings).values({ key, value, updatedAt: new Date() }).onDuplicateKeyUpdate({ set: { value, updatedAt: new Date() } });
+}
+
+export async function deleteAppSetting(key: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(appSettings).where(eq(appSettings.key, key));
 }

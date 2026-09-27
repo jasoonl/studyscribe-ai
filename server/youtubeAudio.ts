@@ -10,6 +10,7 @@
  */
 
 import { fetch as undiciFetch, ProxyAgent } from "undici";
+import { isYouTubeRelayConfigured, RelayUnavailableError, relayFetch } from "./youtubeRelay";
 
 const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
 const CHUNK_BYTES = 4 * 1024 * 1024;
@@ -48,7 +49,7 @@ export const CLIENTS: ClientProfile[] = [
 let proxyAgent: { url: string; agent: ProxyAgent } | null = null;
 
 export function isYouTubeProxyConfigured() {
-  return Boolean(process.env.YOUTUBE_PROXY_URL);
+  return Boolean(process.env.YOUTUBE_PROXY_URL) || isYouTubeRelayConfigured();
 }
 
 /**
@@ -61,6 +62,7 @@ export function isYouTubeProxyConfigured() {
  * is bound to the address that asked for it, so both must use the same egress.
  */
 function youtubeFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  if (isYouTubeRelayConfigured()) return relayFetch(input, init);
   const proxyUrl = process.env.YOUTUBE_PROXY_URL;
   if (!proxyUrl) return fetch(input, init);
   if (!proxyAgent || proxyAgent.url !== proxyUrl) proxyAgent = { url: proxyUrl, agent: new ProxyAgent(proxyUrl) };
@@ -139,7 +141,7 @@ export function describePlayabilityFailure(status: string | undefined, reason: s
   }
   if (/not a bot|sign in to confirm/i.test(detail)) {
     return isYouTubeProxyConfigured()
-      ? "YouTube still asked our server to prove it isn't a bot, even through the configured proxy. The proxy's address may be flagged; try again later, or download the audio and upload the file instead."
+      ? "YouTube still asked for a bot check, even through the configured proxy or relay. Try again later, or upload the audio file instead."
       : "YouTube blocks this server's network (it asks it to prove it isn't a bot), so YouTube links can't be fetched from here without a proxy. Download the audio and upload the file instead.";
   }
   if (detail) return `YouTube can't provide that video: ${detail}`;
@@ -179,6 +181,7 @@ async function requestPlayer(client: ClientProfile, videoId: string): Promise<Pl
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (error) {
+    if (error instanceof RelayUnavailableError) return { ok: false, reason: error.message, final: true };
     return { ok: false, reason: `Could not reach YouTube: ${error instanceof Error ? error.message : "network error"}` };
   }
 

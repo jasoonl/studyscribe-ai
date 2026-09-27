@@ -8,6 +8,7 @@ import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, asser
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
 import { isYouTubeProxyConfigured, probeYouTubeClients } from "./youtubeAudio";
+import { youtubeRelayStatus } from "./youtubeRelay";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
 import { TRANSCRIPTION_LANGUAGE_CODES } from "@shared/languages";
 import { isAssemblyAiWebhookConfigured, submitTranscriptionJob, checkTranscriptionStatus, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus, type SpeakerSegment } from "./speakerDiarization";
@@ -38,7 +39,7 @@ export const appRouter = router({
     storage: adminProcedure.query(() => getBlobUsage()),
     youtube: adminProcedure
       .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
-      .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), clients: await probeYouTubeClients(input.videoId) })),
+      .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
   }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

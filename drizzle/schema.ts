@@ -388,3 +388,10 @@ export const recordingShares = mysqlTable("recordingShares", {
 
 export type RecordingShare = typeof recordingShares.$inferSelect;
 export type InsertRecordingShare = typeof recordingShares.$inferInsert;
+
+/** Small server-owned key/value settings (e.g. the YouTube relay's current tunnel address). Never exposed to clients. */
+export const appSettings = mysqlTable("appSettings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});

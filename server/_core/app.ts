@@ -2,6 +2,7 @@ import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
+import { registerYouTubeRelayRoutes } from "../youtubeRelay";
 import { registerAuthRoutes } from "../authRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -21,6 +22,7 @@ export function createApp() {
   // either throttle everyone as one client or no one at all.
   app.set("trust proxy", 1);
 
+  registerYouTubeRelayRoutes(app);
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
