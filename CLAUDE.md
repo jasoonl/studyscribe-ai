@@ -30,6 +30,20 @@ A handful of server tests (e.g. `server/providerCredentials.test.ts`) call real 
 
 There is no lint script and no CI workflow in this repo (only `.github/dependabot.yml`).
 
+## Local Development Setup
+
+For basic local development (`npm run dev`), you need:
+- `JWT_SECRET` (any string, used to sign session cookies)
+- `PUBLIC_APP_URL` or `APP_URL` (typically `http://localhost:3000` or similar)
+- Database connection (one of: `TIDB_HOST`/`TIDB_PORT`/`TIDB_USER`/`TIDB_PASSWORD`/`TIDB_DATABASE`, `DB_*` equivalents, or `DATABASE_URL`)
+
+Optional but commonly needed:
+- `ASSEMBLYAI_API_KEY` — if testing transcription (without it, transcription jobs fail)
+- `OPENAI_API_KEY` + `OPENAI_MODEL` — if testing study-tool generation (without it, those features fail)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — if testing Google OAuth (email/password auth works without it)
+
+Not needed locally: `BLOB_READ_WRITE_TOKEN`, `RESEND_API_KEY`, `VAPID_*` keys (storage, email, and push fail gracefully without them).
+
 ## Architecture
 
 ### Server bootstrapping — one Express app, three entry points
@@ -46,6 +60,16 @@ Because `app.ts` must stay importable by the Vercel function without pulling in 
 - REST routes for auth (`server/authRoutes.ts`), Google OAuth (`server/googleOAuthHandler.ts` + `server/_core/oauth.ts`), the AssemblyAI webhook (`server/transcriptionWebhook.ts`), storage proxying (`server/_core/storageProxy.ts`, registered via `registerStorageProxy`), and a gated one-time schema-init endpoint (`server/schemaInit.ts`). Auth endpoints are rate-limited (`server/_core/rateLimit.ts`, `express-rate-limit`), which depends on `app.set("trust proxy", 1)` in `server/_core/app.ts` so limits key on the real client IP behind Vercel's proxy; the tRPC `requestInvite` mutation uses `checkTrpcRateLimit` for the same reason.
 - Everything else goes through tRPC at `/api/trpc`, defined in `server/routers.ts` (`appRouter`), which composes `systemRouter`, `customAuthRouter`, `notificationsRouter`, and the main routers for recordings/transcripts/study notes/flashcards/quizzes/study guides/email drafts/chat/browser push.
 - tRPC procedure tiers (`server/_core/trpc.ts`): `publicProcedure`, `protectedProcedure` (requires `ctx.user`), `adminProcedure` (requires `role === 'admin'`). Auth state comes from a signed session cookie, resolved once per request in `server/_core/context.ts` (`createContext`) — there is no Manus OAuth fallback anymore, only the custom cookie session.
+
+### Working with tRPC
+
+All procedures are defined in `server/routers.ts` and composed into `appRouter`. A typical procedure:
+- Inherits from `publicProcedure`, `protectedProcedure`, or `adminProcedure`
+- Calls input schema via `.input(z.object(...))` (Zod)
+- Uses `.mutation()` or `.query()` with a handler receiving `{ input, ctx }`
+- `ctx.user` is available in `protected`/`admin` tiers; initial auth check happens in `server/_core/context.ts`
+
+Example: `recordings.getStatus` is a query that polls transcription progress; the polling fallback calls `advancePollingTranscription` internally. If adding webhook-driven completion for a new async service, follow the same pattern: submit returns immediately, a webhook or periodic poll drives completion.
 
 ### Auth model
 
@@ -87,7 +111,7 @@ Schema lives in `drizzle/schema.ts` (19 tables: users, recordings, transcripts, 
 
 ### Frontend
 
-Vite + React 19, routed with `wouter` (not react-router) in `client/src/App.tsx`, where page components are `React.lazy` code-split — add new pages the same way. `ProtectedRoute` wraps authenticated pages and reads auth state from `useCustomAuth` (`client/src/_core/hooks/useCustomAuth.ts`), which talks to the custom REST session endpoints, not tRPC, for the initial auth check. Data fetching for everything else goes through the tRPC client + TanStack Query. UI components are shadcn/ui (`client/src/components/ui`) on Tailwind v4. Path aliases (`@` → `client/src`, `@shared` → `shared/`) are defined in both `vite.config.ts` and `tsconfig.json` — keep them in sync if either changes; `vitest.config.ts` also duplicates them for tests.
+Vite + React 19, routed with `wouter` (not react-router) in `client/src/App.tsx`, where page components are `React.lazy` code-split — add new pages the same way. `ProtectedRoute` wraps authenticated pages and reads auth state from `useCustomAuth` (`client/src/_core/hooks/useCustomAuth.ts`), which talks to the custom REST session endpoints, not tRPC, for the initial auth check. Data fetching for everything else goes through the tRPC client + TanStack Query. Pages typically call `client.recordings.list.useQuery()` or `client.recordings.create.useMutation()` to fetch or mutate data. Mutations trigger refetches via `queryKey` invalidation (e.g., after creating a flashcard, the flashcards list query is invalidated). The tRPC client instance is wrapped in a QueryClientProvider at the app root. UI components are shadcn/ui (`client/src/components/ui`) on Tailwind v4. Path aliases (`@` → `client/src`, `@shared` → `shared/`) are defined in both `vite.config.ts` and `tsconfig.json` — keep them in sync if either changes; `vitest.config.ts` also duplicates them for tests.
 
 The `/demo` page plays `client/public/demo/studyscribe-demo.mp4` when present and otherwise falls back to a slideshow of `client/public/demo/*.jpg` (`DemoWalkthrough.tsx`). The video is built from the app screenshots in `scripts/demo-video/frames/` (macOS only): `storyboard.json` holds the narration, captions and cursor path per scene, `build.py <workdir>` renders the voiceover (`say`) and a synthesised music bed and writes `timeline.json`, then `make-demo-video.swift` animates a cursor and camera over the screenshots and encodes the MP4 (`swiftc -O scripts/demo-video/make-demo-video.swift -o <workdir>/mkvideo && <workdir>/mkvideo <workdir>/timeline.json client/public/demo/studyscribe-demo.mp4`). Re-run it when the UI or the storyboard changes.
 
