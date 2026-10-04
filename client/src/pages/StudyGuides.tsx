@@ -119,7 +119,7 @@ export default function StudyGuides() {
                 {Array.isArray(guide.keyPoints) && guide.keyPoints.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(guide.keyPoints as string[]).slice(0, 2).map((kp, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs truncate max-w-[120px]">
+                      <Badge key={i} variant="secondary" className="text-xs !inline-block truncate max-w-[140px]">
                         {plainKeyPoint(kp)}
                       </Badge>
                     ))}
