@@ -17,7 +17,7 @@ export function Faq() {
     <section id="faq" className="scroll-mt-24 py-32">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <Reveal>
-          <h2 className="text-center text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">Questions, answered</h2>
+          <h2 className="text-center text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Questions, answered</h2>
         </Reveal>
         <Accordion type="single" collapsible className="mt-10">
           {FAQ.map((item) => (
@@ -37,7 +37,7 @@ export function FinalCta() {
     <section className="px-4 pb-24 sm:px-6">
       <Reveal className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-brand-deep px-6 py-16 text-center text-primary-foreground shadow-2xl shadow-primary/30 sm:px-12">
         <div className="aurora-blob pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand-sky/40 blur-3xl" aria-hidden="true" />
-        <h2 className="relative text-balance text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">Your next lecture deserves better notes</h2>
+        <h2 className="relative text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Your next lecture deserves better notes</h2>
         <p className="relative mx-auto mt-4 max-w-lg text-primary-foreground/80">Try StudyScribe on one recording and see the difference.</p>
         <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/request-access" className="whitespace-nowrap rounded-full bg-background px-7 py-3.5 text-base font-semibold text-primary shadow-lg transition-transform hover:-translate-y-0.5 active:scale-[0.98]">

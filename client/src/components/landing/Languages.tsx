@@ -8,7 +8,7 @@ export default function Languages() {
   return (
     <section id="languages" className="scroll-mt-24 overflow-hidden py-32">
       <Reveal className="mx-auto max-w-2xl px-4 text-center">
-        <h2 className="text-balance text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">Transcribe in {NAMES.length} languages</h2>
+        <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Transcribe in {NAMES.length} languages</h2>
         <p className="mt-4 text-muted-foreground">Leave it on automatic and the language is detected for you, or pick one when a short clip needs a nudge.</p>
       </Reveal>
       <div className="marquee relative mt-12" aria-label={`Supported languages: ${NAMES.join(", ")}`}>

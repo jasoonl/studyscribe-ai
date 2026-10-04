@@ -252,14 +252,14 @@ export default function Dashboard() {
       {/* Statistics Section */}
       <div>
         <div className="container pt-12 pb-4">
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-[-0.04em] mb-8 text-foreground">Your library</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-[-0.04em] mb-8 text-foreground">Your library</h1>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Total Hours */}
             <Card className="p-6 gap-0 bg-card">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Hours Recorded</p>
-                  <p className="text-4xl font-semibold tracking-[-0.035em] text-foreground mt-3">{statistics.totalHours}</p>
+                  <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">{statistics.totalHours}</p>
                   <p className="text-xs text-muted-foreground mt-1">hours</p>
                 </div>
                 <Clock className="w-6 h-6 text-blue-500 opacity-50" />
@@ -271,7 +271,7 @@ export default function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Recordings</p>
-                  <p className="text-4xl font-semibold tracking-[-0.035em] text-foreground mt-3">{statistics.totalRecordings}</p>
+                  <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">{statistics.totalRecordings}</p>
                   <p className="text-xs text-muted-foreground mt-1">lectures & meetings</p>
                 </div>
                 <Mic className="w-6 h-6 text-purple-500 opacity-50" />
@@ -283,7 +283,7 @@ export default function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Study Streak</p>
-                  <p className="text-4xl font-semibold tracking-[-0.035em] text-foreground mt-3">Active</p>
+                  <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">Active</p>
                   <p className="text-xs text-muted-foreground mt-1">keep it up!</p>
                 </div>
                 <TrendingUp className="w-6 h-6 text-green-500 opacity-50" />

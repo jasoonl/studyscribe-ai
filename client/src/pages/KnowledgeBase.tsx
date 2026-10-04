@@ -74,7 +74,7 @@ export default function KnowledgeBase() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Hero search */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Search Your Transcripts</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Search Your Transcripts</h2>
           <p className="text-muted-foreground text-sm">
             Search across all your recordings and transcripts in one place.
           </p>

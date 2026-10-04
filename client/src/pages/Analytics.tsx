@@ -70,7 +70,7 @@ export default function Analytics() {
                     <div className={`w-9 h-9 rounded-2xl ${stat.bg} flex items-center justify-center mb-3`}>
                       <stat.icon className={`w-5 h-5 ${stat.color}`} />
                     </div>
-                    <div className="text-2xl font-semibold tracking-tight">{stat.value.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
                   </CardContent>
                 </Card>

@@ -76,7 +76,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
     return (
       <Card className="border-2 border-border p-8 text-center">
         <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-500" />
-        <h3 className="text-lg font-semibold tracking-tight">Your Learn queue is clear</h3>
+        <h3 className="text-lg font-bold">Your Learn queue is clear</h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">All cards are currently mastered. Revisit Flashcards to study the full set or take a Test to check your recall.</p>
         <Button className="mt-5" variant="outline" onClick={onExit}>Back to study modes</Button>
       </Card>

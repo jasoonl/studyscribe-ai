@@ -89,6 +89,8 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   mpeg: "video/mpeg",
   "3gp": "video/3gpp",
   wmv: "video/x-ms-wmv",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
 };
 
 /**
@@ -162,7 +164,11 @@ export async function createDirectAudioUpload(input: {
   size: number;
 }): Promise<{ key: string; mimeType: string; uploadUrl: string; uploadContentType: string } | null> {
   if (!isVercelBlobStorageConfigured()) return null;
-  const mimeType = normalizeAudioMimeType(input.mimeType);
+  // Browsers often report a blank or generic type for files such as .mov, so fall back to the extension.
+  const declared = input.mimeType.split(";")[0].trim().toLowerCase();
+  const extension = input.fileName.split(".").pop()?.toLowerCase() ?? "";
+  const fromExtension = EXTENSION_CONTENT_TYPES[extension];
+  const mimeType = normalizeAudioMimeType(!declared || declared === "application/octet-stream" || declared === "binary/octet-stream" ? fromExtension ?? declared : declared);
   if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
   if (!Number.isFinite(input.size) || input.size <= 0 || input.size > MAX_AUDIO_SIZE_BYTES) {
     throw new Error(`Audio file must be between 1 byte and ${MAX_UPLOAD_LABEL}`);

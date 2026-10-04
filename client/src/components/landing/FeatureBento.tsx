@@ -23,7 +23,7 @@ export default function FeatureBento() {
     <section id="features" className="scroll-mt-24 py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <Reveal>
-          <h2 className="mx-auto max-w-3xl text-balance text-center text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">Everything you need after the lecture ends</h2>
+          <h2 className="mx-auto max-w-3xl text-balance text-center text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Everything you need after the lecture ends</h2>
         </Reveal>
         <div className="mt-20 grid auto-rows-[minmax(16rem,auto)] gap-5 md:grid-cols-6">
           {CELLS.map((cell, i) => (
@@ -36,7 +36,7 @@ export default function FeatureBento() {
               whileHover={reduce ? undefined : { y: -4 }}
               className={`group relative flex flex-col overflow-hidden rounded-[2rem] border border-border/60 p-9 transition-shadow shadow-apple ${TONES[cell.tone]} ${cell.className}`}
             >
-              <h3 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{cell.title}</h3>
+              <h3 className="text-2xl font-bold tracking-[-0.03em] sm:text-3xl">{cell.title}</h3>
               <p className={`mt-3 max-w-sm text-base leading-snug ${cell.tone === "blue" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{cell.text}</p>
               {cell.image && (
                 <div className="mt-8 flex-1 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-md">

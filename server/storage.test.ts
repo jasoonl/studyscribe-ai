@@ -147,6 +147,14 @@ describe("createDirectAudioUpload", () => {
     expect(issueSignedToken).not.toHaveBeenCalled();
   });
 
+  it("accepts a .mov file whatever type the browser reported, using the file name when it is blank or generic", async () => {
+    vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
+    for (const mimeType of ["video/quicktime", "", "application/octet-stream"]) {
+      const result = await createDirectAudioUpload({ ...baseInput, fileName: "lecture.MOV", mimeType });
+      expect(result?.mimeType).toBe("audio/mp4");
+    }
+  });
+
   it("rejects a file outside the size bounds before ever contacting Blob", async () => {
     vi.stubEnv("BLOB_READ_WRITE_TOKEN", "token_123");
     await expect(

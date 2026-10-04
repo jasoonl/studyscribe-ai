@@ -36,7 +36,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
         <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/10 to-cyan-50 p-6 text-center dark:from-primary/30 dark:to-cyan-950/30">
           <Target className="mx-auto h-8 w-8 text-primary" />
           <p className="mt-3 text-sm font-medium text-muted-foreground">Mastery Test result</p>
-          <p className="mt-1 text-5xl font-semibold tracking-tight tracking-tight">{score.percentage}%</p>
+          <p className="mt-1 text-5xl font-bold tracking-tight">{score.percentage}%</p>
           <p className="mt-2 text-sm text-muted-foreground">{score.correct} of {score.total} answers correct</p>
           <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
             <Button variant="outline" onClick={onExit}><ArrowLeft className="mr-2 h-4 w-4" /> Study modes</Button>
@@ -82,7 +82,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
         {questions.map((question, index) => (
           <Card key={question.card.id} className="border-2 border-border p-5 sm:p-6">
             <div className="mb-4 flex gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold tracking-tight text-primary">{index + 1}</span>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
               <div>
                 <span className="text-xs font-medium text-muted-foreground">{question.type === "written" ? "Written recall" : "Multiple choice"}</span>
                 <h3 className="mt-1 font-semibold leading-relaxed">{question.card.question}</h3>

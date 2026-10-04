@@ -19,7 +19,9 @@ export async function uploadAudioDirectly(
   fileName: string,
   onProgress?: (progress: number) => void,
 ): Promise<{ key: string; mimeType: string } | null> {
-  const mimeType = file.type || (/\.mov$/i.test(fileName) ? "video/quicktime" : "audio/webm");
+  // Blank or generic types (common for .mov) are resolved from the file name; the server also falls back to it.
+  const generic = !file.type || file.type === "application/octet-stream";
+  const mimeType = generic ? (/\.mov$/i.test(fileName) ? "video/quicktime" : file.type || "audio/webm") : file.type;
   const preparationResponse = await fetch("/api/storage/upload-url", {
     method: "POST",
     credentials: "include",

@@ -23,7 +23,7 @@ export default function Hero() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-4xl text-center">
-          <motion.h1 {...rise(0)} className="text-balance text-5xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-7xl lg:text-8xl">
+          <motion.h1 {...rise(0)} className="text-balance text-5xl font-bold leading-[1.03] tracking-[-0.04em] sm:text-7xl lg:text-8xl">
             Record the lecture.{" "}
             <span className="bg-gradient-to-r from-primary to-brand-sky bg-clip-text pb-1 text-transparent">Keep the knowledge.</span>
           </motion.h1>

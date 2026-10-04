@@ -133,7 +133,7 @@ export default function QuizPage() {
           <Card>
             <CardHeader>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-sm font-semibold tracking-tight text-primary">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
                   {currentQ + 1}
                 </div>
                 <div className="flex-1">
@@ -243,7 +243,7 @@ export default function QuizPage() {
           <Card className="text-center">
             <CardContent className="pt-8 pb-6">
               <Trophy className={`w-12 h-12 mx-auto mb-3 ${scoreColor}`} />
-              <p className={`text-5xl font-semibold tracking-tight mb-1 ${scoreColor}`}>{results.score}%</p>
+              <p className={`text-5xl font-bold mb-1 ${scoreColor}`}>{results.score}%</p>
               <p className="text-muted-foreground">{results.correct} out of {results.total} correct</p>
               <div className="flex gap-3 justify-center mt-6">
                 <Button onClick={handleRetry} variant="outline" className="gap-2">
