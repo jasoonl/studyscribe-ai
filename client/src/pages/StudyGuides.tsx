@@ -54,7 +54,7 @@ export default function StudyGuides() {
             </Button>
           </Link>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <BookOpen className="w-5 h-5 text-indigo-500 shrink-0" />
+            <BookOpen className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
               <h1 className="font-semibold text-sm truncate">Study Guides</h1>
               {recording && (
@@ -66,7 +66,7 @@ export default function StudyGuides() {
             onClick={handleGenerate}
             disabled={generateMutation.isPending}
             size="sm"
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+            className="gap-2 shrink-0"
           >
             <Sparkles className="w-4 h-4" />
             {generateMutation.isPending ? "Generating…" : "Generate Guide"}
@@ -83,7 +83,7 @@ export default function StudyGuides() {
 
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 rounded-lg" />
+              <Skeleton key={i} className="h-20 rounded-2xl" />
             ))
           ) : guides?.length === 0 ? (
             <Card className="border-dashed">
@@ -98,9 +98,9 @@ export default function StudyGuides() {
               <button
                 key={guide.id}
                 onClick={() => setSelectedGuideId(guide.id)}
-                className={`w-full text-left p-3 rounded-lg border transition-all hover:border-indigo-400 hover:bg-indigo-50/5 ${
+                className={`w-full text-left p-3 rounded-2xl border transition-all hover:border-primary hover:bg-primary/5 ${
                   selectedGuideId === guide.id
-                    ? "border-indigo-500 bg-indigo-50/10"
+                    ? "border-primary bg-primary/10"
                     : "border-border bg-card"
                 }`}
               >
@@ -133,10 +133,10 @@ export default function StudyGuides() {
         {/* Main content: selected guide */}
         <div className="flex-1 min-w-0">
           {generateMutation.isPending && (
-            <Card className="mb-4 border-indigo-500/30 bg-indigo-50/5">
+            <Card className="mb-4 border-primary/30 bg-primary/5">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Generating study guide…</p>

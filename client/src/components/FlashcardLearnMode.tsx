@@ -76,7 +76,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
     return (
       <Card className="border-2 border-border p-8 text-center">
         <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-500" />
-        <h3 className="text-lg font-bold">Your Learn queue is clear</h3>
+        <h3 className="text-lg font-semibold tracking-tight">Your Learn queue is clear</h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">All cards are currently mastered. Revisit Flashcards to study the full set or take a Test to check your recall.</p>
         <Button className="mt-5" variant="outline" onClick={onExit}>Back to study modes</Button>
       </Card>
@@ -87,7 +87,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
 
   return (
     <div className="space-y-4">
-      <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-indigo-50 p-4 dark:from-cyan-950/30 dark:to-indigo-950/30 sm:p-5">
+      <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-primary p-4 dark:from-cyan-950/30 dark:to-primary/30 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2 font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Learn Mode</div>
@@ -95,7 +95,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
           </div>
           <Button size="sm" variant="outline" className="shrink-0" onClick={onExit}><ArrowLeft className="mr-1 h-4 w-4" /> Study modes</Button>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-background/80"><div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-background/80"><div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-all" style={{ width: `${progress}%` }} /></div>
         <p className="mt-2 text-xs font-medium text-muted-foreground">{activeIndex + 1} of {queue.length} cards in your active learning queue</p>
       </Card>
 

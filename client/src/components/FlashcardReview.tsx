@@ -106,7 +106,7 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
     return (
       <Card className="border-2 border-border p-8 text-center">
         <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-500" />
-        <h3 className="text-lg font-bold">You’ve mastered this set</h3>
+        <h3 className="text-lg font-semibold tracking-tight">You’ve mastered this set</h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
           All {cards.length} cards are marked as known. Review them again anytime to keep the concepts fresh.
         </p>
@@ -135,12 +135,12 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
           <Button variant="outline" size="sm" onClick={onExit}>Browse cards</Button>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary" aria-label={`${Math.round(progress)}% through review set`}>
-          <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-md bg-slate-100 px-2 py-2 dark:bg-slate-800"><span className="font-bold">{counts.new}</span><span className="ml-1 text-muted-foreground">new</span></div>
-          <div className="rounded-md bg-amber-50 px-2 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><span className="font-bold">{counts.learning}</span><span className="ml-1 opacity-80">learning</span></div>
-          <div className="rounded-md bg-emerald-50 px-2 py-2 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"><span className="font-bold">{counts.mastered}</span><span className="ml-1 opacity-80">mastered</span></div>
+          <div className="rounded-xl bg-slate-100 px-2 py-2 dark:bg-slate-800"><span className="font-semibold tracking-tight">{counts.new}</span><span className="ml-1 text-muted-foreground">new</span></div>
+          <div className="rounded-xl bg-amber-50 px-2 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><span className="font-semibold tracking-tight">{counts.learning}</span><span className="ml-1 opacity-80">learning</span></div>
+          <div className="rounded-xl bg-emerald-50 px-2 py-2 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"><span className="font-semibold tracking-tight">{counts.mastered}</span><span className="ml-1 opacity-80">mastered</span></div>
         </div>
       </Card>
 

@@ -25,13 +25,13 @@ export default function Analytics() {
   const { data, isLoading } = trpc.analytics.overview.useQuery();
 
   const stats = [
-    { label: "Recordings", value: data?.totalRecordings ?? 0, icon: Mic, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Recordings", value: data?.totalRecordings ?? 0, icon: Mic, color: "text-primary", bg: "bg-primary/15" },
     { label: "Transcripts", value: data?.totalTranscripts ?? 0, icon: FileText, color: "text-green-500", bg: "bg-green-50" },
     { label: "Flashcards", value: data?.totalFlashcards ?? 0, icon: Zap, color: "text-yellow-500", bg: "bg-yellow-50" },
-    { label: "Study Guides", value: data?.totalStudyGuides ?? 0, icon: BookOpen, color: "text-purple-500", bg: "bg-purple-50" },
+    { label: "Study Guides", value: data?.totalStudyGuides ?? 0, icon: BookOpen, color: "text-primary", bg: "bg-primary/15" },
     { label: "Quizzes", value: data?.totalQuizzes ?? 0, icon: HelpCircle, color: "text-orange-500", bg: "bg-orange-50" },
     { label: "Email Drafts", value: data?.totalEmailDrafts ?? 0, icon: Mail, color: "text-pink-500", bg: "bg-pink-50" },
-    { label: "AI Conversations", value: data?.totalChatMessages ?? 0, icon: MessageSquare, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "AI Conversations", value: data?.totalChatMessages ?? 0, icon: MessageSquare, color: "text-primary", bg: "bg-primary/15" },
     { label: "Recordings (30d)", value: data?.recentRecordings ?? 0, icon: TrendingUp, color: "text-teal-500", bg: "bg-teal-50" },
   ];
 
@@ -67,10 +67,10 @@ export default function Analytics() {
               {stats.map((stat) => (
                 <Card key={stat.label} className="border-0 shadow-sm">
                   <CardContent className="p-4">
-                    <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center mb-3`}>
+                    <div className={`w-9 h-9 rounded-2xl ${stat.bg} flex items-center justify-center mb-3`}>
                       <stat.icon className={`w-5 h-5 ${stat.color}`} />
                     </div>
-                    <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
+                    <div className="text-2xl font-semibold tracking-tight">{stat.value.toLocaleString()}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
                   </CardContent>
                 </Card>
@@ -87,7 +87,7 @@ export default function Analytics() {
               {isLoading ? (
                 <div className="p-4 space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+                    <div key={i} className="h-12 rounded-2xl bg-muted animate-pulse" />
                   ))}
                 </div>
               ) : !data?.recentActivity?.length ? (
@@ -124,7 +124,7 @@ export default function Analytics() {
                         ) : r.status === "failed" ? (
                           <AlertCircle className="w-4 h-4 text-red-500" />
                         ) : (
-                          <div className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                          <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                         )}
                       </div>
                     </div>
@@ -142,7 +142,7 @@ export default function Analytics() {
             {[
               { icon: Zap, title: "Generate Flashcards", desc: "Open any recording and use the Flashcards tab to auto-generate study cards.", color: "text-yellow-500" },
               { icon: HelpCircle, title: "Take Practice Quizzes", desc: "Use the AI Study Tools sidebar to create and take quizzes from your transcripts.", color: "text-orange-500" },
-              { icon: BookOpen, title: "Search Knowledge Base", desc: "Use the Knowledge Base to search across all your recordings at once.", color: "text-purple-500" },
+              { icon: BookOpen, title: "Search Knowledge Base", desc: "Use the Knowledge Base to search across all your recordings at once.", color: "text-primary" },
             ].map((tip) => (
               <Card key={tip.title} className="border-0 shadow-sm">
                 <CardContent className="p-4">

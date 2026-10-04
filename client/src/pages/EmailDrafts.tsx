@@ -35,7 +35,7 @@ const DRAFT_TYPES: { value: DraftType; label: string; description: string; icon:
     label: "Email Summary",
     description: "A concise email to share with colleagues or classmates",
     icon: <Mail className="w-5 h-5" />,
-    color: "text-blue-400",
+    color: "text-primary",
   },
   {
     value: "document",
@@ -111,7 +111,7 @@ export default function EmailDrafts() {
             </Button>
           </Link>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Mail className="w-5 h-5 text-blue-500 shrink-0" />
+            <Mail className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
               <h1 className="font-semibold text-sm truncate">Email Drafts & Documents</h1>
               {recording && <p className="text-xs text-muted-foreground truncate">{recording.title}</p>}
@@ -127,7 +127,7 @@ export default function EmailDrafts() {
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Generate New</p>
             {/* Tone selector */}
-            <div className="mb-4 p-3 rounded-lg border border-border bg-muted/20">
+            <div className="mb-4 p-3 rounded-2xl border border-border bg-muted/20">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
                 Writing Tone
               </label>
@@ -155,13 +155,13 @@ export default function EmailDrafts() {
                   key={type.value}
                   onClick={() => generateMutation.mutate({ recordingId: recId, draftType: type.value, tone: selectedTone })}
                   disabled={generateMutation.isPending}
-                  className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-blue-400/50 hover:bg-blue-50/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-left p-3 rounded-2xl border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className={type.color}>{type.icon}</span>
                     <span className="text-sm font-medium">{type.label}</span>
                     {generateMutation.isPending && generateMutation.variables?.draftType === type.value && (
-                      <Sparkles className="w-3 h-3 text-blue-400 animate-pulse ml-auto" />
+                      <Sparkles className="w-3 h-3 text-primary animate-pulse ml-auto" />
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">{type.description}</p>
@@ -176,7 +176,7 @@ export default function EmailDrafts() {
               Saved Drafts ({drafts?.length ?? 0})
             </p>
             {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg mb-2" />)
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl mb-2" />)
             ) : drafts?.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No drafts yet.</p>
             ) : (
@@ -185,9 +185,9 @@ export default function EmailDrafts() {
                   <button
                     key={draft.id}
                     onClick={() => setSelectedDraftId(draft.id)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all hover:border-blue-400 hover:bg-blue-50/5 ${
+                    className={`w-full text-left p-3 rounded-2xl border transition-all hover:border-primary hover:bg-primary/5 ${
                       selectedDraftId === draft.id
-                        ? "border-blue-500 bg-blue-50/10"
+                        ? "border-primary bg-primary/10"
                         : "border-border bg-card"
                     }`}
                   >
@@ -223,10 +223,10 @@ export default function EmailDrafts() {
         {/* Main content */}
         <div className="flex-1 min-w-0">
           {generateMutation.isPending && (
-            <Card className="mb-4 border-blue-500/30 bg-blue-50/5">
+            <Card className="mb-4 border-primary/30 bg-primary/5">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-blue-400 animate-pulse" />
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Generating draft…</p>
@@ -284,7 +284,7 @@ export default function EmailDrafts() {
                   </Button>
                 </div>
                 {/* Subject line */}
-                <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border">
+                <div className="mt-3 p-3 rounded-2xl bg-muted/30 border border-border">
                   <p className="text-xs text-muted-foreground mb-0.5">Subject</p>
                   <p className="text-sm font-medium">{selectedDraft.subject}</p>
                 </div>

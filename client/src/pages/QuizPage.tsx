@@ -133,7 +133,7 @@ export default function QuizPage() {
           <Card>
             <CardHeader>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 text-sm font-bold text-indigo-400">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-sm font-semibold tracking-tight text-primary">
                   {currentQ + 1}
                 </div>
                 <div className="flex-1">
@@ -154,10 +154,10 @@ export default function QuizPage() {
                   {q.options.map((opt, i) => (
                     <div
                       key={i}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-colors ${
                         answers[q.id] === opt
-                          ? "border-indigo-500 bg-indigo-50/10"
-                          : "border-border hover:border-indigo-400/50 hover:bg-muted/30"
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50 hover:bg-muted/30"
                       }`}
                       onClick={() => handleAnswer(q.id, opt)}
                     >
@@ -181,7 +181,7 @@ export default function QuizPage() {
                 </Button>
                 <div className="flex gap-2">
                   {currentQ < questions.length - 1 ? (
-                    <Button onClick={handleNext} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button onClick={handleNext} size="sm" className="">
                       Next
                     </Button>
                   ) : (
@@ -208,9 +208,9 @@ export default function QuizPage() {
                 onClick={() => setCurrentQ(i)}
                 className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full text-xs font-medium transition-colors ${
                   i === currentQ
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-primary text-white"
                     : answers[q.id]
-                    ? "bg-indigo-500/30 text-indigo-300"
+                    ? "bg-primary/30 text-primary"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
@@ -243,7 +243,7 @@ export default function QuizPage() {
           <Card className="text-center">
             <CardContent className="pt-8 pb-6">
               <Trophy className={`w-12 h-12 mx-auto mb-3 ${scoreColor}`} />
-              <p className={`text-5xl font-bold mb-1 ${scoreColor}`}>{results.score}%</p>
+              <p className={`text-5xl font-semibold tracking-tight mb-1 ${scoreColor}`}>{results.score}%</p>
               <p className="text-muted-foreground">{results.correct} out of {results.total} correct</p>
               <div className="flex gap-3 justify-center mt-6">
                 <Button onClick={handleRetry} variant="outline" className="gap-2">
@@ -316,7 +316,7 @@ export default function QuizPage() {
             </Button>
           </Link>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Brain className="w-5 h-5 text-purple-500 shrink-0" />
+            <Brain className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
               <h1 className="font-semibold text-sm truncate">Practice Quizzes</h1>
               {recording && <p className="text-xs text-muted-foreground truncate">{recording.title}</p>}
@@ -326,7 +326,7 @@ export default function QuizPage() {
             onClick={() => generateMutation.mutate({ recordingId: recId, questionCount: 10 })}
             disabled={generateMutation.isPending}
             size="sm"
-            className="gap-2 bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+            className="gap-2 shrink-0"
           >
             <Sparkles className="w-4 h-4" />
             {generateMutation.isPending ? "Generating…" : "Generate Quiz"}
@@ -336,10 +336,10 @@ export default function QuizPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-6">
         {generateMutation.isPending && (
-          <Card className="mb-4 border-purple-500/30 bg-purple-50/5">
+          <Card className="mb-4 border-primary/30 bg-primary/5">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-primary animate-pulse" />
               </div>
               <div>
                 <p className="text-sm font-medium">Generating quiz questions…</p>
@@ -351,7 +351,7 @@ export default function QuizPage() {
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-lg" />)}
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
           </div>
         ) : quizzes?.length === 0 ? (
           <Card className="border-dashed max-w-md mx-auto mt-12">
@@ -362,7 +362,7 @@ export default function QuizPage() {
               <Button
                 onClick={() => generateMutation.mutate({ recordingId: recId, questionCount: 10 })}
                 disabled={generateMutation.isPending}
-                className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                className="gap-2"
               >
                 <Sparkles className="w-4 h-4" />
                 Generate Quiz
@@ -374,10 +374,10 @@ export default function QuizPage() {
             {quizzes?.map((quiz) => {
               const qCount = Array.isArray(quiz.questions) ? quiz.questions.length : 0;
               return (
-                <Card key={quiz.id} className="hover:border-purple-400/50 transition-colors cursor-pointer group">
+                <Card key={quiz.id} className="hover:border-primary/50 transition-colors cursor-pointer group">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-2">
-                      <Brain className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                      <Brain className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                       <Badge variant="outline" className="text-xs shrink-0">
                         {qCount} questions
                       </Badge>
@@ -395,7 +395,7 @@ export default function QuizPage() {
                     <Button
                       onClick={() => handleStartQuiz(quiz.id)}
                       size="sm"
-                      className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                      className="w-full gap-2"
                     >
                       <ChevronRight className="w-4 h-4" />
                       Start Quiz

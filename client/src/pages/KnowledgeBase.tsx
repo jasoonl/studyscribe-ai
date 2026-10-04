@@ -65,7 +65,7 @@ export default function KnowledgeBase() {
             </Button>
           </Link>
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-600" />
+            <BookOpen className="w-5 h-5 text-primary" />
             <h1 className="text-lg font-semibold text-foreground">Knowledge Base</h1>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function KnowledgeBase() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Hero search */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Search Your Transcripts</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Search Your Transcripts</h2>
           <p className="text-muted-foreground text-sm">
             Search across all your recordings and transcripts in one place.
           </p>
@@ -87,7 +87,7 @@ export default function KnowledgeBase() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Search recordings, topics, keywords…"
-            className="pl-12 pr-12 h-12 text-base rounded-xl border-2 focus-visible:border-blue-500 shadow-sm"
+            className="pl-12 pr-12 h-12 text-base rounded-xl border-2 focus-visible:border-primary shadow-sm"
             autoFocus
           />
           {inputValue && (
@@ -132,13 +132,13 @@ export default function KnowledgeBase() {
             </p>
             {results.map((result) => (
               <Link key={result.recordingId} href={`/recording/${result.recordingId}`}>
-                <Card className="hover:shadow-md transition-all duration-150 hover:border-blue-300 cursor-pointer group">
+                <Card className="hover:shadow-md transition-all duration-150 hover:border-primary cursor-pointer group">
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                          <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-blue-600 transition-colors truncate">
+                          <FileText className="w-4 h-4 text-primary shrink-0" />
+                          <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors truncate">
                             {result.recordingTitle}
                           </h3>
                         </div>
