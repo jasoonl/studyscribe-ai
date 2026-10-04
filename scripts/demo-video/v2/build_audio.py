@@ -46,7 +46,7 @@ for i, scene in enumerate(board["scenes"]):
         # the approved opening keeps its original recording
         with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "rb") as src, open(mp3, "wb") as f: f.write(src.read())
         scene["words"] = []
-    elif os.path.exists(os.path.join(here, "assets", "narration", f"{scene['id']}.json")) and json.load(open(os.path.join(here, "assets", "narration", f"{scene['id']}.json")))["text"] == scene["narration"]:
+    elif os.path.exists(os.path.join(here, "assets", "narration", f"{scene['id']}.json")) and (lambda c: c["text"] == scene["narration"] and c.get("voice", "JBFqnCBsd6RMkjVDRZzb") == board["voice_id"])(json.load(open(os.path.join(here, "assets", "narration", f"{scene['id']}.json")))):
         # a voiceover already generated for exactly this text is reused, so only edited lines cost anything
         cache = json.load(open(os.path.join(here, "assets", "narration", f"{scene['id']}.json")))
         with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "rb") as src, open(mp3, "wb") as f: f.write(src.read())
@@ -70,7 +70,7 @@ for i, scene in enumerate(board["scenes"]):
         with open(mp3, "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
         scene["words"] = merge_brand(words_from_alignment(data["alignment"]))
         with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
-        json.dump({"text": scene["narration"], "words": scene["words"]}, open(os.path.join(here, "assets", "narration", f"{scene['id']}.json"), "w"))
+        json.dump({"text": scene["narration"], "voice": board["voice_id"], "words": scene["words"]}, open(os.path.join(here, "assets", "narration", f"{scene['id']}.json"), "w"))
     subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
     with wave.open(wav) as w:
         samples = array.array("h", w.readframes(w.getnframes()))
