@@ -461,7 +461,7 @@ export default function Dashboard() {
 
           {/* Recorder Tab */}
           <TabsContent value="recorder">
-            <RecordOrUpload />
+            <RecordOrUpload embedded />
           </TabsContent>
 
           {/* Transcription Tab */}

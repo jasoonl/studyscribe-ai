@@ -14,7 +14,7 @@ import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shar
 
 type Mode = "choose" | "record" | "upload" | "link";
 
-export default function RecordOrUpload() {
+export default function RecordOrUpload({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useCustomAuth();
   const [, navigate] = useLocation();
   const [mode, setMode] = useState<Mode>("choose");
@@ -314,8 +314,8 @@ export default function RecordOrUpload() {
   // Choose mode
   if (mode === "choose") {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
+        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "hidden" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">
@@ -437,8 +437,8 @@ export default function RecordOrUpload() {
   // Recording mode
   if (mode === "record") {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
+        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -644,8 +644,8 @@ export default function RecordOrUpload() {
   // Link import mode
   if (mode === "link") {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
+        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -752,8 +752,8 @@ export default function RecordOrUpload() {
   // Upload mode
   if (mode === "upload") {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
+        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
