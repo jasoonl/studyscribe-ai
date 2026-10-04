@@ -19,7 +19,7 @@ export async function uploadAudioDirectly(
   fileName: string,
   onProgress?: (progress: number) => void,
 ): Promise<{ key: string; mimeType: string } | null> {
-  const mimeType = file.type || "audio/webm";
+  const mimeType = file.type || (/\.mov$/i.test(fileName) ? "video/quicktime" : "audio/webm");
   const preparationResponse = await fetch("/api/storage/upload-url", {
     method: "POST",
     credentials: "include",

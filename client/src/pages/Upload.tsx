@@ -46,13 +46,13 @@ export default function Upload() {
     const validTypes = [
       "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave",
       "audio/ogg", "audio/mp4", "audio/webm", "audio/m4a",
-      "audio/x-m4a", "audio/x-wav", "video/mp4", "video/webm",
+      "audio/x-m4a", "audio/x-wav", "video/mp4", "video/webm", "video/quicktime",
     ];
     // Also accept by extension if MIME type is blank/generic
     const ext = file.name.split(".").pop()?.toLowerCase();
-    const validExts = ["mp3", "wav", "ogg", "mp4", "webm", "m4a"];
+    const validExts = ["mp3", "wav", "ogg", "mp4", "webm", "m4a", "mov"];
     if (!validTypes.includes(file.type) && !validExts.includes(ext || "")) {
-      toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, or WebM)");
+      toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, MOV, or WebM)");
       return;
     }
     const maxSize = MAX_UPLOAD_BYTES;
@@ -237,10 +237,10 @@ export default function Upload() {
                     <UploadCloud className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
                     <p className="font-medium mb-1">Click to select file</p>
                     <p className="text-sm text-muted-foreground">or drag and drop an audio file</p>
-                    <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, MP4, or WebM • Max {MAX_UPLOAD_LABEL}</p>
+                    <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, MP4, MOV, or WebM • Max {MAX_UPLOAD_LABEL}</p>
                   </div>
                 )}
-                <input ref={fileInputRef} type="file" accept="audio/*,video/mp4,video/webm" onChange={handleFileSelect} className="hidden" disabled={isUploading || uploadComplete} />
+                <input ref={fileInputRef} type="file" accept="audio/*,video/mp4,video/webm,video/quicktime,.mov" onChange={handleFileSelect} className="hidden" disabled={isUploading || uploadComplete} />
               </div>
 
               {/* Progress Bar — always rendered when uploading or complete */}
@@ -308,7 +308,7 @@ export default function Upload() {
 
           <Card className="mt-6 p-6 border-2 border-border">
             <h3 className="font-bold mb-3">Supported Formats</h3>
-            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4 — max {MAX_UPLOAD_LABEL}</p>
+            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4, MOV — max {MAX_UPLOAD_LABEL}</p>
           </Card>
         </div>
       </main>

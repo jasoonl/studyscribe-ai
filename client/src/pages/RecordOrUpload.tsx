@@ -203,9 +203,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
 
   // Upload functions
   const validateAndSetFile = (file: File) => {
-    const validTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/ogg", "audio/mp4", "audio/webm", "audio/m4a", "audio/x-m4a"];
-    if (!validTypes.includes(file.type)) {
-      toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, or WebM)");
+    const validTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/ogg", "audio/mp4", "audio/webm", "audio/m4a", "audio/x-m4a", "video/quicktime"];
+    if (!validTypes.includes(file.type) && !/\.mov$/i.test(file.name)) {
+      toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, MOV, or WebM)");
       return;
     }
 
@@ -380,7 +380,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <ul className="space-y-2 text-sm text-muted-foreground text-left mb-6">
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        MP3, WAV, OGG, MP4, WebM
+                        MP3, WAV, OGG, MP4, MOV, WebM
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
@@ -789,7 +789,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <div>
                       <h3 className="text-xl font-bold mb-2">Drag and drop your file here</h3>
                       <p className="text-muted-foreground mb-2">or click to browse</p>
-                      <p className="text-sm text-muted-foreground">Supported formats: MP3, WAV, OGG, MP4, WebM (Max {MAX_UPLOAD_LABEL})</p>
+                      <p className="text-sm text-muted-foreground">Supported formats: MP3, WAV, OGG, MP4, MOV, WebM (Max {MAX_UPLOAD_LABEL})</p>
                     </div>
                     {selectedFile && (
                       <div className="pt-4 border-t border-border">
@@ -808,7 +808,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="audio/*"
+                    accept="audio/*,video/quicktime,.mov"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
