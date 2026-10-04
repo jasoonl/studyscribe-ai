@@ -11,11 +11,10 @@
     },
     {
       "id": "brand",
-      "keep": true,
       "min": 6.0,
       "lead": 0.9,
       "tail": 0.6,
-      "narration": "Meet StudyScribe AI. Record once, and turn it into everything you need to study."
+      "narration": "Meet Study Scribe AI. Record once, and turn it into everything you need to study."
     },
     {
       "id": "pipeline",
@@ -29,7 +28,7 @@
       "min": 5.5,
       "lead": 0.5,
       "tail": 0.4,
-      "narration": "Record live, upload a file, or paste a link. StudyScribe takes it from there."
+      "narration": "Record live, upload a file, or paste a link. Study Scribe takes it from there."
     },
     {
       "id": "add",
@@ -138,7 +137,7 @@
       "min": 8.5,
       "lead": 0.5,
       "tail": 0.5,
-      "narration": "StudyScribe is for students cramming before finals, professionals buried in meetings, and anyone learning in another language."
+      "narration": "Study Scribe is for students cramming before finals, professionals buried in meetings, and anyone learning in another language."
     },
     {
       "id": "library",
@@ -170,7 +169,7 @@
       "min": 8.0,
       "lead": 0.7,
       "tail": 1.8,
-      "narration": "From the first lecture to the final exam. StudyScribe AI. Record once, study smarter. Try it free today."
+      "narration": "From the first lecture to the final exam. Study Scribe AI. Record once, study smarter. Try it free today."
     }
   ]
 }

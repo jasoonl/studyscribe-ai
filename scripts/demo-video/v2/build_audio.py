@@ -30,6 +30,16 @@ def words_from_alignment(al):
     if cur: out.append({"raw": cur, "w": re.sub(r"[^a-z0-9'-]", "", cur.lower()), "t0": t0, "t1": t1})
     return out
 
+def merge_brand(words):
+    # the voice is told "Study Scribe" so it says it as two clear words; on screen it stays one word
+    out, k = [], 0
+    while k < len(words):
+        if k + 1 < len(words) and words[k]["w"] == "study" and words[k + 1]["w"].startswith("scribe"):
+            a, b = words[k], words[k + 1]
+            out.append({"raw": "StudyScribe" + b["raw"][len("Scribe"):], "w": "studyscribe" + b["w"][len("scribe"):], "t0": a["t0"], "t1": b["t1"]}); k += 2
+        else: out.append(words[k]); k += 1
+    return out
+
 for i, scene in enumerate(board["scenes"]):
     mp3, wav = os.path.join(work, f"v{i:02d}.mp3"), os.path.join(work, f"v{i:02d}.wav")
     if scene.get("keep"):
@@ -58,7 +68,7 @@ for i, scene in enumerate(board["scenes"]):
         with urllib.request.urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read())
         with open(mp3, "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
-        scene["words"] = words_from_alignment(data["alignment"])
+        scene["words"] = merge_brand(words_from_alignment(data["alignment"]))
         with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
         json.dump({"text": scene["narration"], "words": scene["words"]}, open(os.path.join(here, "assets", "narration", f"{scene['id']}.json"), "w"))
     subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
