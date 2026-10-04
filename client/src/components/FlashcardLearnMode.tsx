@@ -87,7 +87,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
 
   return (
     <div className="space-y-4">
-      <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-primary p-4 dark:from-cyan-950/30 dark:to-primary/30 sm:p-5">
+      <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-primary/10 p-4 dark:from-cyan-950/30 dark:to-primary/30 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2 font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Learn Mode</div>

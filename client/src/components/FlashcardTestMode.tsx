@@ -33,7 +33,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
   if (isSubmitted && score) {
     return (
       <div className="space-y-4">
-        <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary to-cyan-50 p-6 text-center dark:from-primary/30 dark:to-cyan-950/30">
+        <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/10 to-cyan-50 p-6 text-center dark:from-primary/30 dark:to-cyan-950/30">
           <Target className="mx-auto h-8 w-8 text-primary" />
           <p className="mt-3 text-sm font-medium text-muted-foreground">Mastery Test result</p>
           <p className="mt-1 text-5xl font-semibold tracking-tight tracking-tight">{score.percentage}%</p>
@@ -67,7 +67,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
 
   return (
     <div className="space-y-4">
-      <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary to-cyan-50 p-4 dark:from-primary/30 dark:to-cyan-950/30 sm:p-5">
+      <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/10 to-cyan-50 p-4 dark:from-primary/30 dark:to-cyan-950/30 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4 text-primary" /> Test Mode</div>
