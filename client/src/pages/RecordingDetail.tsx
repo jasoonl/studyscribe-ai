@@ -1,4 +1,5 @@
 import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
+import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -522,10 +523,8 @@ export default function RecordingDetail() {
                           <Sparkles className="w-4 h-4 text-accent" />
                           {note.type.replace(/_/g, " ").toUpperCase()}
                         </h3>
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                            {note.content}
-                          </p>
+                        <div className="prose prose-sm max-w-none dark:prose-invert text-foreground/90">
+                          <Streamdown>{note.content}</Streamdown>
                         </div>
                       </Card>
                     ))
