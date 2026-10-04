@@ -124,7 +124,7 @@
       { w: ["And", "by", "Friday,", "most", "of", "it", "was", '<span class="gone">gone.</span>'], i0: 10 },
     ];
     lines.forEach((L, li) => {
-      const el = h("div", "big", null, g); put(el, 160, 400, 1600);
+      const el = h("div", "big", null, g); put(el, 0, 410, 1920);
       L.w.forEach((txt, wi) => {
         const w = h("span", "w", txt + (wi < L.w.length - 1 ? " " : ""), el), t0 = wt(L.i0 + wi) - 0.1;
         tw(w, "op", [[t0, 0], [t0 + 0.4, 1]]); tw(w, "y", [[t0, 40], [t0 + 0.55, 0, "expo"]]); tw(w, "blur", [[t0, 14], [t0 + 0.45, 0]]);
