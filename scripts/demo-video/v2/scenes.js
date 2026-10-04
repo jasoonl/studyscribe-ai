@@ -182,10 +182,10 @@
   {
     const s = S.add, g = scene(s), a = s.start;
     const scr = tour(s, g, "add-recording", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.8, 800, 590, 1.42, "inOut"]]);
-    const cards = [[350, 371, 277, 449], [662, 371, 277, 449], [973, 371, 277, 449]];
+    const cards = [[349, 353, 279, 459], [660, 353, 279, 459], [972, 353, 279, 459]];
     rim(scr, cards[0], a + 1.9, a + 2.7); rim(scr, cards[1], a + 2.7, a + 3.5); rim(scr, cards[2], a + 3.5, s.end - 0.4);
     const ck = s.clickTimes[0];
-    cursor(scr, [[a + 1.5, 760, 330], [a + 2.2, 511, 746], [a + 3.0, 800, 722], [ck - 0.25, 1089, 746], [ck, 1089, 746, true]]);
+    cursor(scr, [[a + 1.5, 760, 330], [a + 2.2, 488, 752], [a + 3.0, 799, 748], [ck - 0.25, 1111, 752], [ck, 1111, 752, true]]);
     chip(g, "27 languages", 1330, 170, W(s, "^twenty-seven")); chip(g, "Starts automatically", 190, 170, W(s, "^starts"));
     captions(g, s);
   }
@@ -194,7 +194,7 @@
   {
     const s = S.transcript, g = scene(s), a = s.start;
     const scr = tour(s, g, "transcript", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, 560, 800, 1.6, "inOut"]]);
-    const ck = s.clickTimes[0], line = [86, 731, 923, 110];
+    const ck = s.clickTimes[0], line = [95, 741, 906, 89];
     rim(scr, line, ck + 0.1, null, true);
     cursor(scr, [[W(s, "^labeled") - 0.2, 900, 650], [ck - 0.3, 520, 790], [ck, 520, 790, true]]);
     strip(g, [["Timestamps", W(s, "^timestamped")], ["Speaker labels", W(s, "^speaker")], ["Jump to any moment", W(s, "^click")]]);
@@ -205,7 +205,7 @@
   {
     const s = S.notes, g = scene(s), a = s.start;
     const scr = tour(s, g, "study-notes", [[a, 800, 448, 0.94], [a + 0.9, 570, 600, 1.45, "inOut"], [s.end, 570, 700, 1.45, "inOut"]]);
-    rim(scr, [70, 528, 740, 112], W(s, "^organized"), W(s, "^ideas"), true); rim(scr, [70, 655, 740, 185], W(s, "^ideas"), null, true);
+    rim(scr, [86, 541, 924, 129], W(s, "^organized"), W(s, "^ideas"), true); rim(scr, [86, 670, 924, 193], W(s, "^ideas"), null, true);
     strip(g, [["Study notes", W(s, "^study")], ["Organized by idea", W(s, "^organized")]]);
     captions(g, s);
   }
@@ -255,10 +255,10 @@
   // ================= 8. LEARN (1min AI): written recall =================
   {
     const s = S.learn, g = scene(s), a = s.start;
-    const scr = tour(s, g, "learn-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 500, 760, 1.5, "inOut"]]);
-    const tt = W(s, "^graduate", 0, -0.1), box = h("div", "abs typed", "", scr); put(box, 98, 730, 880, 46); box.style.cssText += "background:#fff;padding:9px 14px;box-sizing:border-box;border-radius:8px;";
+    const scr = tour(s, g, "learn-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 500, 730, 1.5, "inOut"]]);
+    const tt = W(s, "^graduate", 0, -0.1), box = h("div", "abs typed", "", scr); put(box, 98, 700, 900, 46); box.style.cssText += "background:#fff;padding:9px 14px;box-sizing:border-box;border-radius:8px;";
     tw(box, "op", [[tt - 0.02, 0], [tt, 1]]); typing(box, "Healthcare and virtual assistants", tt, 15);
-    rim(scr, [90, 723, 915, 112], W(s, "^written", 0, 0.25), null, false);
+    rim(scr, [90, 693, 916, 113], W(s, "^written", 0, 0.25), null, false);
     strip(g, [["Recognition", W(s, "^recognition")], ["Written recall", W(s, "^written")]]);
     captions(g, s);
   }
@@ -266,9 +266,9 @@
   // ================= 9. TEST (1min AI): practice exam =================
   {
     const s = S.test, g = scene(s), a = s.start;
-    const scr = tour(s, g, "test-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, 500, 700, 1.45, "inOut"]]);
+    const scr = tour(s, g, "test-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, 500, 440, 1.45, "inOut"]]);
     const ck = s.clickTimes[0];
-    rim(scr, [86, 618, 458, 46], ck + 0.05); cursor(scr, [[a + 1.2, 800, 600], [ck - 0.3, 330, 641], [ck, 330, 641, true]]);
+    rim(scr, [86, 330, 458, 46], ck + 0.05); cursor(scr, [[a + 1.2, 800, 300], [ck - 0.3, 315, 353], [ck, 315, 353, true]]);
     strip(g, [["Answers shown after you submit", W(s, "^exam", 0, 0.2)]]);
     captions(g, s);
   }
@@ -328,7 +328,7 @@
     const s = S.pro, g = scene(s), a = s.start;
     const scr = tour(s, g, "email-drafts", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, 950, 330, 1.55, "inOut"]]);
     const ck = s.clickTimes[0];
-    rim(scr, [1250, 104, 96, 46], ck + 0.05); cursor(scr, [[W(s, "^follow-up") - 0.2, 1000, 420], [ck - 0.35, 1298, 127], [ck, 1298, 127, true]]);
+    rim(scr, [1249, 106, 95, 42], ck + 0.05); cursor(scr, [[W(s, "^follow-up") - 0.2, 1000, 420], [ck - 0.35, 1298, 127], [ck, 1298, 127, true]]);
     strip(g, [["Summary email", W(s, "^summaries")], ["Follow-up emails", W(s, "^follow-up")], ["Tone: Formal", W(s, "^tone")]]); chip(g, "Copied", 1400, 40, ck + 0.1, "ok");
     captions(g, s);
   }
