@@ -39,7 +39,7 @@
     const b = h("div", "blob"); b.style.cssText += `left:${x}px;top:${y}px;width:${d}px;height:${d}px;background:${c};`; blobs.push([b, x, y, i]);
   });
   ticks.push((t) => blobs.forEach(([b, x, y, i]) => { b.style.transform = `translate(${Math.sin(t * 0.22 + i * 2) * 90}px, ${Math.cos(t * 0.18 + i) * 70}px)`; }));
-  tw(bgLight, "op", [[S.product.start, 0], [S.product.start + 0.5, 1], [S.trust.end, 1], [S.trust.end + 0.5, 0]]);
+  tw(bgLight, "op", [[S.product.start, 0], [S.product.start + 0.5, 1], [S.steps.end, 1], [S.steps.end + 0.5, 0]]);
 
   // ---- helpers ----------------------------------------------------------------------------
   const scene = (s) => {
@@ -145,6 +145,29 @@
     tw(tag, "op", [[t + 2.2, 0], [t + 2.9, 1]]); tw(tag, "y", [[t + 2.2, 24], [t + 2.9, 0]]);
   }
 
+
+  // ================= NEW A. PIPELINE (dark): one recording becomes a whole study set =================
+  {
+    const s = S.pipeline, g = scene(s), a = s.start;
+    const file = h("div", "dcard", '<small>YOUR LECTURE</small><div style="display:flex;align-items:flex-end;gap:7px;height:120px" id="wv"></div><div class="dline" style="margin:22px 0 0;font-size:30px;font-weight:600">Lecture.m4a</div><div class="dline" style="margin:0;color:#8ec1ff;font-size:24px">7:38</div>', g); put(file, 110, 360, 420, 360);
+    const bars = file.querySelector("#wv"); const hs = []; for (let i = 0; i < 22; i++) { const b = h("div", "", null, bars); const v = 24 + 90 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.6)); b.style.cssText = `width:10px;border-radius:5px;background:linear-gradient(#7db4ff,#22d3ee);height:${v}px;`; hs.push([b, v]); }
+    ticks.push((t) => hs.forEach(([b, v], i) => { b.style.height = (v * (0.7 + 0.3 * Math.sin(t * 6 + i))) + "px"; }));
+    const td = W(s, "^drop", 0, 0.1); tw(file, "op", [[td, 0], [td + 0.3, 1]]); tw(file, "y", [[td - 0.1, -260], [td + 0.55, 0, "back"]]); tw(file, "r", [[td - 0.1, -8], [td + 0.55, 0, "back"]]);
+    const tr = h("div", "dcard", "<small>TRANSCRIPT</small>", g); put(tr, 640, 300, 640, 480);
+    const lines = [["0:00", "AI is one of the most transformative"], ["0:07", "technologies of our time. It lets"], ["0:14", "computers learn from data, spot"], ["0:21", "patterns, and make decisions."]];
+    const tt = W(s, "^transcript", 0, 0.1); tw(tr, "op", [[tt, 0], [tt + 0.3, 1]]); tw(tr, "y", [[tt, 50], [tt + 0.6, 0, "expo"]]);
+    lines.forEach(([ts, tx], i) => { const l = h("div", "dline", `<b>${ts}</b><span></span>`, tr); typing(l.querySelector("span"), tx, tt + 0.35 + i * 0.5, 34); });
+    const tiles = [["Study notes", "^notes", 300, '<path d="M6 4h9l4 4v12H6zM9 12h7M9 16h7" />'], ["Flashcards", "^flashcards", 440, '<rect x="4" y="7" width="14" height="10" rx="2"/><path d="M8 4h12v10"/>'], ["Practice quiz", "^quiz", 580, '<circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1-1.5 2M12 17v.01"/>']];
+    tiles.forEach(([name, w, y, path]) => {
+      const e = h("div", "ftile", `<i><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</svg></i>${name}`, g); put(e, 1410, y);
+      const t0 = W(s, w, 0, 0.1); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "x", [[t0, -160], [t0 + 0.6, 0, "expo"]]); tw(e, "s", [[t0, 0.8], [t0 + 0.55, 1, "back"]]);
+    });
+    // light streaming from file to transcript to tiles
+    const arrows = [[540, 540, 90, "^drop"], [1290, 540, 110, "^notes"]];
+    arrows.forEach(([x, y, w, k]) => { const ar = h("div", "abs", null, g); ar.style.cssText += "height:6px;border-radius:3px;background:linear-gradient(90deg,#2f6bff,#22d3ee);"; put(ar, x, y, w); const t0 = W(s, k === "^drop" ? "^transcript" : "^notes", 0, 0.3); tw(ar, "op", [[t0, 0], [t0 + 0.3, 1]]); });
+    captions(g, s);
+  }
+
   // ================= 3. PRODUCT: the library, all three recordings =================
   {
     const s = S.product, g = scene(s), scr = screen(g, "dashboard", true); put(scr, 160, 40);
@@ -208,6 +231,26 @@
     captions(g, s);
   }
 
+
+  // ================= NEW B. FLIP (light): try a flashcard yourself =================
+  {
+    const s = S.flip, g = scene(s), a = s.start;
+    const t0 = W(s, "^let", 0, 0.1), tt = W(s, "^second", 0, 0.1), tf = W(s, "^artificial", 0, 0.15);
+    const hd = h("div", "abs", "Your turn", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 70);
+    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+    const c = h("div", "fc", null, g); put(c, 640, 250); c.style.width = "640px"; c.style.height = "400px";
+    h("div", "face", "<small>QUESTION</small><p>What does AI stand for?</p>", c); h("div", "face back", "<small>ANSWER</small><p>Artificial intelligence</p>", c);
+    c.querySelector(".back p").style.fontSize = "62px";
+    tw(c, "op", [[a + 0.3, 0], [a + 0.8, 1]]); tw(c, "s", [[a + 0.3, 0.7], [a + 1.0, 1.35, "back"]]); tw(c, "y", [[a + 0.3, 80], [a + 1.0, 0, "expo"]]); tw(c, "ry", [[tf, 0], [tf + 0.8, 180, "inOut"]]);
+    const cd = h("div", "abs", "3", g); cd.style.cssText += "width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font-size:84px;font-weight:700;color:#2f6bff;background:#fff;box-shadow:0 0 0 6px #cfe0ff,0 20px 50px rgba(37,79,200,.28);"; put(cd, 885, 780);
+    tw(cd, "op", [[tt, 0], [tt + 0.2, 1], [tf - 0.05, 1], [tf + 0.2, 0]]); tw(cd, "s", [[tt, 0.6], [tt + 0.4, 1, "back"]]);
+    ticks.push((t) => { const u = Math.max(0, Math.min(0.999, (t - tt) / Math.max(0.3, tf - tt))); cd.textContent = String(3 - Math.floor(u * 3)); });
+    chip(g, "Recall beats re-reading", 1130, 820, W(s, "^recall", 0, 0.05), "ok");
+    // confetti burst when the card turns
+    for (let i = 0; i < 18; i++) { const d = h("div", "dot", null, g); d.style.background = ["#2f6bff", "#22d3ee", "#7db4ff", "#ffffff"][i % 4]; put(d, 960, 450); const ang = (i / 18) * 6.283, r = 300 + (i % 3) * 90; tw(d, "x", [[tf + 0.4, 0], [tf + 1.3, Math.cos(ang) * r, "expo"]]); tw(d, "y", [[tf + 0.4, 0], [tf + 1.3, Math.sin(ang) * r * 0.8, "expo"]]); tw(d, "op", [[tf + 0.39, 0], [tf + 0.4, 1], [tf + 1.3, 0]]); }
+    captions(g, s);
+  }
+
   // ================= 8. LEARN (1min AI): written recall =================
   {
     const s = S.learn, g = scene(s), a = s.start;
@@ -236,6 +279,25 @@
     const ck = s.clickTimes[0];
     rim(scr, [455, 345, 690, 42], ck + 0.05); cursor(scr, [[a + 1.0, 1000, 520], [ck - 0.3, 700, 366], [ck, 700, 366, true]]);
     strip(g, [["10 questions", W(s, "^ten")], ["Instant feedback", W(s, "^instant")]]);
+    captions(g, s);
+  }
+
+
+  // ================= NEW C. CHALLENGE (light): a real quiz question with a timer =================
+  {
+    const s = S.challenge, g = scene(s), a = s.start, ck = s.clickTimes[0];
+    const tp = W(s, "^pick", 0, 0.1);
+    const q = h("div", "qcard", '<small>QUESTION 1 OF 10 &nbsp;·&nbsp; MULTIPLE CHOICE</small><h3>What is AI described as in the transcript?</h3>', g); put(q, 380, 150);
+    const opts = ["A futuristic concept that is yet to be developed.", "A simple computer program for basic tasks.", "One of the most transformative technologies of our time.", "A technology primarily used for entertainment."].map((tx, i) => h("div", "opt" + (i === 2 ? " right" : ""), `<u></u>${tx}`, q));
+    tw(q, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(q, "y", [[a + 0.2, 70], [a + 0.9, 0, "expo"]]);
+    opts.forEach((o, i) => { if (i === 2) { o.classList.remove("right"); ticks.push((t) => o.classList.toggle("right", t >= ck)); } else tw(o, "op", [[ck, 1], [ck + 0.4, 0.35]]); });
+    const bar = h("div", "abs", null, g); bar.style.cssText += "height:14px;border-radius:7px;background:linear-gradient(90deg,#2f6bff,#22d3ee);"; put(bar, 380, 112, 1160);
+    tw(bar, "op", [[tp - 0.1, 0], [tp, 1], [ck, 1], [ck + 0.3, 0]]);
+    ticks.push((t) => { const u = Math.max(0, Math.min(1, (t - tp) / Math.max(0.5, ck - tp))); bar.style.width = (1160 * (1 - u)) + "px"; });
+    const cur = h("div", "cur", ARROW, g);
+    tw(cur, "x", [[a + 1.2, 1500, "lin"], [ck - 0.25, 760, "inOut"]]); tw(cur, "y", [[a + 1.2, 800, "lin"], [ck - 0.25, 700, "inOut"]]); tw(cur, "op", [[a + 1.2, 0], [a + 1.5, 1]]);
+    const rp = h("div", "ripple", null, g); put(rp, 760, 700); tw(rp, "op", [[ck, 0.9], [ck + 0.55, 0]]); tw(rp, "s", [[ck, 0.3], [ck + 0.55, 1.7]]); tw(cur, "s", [[ck - 0.1, 1], [ck, 0.82], [ck + 0.12, 1]]);
+    chip(g, "Correct!", 1560, 560, ck + 0.1, "ok"); chip(g, "Instant feedback", 820, 880, W(s, "^instant", 0, 0.05));
     captions(g, s);
   }
 
@@ -270,6 +332,22 @@
     captions(g, s);
   }
 
+
+  // ================= NEW D. WHO IT IS FOR (light) =================
+  {
+    const s = S.who, g = scene(s), a = s.start;
+    const hd = h("div", "abs", "Made for the way you work", g); hd.style.cssText += "font-size:80px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 140);
+    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+    const ic = (p) => `<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+    [["Students", "Cram smarter for finals", "^students", 110, '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/>'],
+     ["Professionals", "Meetings into follow-ups", "^professionals", 700, '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M3 13h18"/>'],
+     ["Language learners", "27 languages supported", "^another", 1290, '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>']].forEach(([t, sub, w, x, p]) => {
+      const e = h("div", "pcard", `<em>${ic(p)}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 330);
+      const t0 = W(s, w, 0, 0.15); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "y", [[t0, 90], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.85], [t0 + 0.6, 1, "back"]]);
+    });
+    captions(g, s);
+  }
+
   // ================= 14. LIBRARY (analytics): all three recordings =================
   {
     const s = S.library, g = scene(s), a = s.start;
@@ -296,6 +374,22 @@
     const cur = h("div", "cur", ARROW, g);
     tw(cur, "x", [[a + 1.2, 1000, "lin"], [c1 - 0.2, 640, "inOut"], [c2 - 0.2, 1240, "inOut"]]); tw(cur, "y", [[a + 1.2, 470, "lin"], [c1 - 0.2, 650, "inOut"], [c2 - 0.2, 650, "inOut"]]); tw(cur, "op", [[a + 1.2, 0], [a + 1.5, 1]]);
     chip(g, "studyscribe-export.json", 360, 820, c1 + 0.15, "ok"); chip(g, "All data deleted", 1130, 820, c2 + 0.15, "ok");
+    captions(g, s);
+  }
+
+
+  // ================= NEW E. THREE STEPS (light) =================
+  {
+    const s = S.steps, g = scene(s), a = s.start;
+    const hd = h("div", "abs", "Start in three steps", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 150);
+    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+    const line = h("div", "abs", null, g); line.style.cssText += "height:6px;border-radius:3px;background:linear-gradient(90deg,#2f6bff,#22d3ee);transform-origin:0 50%;"; put(line, 420, 466, 1080);
+    const steps = [["1", "Sign up free", "Free to start", "^sign", 150], ["2", "Add a lecture", "Record, upload, or paste", "^add", 730], ["3", "Start studying", "Notes, cards, quizzes", "^studying", 1310]];
+    steps.forEach(([n, t, sub, w, x], i) => {
+      const e = h("div", "step", `<em>${n}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 400);
+      const t0 = W(s, w, 0, 0.15); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "y", [[t0, 70], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.8], [t0 + 0.6, 1, "back"]]);
+    });
+    tw(line, "s", [[W(s, "^sign", 0, 0.1), 0.001], [W(s, "^studying", 0, 0.1), 1, "inOut"]]);
     captions(g, s);
   }
 

@@ -13,7 +13,7 @@ work = sys.argv[1]
 os.makedirs(work, exist_ok=True)
 SR = 44100
 board = json.load(open(os.path.join(here, "storyboard.json")))
-API_KEY = os.environ["ELEVENLABS_API_KEY"]
+API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 OVERLAP = 0.5  # the next scene starts this long before the previous one finishes fading
 
 t = 0.0
@@ -36,6 +36,19 @@ for i, scene in enumerate(board["scenes"]):
         # the approved opening keeps its original recording
         with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "rb") as src, open(mp3, "wb") as f: f.write(src.read())
         scene["words"] = []
+    elif os.path.exists(os.path.join(here, "assets", "narration", f"{scene['id']}.json")) and json.load(open(os.path.join(here, "assets", "narration", f"{scene['id']}.json")))["text"] == scene["narration"]:
+        # a voiceover already generated for exactly this text is reused, so only edited lines cost anything
+        cache = json.load(open(os.path.join(here, "assets", "narration", f"{scene['id']}.json")))
+        with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "rb") as src, open(mp3, "wb") as f: f.write(src.read())
+        scene["words"] = cache["words"]
+    elif not API_KEY:
+        # draft: a system voice with evenly spread word times, only to check layout (never written to the cache)
+        mp3 = mp3.replace(".mp3", ".aiff"); subprocess.run(["say", "-o", mp3, "-r", "165", scene["narration"]], check=True)
+        subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
+        with wave.open(wav) as w: d = w.getnframes() / SR
+        toks = scene["narration"].split(); tot = sum(len(x) + 1 for x in toks); acc = 0; scene["words"] = []
+        for x in toks:
+            scene["words"].append({"raw": x, "w": re.sub(r"[^a-z0-9'-]", "", x.lower()), "t0": d * acc / tot, "t1": d * (acc + len(x)) / tot}); acc += len(x) + 1
     else:
         req = urllib.request.Request(
             f"https://api.elevenlabs.io/v1/text-to-speech/{board['voice_id']}/with-timestamps",
@@ -46,6 +59,8 @@ for i, scene in enumerate(board["scenes"]):
             data = json.loads(resp.read())
         with open(mp3, "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
         scene["words"] = words_from_alignment(data["alignment"])
+        with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
+        json.dump({"text": scene["narration"], "words": scene["words"]}, open(os.path.join(here, "assets", "narration", f"{scene['id']}.json"), "w"))
     subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
     with wave.open(wav) as w:
         samples = array.array("h", w.readframes(w.getnframes()))
