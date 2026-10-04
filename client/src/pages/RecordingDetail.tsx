@@ -468,7 +468,7 @@ export default function RecordingDetail() {
                                       </span>
                                       <span className="min-w-0 text-sm leading-relaxed">
                                         {segment.speaker && segment.speaker !== (transcript.segments as TranscriptSegment[])[index - 1]?.speaker && (
-                                          <span className={`mb-1 mr-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? "bg-primary-foreground/15 text-primary-foreground" : "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-200"}`}>
+                                          <span className={`mr-2 text-xs font-semibold ${isActive ? "text-primary-foreground" : "text-violet-700 dark:text-violet-300"}`}>
                                             {segment.speaker}
                                           </span>
                                         )}
