@@ -269,3 +269,23 @@ export async function retrieveSpeakerDiarization(providerId: string) {
   if (result.status === "processing") throw new Error("Speaker diarization result is not ready");
   return { text: result.text, language: result.language, segments: result.segments };
 }
+
+/**
+ * Asks the transcription provider to delete its stored copy of a transcript
+ * (and the audio it fetched). Best effort: a missing job counts as success and
+ * any other failure is reported so account deletion can say what is left.
+ */
+export async function deleteProviderTranscript(transcriptId: string): Promise<boolean> {
+  const apiKey = process.env.ASSEMBLYAI_API_KEY;
+  if (!apiKey || !transcriptId) return true;
+  try {
+    const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript/${encodeURIComponent(transcriptId)}`, {
+      method: "DELETE",
+      headers: { Authorization: apiKey },
+      signal: AbortSignal.timeout(15_000),
+    });
+    return response.ok || response.status === 404;
+  } catch {
+    return false;
+  }
+}

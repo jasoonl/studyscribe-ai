@@ -205,6 +205,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.googleId = user.googleId;
     }
 
+    if (user.termsAcceptedAt !== undefined) {
+      values.termsAcceptedAt = user.termsAcceptedAt;
+      updateSet.termsAcceptedAt = user.termsAcceptedAt;
+    }
+
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;

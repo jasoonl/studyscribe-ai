@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import net from "node:net";
 import { MAX_LINK_IMPORT_BYTES } from "@shared/const";
 import { extractMediaCandidates, readTextLimited } from "./mediaPageResolver";
-import { isYouTubeNonVideoLink, parseYouTubeVideoId, resolveYouTubeAudio, youtubeAudioStream } from "./youtubeAudio";
+import { assertYouTubeCreativeCommons, isYouTubeNonVideoLink, parseYouTubeVideoId, resolveYouTubeAudio, youtubeAudioStream } from "./youtubeAudio";
 
 /**
  * Importing audio from a user-supplied link means this server makes an
@@ -210,6 +210,7 @@ type FetchedAudio = {
 };
 
 async function fetchYouTubeAudio(videoId: string): Promise<FetchedAudio> {
+  await assertYouTubeCreativeCommons(videoId);
   const audio = await resolveYouTubeAudio(videoId);
   if (audio.contentLength !== null && audio.contentLength > MAX_IMPORT_BYTES) {
     throw new Error(`That video's audio is larger than ${Math.floor(MAX_IMPORT_BYTES / (1024 * 1024))}MB.`);

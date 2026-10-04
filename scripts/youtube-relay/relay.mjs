@@ -322,7 +322,7 @@ async function start() {
     console.log(`[${stamp()}] Secure tunnel is up.`);
     // Quick tunnels take a few seconds to become reachable from outside.
     for (let tries = 0; tries < 6 && !(await announce()); tries++) await new Promise((r) => setTimeout(r, 5_000));
-    heartbeat = setInterval(announce, 5 * 60_000);
+    heartbeat = setInterval(announce, 2 * 60_000);
   });
   tunnel.on("error", () => {
     console.error("cloudflared is not installed. Run: brew install cloudflared");

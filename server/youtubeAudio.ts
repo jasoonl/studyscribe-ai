@@ -300,3 +300,40 @@ export function youtubeAudioStream(audio: Pick<YouTubeAudio, "url" | "contentLen
     },
   });
 }
+
+const LICENSE_API = "https://www.googleapis.com/youtube/v3/videos";
+
+export function isYouTubeLicenseCheckConfigured() {
+  return Boolean(process.env.YOUTUBE_API_KEY);
+}
+
+/**
+ * Link import is limited to videos their creator published under a Creative Commons licence,
+ * which permits reuse. It asks YouTube's official Data API, so the answer is the licence the
+ * uploader actually chose. With no API key configured it refuses everything rather than guess.
+ * Videos that are not CC (including ones saved with YouTube Premium, which only allows viewing
+ * inside the YouTube app) must be uploaded as files by someone who has the rights to them.
+ */
+export async function assertYouTubeCreativeCommons(videoId: string): Promise<void> {
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) {
+    throw new Error("Importing YouTube links is turned off until it is set up. Upload the audio file instead if you have the right to use it.");
+  }
+  let data: any;
+  try {
+    const url = new URL(LICENSE_API);
+    url.searchParams.set("part", "status");
+    url.searchParams.set("id", videoId);
+    url.searchParams.set("key", key);
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error(String(response.status));
+    data = await response.json();
+  } catch {
+    throw new Error("Could not check that video's licence with YouTube. Try again in a moment.");
+  }
+  const status = data?.items?.[0]?.status;
+  if (!status) throw new Error("YouTube has no public video with that link (it may be private, removed or mistyped).");
+  if (status.license !== "creativeCommon") {
+    throw new Error("Only YouTube videos published under a Creative Commons licence can be imported by link. This one is not, so upload the audio file instead if you have the right to use it.");
+  }
+}

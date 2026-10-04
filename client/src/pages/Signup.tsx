@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MIN_AGE } from "@shared/legal";
 import { Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +21,7 @@ export default function Signup() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [inviteChecked, setInviteChecked] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -71,6 +74,11 @@ export default function Signup() {
       return;
     }
 
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms of Service and Privacy Policy to continue");
+      return;
+    }
+
     if (!formData.name.trim()) {
       toast.error("Name is required");
       setIsLoading(false);
@@ -87,6 +95,7 @@ export default function Signup() {
           password: formData.password,
           name: formData.name,
           inviteCode,
+          acceptedTerms,
         }),
       });
 
@@ -106,6 +115,10 @@ export default function Signup() {
   };
 
   const handleGoogleSignup = async () => {
+    if (!acceptedTerms) {
+      toast.error("Please accept the Terms of Service and Privacy Policy to continue");
+      return;
+    }
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
@@ -163,6 +176,15 @@ export default function Signup() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Create Your Account</h1>
           <p className="text-muted-foreground">Welcome! Your invite has been verified.</p>
+        </div>
+
+        <div className="mb-5 flex items-start gap-3 rounded-lg border border-border bg-secondary/50 p-3">
+          <Checkbox id="accept-terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
+          <label htmlFor="accept-terms" className="text-sm text-foreground">
+            I am at least {MIN_AGE} years old and agree to the{" "}
+            <a href="/terms" target="_blank" rel="noopener" className="font-medium text-primary underline">Terms of Service</a> and{" "}
+            <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-primary underline">Privacy Policy</a>.
+          </label>
         </div>
 
         {/* Google Sign-Up Button */}

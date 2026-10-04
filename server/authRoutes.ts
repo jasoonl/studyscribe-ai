@@ -64,14 +64,14 @@ export function registerAuthRoutes(app: Express) {
    */
   app.post("/api/auth/signup", authLimiter, async (req: Request, res: Response) => {
     try {
-      const { email, password, name, inviteCode } = req.body;
+      const { email, password, name, inviteCode, acceptedTerms } = req.body;
 
       if (!email || !password || !name || !inviteCode) {
         res.status(400).json({ error: "Email, password, name, and invite code are required" });
         return;
       }
 
-      const result = await registerWithEmailPassword(email, password, name, inviteCode);
+      const result = await registerWithEmailPassword(email, password, name, inviteCode, acceptedTerms === true);
 
       if (result.error) {
         res.status(400).json({ error: result.error });

@@ -76,12 +76,12 @@ export default function Demo() {
                 </div>
                 <h3 className="text-xl font-bold mb-3">Instant Transcription</h3>
                 <p className="text-muted-foreground mb-4">
-                  Automatic speech-to-text powered by advanced AI. Get perfect transcripts in seconds, not hours.
+                  Automatic speech-to-text powered by advanced AI. Get a searchable transcript without typing a word.
                 </p>
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                    99% accuracy rate
+                    Speaker labels and timestamps
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent" />
@@ -178,7 +178,7 @@ export default function Demo() {
             <div className="text-center space-y-6">
               <h2 className="text-3xl font-bold">Ready to Get Started?</h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Join thousands of students and professionals who are already transforming their learning and productivity with StudyScribe AI.
+                Turn your next lecture or meeting into a transcript, flashcards, quizzes and a study guide.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/dashboard">
@@ -203,7 +203,7 @@ export default function Demo() {
               {[
                 {
                   q: "How accurate is the transcription?",
-                  a: "Our AI achieves 99% accuracy using advanced speech recognition. You can also edit transcripts manually if needed."
+                  a: "Accuracy depends on audio quality, accents and background noise. Clear recordings transcribe well, and you can edit any transcript by hand."
                 },
                 {
                   q: "What file formats are supported?",

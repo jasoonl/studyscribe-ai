@@ -12,6 +12,10 @@ import { Loader2 } from "lucide-react";
 // (including heavy per-page deps like mermaid/streamdown/recharts) bundled
 // everything into one >1.7MB chunk loaded even for a first visit to /login.
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Settings = lazy(() => import("./pages/Settings"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Record = lazy(() => import("./pages/Record"));
 const RecordingDetail = lazy(() => import("./pages/RecordingDetail"));
@@ -82,6 +86,9 @@ function Router() {
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/request-access" component={RequestAccess} />
         <Route path="/demo" component={Demo} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/pricing" component={Pricing} />
         <Route path="/billing" component={Billing} />
         <Route path="/shared/:token" component={PublicSharedRecording} />
 
@@ -102,6 +109,7 @@ function Router() {
         <Route path="/recordings/:recordingId/email-drafts" component={() => <ProtectedRoute component={EmailDrafts} />} />
         <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
         <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
+        <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
 
         {/* 404 fallback */}
         <Route path="/404" component={NotFound} />

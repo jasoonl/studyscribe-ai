@@ -26,6 +26,8 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   /** Whether email is verified */
   emailVerified: int("emailVerified").default(0).notNull(),
+  /** When the person accepted the Terms of Service and Privacy Policy (null for accounts made before they existed). */
+  termsAcceptedAt: timestamp("termsAcceptedAt"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").default(sql`CURRENT_TIMESTAMP`).notNull(),

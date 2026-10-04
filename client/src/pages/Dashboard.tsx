@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2 } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -11,6 +11,10 @@ import RecordOrUpload from "./RecordOrUpload";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { NotificationBell } from "@/components/NotificationBell";
+import SwipeRow from "@/components/reactbits/SwipeRow";
+import FuseButton from "@/components/reactbits/FuseButton";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -176,8 +180,6 @@ export default function Dashboard() {
   }, [recordings, searchQuery, filterType, sortBy]);
 
   const handleDeleteRecording = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this recording?")) return;
-
     try {
       await deleteRecordingMutation.mutateAsync({ id });
       toast.success("Recording moved to trash");
@@ -296,33 +298,39 @@ export default function Dashboard() {
         {/* Quick Access Buttons */}
         <div className="flex justify-end gap-2 mb-4">
           <Link href="/knowledge-base">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
               <Database className="w-4 h-4" />
               <span className="hidden sm:inline">Knowledge Base</span>
               <span className="sm:hidden">Search</span>
             </button>
           </Link>
           <Link href="/analytics">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 text-xs sm:text-sm font-medium hover:bg-purple-100 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
               <BarChart2 className="w-4 h-4" />
               <span className="hidden sm:inline">Analytics</span>
             </button>
           </Link>
           <Link href="/help">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
               <HelpCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Help</span>
             </button>
           </Link>
+          <Link href="/settings">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+              <SettingsIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </button>
+          </Link>
           <Link href="/shared-with-me">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs sm:text-sm font-medium hover:bg-amber-100 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
               <Users2 className="w-4 h-4" />
               <span className="hidden sm:inline">Shared with Me</span>
             </button>
           </Link>
           {isAdmin && (
             <Link href="/admin">
-              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-medium hover:bg-indigo-100 transition-colors whitespace-nowrap">
+              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
                 <ShieldCheck className="w-4 h-4" />
                 <span className="hidden sm:inline">Admin</span>
               </button>
@@ -402,30 +410,50 @@ export default function Dashboard() {
                 </Button>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div>
                 {filteredRecordings.map((recording) => (
-                  <Card key={recording.id} className="p-4 flex items-start justify-between hover:shadow-md transition-shadow">
-                    <div className="flex-1">
+                  <SwipeRow
+                    key={recording.id}
+                    label={`Recording ${recording.title}`}
+                    height={88}
+                    radius={16}
+                    rowColor="var(--card)"
+                    textColor="var(--foreground)"
+                    drawerColor="#b91c1c"
+                    actionColor="#dc2626"
+                    actions={[{ id: "trash", label: "Trash" }]}
+                    onCommit={() => handleDeleteRecording(recording.id)}
+                    className="shadow-sm ring-1 ring-border"
+                    style={{ marginBottom: 12 }}
+                  >
+                    <div className="min-w-0 flex-1">
                       <Link href={`/recording/${recording.id}`}>
-                        <h4 className="font-semibold cursor-pointer hover:text-primary">{recording.title}</h4>
+                        <h4 className="cursor-pointer truncate font-semibold hover:text-primary">{recording.title}</h4>
                       </Link>
                       <p className="text-sm text-muted-foreground">{new Date(recording.createdAt).toLocaleDateString()}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{recording.audience}</p>
+                      <p className="mt-0.5 text-xs capitalize text-muted-foreground">{recording.audience}</p>
                     </div>
-                    <div className="flex gap-1 text-xs sm:text-sm px-2 sm:px-3">
+                    <div className="flex shrink-0 items-center gap-2">
                       <Link href={`/recording/${recording.id}`}>
                         <Button size="sm" variant="outline">View</Button>
                       </Link>
-                      <Button
+                      <FuseButton
+                        label="Delete"
+                        undoLabel="Undo"
+                        doneLabel="Moved to trash"
+                        icon={<HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.8} />}
                         size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteRecording(recording.id)}
-                        disabled={deleteRecordingMutation.isPending}
-                      >
-                        Delete
-                      </Button>
+                        radius={18}
+                        color="#ffffff"
+                        background="var(--destructive)"
+                        fuseColor="#fde68a"
+                        commitOn="fuseEnd"
+                        settle="stay"
+                        undoWindow={4000}
+                        onCommit={() => handleDeleteRecording(recording.id)}
+                      />
                     </div>
-                  </Card>
+                  </SwipeRow>
                 ))}
               </div>
             )}

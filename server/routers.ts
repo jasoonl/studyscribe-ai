@@ -18,6 +18,8 @@ import { eq, inArray } from "drizzle-orm";
 import { recordings, userNotifications, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, recordingTags, studyGuides, quizzes, emailDrafts, recordingShares } from "../drizzle/schema";
 import { notificationsRouter } from "./notificationsRouter";
 import { customAuthRouter } from "./customAuthRouter";
+import { accountRouter } from "./accountRouter";
+import { purgeRecordings } from "./purgeRecordings";
 import { sharingRouter } from "./sharingRouter";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { transcriptUpdateInputSchema } from "./transcriptInput";
@@ -50,6 +52,7 @@ export const appRouter = router({
     }),
   }),
   customAuth: customAuthRouter,
+  account: accountRouter,
 
   browserPush: router({
     configuration: protectedProcedure.query(() => getBrowserPushConfiguration()),
@@ -1098,38 +1101,6 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
-
-/**
- * Permanently removes recordings: the stored audio first, then every row that
- * hangs off them. The audio goes first and a failure stops everything, because
- * dropping the rows while the file survives orphans it with nothing left that
- * points at it, still counting against the storage limit forever.
- */
-async function purgeRecordings(rows: Array<{ id: number; audioKey: string | null }>): Promise<{ deleted: number }> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const ids = rows.map((row) => row.id);
-  await deleteStoredAudio(rows.map((row) => row.audioKey ?? ""));
-
-  for (let i = 0; i < ids.length; i += 500) {
-    const batch = ids.slice(i, i + 500);
-    await db.delete(transcripts).where(inArray(transcripts.recordingId, batch));
-    await db.delete(studyNotes).where(inArray(studyNotes.recordingId, batch));
-    await db.delete(flashcards).where(inArray(flashcards.recordingId, batch));
-    await db.delete(flashcardReviews).where(inArray(flashcardReviews.recordingId, batch));
-    await db.delete(chatHistory).where(inArray(chatHistory.recordingId, batch));
-    await db.delete(recordingTags).where(inArray(recordingTags.recordingId, batch));
-    await db.delete(studyGuides).where(inArray(studyGuides.recordingId, batch));
-    await db.delete(quizzes).where(inArray(quizzes.recordingId, batch));
-    await db.delete(emailDrafts).where(inArray(emailDrafts.recordingId, batch));
-    await db.delete(recordingShares).where(inArray(recordingShares.recordingId, batch));
-    await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));
-    await db.delete(recordings).where(inArray(recordings.id, batch));
-  }
-  return { deleted: ids.length };
-}
-
 
 type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
 

@@ -16,7 +16,7 @@ import { getAppSetting, setAppSetting } from "./db";
 
 const SETTING_KEY = "youtubeRelay";
 const MAX_SKEW_MS = 60_000;
-const ONLINE_WINDOW_MS = 12 * 60_000;
+const ONLINE_WINDOW_MS = 5 * 60_000;
 const ENDPOINT_CACHE_MS = 20_000;
 const TUNNEL_URL = /^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/;
 

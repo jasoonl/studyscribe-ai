@@ -1,4 +1,5 @@
 import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
+import RecordingConsentNotice from "@/components/RecordingConsentNotice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Mic, Square, Pause, Play, CheckCircle, AlertCircle, UploadCloud, FileAudio, Zap, Link as LinkIcon } from "lucide-react";
@@ -333,6 +334,8 @@ export default function RecordOrUpload() {
               <h2 className="text-4xl font-bold mb-4">How would you like to add content?</h2>
               <p className="text-lg text-muted-foreground">Choose to record a live lecture or upload an existing audio file</p>
             </div>
+
+            <RecordingConsentNotice />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
               {/* Record Option */}

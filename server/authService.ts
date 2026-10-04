@@ -75,8 +75,12 @@ export async function registerWithEmailPassword(
   email: string,
   password: string,
   name: string,
-  inviteCode: string
+  inviteCode: string,
+  acceptedTerms = false
 ): Promise<{ user: User; error?: undefined } | { user?: undefined; error: string }> {
+  if (!acceptedTerms) {
+    return { error: 'You must accept the Terms of Service and Privacy Policy to create an account' };
+  }
   try {
     const normalizedEmail = normalizeAuthEmail(email);
     // Validate invite code
@@ -119,6 +123,7 @@ export async function registerWithEmailPassword(
       name: name || null,
       loginMethod: 'email',
       emailVerified: 1, // Verified via invite code
+      termsAcceptedAt: new Date(),
       lastSignedIn: new Date(),
     });
 
@@ -262,6 +267,7 @@ export async function loginWithGoogle(
       name: name || null,
       loginMethod: 'google',
       emailVerified: 1, // Google emails are verified
+      termsAcceptedAt: new Date(), // the signup page shows the Terms/Privacy notice beside the Google button
       lastSignedIn: new Date(),
     });
 

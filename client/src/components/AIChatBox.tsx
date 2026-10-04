@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Loader2, Send, User, Sparkles } from "lucide-react";
+import LatticeLoader from "@/components/reactbits/LatticeLoader";
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
 
@@ -292,11 +293,8 @@ export function AIChatBox({
                   <div className="size-8 shrink-0 mt-1 rounded-full bg-primary/10 flex items-center justify-center">
                     <Sparkles className="size-4 text-primary" />
                   </div>
-                  <div className="rounded-lg bg-muted px-4 py-2.5 flex items-center gap-1">
-                    <span className="text-sm text-muted-foreground mr-1">Responding</span>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <div className="rounded-lg bg-muted px-4 py-2.5 text-muted-foreground">
+                    <LatticeLoader label="Thinking" status="working" pattern="orbit" cellSize={5} fontSize={13} color="var(--primary)" />
                   </div>
                 </div>
               )}

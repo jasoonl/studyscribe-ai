@@ -212,9 +212,13 @@ describe("youtubeAudioStream", () => {
 });
 
 describe("importing a YouTube link", () => {
+  const ccLicence = () => json({ items: [{ status: { license: "creativeCommon" } }] });
+
   it("resolves the video and streams its audio without any DNS lookup of the pasted host", async () => {
+    vi.stubEnv("YOUTUBE_API_KEY", "test-key");
     vi.stubGlobal("fetch", vi.fn(async (input: unknown) => {
       const url = String(input);
+      if (url.includes("googleapis.com/youtube/v3/videos")) return ccLicence();
       if (url.includes("/youtubei/v1/player")) return json(okPlayer());
       return new Response(new Uint8Array(309288), { status: 200 });
     }));
@@ -234,9 +238,18 @@ describe("importing a YouTube link", () => {
     const big = okPlayer({
       streamingData: { adaptiveFormats: [{ itag: 140, url: CDN, mimeType: "audio/mp4", bitrate: 130_000, contentLength: String(600 * 1024 * 1024) }] },
     });
-    const fetchMock = vi.fn(async () => json(big));
+    vi.stubEnv("YOUTUBE_API_KEY", "test-key");
+    const fetchMock = vi.fn(async (input: unknown) => (String(input).includes("googleapis.com") ? ccLicence() : json(big)));
     vi.stubGlobal("fetch", fetchMock);
     await expect(fetchAudioFromUrl(`https://www.youtube.com/watch?v=${ID}`)).rejects.toThrow(/larger than/i);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses a video that is not Creative Commons before contacting the player endpoint", async () => {
+    vi.stubEnv("YOUTUBE_API_KEY", "test-key");
+    const fetchMock = vi.fn(async () => json({ items: [{ status: { license: "youtube" } }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(fetchAudioFromUrl(`https://www.youtube.com/watch?v=${ID}`)).rejects.toThrow(/Creative Commons/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
