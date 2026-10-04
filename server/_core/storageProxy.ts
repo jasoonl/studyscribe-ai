@@ -3,7 +3,8 @@ import { ENV } from "./env";
 import { Readable } from "node:stream";
 import { getSessionFromCookie } from "../sessionManager";
 import { getRecordingByAudioKey, getRecordingShareForUser } from "../db";
-import { createDirectAudioUpload, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
+import { handleUploadPresigned } from "@vercel/blob/client";
+import { createDirectAudioUpload, issueLargeUploadToken, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
 import { verifyTranscriptionAudioToken } from "../transcriptionAudioLink";
 
 /** Largest object we're willing to buffer in order to answer a range ourselves. */
@@ -134,6 +135,28 @@ export function registerStorageProxy(app: Express) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not prepare upload";
       res.status(400).json({ error: message });
+    }
+  });
+
+  // Token endpoint for the browser's multipart uploader (files too large for a single PUT).
+  app.post("/api/storage/upload-presigned", async (req, res) => {
+    const session = getSessionFromCookie(req);
+    if (!session) {
+      res.status(401).json({ error: "Sign in to upload recordings" });
+      return;
+    }
+    try {
+      const result = await handleUploadPresigned({
+        request: req as never,
+        body: req.body,
+        getSignedToken: async (pathname, clientPayload) => {
+          const payload = JSON.parse(clientPayload || "{}");
+          return issueLargeUploadToken({ userId: session.userId, pathname, size: Number(payload.size) });
+        },
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Could not prepare upload" });
     }
   });
 

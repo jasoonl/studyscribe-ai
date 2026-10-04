@@ -1,3 +1,7 @@
+import { uploadPresigned } from "@vercel/blob/client";
+
+const MULTIPART_THRESHOLD_BYTES = 50 * 1024 * 1024;
+
 export type PreparedAudioUpload = {
   key: string;
   mimeType: string;
@@ -48,6 +52,20 @@ export async function uploadAudioDirectly(
   // derive the upload's actual content type from the body's own Blob
   // metadata rather than (or in addition to) the explicit header.
   const uploadBody = new Blob([file], { type: prepared.upload.uploadContentType });
+
+  // A single PUT is rejected for very large files, so send those in parts.
+  if (file.size > MULTIPART_THRESHOLD_BYTES) {
+    await uploadPresigned(prepared.upload.key, uploadBody, {
+      access: "private",
+      handleUploadUrl: "/api/storage/upload-presigned",
+      clientPayload: JSON.stringify({ size: file.size }),
+      contentType: prepared.upload.uploadContentType,
+      multipart: true,
+      onUploadProgress: ({ percentage }) => onProgress?.(25 + Math.round(percentage * 0.4)),
+    });
+    onProgress?.(65);
+    return { key: prepared.upload.key, mimeType: prepared.upload.mimeType };
+  }
   const uploadResponse = await fetch(prepared.upload.uploadUrl, {
     method: "PUT",
     headers: { "Content-Type": prepared.upload.uploadContentType },

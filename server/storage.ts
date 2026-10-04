@@ -199,6 +199,38 @@ export async function createDirectAudioUpload(input: {
 }
 
 /**
+ * Large files (a lecture video is easily hundreds of MB) cannot go up as one PUT, so the browser sends them
+ * through the SDK's multipart uploader, which asks this for a signed token per request. Only the key that
+ * createDirectAudioUpload handed out for this user is accepted, with the same size and content-type limits.
+ */
+export async function issueLargeUploadToken(input: { userId: number; pathname: string; size: number }) {
+  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
+  if (!new RegExp(`^${input.userId}/recordings/[0-9a-f-]{36}-[a-z0-9]+\\.bin$`).test(input.pathname)) throw new Error("Invalid upload path");
+  if (!Number.isFinite(input.size) || input.size <= 0 || input.size > MAX_AUDIO_SIZE_BYTES) {
+    throw new Error(`Audio file must be between 1 byte and ${MAX_UPLOAD_LABEL}`);
+  }
+  const validUntil = Date.now() + 3 * 60 * 60 * 1_000;
+  const token = await issueSignedToken({
+    pathname: input.pathname,
+    operations: ["put"],
+    allowedContentTypes: [BLOB_UPLOAD_CONTENT_TYPE],
+    maximumSizeInBytes: MAX_AUDIO_SIZE_BYTES,
+    validUntil,
+  });
+  return {
+    token,
+    urlOptions: {
+      access: "private" as const,
+      allowedContentTypes: [BLOB_UPLOAD_CONTENT_TYPE],
+      maximumSizeInBytes: MAX_AUDIO_SIZE_BYTES,
+      allowOverwrite: false,
+      addRandomSuffix: false,
+      validUntil,
+    },
+  };
+}
+
+/**
  * Server-side counterpart to createDirectAudioUpload, for audio this server
  * fetched itself (link imports) rather than received from the browser. Uses
  * the same neutral-extension key convention so playback recovers the real
