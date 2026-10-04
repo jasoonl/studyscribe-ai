@@ -384,12 +384,12 @@
     const hd = h("div", "abs", "Start in three steps", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 150);
     tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
     const line = h("div", "abs", null, g); line.style.cssText += "height:6px;border-radius:3px;background:linear-gradient(90deg,#2f6bff,#22d3ee);transform-origin:0 50%;"; put(line, 420, 466, 1080);
-    const steps = [["1", "Sign up free", "Free to start", "^sign", 150], ["2", "Add a lecture", "Record, upload, or paste", "^add", 730], ["3", "Start studying", "Notes, cards, quizzes", "^studying", 1310]];
+    const steps = [["1", "Request your invite", "Free to start", "^request", 150], ["2", "Add a lecture", "Record, upload, or paste", "^add", 730], ["3", "Start studying", "Notes, cards, quizzes", "^studying", 1310]];
     steps.forEach(([n, t, sub, w, x], i) => {
       const e = h("div", "step", `<em>${n}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 400);
       const t0 = W(s, w, 0, 0.15); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "y", [[t0, 70], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.8], [t0 + 0.6, 1, "back"]]);
     });
-    tw(line, "s", [[W(s, "^sign", 0, 0.1), 0.001], [W(s, "^studying", 0, 0.1), 1, "inOut"]]);
+    tw(line, "s", [[W(s, "^request", 0, 0.1), 0.001], [W(s, "^studying", 0, 0.1), 1, "inOut"]]);
     captions(g, s);
   }
 
