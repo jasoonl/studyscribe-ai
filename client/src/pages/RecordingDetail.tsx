@@ -452,18 +452,18 @@ export default function RecordingDetail() {
                               </div>
                               <div className="max-h-[32rem] space-y-1 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2">
                                 {(transcript.segments as TranscriptSegment[]).map((segment, index) => {
-                                  const isActive = getActiveTranscriptSegmentIndex(transcript.segments as TranscriptSegment[], playbackTime) === index;
+                                  const isActive = playbackTime > 0 && getActiveTranscriptSegmentIndex(transcript.segments as TranscriptSegment[], playbackTime) === index;
                                   return (
                                     <button
                                       key={`${segment.id}-${index}`}
                                       type="button"
                                       disabled={!recording.audioUrl}
                                       onClick={() => audioPlayerRef.current?.seekTo(segment.start, { play: true })}
-                                      className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60 ${
+                                      className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 ${
                                         isActive ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-background"
                                       }`}
                                     >
-                                      <span className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold ${isActive ? "bg-primary-foreground/15 text-primary-foreground" : "bg-primary/10 text-primary"}`}>
+                                      <span className={`shrink-0 py-0.5 font-mono text-xs font-semibold ${isActive ? "text-primary-foreground" : "text-primary"}`}>
                                         {formatTranscriptTimestamp(segment.start)}
                                       </span>
                                       <span className="min-w-0 text-sm leading-relaxed">
