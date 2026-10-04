@@ -117,19 +117,20 @@
   // ================= 1. HOOK (dark, kinetic type) =================
   {
     const s = S.hook, g = scene(s);
+    const wt = (i) => s.start + s.voiceAt + s.words[i].t0; // each word appears as it is spoken
     const lines = [
-      { w: ["You", "sat", "through", "the", "whole", "lecture."], a: 0.03, b: 0.4 },
-      { w: ["You", "even", "took", "notes."], a: 0.42, b: 0.64 },
-      { w: ["And", "by", "Friday,", "most", "of", "it", "was", '<span class="gone">gone.</span>'], a: 0.66, b: 1 },
+      { w: ["You", "sat", "through", "the", "whole", "lecture."], i0: 0 },
+      { w: ["You", "even", "took", "notes."], i0: 6 },
+      { w: ["And", "by", "Friday,", "most", "of", "it", "was", '<span class="gone">gone.</span>'], i0: 10 },
     ];
     lines.forEach((L, li) => {
       const el = h("div", "big", null, g); put(el, 160, 400, 1600);
       L.w.forEach((txt, wi) => {
-        const w = h("span", "w", txt + (wi < L.w.length - 1 ? " " : ""), el), t0 = at(s, L.a) + wi * 0.1;
-        tw(w, "op", [[t0, 0], [t0 + 0.45, 1]]); tw(w, "y", [[t0, 40], [t0 + 0.6, 0, "expo"]]); tw(w, "blur", [[t0, 14], [t0 + 0.5, 0]]);
-        if (li === 2 && wi === L.w.length - 1) { tw(w, "blur", [[t0, 14], [t0 + 0.5, 0], [at(s, 0.9), 0], [at(s, 0.9) + 1.2, 16, "inOut"]]); tw(w, "op", [[t0, 0], [t0 + 0.45, 1], [at(s, 0.9), 1], [at(s, 0.9) + 1.2, 0.12, "inOut"]]); }
+        const w = h("span", "w", txt + (wi < L.w.length - 1 ? " " : ""), el), t0 = wt(L.i0 + wi) - 0.1;
+        tw(w, "op", [[t0, 0], [t0 + 0.4, 1]]); tw(w, "y", [[t0, 40], [t0 + 0.55, 0, "expo"]]); tw(w, "blur", [[t0, 14], [t0 + 0.45, 0]]);
+        if (li === 2 && wi === L.w.length - 1) { const f = t0 + 1.0; tw(w, "blur", [[t0, 14], [t0 + 0.45, 0], [f, 0], [f + 1.2, 16, "inOut"]]); tw(w, "op", [[t0, 0], [t0 + 0.4, 1], [f, 1], [f + 1.2, 0.12, "inOut"]]); }
       });
-      if (li < 2) { tw(el, "op", [[at(s, L.b), 1], [at(s, L.b) + 0.4, 0]]); tw(el, "y", [[at(s, L.b), 0], [at(s, L.b) + 0.4, -40]]); }
+      if (li < 2) { const out = wt(lines[li + 1].i0) - 0.45; tw(el, "op", [[out, 1], [out + 0.35, 0]]); tw(el, "y", [[out, 0], [out + 0.35, -40]]); }
     });
   }
 
@@ -140,9 +141,9 @@
     const logo = h("img", "abs", null, g); logo.src = "assets/logo.webp"; put(logo, 865, 280, 190, 190);
     tw(logo, "op", [[t + 0.3, 0], [t + 0.5, 1]]); tw(logo, "s", [[t + 0.3, 0], [t + 1.1, 1, "back"]]);
     const mark = h("div", "abs mark", "StudyScribe AI", g); put(mark, 0, 500, 1920);
-    tw(mark, "op", [[t + 1, 0], [t + 1.6, 1]]); tw(mark, "y", [[t + 1, 60], [t + 1.8, 0, "expo"]]); tw(mark, "blur", [[t + 1, 16], [t + 1.6, 0]]);
+    const tm = W(s, "^studyscribe", 0, 0.1); tw(mark, "op", [[tm, 0], [tm + 0.6, 1]]); tw(mark, "y", [[tm, 60], [tm + 0.8, 0, "expo"]]); tw(mark, "blur", [[tm, 16], [tm + 0.6, 0]]);
     const tag = h("div", "abs tag", "Record once. Study smarter.", g); put(tag, 0, 710, 1920);
-    tw(tag, "op", [[t + 2.2, 0], [t + 2.9, 1]]); tw(tag, "y", [[t + 2.2, 24], [t + 2.9, 0]]);
+    const tg = W(s, "^record", 0, 0.1); tw(tag, "op", [[tg, 0], [tg + 0.6, 1]]); tw(tag, "y", [[tg, 24], [tg + 0.6, 0]]);
   }
 
 
