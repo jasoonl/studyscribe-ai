@@ -91,7 +91,7 @@
     pts.forEach(([t, x, y, click]) => {
       if (!click) return;
       const r = h("div", "ripple", null, scr); put(r, x, y);
-      tw(r, "op", [[t, 0.9], [t + 0.55, 0]]); tw(r, "s", [[t, 0.3], [t + 0.55, 1.7]]);
+      tw(r, "op", [[t - 0.01, 0], [t, 0.9], [t + 0.55, 0]]); tw(r, "s", [[t, 0.3], [t + 0.55, 1.7]]);
       tw(c, "s", [[t - 0.1, 1], [t, 0.82], [t + 0.12, 1]]);
     });
   };
@@ -296,7 +296,7 @@
     ticks.push((t) => { const u = Math.max(0, Math.min(1, (t - tp) / Math.max(0.5, ck - tp))); bar.style.width = (1160 * (1 - u)) + "px"; });
     const cur = h("div", "cur", ARROW, g);
     tw(cur, "x", [[a + 1.2, 1500, "lin"], [ck - 0.25, 760, "inOut"]]); tw(cur, "y", [[a + 1.2, 800, "lin"], [ck - 0.25, 700, "inOut"]]); tw(cur, "op", [[a + 1.2, 0], [a + 1.5, 1]]);
-    const rp = h("div", "ripple", null, g); put(rp, 760, 700); tw(rp, "op", [[ck, 0.9], [ck + 0.55, 0]]); tw(rp, "s", [[ck, 0.3], [ck + 0.55, 1.7]]); tw(cur, "s", [[ck - 0.1, 1], [ck, 0.82], [ck + 0.12, 1]]);
+    const rp = h("div", "ripple", null, g); put(rp, 760, 700); tw(rp, "op", [[ck - 0.01, 0], [ck, 0.9], [ck + 0.55, 0]]); tw(rp, "s", [[ck, 0.3], [ck + 0.55, 1.7]]); tw(cur, "s", [[ck - 0.1, 1], [ck, 0.82], [ck + 0.12, 1]]);
     chip(g, "Correct!", 1560, 560, ck + 0.1, "ok"); chip(g, "Instant feedback", 820, 880, W(s, "^instant", 0, 0.05));
     captions(g, s);
   }
