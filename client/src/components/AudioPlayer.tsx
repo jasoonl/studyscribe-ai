@@ -172,6 +172,9 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
     }
   };
 
+  // Until the browser reports the file's own length, show the length recorded with the recording.
+  const shownDuration = duration || (fallbackDuration && fallbackDuration > 0 ? fallbackDuration : 0);
+
   const formatTime = (time: number) => {
     if (!time || isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -220,7 +223,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
           )}
         </Button>
         <span className="text-xs text-muted-foreground min-w-12">
-          {formatTime(currentTime)} / {formatTime(duration)}
+          {formatTime(currentTime)} / {formatTime(shownDuration)}
         </span>
       </div>
 
@@ -228,7 +231,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       <Slider
         value={[currentTime]}
         min={0}
-        max={duration || 100}
+        max={shownDuration || 100}
         step={0.1}
         onValueChange={handleSeek}
         className="w-full"
