@@ -1,0 +1,18 @@
+{
+  "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+  "scenes": [
+    { "id": "hook",       "min": 8.0, "lead": 0.8, "tail": 0.6, "narration": "You sat through the whole lecture. You even took notes. And by Friday, most of it was gone." },
+    { "id": "brand",      "min": 6.0, "lead": 0.9, "tail": 0.6, "narration": "Meet StudyScribe AI. Record once, and turn it into everything you need to study." },
+    { "id": "product",    "min": 6.5, "lead": 0.8, "tail": 0.5, "narration": "Record live, upload a file, or paste a link. StudyScribe takes it from there." },
+    { "id": "add",        "min": 6.5, "lead": 0.6, "tail": 0.5, "narration": "Transcription starts on its own, in twenty-seven languages, so it works for the way you actually learn.", "clicks": [0.86] },
+    { "id": "transcript", "min": 7.0, "lead": 0.6, "tail": 0.5, "narration": "Every word is timestamped and labeled by speaker. Click any line, and you are back at that exact moment.", "clicks": [0.74] },
+    { "id": "notes",      "min": 5.5, "lead": 0.6, "tail": 0.5, "narration": "Clean study notes appear in seconds, organized around the ideas that matter." },
+    { "id": "cards",      "min": 6.0, "lead": 0.6, "tail": 0.5, "narration": "Flashcards write themselves, and export straight to Quizlet, Anki, or Notion." },
+    { "id": "learn",      "min": 8.0, "lead": 0.6, "tail": 0.5, "narration": "Then study the way that sticks. Start with recognition, graduate to written recall, and test yourself with a practice exam.", "clicks": [0.3, 0.62] },
+    { "id": "quiz",       "min": 7.5, "lead": 0.6, "tail": 0.5, "narration": "Take a ten-question quiz with instant feedback, or read a structured study guide built from your own lecture.", "clicks": [0.3] },
+    { "id": "tutor",      "min": 6.0, "lead": 0.6, "tail": 0.5, "narration": "Stuck? Ask the AI tutor. It answers from what was actually said in your class." },
+    { "id": "pro",        "min": 6.5, "lead": 0.6, "tail": 0.5, "narration": "Working, not studying? Turn meetings into summaries and follow-up emails, in the tone you choose.", "clicks": [0.78] },
+    { "id": "trust",      "min": 6.0, "lead": 0.6, "tail": 0.5, "narration": "And your recordings stay yours. Export everything, or delete it all, anytime.", "clicks": [0.42, 0.74] },
+    { "id": "finale",     "min": 8.0, "lead": 0.8, "tail": 2.4, "narration": "From the first lecture to the final exam. StudyScribe AI. Record once, study smarter. Try it free today." }
+  ]
+}

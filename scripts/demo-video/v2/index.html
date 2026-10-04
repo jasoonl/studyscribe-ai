@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>StudyScribe demo</title>
+<style>
+  @font-face { font-family: Geist; src: url(./assets/geist.woff2) format("woff2"); font-weight: 100 900; }
+  html, body { margin: 0; background: #050b1f; overflow: hidden; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; font-family: Geist, system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+  .abs, .scene, .screen, .chip, .lower, .rim, .cur, .ripple, .ring, .big, .w, .fc, .face, .pill, .card, .think, .cta, .url { position: absolute; left: 0; top: 0; }
+  .scene { width: 1920px; height: 1080px; perspective: 2200px; }
+  #bgDark { width: 1920px; height: 1080px; background: radial-gradient(1400px 900px at 50% 38%, #12347f 0%, #0a1d52 45%, #050b1f 100%); }
+  #bgLight { width: 1920px; height: 1080px; background: linear-gradient(160deg, #f4f8ff 0%, #e3edff 55%, #d3e3ff 100%); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(110px); }
+  .big { width: 1600px; font-size: 112px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.08; text-align: center; color: #fff; }
+  .w { position: relative; display: inline-block; white-space: pre; }
+  .gone { background: linear-gradient(90deg, #7db4ff, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ring { width: 360px; height: 360px; border-radius: 50%; border: 2px solid rgba(125, 180, 255, .6); }
+  .mark { font-size: 148px; font-weight: 700; letter-spacing: -0.04em; text-align: center; width: 1920px; background: linear-gradient(90deg, #ffffff 20%, #8ec1ff 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tag { font-size: 54px; font-weight: 500; text-align: center; width: 1920px; color: #a9c4ff; letter-spacing: -0.01em; }
+  .screen { width: 1600px; height: 896px; transform-origin: 0 0; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1.5px rgba(40, 70, 160, .18), 0 40px 90px rgba(25, 55, 150, .30); }
+  .screen.free { transform-origin: 50% 50%; }
+  .screen img { display: block; width: 1600px; height: 896px; }
+  .rim { border: 3px solid #2f6bff; border-radius: 14px; background: rgba(47, 107, 255, .09); box-shadow: 0 0 0 6px rgba(47, 107, 255, .15), 0 0 30px rgba(47, 107, 255, .5); }
+  .cur { width: 36px; height: 36px; transform-origin: 0 0; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .35)); }
+  .ripple { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; border: 3px solid #2f6bff; }
+  .chip { display: flex; align-items: center; gap: 12px; padding: 15px 26px; border-radius: 999px; background: #fff; color: #0b1f55; font-weight: 600; font-size: 31px; white-space: nowrap; box-shadow: 0 18px 44px rgba(37, 79, 200, .24), 0 0 0 1.5px rgba(59, 110, 240, .28); }
+  .chip i { width: 15px; height: 15px; border-radius: 50%; background: linear-gradient(135deg, #2f6bff, #22d3ee); }
+  .chip.ok i { background: linear-gradient(135deg, #16a34a, #4ade80); }
+  .lower { left: 90px; top: 944px; padding: 16px 30px; border-radius: 26px; background: rgba(255, 255, 255, .84); backdrop-filter: blur(18px); box-shadow: 0 16px 40px rgba(25, 55, 150, .18), 0 0 0 1.5px rgba(59, 110, 240, .18); }
+  .lower b { display: block; font-size: 38px; letter-spacing: -0.02em; color: #0b1f55; }
+  .lower span { display: block; margin-top: 2px; font-size: 24px; color: #4a5878; }
+  .fc { width: 640px; height: 400px; transform-style: preserve-3d; }
+  .face { width: 640px; height: 400px; box-sizing: border-box; padding: 40px 46px; border-radius: 34px; background: #fff; backface-visibility: hidden; box-shadow: 0 30px 70px rgba(25, 55, 150, .28), 0 0 0 1.5px rgba(59, 110, 240, .2); display: flex; flex-direction: column; justify-content: center; }
+  .face small { font-size: 22px; letter-spacing: .16em; font-weight: 700; color: #2f6bff; }
+  .face p { margin: 18px 0 0; font-size: 44px; line-height: 1.18; font-weight: 700; letter-spacing: -0.02em; color: #0b1f55; }
+  .face.back { transform: rotateY(180deg); background: linear-gradient(145deg, #2f6bff, #12347f); box-shadow: 0 30px 70px rgba(25, 55, 150, .4); }
+  .face.back small { color: #b9d4ff; }
+  .face.back p { color: #fff; font-size: 76px; }
+  .pill { height: 78px; padding: 0 38px; border-radius: 999px; display: flex; align-items: center; font-size: 32px; font-weight: 600; white-space: nowrap; }
+  .pill.off { background: rgba(255, 255, 255, .75); color: #6b7a99; box-shadow: 0 0 0 1.5px rgba(59, 110, 240, .2); }
+  .pill.on { background: linear-gradient(135deg, #2f6bff, #1b8fe0); color: #fff; box-shadow: 0 14px 34px rgba(47, 107, 255, .45); }
+  .pill.dark.off { background: rgba(255, 255, 255, .08); color: #8aa4d8; box-shadow: 0 0 0 1.5px rgba(138, 164, 216, .35); }
+  .card { width: 560px; height: 200px; border-radius: 34px; background: #fff; display: flex; align-items: center; gap: 28px; padding: 0 44px; box-sizing: border-box; font-size: 40px; font-weight: 700; color: #0b1f55; letter-spacing: -0.02em; box-shadow: 0 24px 60px rgba(25, 55, 150, .22), 0 0 0 1.5px rgba(59, 110, 240, .2); }
+  .card em { font-style: normal; display: grid; place-items: center; width: 88px; height: 88px; border-radius: 26px; background: #e6eeff; }
+  .card.del em { background: #ffe9e9; }
+  .wipe { position: absolute; left: -400px; top: -100px; width: 900px; height: 1300px; transform: skewX(-12deg); background: linear-gradient(90deg, rgba(47, 107, 255, 0), #2f6bff 30%, #22d3ee 70%, rgba(34, 211, 238, 0)); }
+  .cta { font-size: 46px; font-weight: 700; padding: 0 64px; height: 118px; border-radius: 999px; display: flex; align-items: center; background: linear-gradient(135deg, #3b82f6, #1b8fe0); color: #fff; box-shadow: 0 24px 60px rgba(47, 130, 255, .55); }
+  .url { font-size: 42px; font-weight: 500; color: #a9c4ff; width: 1920px; text-align: center; letter-spacing: -0.01em; }
+  .think { display: flex; align-items: center; gap: 16px; padding: 18px 30px; border-radius: 26px; background: #fff; color: #0b1f55; font-size: 30px; font-weight: 600; box-shadow: 0 18px 44px rgba(37, 79, 200, .24), 0 0 0 1.5px rgba(59, 110, 240, .28); }
+  .lat { display: grid; grid-template-columns: repeat(3, 12px); gap: 5px; }
+  .lat u { width: 12px; height: 12px; border-radius: 50%; background: #2f6bff; opacity: .15; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="scenes.js"></script>
+</body>
+</html>

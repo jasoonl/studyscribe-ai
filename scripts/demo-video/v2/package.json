@@ -1,0 +1,6 @@
+{
+  "name": "demo-video-renderer",
+  "private": true,
+  "type": "module",
+  "dependencies": { "playwright-core": "^1.49.0" }
+}
