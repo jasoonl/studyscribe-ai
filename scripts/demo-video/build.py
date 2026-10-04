@@ -14,7 +14,7 @@ work = sys.argv[1]
 os.makedirs(work, exist_ok=True)
 SR = 44100
 board = json.load(open(os.path.join(here, "storyboard.json")))
-API_KEY = os.environ.get("ELEVENLABS_API_KEY", "sk_9c9ea5eafb960e42943eb890a86ea89c6cf9174ecf4a9aba")
+API_KEY = os.environ["ELEVENLABS_API_KEY"]
 
 # --- narration via ElevenLabs ------------------------------------------------
 t = 0.0
