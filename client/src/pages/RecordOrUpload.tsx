@@ -37,6 +37,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadAudience, setUploadAudience] = useState<"student" | "professional">("student");
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [uploadFileComplete, setUploadFileComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -250,9 +251,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
     }
 
     setIsUploadingFile(true);
+    setUploadPercent(0);
     try {
       const [directUpload, duration] = await Promise.all([
-        uploadAudioDirectly(selectedFile, selectedFile.name),
+        uploadAudioDirectly(selectedFile, selectedFile.name, setUploadPercent),
         probeAudioDuration(selectedFile),
       ]);
       const base64String = directUpload ? undefined : await readAsBase64(selectedFile);
@@ -879,7 +881,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                           {isUploadingFile ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Uploading...
+                              {uploadPercent > 0 ? `Uploading ${uploadPercent}%` : "Uploading..."}
                             </>
                           ) : (
                             "Upload File"
