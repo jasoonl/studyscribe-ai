@@ -12,10 +12,10 @@ export default function HowItWorks() {
   const [active, setActive] = useState(0);
 
   return (
-    <section id="how" className="scroll-mt-24 bg-brand-mist/50 py-24">
+    <section id="how" className="scroll-mt-24 bg-brand-mist/50 py-32">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
         <div>
-          <h2 className="max-w-md text-balance text-3xl font-bold tracking-tight sm:text-4xl">From a recording to a study plan in minutes</h2>
+          <h2 className="max-w-md text-balance text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">From a recording to a study plan in minutes</h2>
           <ol className="mt-10 space-y-3">
             {STEPS.map((step, i) => (
               <motion.li

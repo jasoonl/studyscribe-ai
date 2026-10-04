@@ -29,10 +29,10 @@ export default function UseCases() {
   const content = AUDIENCES[who];
 
   return (
-    <section id="use-cases" className="scroll-mt-24 bg-gradient-to-b from-brand-mist/60 to-background py-24">
+    <section id="use-cases" className="scroll-mt-24 bg-gradient-to-b from-brand-mist/60 to-background py-32">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <Reveal className="flex flex-col items-center text-center">
-          <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">Built for the way you work</h2>
+          <h2 className="text-balance text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">Built for the way you work</h2>
           <div role="tablist" aria-label="Choose your use case" className="mt-8 inline-flex rounded-full border border-border bg-card p-1 shadow-sm">
             {(Object.keys(AUDIENCES) as Array<keyof typeof AUDIENCES>).map((key) => {
               const Icon = AUDIENCES[key].icon;
@@ -67,7 +67,7 @@ export default function UseCases() {
             className="mt-14 grid items-center gap-10 lg:grid-cols-2"
           >
             <div>
-              <h3 className="text-balance text-2xl font-bold tracking-tight sm:text-3xl">{content.headline}</h3>
+              <h3 className="text-balance text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{content.headline}</h3>
               <p className="mt-4 text-muted-foreground">{content.text}</p>
               <ul className="mt-6 space-y-3">
                 {content.points.map((point) => (

@@ -6,10 +6,10 @@ import { PLANS, PLAN_FEATURES, describeAllowance, formatPlanPrice } from "@share
 export default function PricingSection({ id = "pricing", heading = "Simple pricing that grows with your course load" }: { id?: string; heading?: string }) {
   const reduce = useReducedMotion();
   return (
-    <section id={id} className="scroll-mt-24 py-24">
+    <section id={id} className="scroll-mt-24 py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">{heading}</h2>
+          <h2 className="text-balance text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">{heading}</h2>
           <p className="mt-4 text-muted-foreground">Every plan includes the full toolkit. Higher plans simply allow more recordings each month.</p>
         </div>
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

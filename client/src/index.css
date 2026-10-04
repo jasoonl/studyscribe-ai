@@ -62,7 +62,7 @@
   --chart-3: oklch(0.72 0.13 225);
   --chart-4: oklch(0.4 0.17 266);
   --chart-5: oklch(0.82 0.08 230);
-  --radius: 0.75rem;
+  --radius: 1rem;
   --background: oklch(0.985 0.004 250);
   --foreground: oklch(0.2 0.045 262);
   --card: oklch(1 0 0);
@@ -130,12 +130,15 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -279,3 +282,8 @@
 @media (prefers-reduced-motion: reduce) {
   .marquee-track, .aurora-blob { animation: none; }
 }
+
+/* Apple-style surfaces: translucent glass and soft, layered shadows */
+.glass { background: color-mix(in oklab, var(--card) 72%, transparent); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+.shadow-apple { box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(20 40 120 / 0.18), 0 40px 80px -30px rgb(20 40 120 / 0.18); }
+@media (prefers-reduced-transparency: reduce) { .glass { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; } }
