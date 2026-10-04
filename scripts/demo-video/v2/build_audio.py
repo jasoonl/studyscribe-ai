@@ -18,21 +18,48 @@ OVERLAP = 0.5  # the next scene starts this long before the previous one finishe
 
 t = 0.0
 voice_segments = []
+import base64, re
+def words_from_alignment(al):
+    out, cur, t0, t1 = [], "", None, None
+    for ch, a, b in zip(al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]):
+        if ch.isspace():
+            if cur: out.append({"raw": cur, "w": re.sub(r"[^a-z0-9'-]", "", cur.lower()), "t0": t0, "t1": t1}); cur, t0 = "", None
+            continue
+        if t0 is None: t0 = a
+        cur += ch; t1 = b
+    if cur: out.append({"raw": cur, "w": re.sub(r"[^a-z0-9'-]", "", cur.lower()), "t0": t0, "t1": t1})
+    return out
+
 for i, scene in enumerate(board["scenes"]):
     mp3, wav = os.path.join(work, f"v{i:02d}.mp3"), os.path.join(work, f"v{i:02d}.wav")
-    req = urllib.request.Request(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{board['voice_id']}",
-        data=json.dumps({"text": scene["narration"], "model_id": "eleven_flash_v2_5",
-                         "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.25}}).encode(),
-        headers={"xi-api-key": API_KEY, "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=40) as resp, open(mp3, "wb") as f:
-        f.write(resp.read())
+    if scene.get("keep"):
+        # the approved opening keeps its original recording
+        with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "rb") as src, open(mp3, "wb") as f: f.write(src.read())
+        scene["words"] = []
+    else:
+        req = urllib.request.Request(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{board['voice_id']}/with-timestamps",
+            data=json.dumps({"text": scene["narration"], "model_id": "eleven_flash_v2_5",
+                             "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.25}}).encode(),
+            headers={"xi-api-key": API_KEY, "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read())
+        with open(mp3, "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
+        scene["words"] = words_from_alignment(data["alignment"])
     subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
     with wave.open(wav) as w:
         samples = array.array("h", w.readframes(w.getnframes()))
         dur = w.getnframes() / SR
     scene["start"], scene["voiceAt"], scene["narDur"] = t, scene["lead"], dur
     scene["dur"] = max(scene["min"], scene["lead"] + dur + scene["tail"])
+    # Click times: a number is a fraction of the scene, a string is the first spoken word that matches it.
+    times = []
+    for c in scene.get("clicks", []):
+        if isinstance(c, (int, float)): times.append(t + scene["dur"] * c)
+        else:
+            m = next((w for w in scene["words"] if re.search(c, w["w"])), None)
+            times.append(t + scene["lead"] + m["t0"] if m else t + scene["dur"] * 0.5)
+    scene["clickTimes"] = times
     voice_segments.append((t + scene["lead"], samples))
     t += scene["dur"]
 total = t
@@ -93,8 +120,8 @@ for sc in board["scenes"][1:]:
     add(sfx_l, sc["start"] - 0.3, W, 0.55); add(sfx_r, sc["start"] - 0.28, W, 0.55)
 T = tick()
 for sc in board["scenes"]:
-    for frac in sc.get("clicks", []):
-        add(sfx_l, sc["start"] + sc["dur"] * frac, T); add(sfx_r, sc["start"] + sc["dur"] * frac, T)
+    for ct in sc["clickTimes"]:
+        add(sfx_l, ct, T); add(sfx_r, ct, T)
 
 # --- mix: duck the music under the voice, fade in/out ----------------------------------------
 gain, DUCK, RAMP = [1.0] * N, 0.5, int(0.25 * SR)

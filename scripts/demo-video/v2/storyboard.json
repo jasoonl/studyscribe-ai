@@ -1,18 +1,21 @@
 {
   "voice_id": "JBFqnCBsd6RMkjVDRZzb",
   "scenes": [
-    { "id": "hook",       "min": 8.0, "lead": 0.8, "tail": 0.6, "narration": "You sat through the whole lecture. You even took notes. And by Friday, most of it was gone." },
-    { "id": "brand",      "min": 6.0, "lead": 0.9, "tail": 0.6, "narration": "Meet StudyScribe AI. Record once, and turn it into everything you need to study." },
-    { "id": "product",    "min": 6.5, "lead": 0.8, "tail": 0.5, "narration": "Record live, upload a file, or paste a link. StudyScribe takes it from there." },
-    { "id": "add",        "min": 6.5, "lead": 0.6, "tail": 0.5, "narration": "Transcription starts on its own, in twenty-seven languages, so it works for the way you actually learn.", "clicks": [0.86] },
-    { "id": "transcript", "min": 7.0, "lead": 0.6, "tail": 0.5, "narration": "Every word is timestamped and labeled by speaker. Click any line, and you are back at that exact moment.", "clicks": [0.74] },
-    { "id": "notes",      "min": 5.5, "lead": 0.6, "tail": 0.5, "narration": "Clean study notes appear in seconds, organized around the ideas that matter." },
-    { "id": "cards",      "min": 6.0, "lead": 0.6, "tail": 0.5, "narration": "Flashcards write themselves, and export straight to Quizlet, Anki, or Notion." },
-    { "id": "learn",      "min": 8.0, "lead": 0.6, "tail": 0.5, "narration": "Then study the way that sticks. Start with recognition, graduate to written recall, and test yourself with a practice exam.", "clicks": [0.3, 0.62] },
-    { "id": "quiz",       "min": 7.5, "lead": 0.6, "tail": 0.5, "narration": "Take a ten-question quiz with instant feedback, or read a structured study guide built from your own lecture.", "clicks": [0.3] },
-    { "id": "tutor",      "min": 6.0, "lead": 0.6, "tail": 0.5, "narration": "Stuck? Ask the AI tutor. It answers from what was actually said in your class." },
-    { "id": "pro",        "min": 6.5, "lead": 0.6, "tail": 0.5, "narration": "Working, not studying? Turn meetings into summaries and follow-up emails, in the tone you choose.", "clicks": [0.78] },
-    { "id": "trust",      "min": 6.0, "lead": 0.6, "tail": 0.5, "narration": "And your recordings stay yours. Export everything, or delete it all, anytime.", "clicks": [0.42, 0.74] },
-    { "id": "finale",     "min": 8.0, "lead": 0.8, "tail": 2.4, "narration": "From the first lecture to the final exam. StudyScribe AI. Record once, study smarter. Try it free today." }
+    { "id": "hook",       "keep": true, "min": 8.0, "lead": 0.8, "tail": 0.6, "narration": "You sat through the whole lecture. You even took notes. And by Friday, most of it was gone." },
+    { "id": "brand",      "keep": true, "min": 6.0, "lead": 0.9, "tail": 0.6, "narration": "Meet StudyScribe AI. Record once, and turn it into everything you need to study." },
+    { "id": "product",    "min": 5.5, "lead": 0.5, "tail": 0.4, "narration": "Record live, upload a file, or paste a link. StudyScribe takes it from there." },
+    { "id": "add",        "min": 6.0, "lead": 0.5, "tail": 0.4, "narration": "Transcription starts on its own, in twenty-seven languages, so it works for the way you actually learn.", "clicks": ["starts"] },
+    { "id": "transcript", "min": 6.0, "lead": 0.5, "tail": 0.4, "narration": "Every word is timestamped and labeled by speaker. Click any line, and you are back at that exact moment.", "clicks": ["click"] },
+    { "id": "notes",      "min": 5.0, "lead": 0.5, "tail": 0.4, "narration": "Clean study notes appear in seconds, organized around the ideas that matter." },
+    { "id": "cards",      "min": 5.5, "lead": 0.5, "tail": 0.4, "narration": "Flashcards write themselves, and export straight to Quizlet, Anki, or Notion." },
+    { "id": "learn",      "min": 5.5, "lead": 0.5, "tail": 0.3, "narration": "Then study the way that sticks. Start with recognition, then graduate to written recall." },
+    { "id": "test",       "min": 4.5, "lead": 0.4, "tail": 0.3, "narration": "And when you are ready, test yourself with a practice exam.", "clicks": ["test"] },
+    { "id": "quiz",       "min": 4.5, "lead": 0.4, "tail": 0.3, "narration": "Take a ten-question quiz with instant feedback.", "clicks": ["quiz"] },
+    { "id": "guide",      "min": 4.8, "lead": 0.4, "tail": 0.3, "narration": "Or read a structured study guide, built from your own lecture." },
+    { "id": "tutor",      "min": 5.5, "lead": 0.5, "tail": 0.4, "narration": "Stuck? Ask the AI tutor. It answers from what was actually said in your class." },
+    { "id": "pro",        "min": 6.0, "lead": 0.5, "tail": 0.4, "narration": "Working, not studying? Turn meetings into summaries and follow-up emails, in the tone you choose.", "clicks": ["choose"] },
+    { "id": "library",    "min": 6.0, "lead": 0.5, "tail": 0.4, "narration": "Whether it is a forty-second reading, a seven-minute class, or a one-minute lecture, it all lives in one library." },
+    { "id": "trust",      "min": 5.5, "lead": 0.5, "tail": 0.4, "narration": "And your recordings stay yours. Export everything, or delete it all, anytime.", "clicks": ["export", "delete"] },
+    { "id": "finale",     "min": 8.0, "lead": 0.7, "tail": 1.8, "narration": "From the first lecture to the final exam. StudyScribe AI. Record once, study smarter. Try it free today." }
   ]
 }
