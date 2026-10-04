@@ -423,7 +423,7 @@ export default function Dashboard() {
                     actionColor="#dc2626"
                     actions={[{ id: "trash", label: "Trash" }]}
                     onCommit={() => handleDeleteRecording(recording.id)}
-                    className="shadow-sm ring-1 ring-border"
+                    className="rounded-2xl ring-1 ring-border/60"
                     style={{ marginBottom: 12 }}
                   >
                     <div className="min-w-0 flex-1">
