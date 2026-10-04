@@ -220,7 +220,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <OnboardingModal />
       {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-border/50 glass sticky top-0 z-40">
         <div className="container h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
@@ -250,16 +250,16 @@ export default function Dashboard() {
       </header>
 
       {/* Statistics Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-b border-border">
-        <div className="container py-6">
-          <h2 className="text-lg font-semibold mb-4 text-foreground">Your Study Statistics</h2>
+      <div>
+        <div className="container pt-12 pb-4">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-[-0.04em] mb-8 text-foreground">Your library</h1>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Total Hours */}
-            <Card className="p-4 bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
+            <Card className="p-6 gap-0 bg-card">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Hours Recorded</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">{statistics.totalHours}</p>
+                  <p className="text-4xl font-semibold tracking-[-0.035em] text-foreground mt-3">{statistics.totalHours}</p>
                   <p className="text-xs text-muted-foreground mt-1">hours</p>
                 </div>
                 <Clock className="w-6 h-6 text-blue-500 opacity-50" />
@@ -267,11 +267,11 @@ export default function Dashboard() {
             </Card>
 
             {/* Total Recordings */}
-            <Card className="p-4 bg-white dark:bg-slate-900 border-purple-200 dark:border-purple-800">
+            <Card className="p-6 gap-0 bg-card">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Recordings</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">{statistics.totalRecordings}</p>
+                  <p className="text-4xl font-semibold tracking-[-0.035em] text-foreground mt-3">{statistics.totalRecordings}</p>
                   <p className="text-xs text-muted-foreground mt-1">lectures & meetings</p>
                 </div>
                 <Mic className="w-6 h-6 text-purple-500 opacity-50" />
@@ -279,11 +279,11 @@ export default function Dashboard() {
             </Card>
 
             {/* Study Progress */}
-            <Card className="p-4 bg-white dark:bg-slate-900 border-green-200 dark:border-green-800">
+            <Card className="p-6 gap-0 bg-card">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Study Streak</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">Active</p>
+                  <p className="text-4xl font-semibold tracking-[-0.035em] text-foreground mt-3">Active</p>
                   <p className="text-xs text-muted-foreground mt-1">keep it up!</p>
                 </div>
                 <TrendingUp className="w-6 h-6 text-green-500 opacity-50" />
@@ -294,43 +294,43 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <main className="container py-8">
+      <main className="container py-6 pb-20">
         {/* Quick Access Buttons */}
         <div className="flex justify-end gap-2 mb-4">
           <Link href="/knowledge-base">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <Database className="w-4 h-4" />
               <span className="hidden sm:inline">Knowledge Base</span>
               <span className="sm:hidden">Search</span>
             </button>
           </Link>
           <Link href="/analytics">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <BarChart2 className="w-4 h-4" />
               <span className="hidden sm:inline">Analytics</span>
             </button>
           </Link>
           <Link href="/help">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <HelpCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Help</span>
             </button>
           </Link>
           <Link href="/settings">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <SettingsIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
             </button>
           </Link>
           <Link href="/shared-with-me">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <Users2 className="w-4 h-4" />
               <span className="hidden sm:inline">Shared with Me</span>
             </button>
           </Link>
           {isAdmin && (
             <Link href="/admin">
-              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border bg-secondary text-primary text-xs sm:text-sm font-medium hover:bg-primary/10 transition-colors whitespace-nowrap">
+              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
                 <ShieldCheck className="w-4 h-4" />
                 <span className="hidden sm:inline">Admin</span>
               </button>
@@ -339,7 +339,7 @@ export default function Dashboard() {
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-8 gap-1 sm:gap-0">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-10 gap-1 sm:gap-0">
             <TabsTrigger value="library" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">My Library</span>
