@@ -1,9 +1,8 @@
 {
-  "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+  "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
   "scenes": [
     {
       "id": "hook",
-      "keep": true,
       "min": 8.0,
       "lead": 0.8,
       "tail": 0.6,
