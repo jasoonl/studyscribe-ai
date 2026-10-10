@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { probeAudioDuration } from "@/lib/probeAudioDuration";
+import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
 import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 
 type Mode = "choose" | "record" | "upload" | "link";
@@ -17,20 +18,20 @@ type Mode = "choose" | "record" | "upload" | "link";
 export default function RecordOrUpload({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useCustomAuth();
   const [, navigate] = useLocation();
-  const [mode, setMode] = useState<Mode>("choose");
+  const recorder = useRecorder();
+  // A recording keeps running while the user is elsewhere; reopen straight onto it.
+  const [mode, setMode] = useState<Mode>(() => (recorder.status !== "idle" ? "record" : "choose"));
+  useShowsRecorder(mode === "record");
 
-  // Recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [duration, setDuration] = useState(0);
+  // Recording state lives in RecorderProvider so it survives leaving this page.
+  const isRecording = recorder.status === "recording" || recorder.status === "paused";
+  const isPaused = recorder.status === "paused";
+  const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
   const [audience, setAudience] = useState<"student" | "professional">("student");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
-  const [recordingStopped, setRecordingStopped] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingStopped = recorder.status === "stopped" || uploadComplete;
 
   // Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -72,85 +73,28 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
     }
   }, [statusData, isPolling, createdRecordingId, navigate]);
 
-  // Recording timer
+  // Offer back a recording that a crash, reload or closed tab interrupted.
+  const { restoreUnsaved, recovered } = recorder;
   useEffect(() => {
-    if (isRecording && !isPaused) {
-      timerRef.current = setInterval(() => {
-        setDuration((d) => d + 1);
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRecording, isPaused]);
+    if (user) void restoreUnsaved(user.id);
+  }, [user, restoreUnsaved]);
+  useEffect(() => {
+    if (recovered) setMode("record");
+  }, [recovered]);
 
   // Recording functions
   const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      });
-
-      let mimeType = 'audio/webm';
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-          mimeType = 'audio/wav';
-        } else {
-          mimeType = '';
-        }
-      }
-
-      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingStopped(false);
-      setDuration(0);
-      toast.success("Recording started");
-    } catch (error) {
-      toast.error("Failed to start recording. Please check microphone permissions.");
-    }
+    setUploadComplete(false);
+    const started = await recorder.start({ userId: user?.id ?? null, returnPath: "/record-or-upload" });
+    if (started) toast.success("Recording started. It keeps going if you switch tabs or windows.");
   };
 
-  const pauseRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.pause();
-      setIsPaused(true);
-    }
-  };
+  const pauseRecording = () => recorder.pause();
 
-  const resumeRecording = () => {
-    if (mediaRecorderRef.current && isPaused) {
-      mediaRecorderRef.current.resume();
-      setIsPaused(false);
-    }
-  };
+  const resumeRecording = () => recorder.resume();
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      setIsPaused(false);
-      setRecordingStopped(true);
-    }
+    void recorder.stop();
   };
 
   // Helper: read blob/file as base64 DataURL using a Promise (avoids async callback bug)
@@ -169,25 +113,27 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
       return;
     }
 
-    if (audioChunksRef.current.length === 0) {
+    const finished = recorder.getRecording();
+    if (!finished) {
       toast.error("No audio recorded");
       return;
     }
 
     setIsUploading(true);
     try {
-      const actualMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-      const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-      const directUpload = await uploadAudioDirectly(audioBlob, `recording-${Date.now()}.webm`);
+      const { blob: audioBlob, mimeType, durationSeconds } = finished;
+      const extension = mimeType.startsWith("audio/mp4") ? "mp4" : "webm";
+      const directUpload = await uploadAudioDirectly(audioBlob, `recording-${Date.now()}.${extension}`);
       const base64String = directUpload ? undefined : await readAsBase64(audioBlob);
       const recording = await createRecordingMutation.mutateAsync({
         title: recordingTitle,
         audience,
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
-        duration,
+        duration: durationSeconds,
         language: languageForRequest(language),
       });
       setUploadComplete(true);
+      recorder.discard();
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
       toast.success("Recording uploaded! Waiting for transcription...");
@@ -464,8 +410,17 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                         {formatTime(duration)}
                       </div>
                       <p className="text-muted-foreground">
-                        {isRecording ? (isPaused ? "Paused" : "Recording...") : "Ready to record"}
+                        {isRecording
+                          ? recorder.micReconnecting
+                            ? "Microphone disconnected, reconnecting..."
+                            : isPaused ? "Paused" : "Recording..."
+                          : "Ready to record"}
                       </p>
+                      {isRecording && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Keeps recording when you switch tabs, windows or pages, until you press Stop. Keep this tab open.
+                        </p>
+                      )}
                     </div>
 
                     {/* Recording Buttons */}
@@ -556,7 +511,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <div className="space-y-6">
                       <div className="text-center">
                         <CheckCircle className="w-12 h-12 text-accent mx-auto mb-4" />
-                        <h3 className="text-xl font-bold mb-2">Recording Complete</h3>
+                        <h3 className="text-xl font-bold mb-2">{recorder.recovered ? "Recovered Recording" : "Recording Complete"}</h3>
                         <p className="text-muted-foreground mb-6">Duration: {formatTime(duration)}</p>
                       </div>
 
@@ -608,11 +563,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                           size="lg"
                           variant="outline"
                           className="flex-1"
-                          onClick={() => {
-                            setRecordingStopped(false);
-                            setDuration(0);
-                            audioChunksRef.current = [];
-                          }}
+                          onClick={() => recorder.discard()}
                         >
                           Record Again
                         </Button>
