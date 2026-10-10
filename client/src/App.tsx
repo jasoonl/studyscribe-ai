@@ -2,6 +2,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Redirect } from "wouter";
 import { lazy, Suspense } from "react";
+import { RecorderProvider } from "./contexts/RecorderContext";
+import RecordingIndicator from "./components/RecordingIndicator";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./components/NotificationContainer";
@@ -138,8 +140,11 @@ function App() {
       >
         <NotificationProvider>
           <TooltipProvider>
-            <Toaster />
-            <Router />
+            <RecorderProvider>
+              <Toaster />
+              <Router />
+              <RecordingIndicator />
+            </RecorderProvider>
           </TooltipProvider>
         </NotificationProvider>
       </ThemeProvider>
