@@ -31,3 +31,43 @@ export function claimAutoNotesAttempt(recordingId: number): boolean {
     return true;
   }
 }
+
+const LIVE_TRANSCRIPT_KEY = "studyscribe_live_transcript";
+
+/** Live text while recording is opt-in: the streaming service bills every minute it runs. */
+export function getLiveTranscriptEnabled(): boolean {
+  try {
+    return localStorage.getItem(LIVE_TRANSCRIPT_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+export function setLiveTranscriptEnabled(enabled: boolean) {
+  try {
+    localStorage.setItem(LIVE_TRANSCRIPT_KEY, enabled ? "on" : "off");
+  } catch {
+    // Preference just won't persist.
+  }
+}
+
+const CAPTION_SIZE_KEY = "studyscribe_caption_size";
+
+/** Live captions text size step (an index into the captions view's sizes). */
+export function getCaptionSize(fallback: number): number {
+  try {
+    const stored = localStorage.getItem(CAPTION_SIZE_KEY);
+    const value = stored === null ? NaN : Number(stored);
+    return Number.isInteger(value) && value >= 0 ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function setCaptionSize(step: number) {
+  try {
+    localStorage.setItem(CAPTION_SIZE_KEY, String(step));
+  } catch {
+    // Preference just won't persist.
+  }
+}

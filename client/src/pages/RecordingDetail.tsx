@@ -13,6 +13,7 @@ import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
 import { RecordingChapters } from "@/components/RecordingChapters";
 import { RecordingTasks } from "@/components/RecordingTasks";
+import { RecordingFollowUps } from "@/components/RecordingFollowUps";
 import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
@@ -377,7 +378,7 @@ export default function RecordingDetail() {
             </Card>
 
             {/* Tabs: source material, flashcard review, and separate mastery modes */}
-            <Tabs value={activeStudyTab} onValueChange={setActiveStudyTab} className="w-full">
+            <Tabs id="recording-study-tabs" value={activeStudyTab} onValueChange={setActiveStudyTab} className="w-full scroll-mt-20">
               <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-none bg-transparent p-0 sm:grid-cols-3">
                 <TabsTrigger value="transcript" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <FileText className="h-5 w-5" />
@@ -709,6 +710,16 @@ export default function RecordingDetail() {
               transcriptReady={transcriptReady}
               audience={recording.audience}
               onSeek={recording.audioUrl ? seconds => audioPlayerRef.current?.seekTo(seconds, { play: true }) : undefined}
+            />
+            <RecordingFollowUps
+              recordingId={recording.id}
+              transcriptReady={transcriptReady}
+              audience={recording.audience}
+              flashcardCount={flashcards?.length ?? 0}
+              onOpenFlashcards={() => {
+                setActiveStudyTab("flashcards");
+                document.getElementById("recording-study-tabs")?.scrollIntoView({ block: "start" });
+              }}
             />
             <div className="flex items-center justify-between pt-2">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>

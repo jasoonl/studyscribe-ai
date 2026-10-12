@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Redirect } from "wouter";
 import { lazy, Suspense } from "react";
 import { RecorderProvider } from "./contexts/RecorderContext";
+import { LiveTranscriptProvider } from "./contexts/LiveTranscriptContext";
 import RecordingIndicator from "./components/RecordingIndicator";
 import CookieBanner from "./components/CookieBanner";
 import SkipLink from "./components/SkipLink";
@@ -159,11 +160,13 @@ function App() {
         <NotificationProvider>
           <TooltipProvider>
             <RecorderProvider>
-              <SkipLink />
-              <Toaster />
-              <Router />
-              <RecordingIndicator />
-              <CookieBanner />
+              <LiveTranscriptProvider>
+                <SkipLink />
+                <Toaster />
+                <Router />
+                <RecordingIndicator />
+                <CookieBanner />
+              </LiveTranscriptProvider>
             </RecorderProvider>
           </TooltipProvider>
         </NotificationProvider>

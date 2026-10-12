@@ -41,6 +41,8 @@ const BROWSER_STORAGE: Row[] = [
   { name: "studyscribe_onboarding_done", purpose: "Remembers that you have seen the welcome tour.", lasts: "Until you clear site data" },
   { name: "studyscribe_auto_notes", purpose: "Remembers whether study notes are written automatically (Settings).", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_auto_notes_tried_*", purpose: "Stops the same notes being generated twice in one tab (session storage).", lasts: "Until you close the tab" },
+  { name: "studyscribe_live_transcript", purpose: "Remembers whether you turned on live transcript while recording.", lasts: "Until you change it or clear site data" },
+  { name: "studyscribe_caption_size", purpose: "Remembers the text size you chose for live captions.", lasts: "Until you change it or clear site data" },
   { name: "sidebar-width", purpose: "Remembers how wide you made the app sidebar.", lasts: "Until you clear site data" },
 ];
 

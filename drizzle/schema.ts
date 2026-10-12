@@ -532,3 +532,27 @@ export const examPacks = mysqlTable("examPacks", {
 ]);
 
 export type ExamPack = typeof examPacks.$inferSelect;
+
+/**
+ * Follow-up suggestions after a recording (C7): a few dated study steps such
+ * as "Review these concepts tomorrow". Regenerating replaces the open ones.
+ * `remindedAt` is set once the daily reminder for the item has gone out.
+ */
+export const followUpSuggestions = mysqlTable("followUpSuggestions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  recordingId: int("recordingId").notNull(),
+  kind: mysqlEnum("kind", ["review", "practice", "ask", "read"]).default("review").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  detail: varchar("detail", { length: 500 }),
+  dueDate: date("dueDate", { mode: "string" }).notNull(),
+  done: boolean("done").default(false).notNull(),
+  doneAt: timestamp("doneAt"),
+  remindedAt: timestamp("remindedAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("followUpSuggestions_user_idx").on(table.userId),
+  index("followUpSuggestions_recording_idx").on(table.recordingId),
+]);
+
+export type FollowUpSuggestion = typeof followUpSuggestions.$inferSelect;

@@ -10,6 +10,9 @@
       "includeFiles": "drizzle/**/*"
     }
   },
+  "crons": [
+    { "path": "/api/cron/follow-up-reminders", "schedule": "0 13 * * *" }
+  ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.mjs" },
     { "src": "/manus-storage/(.*)", "dest": "/api/index.mjs" },

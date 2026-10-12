@@ -15,6 +15,7 @@ import { deleteCoursesForUser, exportCoursesForUser } from "./courses";
 import { deleteActionItemsForUser, listActionItemsForUser } from "./actionItems";
 import { deleteExamPacksForUser, exportExamPacksForUser } from "./examPacks";
 import { deleteVocabularyForUser, exportVocabularyForUser } from "./vocabulary";
+import { deleteFollowUpsForUser, listFollowUpsForUser } from "./followUps";
 import { comparePassword } from "./authService";
 import { getDb } from "./db";
 import { purgeRecordings } from "./purgeRecordings";
@@ -80,6 +81,7 @@ export const accountRouter = router({
       actionItems: await listActionItemsForUser(userId),
       vocabulary: await exportVocabularyForUser(userId),
       examPacks: await exportExamPacksForUser(userId),
+      followUps: await listFollowUpsForUser(userId),
       recordingTags: owned.length ? await db.select().from(recordingTags).where(inArray(recordingTags.recordingId, owned)) : [],
       emailDrafts: await db.select().from(emailDrafts).where(eq(emailDrafts.userId, userId)),
       chatHistory: await db.select().from(chatHistory).where(eq(chatHistory.userId, userId)),
@@ -153,6 +155,7 @@ export const accountRouter = router({
       await deleteActionItemsForUser(userId);
       await deleteVocabularyForUser(userId);
       await deleteExamPacksForUser(userId);
+      await deleteFollowUpsForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

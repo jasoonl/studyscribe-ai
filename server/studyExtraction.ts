@@ -19,7 +19,7 @@ export function parseJsonContent(content: unknown): unknown {
   }
 }
 
-function asArray(value: unknown, key: string): unknown[] {
+export function asArray(value: unknown, key: string): unknown[] {
   if (Array.isArray(value)) return value;
   if (value && typeof value === "object" && Array.isArray((value as Record<string, unknown>)[key])) {
     return (value as Record<string, unknown[]>)[key];
@@ -27,12 +27,12 @@ function asArray(value: unknown, key: string): unknown[] {
   return [];
 }
 
-function cleanText(value: unknown, max: number): string {
+export function cleanText(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
   return value.replace(/\s+/g, " ").trim().slice(0, max).trim();
 }
 
-function seconds(value: unknown, duration: number | null): number | null {
+export function seconds(value: unknown, duration: number | null): number | null {
   const number = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
   if (!Number.isFinite(number) || number < 0) return null;
   if (duration && duration > 0 && number > duration + 5) return null;

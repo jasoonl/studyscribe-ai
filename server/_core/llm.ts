@@ -69,6 +69,8 @@ export type InvokeParams = {
   model?: string;
   thinking?: Record<string, unknown>;
   reasoning?: Record<string, unknown>;
+  /** Gives up (retries included) after this long, for calls that must finish well inside the 60s function limit. */
+  timeoutMs?: number;
 };
 
 export type ToolCall = {
@@ -351,13 +353,14 @@ const fetchWithBackoff = async (
       } catch {
         // Body already settled; nothing to clean up.
       }
+      if (init.signal?.aborted) return response;
       console.warn(
         `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after status ${response.status}`
       );
       await sleep(computeBackoffDelay(attempt, retryAfterMs));
     } catch (error) {
       lastError = error;
-      if (attempt === RETRY_MAX_RETRIES) throw error;
+      if (attempt === RETRY_MAX_RETRIES || init.signal?.aborted) throw error;
       console.warn(
         `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after network error`
       );
@@ -387,6 +390,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     reasoning,
     maxTokens,
     max_tokens,
+    timeoutMs,
   } = params;
 
   const payload: Record<string, unknown> = {
@@ -439,6 +443,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       authorization: `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify(payload),
+    ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
   });
 
   if (!response.ok) {

@@ -164,6 +164,20 @@ export default function Admin() {
                   Without an AssemblyAI API key no transcript can be produced for any recording.
                 </p>
               )}
+
+              <div className="border-t border-gray-100 pt-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={transcriptionConfig.live.available ? "default" : "outline"}>
+                    Live text {transcriptionConfig.live.available ? "available" : transcriptionConfig.live.switchedOff ? "switched off" : "unavailable"}
+                  </Badge>
+                  <Badge variant="outline">Model: {transcriptionConfig.live.model}</Badge>
+                  <Badge variant="outline">Session cap: {Math.round(transcriptionConfig.live.maxSessionSeconds / 60)} min</Badge>
+                </div>
+                <p className="text-xs text-gray-500 break-all">
+                  {transcriptionConfig.live.message ??
+                    `Browsers stream to ${transcriptionConfig.live.host} with a temporary token; the API key stays on the server. Live text is opt-in per browser and billed per minute while a recording runs. Set LIVE_TRANSCRIPTION=off to turn it off for everyone.`}
+                </p>
+              </div>
             </Card>
           </section>
         )}
