@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
 import { useRecorder } from "@/contexts/RecorderContext";
 import type { LiveTurn } from "@/lib/liveTurns";
@@ -23,6 +23,7 @@ export function LiveTranscriptSection({ snapshot }: { snapshot: LiveTurn[] | nul
   const live = useLiveTranscript();
   const { status: recorderStatus } = useRecorder();
   const [captionsOpen, setCaptionsOpen] = useState(false);
+  const openerRef = useRef<HTMLElement | null>(null);
   const recording = recorderStatus === "recording" || recorderStatus === "paused";
   const turns = snapshot ?? live.turns;
 
@@ -38,10 +39,13 @@ export function LiveTranscriptSection({ snapshot }: { snapshot: LiveTurn[] | nul
         turns={turns}
         status={snapshot ? null : recording ? live.status : null}
         message={snapshot || !recording ? null : live.message}
-        onOpenCaptions={() => setCaptionsOpen(true)}
+        onOpenCaptions={opener => {
+          openerRef.current = opener;
+          setCaptionsOpen(true);
+        }}
         footnote={footnote}
       />
-      <LiveCaptions open={captionsOpen} onOpenChange={setCaptionsOpen} turns={turns} status={snapshot ? null : recording ? live.status : null} />
+      <LiveCaptions open={captionsOpen} onOpenChange={setCaptionsOpen} turns={turns} status={snapshot ? null : recording ? live.status : null} returnFocusTo={() => openerRef.current} />
     </>
   );
 }

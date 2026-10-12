@@ -86,6 +86,31 @@ const faqs: FAQItem[] = [
     answer: "Yes. In Settings, add names and terms to listen for (one per line, up to six words each), and they are sent with every new recording. When you record, upload or import a link you can also add terms for that recording only, and the same box appears when you retry a failed transcription. It improves new transcriptions; to fix one that is done, edit the transcript.",
   },
   {
+    category: "Getting Started",
+    question: "Can I see the words while I record?",
+    answer: "Yes. Turn on Live transcript on the record page before or during a recording, and the words appear as they are spoken. It is off until you turn it on, because your audio is streamed to our transcription provider for as long as it runs. It pauses when you pause, keeps going if you switch tabs, and reconnects by itself if the connection drops; if it can't run, the recording carries on as normal. Live text is a quick preview: after you save, the full transcript with speakers replaces it.",
+  },
+  {
+    category: "Getting Started",
+    question: "Can I record a lecture playing in another tab, like Zoom or YouTube?",
+    answer: "In Chrome or Edge on a computer, tick Record a tab or screen audio too before you start, or choose Add tab or screen audio while recording. Pick the tab and turn on Also share tab audio (or share your entire screen with system audio). The tab and your microphone are recorded together. If you stop sharing, only the tab audio stops; your microphone recording continues. Other browsers can't share tab audio, so the option doesn't appear there.",
+  },
+  {
+    category: "AI Features",
+    question: "What is Study help?",
+    answer: "With live transcript on, the Study help panel beside it answers quick questions about the last few minutes: explain a term, recap the last two minutes, likely exam points, questions to ask, or your own question. It only uses the live text on your screen, keeps answers short, and is there to help you follow and take part, not to answer tests for you. It is always visible; there is no hidden mode.",
+  },
+  {
+    category: "Getting Started",
+    question: "Is there a captions view?",
+    answer: "Yes. While live transcript is on, choose Captions to show the live text full screen in large white-on-black type. Use the minus and plus buttons, or the - and + keys, to change the size (it is remembered on this device), and Esc or Exit to close it.",
+  },
+  {
+    category: "AI Features",
+    question: "What are follow-ups?",
+    answer: "On a finished recording, Plan follow-ups suggests a few dated steps for the next days, spaced out the way review works best: what to go over tomorrow, what to practise in a few days, a question to bring to class, something to read. Tick them off as you go; Plan again replaces the ones you haven't done. Practice steps link to the recording's flashcards, and where reminders are set up you get one in Notifications on the day.",
+  },
+  {
     category: "Organization",
     question: "How do I search across all my recordings?",
     answer: "Use the Knowledge Base (accessible from the Dashboard header). Type any keyword and it will search across all your recording titles and transcript content, showing relevant snippets with highlighted matches.",

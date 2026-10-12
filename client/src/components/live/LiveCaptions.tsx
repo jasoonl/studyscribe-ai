@@ -8,7 +8,8 @@ import type { LiveStatus } from "@/lib/liveTranscription";
 
 /** Caption sizes in pixels, chosen to stay readable from across a room. */
 export const CAPTION_SIZES = [28, 36, 48, 60, 76] as const;
-const DEFAULT_SIZE = 2;
+/** A smaller start on phones, where 48px fits only a few words per line. */
+const defaultSize = () => (typeof window !== "undefined" && window.innerWidth < 640 ? 1 : 2);
 /** Only the newest turns are drawn; older lines scroll off the top anyway. */
 const VISIBLE_TURNS = 14;
 
@@ -32,13 +33,16 @@ export function LiveCaptions({
   onOpenChange,
   turns,
   status,
+  returnFocusTo,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   turns: LiveTurn[];
   status: LiveStatus | "unsupported" | null;
+  /** Where keyboard focus goes back to on exit (the button that opened it). */
+  returnFocusTo?: () => HTMLElement | null;
 }) {
-  const [size, setSize] = useState(() => Math.min(getCaptionSize(DEFAULT_SIZE), CAPTION_SIZES.length - 1));
+  const [size, setSize] = useState(() => Math.min(getCaptionSize(defaultSize()), CAPTION_SIZES.length - 1));
   const { finals, partial } = useMemo(() => splitLiveText(turns), [turns]);
   const recent = finals.slice(-VISIBLE_TURNS);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -62,6 +66,13 @@ export function LiveCaptions({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           aria-describedby={undefined}
+          onCloseAutoFocus={event => {
+            const target = returnFocusTo?.();
+            if (target) {
+              event.preventDefault();
+              target.focus();
+            }
+          }}
           onKeyDown={event => {
             if (event.key === "+" || event.key === "=") {
               event.preventDefault();

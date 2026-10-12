@@ -25,7 +25,7 @@ export function LiveTranscriptPanel({
   turns: LiveTurn[];
   status: LiveStatus | "unsupported" | null;
   message: string | null;
-  onOpenCaptions?: () => void;
+  onOpenCaptions?: (opener: HTMLElement) => void;
   footnote?: string;
   className?: string;
 }) {
@@ -62,7 +62,7 @@ export function LiveTranscriptPanel({
           {status && <LiveStatusLabel status={status} />}
         </div>
         {onOpenCaptions && (
-          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onOpenCaptions}>
+          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={event => onOpenCaptions(event.currentTarget)}>
             <Captions className="h-4 w-4" aria-hidden="true" />
             Captions
           </Button>
@@ -78,24 +78,24 @@ export function LiveTranscriptPanel({
         }}
         tabIndex={0}
         aria-label="Live transcript text"
-        className="max-h-[26rem] min-h-40 flex-1 overflow-y-auto px-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className="max-h-[26rem] min-h-40 flex-1 overflow-y-auto px-4 py-4 sm:px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
         {empty ? (
           <p className="text-base text-muted-foreground">
             {status === "live" ? "Listening. Words appear here as they're spoken." : status === "connecting" || status === "reconnecting" ? "Connecting to live transcription." : "No live text yet."}
           </p>
         ) : (
-          <div className="space-y-4 text-lg leading-relaxed">
+          <div className="space-y-4 text-base leading-relaxed sm:text-lg">
             <div role="log" aria-live="polite" aria-relevant="additions" className="space-y-4">
               {paragraphs.map(paragraph => (
-                <p key={paragraph.key} className="grid grid-cols-[3.25rem_1fr] gap-3">
+                <p key={paragraph.key} className="grid grid-cols-[2.75rem_1fr] gap-2 sm:grid-cols-[3.25rem_1fr] sm:gap-3">
                   <span className="pt-1.5 font-mono text-xs tabular-nums text-muted-foreground">{formatClockTime(Math.floor(paragraph.startAt))}</span>
                   <span>{paragraph.turns.map(turn => turn.text).join(" ")}</span>
                 </p>
               ))}
             </div>
             {partial && (
-              <p className="grid grid-cols-[3.25rem_1fr] gap-3" aria-hidden="true">
+              <p className="grid grid-cols-[2.75rem_1fr] gap-2 sm:grid-cols-[3.25rem_1fr] sm:gap-3" aria-hidden="true">
                 <span />
                 <span className="text-muted-foreground">{partial.text}</span>
               </p>

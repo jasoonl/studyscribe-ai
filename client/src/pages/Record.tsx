@@ -251,7 +251,7 @@ export default function Record() {
         </div>
 
         {/* Controls */}
-        <div className="flex gap-3 justify-center flex-wrap">
+        <div className={cn("flex gap-3 justify-center flex-wrap", !ready && !isRecording && "hidden")}>
           {ready && (
             <Button onClick={startRecording} size="lg" className="gap-2">
               <Mic className="w-5 h-5" /> Start Recording
@@ -449,9 +449,9 @@ export default function Record() {
 
       <main className="container py-8 sm:py-12">
         {layout.wide ? (
-          <div className="mx-auto max-w-6xl">
+          <div className={cn("mx-auto", layout.showHelp ? "max-w-6xl" : "max-w-3xl")}>
             {!uploadComplete && <RecordingConsentNotice />}
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className={cn("grid items-start gap-6", layout.showHelp && "lg:grid-cols-[minmax(0,1fr)_22rem]")}>
               <div className="min-w-0 space-y-6">
                 {recorderCard}
                 {layout.showTranscript && (

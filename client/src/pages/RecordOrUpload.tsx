@@ -419,9 +419,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         </header>
 
         <main className="container py-12">
-          <div className={liveLayout.wide ? "mx-auto max-w-6xl" : "mx-auto max-w-2xl"}>
+          <div className={liveLayout.showHelp ? "mx-auto max-w-6xl" : liveLayout.wide ? "mx-auto max-w-3xl" : "mx-auto max-w-2xl"}>
           {!uploadComplete && <RecordingConsentNotice />}
-          <div className={liveLayout.wide ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" : ""}>
+          <div className={liveLayout.showHelp ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" : ""}>
           <div className="min-w-0 space-y-8">
             {!recordingStopped ? (
               <>

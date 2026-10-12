@@ -8,7 +8,7 @@ export type LiveAssistAction = (typeof LIVE_ASSIST_ACTIONS)[number];
 
 export const LIVE_ASSIST_ACTION_INFO: Record<LiveAssistAction, { label: string; windowSeconds: number; pending: string }> = {
   explain: { label: "Explain a term", windowSeconds: 180, pending: "Explaining" },
-  recap: { label: "Recap the last 2 minutes", windowSeconds: 120, pending: "Recapping" },
+  recap: { label: "Recap last 2 min", windowSeconds: 120, pending: "Recapping" },
   examFocus: { label: "Likely exam points", windowSeconds: 300, pending: "Looking for exam points" },
   questions: { label: "Questions to ask", windowSeconds: 300, pending: "Thinking of questions" },
   custom: { label: "Ask your own question", windowSeconds: 300, pending: "Answering" },

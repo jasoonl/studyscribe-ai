@@ -67,9 +67,9 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 
 | # | Gap | Src | StudyScribe adaptation | Effort |
 |---|---|---|---|---|
-| A1 | **Live transcription while recording** | O+C | Words appear on the Record page as you speak, using AssemblyAI's streaming (Universal-Streaming) API with a short-lived token minted by the server. The final file still goes through the existing batch pipeline for the authoritative diarized transcript. | L |
-| A2 | **Live Lecture Companion** (Cluely-style overlay, ethical) | C | A side panel on the Record page (and later the desktop app / mobile app) with buttons: *Explain that term*, *Recap last 2 min*, *What's likely on the exam?*, *Questions to ask the professor*. Uses the rolling live transcript as context. Clearly visible, no stealth mode. | L |
-| A3 | **System / tab audio capture** (record a Zoom/YouTube lecture playing on the computer) | C | `getDisplayMedia({ audio: true })` option on the Record page ("Record a tab or screen audio"), mixed with mic via Web Audio. Chrome/Edge only; hide the option where unsupported. | M |
+| A1 | **Live transcription while recording** (shipped, Phase 3) | O+C | Words appear on the Record page as you speak, using AssemblyAI's streaming (Universal-Streaming) API with a short-lived token minted by the server. The final file still goes through the existing batch pipeline for the authoritative diarized transcript. | L |
+| A2 | **Live Lecture Companion** (shipped as "Study help", Phase 3) (Cluely-style overlay, ethical) | C | A side panel on the Record page (and later the desktop app / mobile app) with buttons: *Explain that term*, *Recap last 2 min*, *What's likely on the exam?*, *Questions to ask the professor*. Uses the rolling live transcript as context. Clearly visible, no stealth mode. | L |
+| A3 | **System / tab audio capture** (shipped, Phase 3) (record a Zoom/YouTube lecture playing on the computer) | C | `getDisplayMedia({ audio: true })` option on the Record page ("Record a tab or screen audio"), mixed with mic via Web Audio. Chrome/Edge only; hide the option where unsupported. | M |
 | A4 | **Meeting bot that joins Zoom/Meet/Teams** | O | Integrate a bot provider (e.g. Recall.ai) rather than building one: user pastes a meeting link or connects calendar → bot joins → recording lands as a normal `recordings` row via webhook. | XL |
 | A5 | **Calendar integration** (auto-join scheduled classes/meetings, auto-title) | O | Google Calendar read-only OAuth (reuse Google OAuth client). Shows "Upcoming" on Dashboard; one-click "Send bot" (A4) or "Remind me to record". | L |
 | A6 | **Slide / screenshot capture** | O | During screen-audio recording (A3), capture a frame every N seconds when it changes; store as images linked to timestamps; show inline in transcript. | L |
@@ -99,7 +99,7 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 | C4 | **Automatic summary on completion** (no button click) | O | After `finalizeCompletedTranscription`, enqueue summary generation (polling-safe: generate on first view if not ready, or via a follow-up webhook/cron). User setting to opt out. | S |
 | C5 | **Custom summary templates** (Lecture, Lab, Seminar, Meeting, Interview) | O | Template picker on generate; templates are prompt presets in `shared/`. | S |
 | C6 | **Live Q&A during recording** | C | Part of A2. | — |
-| C7 | **Follow-up suggestions after a session** ("Review these 3 concepts tomorrow") | C | Post-processing card on RecordingDetail; ties into flashcard spaced review and push notifications. | S |
+| C7 | **Follow-up suggestions after a session** (shipped, Phase 3) ("Review these 3 concepts tomorrow") | C | Post-processing card on RecordingDetail; ties into flashcard spaced review and push notifications. | S |
 | C8 | **Multi-recording study guide / exam pack** | O | Select several recordings (a course) → one combined study guide + quiz. | M |
 
 ### D. Organisation & collaboration
@@ -132,7 +132,7 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 | F3 | **Teams / education plan, admin console, SSO** | O | Org accounts, seat management, SAML/Google Workspace SSO. Later. | XL |
 | F4 | **Open signup with free tier** (vs. invite-only) | O+C | Feature flag in `appSettings` to switch invite-gating off once billing/abuse limits exist. Invite flow stays available. | S |
 | F5 | **Onboarding checklist & templates gallery** | O | Extend `OnboardingModal` into a Dashboard checklist. | S |
-| F6 | **Accessibility: live captions mode** | O | Full-screen large-text live captions view (A1) for hard-of-hearing students. | S |
+| F6 | **Accessibility: live captions mode** (shipped, Phase 3) | O | Full-screen large-text live captions view (A1) for hard-of-hearing students. | S |
 | F7 | **Translation of transcripts/notes** | O+C | "Translate to…" using the LLM; reuses `shared/languages.ts`. | S |
 
 ---
@@ -156,7 +156,10 @@ Status (rest of Phase 2 shipped 2026-10-12, needs `npm run db:migrate` for migra
 
 D1 courses/folders + tags UI · C1 "Ask StudyScribe" cross-recording chat · C3 action items/assignments to-do · B2 custom vocabulary · B6 keyword chips · B8 chapters/outline · C8 multi-recording exam pack.
 
-### Phase 3 — Real-time (the Otter + Cluely core) (≈4 weeks)
+### Phase 3 — Real-time (the Otter + Cluely core) (≈4 weeks) · shipped 2026-10-12
+
+Status (needs `npm run db:migrate` for migration 0021, and `CRON_SECRET` set in Vercel for follow-up reminders): A1 live transcription (browser streams 16 kHz PCM16 from an AudioWorklet on the recorder's own Web Audio mix to AssemblyAI Universal-Streaming v3 with a token from `recordings.liveToken`; opt-in per browser because streaming is billed per minute; live mode shown in `diagnostics.transcription`), A2 Study help panel (`ai.liveAssist`, rate limited, 25s cap, no stealth mode), A3 tab or screen audio (desktop Chromium only, mixed with the mic; stopping the share keeps the recording going), F6 full-screen live captions (white on black, five sizes, keyboard exit) and C7 follow-up suggestions (stored per recording, practice steps link to flashcards, daily in-app and push reminder via Vercel Cron) are done. Live text and Study help answers are not stored. Verified against a local mock of the streaming API and an OpenAI-compatible mock (`scripts/dev/mock-live-services.mjs`); not yet run against the real AssemblyAI streaming service. Not done: speaker labels in live text, live text inside `RecordingIndicator`, and Study help on pages other than the record pages.
+
 A1 live transcription · A2 Live Lecture Companion panel · A3 tab/system audio · F6 live captions mode · C7 follow-up suggestions.
 _Technical note_: AssemblyAI streaming is a WebSocket from the **browser** directly to AssemblyAI using a temporary token from a new `recordings.liveToken` procedure, so no Vercel function holds the socket open. Companion prompts call a new `ai.liveAssist` mutation with the last N seconds of live text — each call is short and well under 60s.
 

@@ -5,8 +5,8 @@ import { MIN_AGE, OPERATOR_NAME, REQUEST_RESPONSE_DAYS } from "@shared/legal";
 const PROVIDERS: Array<[string, string]> = [
   ["Vercel", "Hosts the website and stores uploaded audio files."],
   ["TiDB Cloud (PingCAP)", "Hosts the database that holds your account, transcripts and study materials."],
-  ["AssemblyAI", "Receives your audio to transcribe it and identify speakers."],
-  ["An AI language-model provider", "Receives transcript text to generate notes, flashcards, quizzes, guides, drafts and tutor answers."],
+  ["AssemblyAI", "Receives your audio to transcribe it and identify speakers. If you turn on live transcript, it also receives your audio as you record, for as long as the recording runs."],
+  ["An AI language-model provider", "Receives transcript text to generate notes, flashcards, quizzes, guides, drafts, follow-ups and tutor answers, and the last few minutes of live transcript when you ask Study help."],
   ["Resend", "Sends account emails such as password resets."],
   ["Google", "Lets you sign in with your Google account, if you choose to."],
   ["Your browser's push service", "Delivers notifications, only if you turn them on."],
@@ -17,7 +17,7 @@ const SECTIONS: LegalSection[] = [
   { heading: "Who we are", body: <p>{OPERATOR_NAME} ("we", "us") runs this website and the StudyScribe AI service, and is responsible for the personal data described here. You can reach us at <ContactEmail />.</p> },
   { heading: "What we collect", body: (<>
     <p><strong className="text-foreground">Account details:</strong> your email address, name, how you sign in, a securely hashed password (if you use one), and when you accepted our Terms and confirmed you meet the minimum age.</p>
-    <p><strong className="text-foreground">Your content:</strong> audio you record, upload or import by link, plus the transcripts, notes, flashcards, quizzes, study guides, email drafts and tutor chats created from it, and any tags, marked moments or sharing choices.</p>
+    <p><strong className="text-foreground">Your content:</strong> audio you record, upload or import by link, plus the transcripts, notes, flashcards, quizzes, study guides, follow-up suggestions, email drafts and tutor chats created from it, and any tags, marked moments or sharing choices. Live transcript text and Study help answers shown while you record are not stored on our servers; the transcript of a saved recording is made again from the file.</p>
     <p><strong className="text-foreground">Technical data:</strong> a session cookie that keeps you signed in, and basic server logs (such as IP address and request details) that our hosting provider keeps for security and operations. If you enable notifications, your browser's push subscription.</p>
     <p><strong className="text-foreground">Access requests:</strong> if you request an invite, the email address you give, plus your name and reason if you choose to add them.</p>
     <p><strong className="text-foreground">Analytics, only with your consent:</strong> which pages are visited, the referring site, and the browser, device type and country, counted without cookies and without identifying you.</p>
