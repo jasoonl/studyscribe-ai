@@ -34,10 +34,7 @@
       "min": 6.0,
       "lead": 0.5,
       "tail": 0.4,
-      "narration": "Transcription starts on its own, in twenty-seven languages, so it works for the way you actually learn.",
-      "clicks": [
-        "starts"
-      ]
+      "narration": "Transcription starts on its own, in twenty-seven languages, so it works for the way you actually learn."
     },
     {
       "id": "transcript",

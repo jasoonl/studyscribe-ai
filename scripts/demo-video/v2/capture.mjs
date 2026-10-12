@@ -74,6 +74,29 @@ const rect = async (locator) => {
   });
   return [x, y, w, h, r].map((v) => Math.round(v * SCALE));
 };
+// The tight box of what is visibly drawn inside an element: its text, icons, and any child with its own
+// background or border (a badge, a pill). For targets with no visible edge of their own.
+const tight = async (locator) => {
+  const r = await locator.first().evaluate((root) => {
+    const boxes = [], visible = (b) => b.width > 0 && b.height > 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    for (let n = walker.currentNode; n; n = walker.nextNode()) {
+      if (n.nodeType === 3) {
+        if (!n.nodeValue.trim()) continue;
+        const range = document.createRange(); range.selectNodeContents(n);
+        for (const b of range.getClientRects()) if (visible(b)) boxes.push(b);
+      } else if (n !== root) {
+        const cs = getComputedStyle(n);
+        if (cs.visibility === "hidden" || cs.display === "none") continue;
+        const drawn = n.tagName === "svg" || n.tagName === "IMG" || (cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent") || parseFloat(cs.borderTopWidth) > 0;
+        if (drawn) { const b = n.getBoundingClientRect(); if (visible(b)) boxes.push(b); }
+      }
+    }
+    const x0 = Math.min(...boxes.map((b) => b.left)), y0 = Math.min(...boxes.map((b) => b.top));
+    return [x0, y0, Math.max(...boxes.map((b) => b.right)) - x0, Math.max(...boxes.map((b) => b.bottom)) - y0];
+  });
+  return [...r.map((v) => Math.round(v * SCALE)), 0];
+};
 const union = (...rs) => {
   const x0 = Math.min(...rs.map((r) => r[0])), y0 = Math.min(...rs.map((r) => r[1]));
   const x1 = Math.max(...rs.map((r) => r[0] + r[2])), y1 = Math.max(...rs.map((r) => r[1] + r[3]));
@@ -134,6 +157,7 @@ const cardOf = (title) => page.locator("div.border-2", { has: page.getByRole("he
 await scrollTo(cardOf("Record Live"), (await headerBottom()) + 64); // the consent note stays in view above the cards
 rects.add = {
   banner: await rect(page.getByRole("note")),
+  automatic: await tight(cardOf("Record Live").locator("li, div", { hasText: /^Automatic transcription$/ }).last()),
   cards: [await rect(cardOf("Record Live")), await rect(cardOf("Upload File")), await rect(cardOf("From a Link"))],
   buttons: [
     centre(await rect(page.getByRole("button", { name: /Start Recording/ }))),
@@ -161,7 +185,7 @@ await page.waitForTimeout(600);
 const spanish = page.getByRole("option", { name: "Spanish", exact: true });
 await spanish.focus();
 await page.waitForTimeout(300);
-rects.language = { label: await rect(page.getByText("Spoken language", { exact: true })), radios: await rect(page.getByText("Professional Meeting", { exact: true })), spanish: await rect(spanish) };
+rects.language = { label: await rect(page.getByText("Spoken language", { exact: true })), radios: await rect(page.getByText("Professional Meeting", { exact: true })), list: await rect(page.getByRole("listbox")) };
 await shot("language", { keepMouse: true });
 await page.keyboard.press("Escape");
 
@@ -171,7 +195,7 @@ const transcriptCard = page.locator("div.border-2", { has: page.getByText("Full 
 await scrollBelowHeader(transcriptCard);
 const line = page.locator("div.cursor-pointer", { hasText: "The fridge is not isolated" });
 const speaker = line.getByRole("button", { name: /Prof\. Lee/ }).or(line.getByText("Prof. Lee", { exact: true }));
-rects.transcript = { line: await rect(line), click: centre(await rect(line)), speaker: await rect(speaker), stamp: await rect(line.getByText("0:23", { exact: true })), column: await rect(transcriptCard) };
+rects.transcript = { line: await rect(line), click: centre(await rect(line)), speaker: await tight(speaker), stamp: await tight(line.getByText("0:23", { exact: true })), column: await rect(transcriptCard) };
 await shot("transcript");
 
 // Spanish class transcript (for "another language")
@@ -189,12 +213,26 @@ await scrollBelowHeader(notesCard);
 const noteSection = async (heading) => {
   const h = page.getByRole("heading", { name: heading });
   const ul = h.locator("xpath=following-sibling::*[1]");
-  const markerLeft = await ul.evaluate((el) => {
-    const li = el.querySelector("li"); if (!li) return el.getBoundingClientRect().left;
-    const fs = parseFloat(getComputedStyle(li).fontSize);
-    return li.getBoundingClientRect().left - fs * 1.1; // a disc marker and its gap span about 1.1em
+  // An outside disc marker hangs left of the item's text; find its ink in a screenshot of the strip
+  // left of the first item's text (decoded on a canvas), so the box starts at the marker itself.
+  const strip = await ul.evaluate((el) => {
+    const li = el.querySelector("li"); if (!li) return null;
+    const range = document.createRange(); range.selectNodeContents(li); const r = range.getClientRects()[0];
+    return { x: Math.max(0, r.left - 40), y: r.top, width: 38, height: r.height };
   });
-  const u = union(await rect(h), await rect(ul));
+  let markerLeft = Infinity;
+  if (strip) {
+    const png = (await page.screenshot({ clip: strip })).toString("base64");
+    const ink = await page.evaluate(async (src) => {
+      const img = new Image(); img.src = "data:image/png;base64," + src; await img.decode();
+      const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+      const x = c.getContext("2d"); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data;
+      for (let i = 0; i < c.width; i++) for (let j = 0; j < c.height; j++) { const o = (j * c.width + i) * 4; if (d[o] + d[o + 1] + d[o + 2] < 400) return i / c.width; }
+      return null;
+    }, png);
+    if (ink !== null) markerLeft = strip.x + ink * strip.width;
+  }
+  const u = union(await tight(h), await tight(ul));
   const left = Math.min(u[0], Math.round(markerLeft * SCALE));
   return [left, u[1], u[0] + u[2] - left, u[3], 0];
 };
@@ -256,7 +294,7 @@ await page.waitForTimeout(700);
 const guideTitle = page.getByText("Study Guide: SN1 vs SN2", { exact: true }).last();
 const guideHeader = guideTitle.locator("xpath=ancestor::*[contains(@class,'border-b')][1]");
 const guideCard = guideHeader.locator("xpath=..");
-rects.guide = { header: await rect(guideHeader), card: await rect(guideCard) };
+rects.guide = { header: await tight(guideHeader) };
 await shot("study-guide");
 
 // AI tutor: psychology
@@ -284,7 +322,7 @@ await scrollBelowHeader(page.getByText("Quizzes", { exact: true }).locator("xpat
 rects.library = {
   stats: await rect(page.getByText("Quizzes", { exact: true }).locator("xpath=ancestor::div[contains(@class,'rounded')][1]")),
   heading: await rect(page.getByText("Recent Recordings", { exact: true })),
-  rows: await Promise.all(recentTitles.map((t) => rect(rowOf(t)))),
+  rows: await Promise.all(recentTitles.map((t) => tight(rowOf(t)))),
 };
 await shot("analytics");
 
