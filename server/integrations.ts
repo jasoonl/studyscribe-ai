@@ -440,7 +440,7 @@ export const integrationsRouter = router({
       if (result.status === 401) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Notion no longer accepts this connection. Reconnect it in Settings." });
       throw new TRPCError({ code: "BAD_GATEWAY", message: "Could not list your Notion pages right now." });
     }
-    const pages = (result.body?.results ?? []).map((page: any) => {
+    const pages: Array<{ id: string; title: string }> = (result.body?.results ?? []).map((page: any) => {
       const titleProperty = Object.values(page.properties ?? {}).find((property: any) => property?.type === "title") as any;
       const title = (titleProperty?.title ?? []).map((part: any) => part.plain_text ?? part.text?.content ?? "").join("").trim();
       return { id: String(page.id), title: title || "Untitled" };
