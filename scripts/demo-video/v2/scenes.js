@@ -2,7 +2,9 @@
 // so render.mjs can step through the video one frame at a time and screenshot each one.
 // Callouts, highlights and clicks are timed to the narration through W(scene, /word/).
 (() => {
-  const TL = window.__TL, OV = TL.overlap, S = {};
+  // R holds every highlight/click target, measured from the live app by capture.mjs (rects.js).
+  const TL = window.__TL, OV = TL.overlap, S = {}, R = window.__RECTS;
+  const mid = ([x, y, w, ht]) => [x + w / 2, y + ht / 2];
   TL.scenes.forEach((s, i) => { s.i = i; s.end = i < TL.scenes.length - 1 ? TL.scenes[i + 1].start : TL.total; S[s.id] = s; });
   const stage = document.getElementById("stage");
   const E = {
@@ -150,7 +152,7 @@
   // ================= NEW A. PIPELINE (dark): one recording becomes a whole study set =================
   {
     const s = S.pipeline, g = scene(s), a = s.start;
-    const file = h("div", "dcard", '<small>YOUR LECTURE</small><div style="display:flex;align-items:flex-end;gap:7px;height:120px" id="wv"></div><div class="dline" style="margin:22px 0 0;font-size:30px;font-weight:600">Lecture.m4a</div><div class="dline" style="margin:0;color:#8ec1ff;font-size:24px">7:38</div>', g); put(file, 110, 360, 420, 360);
+    const file = h("div", "dcard", '<small>YOUR LECTURE</small><div style="display:flex;align-items:flex-end;gap:7px;height:120px" id="wv"></div><div class="dline" style="margin:22px 0 0;font-size:30px;font-weight:600">Intro to AI.m4a</div><div class="dline" style="margin:0;color:#8ec1ff;font-size:24px">1:13</div>', g); put(file, 110, 360, 420, 360);
     const bars = file.querySelector("#wv"); const hs = []; for (let i = 0; i < 22; i++) { const b = h("div", "", null, bars); const v = 24 + 90 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.6)); b.style.cssText = `width:10px;border-radius:5px;background:linear-gradient(#7db4ff,#22d3ee);height:${v}px;`; hs.push([b, v]); }
     ticks.push((t) => hs.forEach(([b, v], i) => { b.style.height = (v * (0.7 + 0.3 * Math.sin(t * 6 + i))) + "px"; }));
     const td = W(s, "^drop", 0, 0.1); tw(file, "op", [[td, 0], [td + 0.3, 1]]); tw(file, "y", [[td - 0.1, -260], [td + 0.55, 0, "back"]]); tw(file, "r", [[td - 0.1, -8], [td + 0.55, 0, "back"]]);
@@ -169,7 +171,7 @@
     captions(g, s);
   }
 
-  // ================= 3. PRODUCT: the library, all three recordings =================
+  // ================= 3. PRODUCT: the library of lectures and meetings =================
   {
     const s = S.product, g = scene(s), scr = screen(g, "dashboard", true); put(scr, 160, 40);
     tw(scr, "op", [[s.start, 0], [s.start + 0.6, 1]]); tw(scr, "y", [[s.start, 150], [s.start + 1.2, 0, "expo"]]); tw(scr, "rx", [[s.start, 18], [s.start + 1.2, 0, "expo"]]);
@@ -178,39 +180,46 @@
     captions(g, s);
   }
 
-  // ================= 4. ADD =================
+  // ================= 4. ADD: three ways in, then the language picker =================
   {
-    const s = S.add, g = scene(s), a = s.start;
-    const scr = tour(s, g, "add-recording", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.8, 800, 590, 1.42, "inOut"]]);
-    const cards = [[349, 353, 279, 459], [660, 353, 279, 459], [972, 353, 279, 459]];
-    rim(scr, cards[0], a + 1.9, a + 2.7); rim(scr, cards[1], a + 2.7, a + 3.5); rim(scr, cards[2], a + 3.5, s.end - 0.4);
-    const ck = s.clickTimes[0];
-    cursor(scr, [[a + 1.5, 760, 330], [a + 2.2, 488, 752], [a + 3.0, 799, 748], [ck - 0.25, 1111, 752], [ck, 1111, 752, true]]);
-    chip(g, "27 languages", 1330, 170, W(s, "^twenty-seven")); chip(g, "Starts automatically", 190, 170, W(s, "^starts"));
+    const s = S.add, g = scene(s), a = s.start, ck = s.clickTimes[0], tl = W(s, "^twenty-seven", 0, 0.35);
+    const [cx, cy] = mid(R.add.cards[1]);
+    const scr = tour(s, g, "add-recording", [[a, 800, 448, 0.94], [a + 0.8, cx, cy, 1.12, "inOut"]]);
+    rim(scr, R.add.cards[0], a + 0.25, a + 0.55, true); rim(scr, R.add.cards[1], a + 0.5, a + 0.8, true); rim(scr, R.add.cards[2], a + 0.75, tl);
+    const [bx, by] = R.add.buttons[2];
+    cursor(scr, [[a + 0.2, cx, cy], [ck - 0.3, bx - 10, by - 6], [ck, bx - 10, by - 6, true]]);
+    // The link form opens with its spoken-language list: auto-detect or one of 27 languages.
+    const lang = screen(g, "language"); fadeScreen(lang, tl);
+    const [lx, ly] = mid(R.language.list), [sx, sy] = mid(R.language.spanish);
+    camera(lang, 0.975, [960, 470], [[tl, lx, ly, 1.0], [tl + 1.0, lx, ly, 1.12, "inOut"]]);
+    rim(lang, R.language.spanish, tl + 0.9);
+    chip(g, "Starts automatically", 150, 840, W(s, "^starts")); chip(g, "27 languages, or auto-detect", 1290, 840, W(s, "^twenty-seven"));
     captions(g, s);
   }
 
-  // ================= 5. TRANSCRIPT (a prayer): speaker label, timestamps, click a line =================
+  // ================= 5. TRANSCRIPT (Thermodynamics): speaker labels, timestamps, click a line =================
   {
-    const s = S.transcript, g = scene(s), a = s.start;
-    const scr = tour(s, g, "transcript", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, 560, 800, 1.6, "inOut"]]);
-    const ck = s.clickTimes[0], line = [95, 741, 906, 89];
-    rim(scr, line, ck + 0.1, null, true);
-    cursor(scr, [[W(s, "^labeled") - 0.2, 900, 650], [ck - 0.3, 520, 790], [ck, 520, 790, true]]);
+    const s = S.transcript, g = scene(s), a = s.start, ck = s.clickTimes[0];
+    const [lx, ly] = mid(R.transcript.line), [px, py] = mid(R.transcript.speaker);
+    const scr = tour(s, g, "transcript", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, lx - 120, ly - 40, 1.5, "inOut"]]);
+    rim(scr, R.transcript.speaker.map((v, i) => v + [-6, -4, 12, 8][i]), W(s, "^labeled"), ck - 0.2);
+    rim(scr, R.transcript.line, ck + 0.1, null, true);
+    cursor(scr, [[W(s, "^labeled") - 0.4, px + 90, py + 60], [W(s, "^labeled"), px + 8, py + 4], [ck - 0.3, R.transcript.click[0], R.transcript.click[1]], [ck, R.transcript.click[0], R.transcript.click[1], true]]);
     strip(g, [["Timestamps", W(s, "^timestamped")], ["Speaker labels", W(s, "^speaker")], ["Jump to any moment", W(s, "^click")]]);
     captions(g, s);
   }
 
-  // ================= 6. NOTES (1min AI) =================
+  // ================= 6. NOTES (Microeconomics) =================
   {
     const s = S.notes, g = scene(s), a = s.start;
-    const scr = tour(s, g, "study-notes", [[a, 800, 448, 0.94], [a + 0.9, 570, 600, 1.45, "inOut"], [s.end, 570, 700, 1.45, "inOut"]]);
-    rim(scr, [86, 541, 924, 129], W(s, "^organized"), W(s, "^ideas"), true); rim(scr, [86, 670, 924, 193], W(s, "^ideas"), null, true);
+    const [ax, ay] = mid(R.notes.concepts), [bx, by] = mid(R.notes.formulas);
+    const scr = tour(s, g, "study-notes", [[a, 800, 448, 0.94], [a + 0.9, ax, ay, 1.35, "inOut"], [s.end, bx, by - 60, 1.35, "inOut"]]);
+    rim(scr, R.notes.concepts, W(s, "^organized"), W(s, "^ideas"), true); rim(scr, R.notes.formulas, W(s, "^ideas"), null, true);
     strip(g, [["Study notes", W(s, "^study")], ["Organized by idea", W(s, "^organized")]]);
     captions(g, s);
   }
 
-  // ================= 7. CARDS (1min AI) =================
+  // ================= 7. CARDS (Intro to AI deck, over the Cell Biology review screen) =================
   {
     const s = S.cards, g = scene(s), a = s.start;
     const scr = screen(g, "flashcards", true); put(scr, 1380 - 800, 470 - 448);
@@ -252,33 +261,35 @@
     captions(g, s);
   }
 
-  // ================= 8. LEARN (1min AI): written recall =================
+  // ================= 8. LEARN (Cell Biology): written recall =================
   {
     const s = S.learn, g = scene(s), a = s.start;
-    const scr = tour(s, g, "learn-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 500, 730, 1.5, "inOut"]]);
-    const tt = W(s, "^graduate", 0, -0.1), box = h("div", "abs typed", "", scr); put(box, 98, 700, 900, 46); box.style.cssText += "background:#fff;padding:9px 14px;box-sizing:border-box;border-radius:8px;";
-    tw(box, "op", [[tt - 0.02, 0], [tt, 1]]); typing(box, "Healthcare and virtual assistants", tt, 15);
-    rim(scr, [90, 693, 916, 113], W(s, "^written", 0, 0.25), null, false);
+    const [ix, iy] = mid(R.learn.input);
+    const scr = tour(s, g, "learn-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, ix, iy - 60, 1.4, "inOut"]]);
+    const [x, y, w] = R.learn.input, tt = W(s, "^graduate", 0, -0.1);
+    const box = h("div", "abs typed", "", scr); put(box, x + 2, y + 2, w - 4, 46); box.style.cssText += "background:#fff;padding:9px 14px;box-sizing:border-box;border-radius:8px;";
+    tw(box, "op", [[tt - 0.02, 0], [tt, 1]]); typing(box, "In the cytoplasm", tt, 15);
+    rim(scr, R.learn.input, W(s, "^written", 0, 0.25), null, false);
     strip(g, [["Recognition", W(s, "^recognition")], ["Written recall", W(s, "^written")]]);
     captions(g, s);
   }
 
-  // ================= 9. TEST (1min AI): practice exam =================
+  // ================= 9. TEST (Cell Biology): practice exam =================
   {
-    const s = S.test, g = scene(s), a = s.start;
-    const scr = tour(s, g, "test-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, 500, 440, 1.45, "inOut"]]);
-    const ck = s.clickTimes[0];
-    rim(scr, [86, 330, 458, 46], ck + 0.05); cursor(scr, [[a + 1.2, 800, 300], [ck - 0.3, 315, 353], [ck, 315, 353, true]]);
+    const s = S.test, g = scene(s), a = s.start, ck = s.clickTimes[0];
+    const [ox, oy] = mid(R.test.option);
+    const scr = tour(s, g, "test-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, ox + 200, oy - 60, 1.4, "inOut"]]);
+    rim(scr, R.test.option, ck + 0.05); cursor(scr, [[a + 1.0, ox + 400, oy + 160], [ck - 0.3, R.test.click[0], R.test.click[1]], [ck, R.test.click[0], R.test.click[1], true]]);
     strip(g, [["Answers shown after you submit", W(s, "^exam", 0, 0.2)]]);
     captions(g, s);
   }
 
-  // ================= 10. QUIZ (1min AI) =================
+  // ================= 10. QUIZ (World War I, ten questions) =================
   {
-    const s = S.quiz, g = scene(s), a = s.start;
-    const scr = tour(s, g, "quiz", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, 800, 380, 1.4, "inOut"]]);
-    const ck = s.clickTimes[0];
-    rim(scr, [455, 345, 690, 42], ck + 0.05); cursor(scr, [[a + 1.0, 1000, 520], [ck - 0.3, 700, 366], [ck, 700, 366, true]]);
+    const s = S.quiz, g = scene(s), a = s.start, ck = s.clickTimes[0];
+    const [ox, oy] = mid(R.quiz.option);
+    const scr = tour(s, g, "quiz", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, ox, oy + 60, 1.4, "inOut"]]);
+    rim(scr, R.quiz.option, ck + 0.05); cursor(scr, [[a + 1.0, ox + 220, oy + 220], [ck - 0.3, R.quiz.click[0], R.quiz.click[1]], [ck, R.quiz.click[0], R.quiz.click[1], true]]);
     strip(g, [["10 questions", W(s, "^ten")], ["Instant feedback", W(s, "^instant")]]);
     captions(g, s);
   }
@@ -302,19 +313,20 @@
     captions(g, s);
   }
 
-  // ================= 11. GUIDE (1min AI) =================
+  // ================= 11. GUIDE (Organic Chemistry) =================
   {
     const s = S.guide, g = scene(s), a = s.start;
-    const scr = tour(s, g, "study-guide", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 960, 400, 1.5, "inOut"]]);
-    rim(scr, [576, 183, 763, 235], W(s, "^structured", 0, 0.1), null, true);
+    const [hx, hy] = mid(R.guide.header);
+    const scr = tour(s, g, "study-guide", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, hx, hy + 120, 1.35, "inOut"]]);
+    rim(scr, R.guide.header, W(s, "^structured", 0, 0.1), null, true);
     strip(g, [["Structured guide", W(s, "^structured")], ["From your lecture", W(s, "^lecture")]]);
     captions(g, s);
   }
 
-  // ================= 12. TUTOR (a prayer) =================
+  // ================= 12. TUTOR (Psychology) =================
   {
     const s = S.tutor, g = scene(s), a = s.start;
-    const scr = tour(s, g, "ai-tutor", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 620, 640, 1.5, "inOut"], [s.end, 620, 740, 1.5, "inOut"]]);
+    const scr = tour(s, g, "ai-tutor", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 560, 420, 1.35, "inOut"], [s.end, 560, 560, 1.35, "inOut"]]);
     strip(g, [["Answers from your lecture", W(s, "^answers")]]);
     const th = h("div", "think", `<span class="lat">${"<u></u>".repeat(9)}</span>Thinking`, g); put(th, 1380, 120);
     tw(th, "op", [[W(s, "^ask") - 0.1, 0], [W(s, "^ask") + 0.1, 1], [W(s, "^answers"), 1], [W(s, "^answers") + 0.2, 0]]); tw(th, "s", [[W(s, "^ask") - 0.1, 0.7], [W(s, "^ask") + 0.4, 1, "back"]]);
@@ -323,12 +335,11 @@
     captions(g, s);
   }
 
-  // ================= 13. PRO: meetings (1min AI email draft) =================
+  // ================= 13. PRO: meetings (Q3 roadmap sync email) =================
   {
-    const s = S.pro, g = scene(s), a = s.start;
-    const scr = tour(s, g, "email-drafts", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, 950, 330, 1.55, "inOut"]]);
-    const ck = s.clickTimes[0];
-    rim(scr, [1249, 106, 95, 42], ck + 0.05); cursor(scr, [[W(s, "^follow-up") - 0.2, 1000, 420], [ck - 0.35, 1298, 127], [ck, 1298, 127, true]]);
+    const s = S.pro, g = scene(s), a = s.start, ck = s.clickTimes[0];
+    const scr = tour(s, g, "email-drafts", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, 1010, 330, 1.4, "inOut"]]);
+    rim(scr, R.email.copy, ck + 0.05); cursor(scr, [[W(s, "^follow-up") - 0.2, 1000, 420], [ck - 0.35, R.email.click[0], R.email.click[1]], [ck, R.email.click[0], R.email.click[1], true]]);
     strip(g, [["Summary email", W(s, "^summaries")], ["Follow-up emails", W(s, "^follow-up")], ["Tone: Formal", W(s, "^tone")]]); chip(g, "Copied", 1400, 40, ck + 0.1, "ok");
     captions(g, s);
   }
@@ -338,24 +349,30 @@
   {
     const s = S.who, g = scene(s), a = s.start;
     const hd = h("div", "abs", "Made for the way you work", g); hd.style.cssText += "font-size:80px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 140);
-    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+    const tSpanish = W(s, "^another", 0, 0.1) + 0.5;
+    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1], [tSpanish, 1], [tSpanish + 0.4, 0]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
     const ic = (p) => `<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
     [["Students", "Cram smarter for finals", "^students", 110, '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/>'],
      ["Professionals", "Meetings into follow-ups", "^professionals", 700, '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M3 13h18"/>'],
      ["Language learners", "27 languages supported", "^another", 1290, '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>']].forEach(([t, sub, w, x, p]) => {
       const e = h("div", "pcard", `<em>${ic(p)}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 330);
-      const t0 = W(s, w, 0, 0.15); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "y", [[t0, 90], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.85], [t0 + 0.6, 1, "back"]]);
+      const t0 = W(s, w, 0, 0.15), tl = W(s, "^another", 0, 0.1) + 0.5;
+      tw(e, "op", [[t0, 0], [t0 + 0.25, 1], [tl, 1], [tl + 0.4, 0.18]]); tw(e, "y", [[t0, 90], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.85], [t0 + 0.6, 1, "back"]]);
     });
+    const tl = W(s, "^another", 0, 0.1) + 0.5, es = screen(g, "spanish-transcript", true); put(es, 160, 70);
+    tw(es, "op", [[tl, 0], [tl + 0.4, 1]]); tw(es, "y", [[tl, 160], [tl + 0.9, 0, "expo"]]); tw(es, "s", [[tl, 0.6], [tl + 0.9, 0.78, "expo"]]); tw(es, "ry", [[tl, -10], [tl + 1.2, -4, "expo"]]);
+    chip(g, "Spanish lecture, transcribed in Spanish", 640, 40, tl + 0.5, "ok");
     captions(g, s);
   }
 
-  // ================= 14. LIBRARY (analytics): all three recordings =================
+  // ================= 14. LIBRARY (analytics): a 40-second reading, a 7-minute class, a 1-minute lecture =================
   {
     const s = S.library, g = scene(s), a = s.start;
-    const scr = tour(s, g, "analytics", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.8, 640, 690, 1.65, "inOut"]]);
-    const rows = [585, 648, 711].map((y) => [309, y, 520, 63]);
-    rim(scr, rows[0], W(s, "^forty-second"), W(s, "^seven-minute", 0, 0.1), true); rim(scr, rows[1], W(s, "^seven-minute"), W(s, "^one-minute", 0, 0.1), true); rim(scr, rows[2], W(s, "^one-minute"), null, true);
-    strip(g, [["a prayer: 39s", W(s, "^forty-second")], ["cancet: 7m 38s", W(s, "^seven-minute")], ["1min AI: 1m 13s", W(s, "^one-minute")], ["One library", W(s, "^library")]]);
+    const [rx, ry] = mid(R.library.rows[1]);
+    const scr = tour(s, g, "analytics", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.8, rx - 260, ry, 1.5, "inOut"]]);
+    const [r0, r1, r2] = R.library.rows;
+    rim(scr, r0, W(s, "^forty-second"), W(s, "^seven-minute", 0, 0.1), true); rim(scr, r1, W(s, "^seven-minute"), W(s, "^one-minute", 0, 0.1), true); rim(scr, r2, W(s, "^one-minute"), null, true);
+    strip(g, [["Poetry reading: 40s", W(s, "^forty-second")], ["Spanish 201: 7m", W(s, "^seven-minute")], ["Intro to AI: 1m 13s", W(s, "^one-minute")], ["One library", W(s, "^library")]]);
     captions(g, s);
   }
 

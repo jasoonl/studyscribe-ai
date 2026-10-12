@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Builds the v2 demo soundtrack and timeline (macOS: afconvert).
+"""Builds the v2 demo soundtrack and timeline (afconvert on macOS, ffmpeg elsewhere).
 
   ELEVENLABS_API_KEY=... python3 build_audio.py <workdir>
 
 Narration is the ElevenLabs "George" voice. Scene lengths come from the narration audio, so the
 visuals (index.html + render.mjs) always match the voice. Writes <workdir>/mix.wav and timeline.json.
 """
-import array, json, math, os, random, subprocess, sys, urllib.request, wave
+import array, json, math, os, random, shutil, subprocess, sys, urllib.request, wave
 
 here = os.path.dirname(os.path.abspath(__file__))
 work = sys.argv[1]
@@ -40,6 +40,13 @@ def merge_brand(words):
         else: out.append(words[k]); k += 1
     return out
 
+def to_wav(src, wav):
+    # afconvert ships with macOS; elsewhere ffmpeg does the same conversion.
+    if shutil.which("afconvert"):
+        subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", src, wav], check=True)
+    else:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ac", "1", "-ar", str(SR), "-c:a", "pcm_s16le", wav], check=True)
+
 for i, scene in enumerate(board["scenes"]):
     mp3, wav = os.path.join(work, f"v{i:02d}.mp3"), os.path.join(work, f"v{i:02d}.wav")
     if scene.get("keep"):
@@ -54,7 +61,7 @@ for i, scene in enumerate(board["scenes"]):
     elif not API_KEY:
         # draft: a system voice with evenly spread word times, only to check layout (never written to the cache)
         mp3 = mp3.replace(".mp3", ".aiff"); subprocess.run(["say", "-o", mp3, "-r", "165", scene["narration"]], check=True)
-        subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
+        to_wav(mp3, wav)
         with wave.open(wav) as w: d = w.getnframes() / SR
         toks = scene["narration"].split(); tot = sum(len(x) + 1 for x in toks); acc = 0; scene["words"] = []
         for x in toks:
@@ -71,7 +78,7 @@ for i, scene in enumerate(board["scenes"]):
         scene["words"] = merge_brand(words_from_alignment(data["alignment"]))
         with open(os.path.join(here, "assets", "narration", f"{scene['id']}.mp3"), "wb") as f: f.write(base64.b64decode(data["audio_base64"]))
         json.dump({"text": scene["narration"], "voice": board["voice_id"], "words": scene["words"]}, open(os.path.join(here, "assets", "narration", f"{scene['id']}.json"), "w"))
-    subprocess.run(["afconvert", "-f", "WAVE", "-d", f"LEI16@{SR}", "-c", "1", mp3, wav], check=True)
+    to_wav(mp3, wav)
     with wave.open(wav) as w:
         samples = array.array("h", w.readframes(w.getnframes()))
         dur = w.getnframes() / SR

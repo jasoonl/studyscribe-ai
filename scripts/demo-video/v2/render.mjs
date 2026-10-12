@@ -1,6 +1,6 @@
 // Renders the demo one frame at a time with headless Chrome, then muxes the soundtrack.
 //   node render.mjs <workdir> <out.mp4> [--stills t1,t2,...]
-// <workdir> holds timeline.json and mix.wav from build_audio.py. Needs Google Chrome installed.
+// <workdir> holds timeline.json and mix.wav from build_audio.py. Needs Google Chrome, or CHROMIUM_PATH.
 import { chromium } from "playwright-core";
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -12,7 +12,8 @@ const [work, out, flag, stillArg] = process.argv.slice(2);
 const timeline = JSON.parse(readFileSync(resolve(work, "timeline.json"), "utf8"));
 const FPS = 30;
 
-const browser = await chromium.launch({ channel: "chrome", args: ["--force-color-profile=srgb", "--hide-scrollbars"] });
+// CHROMIUM_PATH picks a browser binary (e.g. on Linux); otherwise the installed Google Chrome.
+const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : { channel: "chrome" }), args: ["--force-color-profile=srgb", "--hide-scrollbars"] });
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
 await page.addInitScript((tl) => { window.__TL = tl; }, timeline);
 await page.goto(pathToFileURL(resolve(here, "index.html")).href);
