@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 const STEPS = [
-  { title: "Record or upload", text: "Record live in your browser, upload an audio or video file, or paste a link. Transcription starts on its own.", image: "/landing/dashboard.jpg", alt: "Adding a new recording" },
+  { title: "Record or upload", text: "Record live in your browser, upload an audio or video file, or paste a link. Transcription starts on its own.", image: "/landing/dashboard.jpg", alt: "A library of recorded lectures and meetings" },
   { title: "Read the transcript", text: "Every word comes with timestamps and speaker labels. Click any line to jump to that moment in the audio.", image: "/landing/transcript.jpg", alt: "A timestamped transcript with speaker labels" },
   { title: "Study with AI", text: "Generate notes, flashcards, practice quizzes and study guides, then ask the tutor about anything in your lecture.", image: "/landing/study-notes.jpg", alt: "AI-generated study notes" },
 ];
