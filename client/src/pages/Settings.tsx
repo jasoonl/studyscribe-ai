@@ -11,6 +11,7 @@ import { getAutoNotesEnabled, setAutoNotesEnabled } from "@/lib/preferences";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { VocabularySettings } from "@/components/VocabularySettings";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -92,6 +93,8 @@ export default function Settings() {
             />
           </div>
         </Card>
+
+        <VocabularySettings />
 
         <Card className="p-6">
           <h2 className="text-lg font-semibold">Download your data</h2>

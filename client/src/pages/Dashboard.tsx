@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, Sparkles } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, Sparkles, ListChecks, GraduationCap } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -13,6 +13,7 @@ import { OnboardingModal } from "@/components/OnboardingModal";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RecordingList } from "@/components/RecordingList";
 import { CourseStrip, TagFilter } from "@/components/CourseStrip";
+import { UpcomingTasks } from "@/components/UpcomingTasks";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -309,6 +310,19 @@ export default function Dashboard() {
               <span>Ask<span className="hidden sm:inline"> StudyScribe</span></span>
             </button>
           </Link>
+          <Link href="/tasks">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
+              <ListChecks className="w-4 h-4" />
+              <span>Tasks</span>
+            </button>
+          </Link>
+          <Link href="/exam-packs">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
+              <GraduationCap className="w-4 h-4" />
+              <span className="hidden sm:inline">Exam packs</span>
+              <span className="sm:hidden">Exams</span>
+            </button>
+          </Link>
           <Link href="/knowledge-base">
             <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <Database className="w-4 h-4" />
@@ -381,6 +395,7 @@ export default function Dashboard() {
           {/* My Library Tab */}
           <TabsContent value="library" className="space-y-6">
             <CourseStrip />
+            <UpcomingTasks />
             <div className="space-y-4">
               <div className="flex gap-4 flex-col sm:flex-row">
                 <div className="flex-1 relative">

@@ -11,6 +11,9 @@ import { CourseDot } from "@/components/CourseDot";
 import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
 import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
+import { RecordingChapters } from "@/components/RecordingChapters";
+import { RecordingTasks } from "@/components/RecordingTasks";
+import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { FlashcardReview } from "@/components/FlashcardReview";
@@ -120,6 +123,9 @@ export default function RecordingDetail() {
   const updateTranscriptMutation = trpc.transcription.update.useMutation();
   const utils = trpc.useUtils();
   const [retryLanguage, setRetryLanguage] = useState("auto");
+  const [retryVocabulary, setRetryVocabulary] = useState<string | null>(null);
+  const needsRetry = recording?.status === "failed" || (recording?.status === "processing" && !recording?.transcriptionProviderId);
+  const { data: storedVocabulary } = trpc.vocabulary.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && needsRetry });
   const retryTranscription = trpc.recordings.retryTranscription.useMutation({
     onSuccess: () => {
       toast.success("Transcription restarted");
@@ -236,6 +242,8 @@ export default function RecordingDetail() {
     );
   }
 
+  const transcriptReady = recording.status === "completed" && !!transcript?.fullText?.trim();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -319,11 +327,23 @@ export default function RecordingDetail() {
                         {recording.status === "failed" && " Check your notifications for the reason the provider gave."}
                       </p>
                       <LanguageSelect value={retryLanguage} onChange={setRetryLanguage} id="retry-language" />
+                      <VocabularyField
+                        key={storedVocabulary ? "loaded" : "loading"}
+                        value={retryVocabulary ?? storedVocabulary?.recordingTerms.join("\n") ?? ""}
+                        onChange={setRetryVocabulary}
+                        id="retry-vocabulary"
+                      />
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={retryTranscription.isPending}
-                        onClick={() => retryTranscription.mutate({ id: recording.id, language: languageForRequest(retryLanguage) })}
+                        onClick={() =>
+                          retryTranscription.mutate({
+                            id: recording.id,
+                            language: languageForRequest(retryLanguage),
+                            ...(retryVocabulary !== null ? { keyterms: vocabularyForRequest(retryVocabulary) ?? [] } : {}),
+                          })
+                        }
                       >
                         {retryTranscription.isPending ? "Retrying…" : "Retry transcription"}
                       </Button>
@@ -345,6 +365,14 @@ export default function RecordingDetail() {
                     />
                   </div>
                 )}
+
+                <RecordingChapters
+                  recordingId={recording.id}
+                  transcriptReady={transcriptReady}
+                  hasAudio={!!recording.audioUrl}
+                  playbackTime={playbackTime}
+                  onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
+                />
               </div>
             </Card>
 
@@ -505,7 +533,7 @@ export default function RecordingDetail() {
                 <StudyNotesPanel
                   recordingId={recordingId || 0}
                   audience={recording.audience}
-                  transcriptReady={recording.status === "completed" && !!transcript?.fullText?.trim()}
+                  transcriptReady={transcriptReady}
                   notes={studyNotes}
                 />
               </TabsContent>
@@ -676,7 +704,13 @@ export default function RecordingDetail() {
           </div>
           {/* Right sidebar: AI Tools */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <RecordingTasks
+              recordingId={recording.id}
+              transcriptReady={transcriptReady}
+              audience={recording.audience}
+              onSeek={recording.audioUrl ? seconds => audioPlayerRef.current?.seekTo(seconds, { play: true }) : undefined}
+            />
+            <div className="flex items-center justify-between pt-2">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Requires transcript</span>
             </div>
