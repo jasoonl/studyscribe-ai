@@ -266,7 +266,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "choose") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "hidden" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "hidden" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">
@@ -389,7 +389,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "record") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -602,7 +602,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "link") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -710,7 +710,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "upload") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />

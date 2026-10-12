@@ -90,7 +90,7 @@ export default function Ask() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-background">
         <div className="container flex h-16 items-center gap-3">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">

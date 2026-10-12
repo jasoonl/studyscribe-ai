@@ -1,51 +1,51 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
-import { BookOpen, Brain, Briefcase, CreditCard, FileText, GraduationCap, HelpCircle, ListOrdered, Menu, MessageSquare, Mic, PlayCircle, RotateCcw, Rocket, Tag, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { PLANS } from "@shared/plans";
 
 const LOGO = "/logo.webp";
 
 const LOWEST_PAID_PRICE = Math.min(...PLANS.filter((plan) => plan.priceMonthlyUsd > 0).map((plan) => plan.priceMonthlyUsd));
 
-type Item = { icon: typeof Mic; title: string; text: string; href: string };
+type Item = { title: string; text: string; href: string };
 /** A menu with `href` is also a link: hovering or focusing opens its panel, clicking goes to the page. */
 const MENUS: Record<string, { label: string; href?: string; items: Item[] }> = {
   product: {
     label: "Product",
     items: [
-      { icon: Mic, title: "Record or upload", text: "Live, from a file, or a link.", href: "/#how" },
-      { icon: FileText, title: "Transcripts", text: "Speaker labels and timestamps.", href: "/#features" },
-      { icon: Brain, title: "Study tools", text: "Flashcards, quizzes and guides.", href: "/#features" },
-      { icon: MessageSquare, title: "AI tutor", text: "Ask about your own lecture.", href: "/#features" },
+      { title: "Record or upload", text: "Live, from a file, or a link.", href: "/#how" },
+      { title: "Transcripts", text: "Speaker labels and timestamps.", href: "/#features" },
+      { title: "Study tools", text: "Flashcards, quizzes and guides.", href: "/#features" },
+      { title: "AI tutor", text: "Ask about your own lecture.", href: "/#features" },
     ],
   },
   who: {
     label: "Use cases",
     items: [
-      { icon: GraduationCap, title: "Students", text: "From lecture to exam prep.", href: "/#use-cases" },
-      { icon: Briefcase, title: "Professionals", text: "Meetings to action items.", href: "/#use-cases" },
-      { icon: BookOpen, title: "Languages", text: "Transcribe in many languages.", href: "/#languages" },
+      { title: "Students", text: "From lecture to exam prep.", href: "/#use-cases" },
+      { title: "Professionals", text: "Meetings to action items.", href: "/#use-cases" },
+      { title: "Languages", text: "Transcribe in many languages.", href: "/#languages" },
     ],
   },
   pricing: {
     label: "Pricing",
     href: "/pricing",
     items: [
-      { icon: Tag, title: "Free plan", text: "$0, with every feature included.", href: "/pricing#plans" },
-      { icon: CreditCard, title: "Paid plans", text: `More recordings from $${LOWEST_PAID_PRICE} a month. Coming soon.`, href: "/pricing#plans" },
-      { icon: HelpCircle, title: "Questions", text: "Accuracy, privacy and your data.", href: "/pricing#faq" },
-      { icon: RotateCcw, title: "Refund Policy", text: "How cancelling and refunds work.", href: "/refunds" },
+      { title: "Free plan", text: "$0, with every feature included.", href: "/pricing#plans" },
+      { title: "Paid plans", text: `More recordings from $${LOWEST_PAID_PRICE} a month. Coming soon.`, href: "/pricing#plans" },
+      { title: "Questions", text: "Accuracy, privacy and your data.", href: "/pricing#faq" },
+      { title: "Refund Policy", text: "How cancelling and refunds work.", href: "/refunds" },
     ],
   },
   demo: {
     label: "Demo",
     href: "/demo",
     items: [
-      { icon: PlayCircle, title: "Watch the demo", text: "A narrated tour of the real app.", href: "/demo" },
-      { icon: ListOrdered, title: "What it covers", text: "Each step, lecture to study guide.", href: "/demo#tour" },
-      { icon: Mic, title: "How it works", text: "Record, transcribe, then study.", href: "/#how" },
-      { icon: Rocket, title: "Try it yourself", text: "Request an invite for your lecture.", href: "/request-access" },
+      { title: "Watch the demo", text: "A narrated tour of the real app.", href: "/demo" },
+      { title: "What it covers", text: "Each step, lecture to study guide.", href: "/demo#tour" },
+      { title: "How it works", text: "Record, transcribe, then study.", href: "/#how" },
+      { title: "Try it yourself", text: "Request an invite for your lecture.", href: "/request-access" },
     ],
   },
 };
@@ -65,8 +65,8 @@ export default function SiteNav() {
         initial={reduce ? false : { y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 20 }}
-        className={`relative w-full max-w-4xl rounded-[1.75rem] border border-white/50 bg-background/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl transition-shadow dark:border-white/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${
-          stuck ? "shadow-lg" : ""
+        className={`relative w-full max-w-4xl rounded-2xl border border-border bg-background transition-shadow ${
+          stuck ? "shadow-md" : "shadow-sm"
         }`}
       >
         <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
@@ -136,19 +136,14 @@ export default function SiteNav() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.98 }}
               transition={{ type: "spring", stiffness: 260, damping: 26 }}
-              className="absolute left-0 right-0 top-[calc(100%+0.5rem)] hidden rounded-3xl border border-white/50 bg-background/85 p-3 shadow-xl backdrop-blur-xl dark:border-white/10 md:block"
+              className="absolute left-0 right-0 top-[calc(100%+0.5rem)] hidden rounded-2xl border border-border bg-card p-2 shadow-lg md:block"
             >
               <ul className="grid grid-cols-2 gap-1">
-                {MENUS[open].items.map(({ icon: Icon, title, text, href }) => (
+                {MENUS[open].items.map(({ title, text, href }) => (
                   <li key={title}>
-                    <a href={href} onClick={() => setOpen(null)} className="flex items-start gap-3 rounded-2xl p-3 transition-colors hover:bg-secondary">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                        <Icon className="h-4.5 w-4.5" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold">{title}</span>
-                        <span className="block text-sm text-muted-foreground">{text}</span>
-                      </span>
+                    <a href={href} onClick={() => setOpen(null)} className="block rounded-xl px-4 py-3 transition-colors hover:bg-secondary">
+                      <span className="block text-sm font-semibold text-foreground">{title}</span>
+                      <span className="mt-0.5 block text-sm text-muted-foreground">{text}</span>
                     </a>
                   </li>
                 ))}

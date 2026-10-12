@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, BookOpen, ArrowLeft, Loader2 } from "lucide-react";
+import { CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
 
 export default function RequestAccess() {
   const [name, setName] = useState("");
@@ -32,7 +32,7 @@ export default function RequestAccess() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-2">
         <img
@@ -40,22 +40,22 @@ export default function RequestAccess() {
           alt="StudyScribe AI"
           className="w-12 h-12 rounded-xl shadow-sm"
         />
-        <span className="text-xl font-bold text-gray-900">StudyScribe AI</span>
+        <span className="text-xl font-bold text-foreground">StudyScribe AI</span>
       </div>
 
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+      <div className="w-full max-w-md bg-card rounded-2xl shadow-sm border border-border p-8">
         {submitted ? (
           /* Success state */
           <div className="flex flex-col items-center text-center gap-4 py-4">
             <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Request Received!</h1>
-            <p className="text-gray-500 text-sm leading-relaxed">
+            <h1 className="text-2xl font-bold text-foreground">Request Received!</h1>
+            <p className="text-muted-foreground text-sm leading-relaxed">
               Thanks, <strong>{name}</strong>. We've received your request and will review it.
               If approved, you'll receive an invite code at <strong>{email}</strong>.
             </p>
-            <p className="text-gray-500 text-xs">
+            <p className="text-muted-foreground text-xs">
               Check your inbox, and your spam folder, for the code.
             </p>
             <Link href="/login">
@@ -70,10 +70,9 @@ export default function RequestAccess() {
           <>
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-1">
-                <BookOpen className="w-5 h-5 text-indigo-500" />
-                <h1 className="text-2xl font-bold text-gray-900">Request Access</h1>
+                <h1 className="text-2xl font-bold text-foreground">Request Access</h1>
               </div>
-              <p className="text-gray-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 StudyScribe AI is currently invite-only. Fill in the form below and we'll send you an invite code when a spot opens up.
               </p>
             </div>
@@ -108,7 +107,7 @@ export default function RequestAccess() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="reason">
                   Why do you want access?{" "}
-                  <span className="text-gray-500 font-normal">(optional)</span>
+                  <span className="text-muted-foreground font-normal">(optional)</span>
                 </Label>
                 <Textarea
                   id="reason"
@@ -120,7 +119,7 @@ export default function RequestAccess() {
                   disabled={requestInvite.isPending}
                   className="resize-none"
                 />
-                <span className="text-xs text-gray-500 text-right">{reason.length}/1000</span>
+                <span className="text-xs text-muted-foreground text-right">{reason.length}/1000</span>
               </div>
 
               {error && (
@@ -131,7 +130,7 @@ export default function RequestAccess() {
 
               <Button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-1"
+                className="w-full bg-primary hover:brightness-110 text-white mt-1"
                 disabled={requestInvite.isPending || !name.trim() || !email.trim()}
               >
                 {requestInvite.isPending ? (
@@ -143,22 +142,22 @@ export default function RequestAccess() {
                   "Request Invite"
                 )}
               </Button>
-              <p className="text-xs leading-relaxed text-gray-500">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 We use these details only to review your request and email you an invite. See our{" "}
-                <Link href="/privacy" className="text-indigo-700 underline">Privacy Policy</Link>.
+                <Link href="/privacy" className="text-primary underline">Privacy Policy</Link>.
               </p>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col gap-2 text-center text-sm text-gray-500">
+            <div className="mt-6 pt-5 border-t border-border flex flex-col gap-2 text-center text-sm text-muted-foreground">
               <p>
                 Already have an invite code?{" "}
-                <Link href="/invite" className="text-indigo-600 hover:underline font-medium">
+                <Link href="/invite" className="text-primary hover:underline font-medium">
                   Enter it here
                 </Link>
               </p>
               <p>
                 Already have an account?{" "}
-                <Link href="/login" className="text-indigo-600 hover:underline font-medium">
+                <Link href="/login" className="text-primary hover:underline font-medium">
                   Sign in
                 </Link>
               </p>

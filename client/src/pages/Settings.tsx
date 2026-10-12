@@ -56,7 +56,7 @@ export default function Settings() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <header className="border-b border-border bg-card/70 backdrop-blur">
+      <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />Dashboard</Button>

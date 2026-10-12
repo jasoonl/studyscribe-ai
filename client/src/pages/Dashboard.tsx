@@ -280,7 +280,7 @@ export default function Dashboard() {
                   <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">{statistics.totalRecordings}</p>
                   <p className="text-xs text-muted-foreground mt-1">lectures & meetings</p>
                 </div>
-                <Mic className="w-6 h-6 text-purple-500 opacity-50" />
+                <Mic className="w-6 h-6 text-primary opacity-50" />
               </div>
             </Card>
 

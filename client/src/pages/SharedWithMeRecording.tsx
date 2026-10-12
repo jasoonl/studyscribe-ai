@@ -36,7 +36,7 @@ export default function SharedWithMeRecording() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <div className="border-b border-border bg-background sticky top-0 z-40">
         <div className="container h-14 flex items-center">
           <Link href="/shared-with-me">
             <Button variant="ghost" size="sm">&larr; Shared with Me</Button>

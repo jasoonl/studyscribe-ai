@@ -92,12 +92,12 @@ const categories = ["All", ...Array.from(new Set(faqs.map(f => f.category)))];
 const features = [
   { icon: Mic, title: "Audio Recording", desc: "Record lectures, meetings, and notes directly in your browser with pause/resume support.", color: "bg-blue-50 text-blue-600" },
   { icon: Upload, title: "File Upload", desc: "Upload existing audio files (MP3, WAV, OGG, WebM, MP4, MOV) up to 1GB.", color: "bg-green-50 text-green-600" },
-  { icon: FileText, title: "AI Transcription", desc: "Automatic speech-to-text powered by Whisper AI with language detection.", color: "bg-purple-50 text-purple-600" },
+  { icon: FileText, title: "AI Transcription", desc: "Automatic speech-to-text powered by Whisper AI with language detection.", color: "bg-primary/5 text-primary" },
   { icon: Zap, title: "Flashcards", desc: "Auto-generate study flashcards from any transcript with one click.", color: "bg-yellow-50 text-yellow-600" },
   { icon: BookOpen, title: "Study Guides", desc: "Generate comprehensive, structured study guides in markdown format.", color: "bg-orange-50 text-orange-600" },
   { icon: HelpCircle, title: "Practice Quizzes", desc: "10-question quizzes with multiple choice, short answer, and explanations.", color: "bg-red-50 text-red-600" },
   { icon: Mail, title: "Email Drafts", desc: "Generate email summaries, documents, and reports with customizable tone.", color: "bg-pink-50 text-pink-600" },
-  { icon: MessageSquare, title: "AI Assistant", desc: "Chat with an AI tutor about your recording content using Socratic method.", color: "bg-indigo-50 text-indigo-600" },
+  { icon: MessageSquare, title: "AI Assistant", desc: "Chat with an AI tutor about your recording content using Socratic method.", color: "bg-primary/5 text-primary" },
   { icon: MessageSquare, title: "Ask StudyScribe", desc: "Ask a question across every lecture or one course and jump to the cited moment.", color: "bg-sky-50 text-sky-600" },
   { icon: Search, title: "Knowledge Base", desc: "Full-text search across all your recordings and transcripts.", color: "bg-teal-50 text-teal-600" },
 ];

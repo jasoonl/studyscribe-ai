@@ -239,7 +239,7 @@ export default function RecordingDetail() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-border bg-background sticky top-0 z-40">
         <div className="container h-16 flex items-center justify-between">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
@@ -638,7 +638,7 @@ export default function RecordingDetail() {
                   <Card className="border-2 border-border p-8 text-center">
                     <BookOpen className="mx-auto mb-3 h-9 w-9 text-muted-foreground/60" />
                     <h3 className="font-bold">Test your mastery</h3>
-                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Generate flashcards first to unlock a mixed-format practice test for this recording.</p>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Generate flashcards first, then take a mixed-format practice test on this recording.</p>
                   </Card>
                 )}
               </TabsContent>
@@ -682,17 +682,17 @@ export default function RecordingDetail() {
             </div>
 
             <Link href={`/recordings/${recordingId}/study-guides`}>
-              <div className="group p-4 rounded-xl border border-border bg-card hover:border-indigo-400/60 hover:bg-indigo-50/5 transition-all cursor-pointer">
+              <div className="group p-4 rounded-xl border border-border bg-card hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-indigo-400" />
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-primary/70" />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Study Guides</p>
                     <p className="text-xs text-muted-foreground">AI-generated comprehensive notes with key concepts & formulas</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-indigo-400/50 mt-1">
+                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-primary/50 mt-1">
                   <Sparkles className="w-3.5 h-3.5" />
                   Open Study Guides
                 </Button>
@@ -700,17 +700,17 @@ export default function RecordingDetail() {
             </Link>
 
             <Link href={`/recordings/${recordingId}/quizzes`}>
-              <div className="group p-4 rounded-xl border border-border bg-card hover:border-purple-400/60 hover:bg-purple-50/5 transition-all cursor-pointer">
+              <div className="group p-4 rounded-xl border border-border bg-card hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 rounded-lg bg-purple-500/15 flex items-center justify-center">
-                    <Brain className="w-5 h-5 text-purple-400" />
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <Brain className="w-5 h-5 text-primary/70" />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Practice Quizzes</p>
                     <p className="text-xs text-muted-foreground">10 AI-generated questions with instant scoring & explanations</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-purple-400/50 mt-1">
+                <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-primary/50 mt-1">
                   <Sparkles className="w-3.5 h-3.5" />
                   Open Quizzes
                 </Button>
