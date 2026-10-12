@@ -71,7 +71,7 @@ export default function UseCases() {
               </Link>
             </div>
             <div className="shadow-apple overflow-hidden rounded-xl border border-border bg-card">
-              <img src={content.image} alt={content.alt} loading="lazy" className="block w-full" />
+              <img src={content.image} alt={content.alt} width={1600} height={896} loading="lazy" className="block w-full" />
             </div>
         </div>
       </div>

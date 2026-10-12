@@ -48,7 +48,7 @@ export default function HowItWorks() {
                 src={STEPS[active].image}
                 alt={STEPS[active].alt}
                 width={1600}
-                height={1080}
+                height={896}
                 loading="lazy"
                 className="block w-full"
                 initial={reduce ? false : { opacity: 0, scale: 1.03 }}

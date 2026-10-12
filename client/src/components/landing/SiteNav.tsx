@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
-import { BookOpen, Brain, FileText, GraduationCap, Briefcase, Menu, MessageSquare, Mic, X } from "lucide-react";
+import { BookOpen, Brain, Briefcase, CreditCard, FileText, GraduationCap, HelpCircle, ListOrdered, Menu, MessageSquare, Mic, PlayCircle, RotateCcw, Rocket, Tag, X } from "lucide-react";
+import { PLANS } from "@shared/plans";
 
 const LOGO = "/logo.webp";
 
+const LOWEST_PAID_PRICE = Math.min(...PLANS.filter((plan) => plan.priceMonthlyUsd > 0).map((plan) => plan.priceMonthlyUsd));
+
 type Item = { icon: typeof Mic; title: string; text: string; href: string };
-const MENUS: Record<string, { label: string; items: Item[] }> = {
+/** A menu with `href` is also a link: hovering or focusing opens its panel, clicking goes to the page. */
+const MENUS: Record<string, { label: string; href?: string; items: Item[] }> = {
   product: {
     label: "Product",
     items: [
@@ -22,6 +26,26 @@ const MENUS: Record<string, { label: string; items: Item[] }> = {
       { icon: GraduationCap, title: "Students", text: "From lecture to exam prep.", href: "/#use-cases" },
       { icon: Briefcase, title: "Professionals", text: "Meetings to action items.", href: "/#use-cases" },
       { icon: BookOpen, title: "Languages", text: "Transcribe in many languages.", href: "/#languages" },
+    ],
+  },
+  pricing: {
+    label: "Pricing",
+    href: "/pricing",
+    items: [
+      { icon: Tag, title: "Free plan", text: "$0, with every feature included.", href: "/pricing#plans" },
+      { icon: CreditCard, title: "Paid plans", text: `More recordings from $${LOWEST_PAID_PRICE} a month. Coming soon.`, href: "/pricing#plans" },
+      { icon: HelpCircle, title: "Questions", text: "Accuracy, privacy and your data.", href: "/pricing#faq" },
+      { icon: RotateCcw, title: "Refund Policy", text: "How cancelling and refunds work.", href: "/refunds" },
+    ],
+  },
+  demo: {
+    label: "Demo",
+    href: "/demo",
+    items: [
+      { icon: PlayCircle, title: "Watch the demo", text: "A narrated tour of the real app.", href: "/demo" },
+      { icon: ListOrdered, title: "What it covers", text: "Each step, lecture to study guide.", href: "/demo#tour" },
+      { icon: Mic, title: "How it works", text: "Record, transcribe, then study.", href: "/#how" },
+      { icon: Rocket, title: "Try it yourself", text: "Request an invite for your lecture.", href: "/request-access" },
     ],
   },
 };
@@ -52,25 +76,34 @@ export default function SiteNav() {
           </Link>
 
           <div className="ml-4 hidden items-center gap-1 md:flex">
-            {Object.entries(MENUS).map(([key, menu]) => (
-              <button
-                key={key}
-                type="button"
-                aria-expanded={open === key}
-                onMouseEnter={() => setOpen(key)}
-                onFocus={() => setOpen(key)}
-                onClick={() => setOpen(open === key ? null : key)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${open === key ? "bg-secondary text-primary" : "text-foreground/80 hover:text-foreground"}`}
-              >
-                {menu.label}
-              </button>
-            ))}
-            <Link href="/pricing" onMouseEnter={() => setOpen(null)} className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
-              Pricing
-            </Link>
-            <Link href="/demo" onMouseEnter={() => setOpen(null)} className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
-              Demo
-            </Link>
+            {Object.entries(MENUS).map(([key, menu]) => {
+              const className = `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${open === key ? "bg-secondary text-primary" : "text-foreground/80 hover:text-foreground"}`;
+              return menu.href ? (
+                <Link
+                  key={key}
+                  href={menu.href}
+                  aria-expanded={open === key}
+                  onMouseEnter={() => setOpen(key)}
+                  onFocus={() => setOpen(key)}
+                  onClick={() => setOpen(null)}
+                  className={className}
+                >
+                  {menu.label}
+                </Link>
+              ) : (
+                <button
+                  key={key}
+                  type="button"
+                  aria-expanded={open === key}
+                  onMouseEnter={() => setOpen(key)}
+                  onFocus={() => setOpen(key)}
+                  onClick={() => setOpen(open === key ? null : key)}
+                  className={className}
+                >
+                  {menu.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
