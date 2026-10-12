@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { formatTimestamp } from "@shared/timestamp";
 
 type Citation = { n: number; recordingId: number; title: string; start: number | null; snippet: string };
-type AnswerMeta = { citations: Citation[]; searched: number };
+type AnswerMeta = { citations: Citation[]; searched: number; retrieval?: "keyword" | "hybrid" };
 
 /** Where a citation opens: the recording, seeked to the moment when the transcript has timestamps. */
 function citationHref(citation: Citation): string {
@@ -41,8 +41,56 @@ function SourceChips({ meta }: { meta: AnswerMeta }) {
         </ul>
       )}
       <p className="text-xs text-muted-foreground">
-        {meta.searched === 0 ? "No finished transcripts matched." : `Looked through ${meta.searched} recording${meta.searched === 1 ? "" : "s"}.`}
+        {meta.searched === 0
+          ? "No finished transcripts matched."
+          : `Looked through ${meta.searched} recording${meta.searched === 1 ? "" : "s"}, matching ${meta.retrieval === "hybrid" ? "by meaning and keywords" : "by keywords"}.`}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Smart search (C2) status under the chat: how much of the library has been
+ * embedded, and a button that indexes the rest in small server-sized batches.
+ */
+function SmartSearchStatus() {
+  const utils = trpc.useUtils();
+  const { data: status } = trpc.smartSearch.status.useQuery();
+  const [running, setRunning] = useState(false);
+  const indexNext = trpc.smartSearch.indexNext.useMutation();
+
+  if (!status) return null;
+  if (!status.configured || !status.available) {
+    return <p className="text-xs text-muted-foreground">Matching by keywords. Search by meaning is not set up on this server.</p>;
+  }
+  const missing = status.total - status.indexed;
+
+  const run = async () => {
+    setRunning(true);
+    try {
+      for (let round = 0; round < 30; round++) {
+        const result = await indexNext.mutateAsync();
+        await utils.smartSearch.status.invalidate();
+        if (result.failed) throw new Error(result.failed);
+        if (result.remaining <= 0 || result.indexed === 0) break;
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Indexing stopped. Try again in a moment.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-live="polite">
+      <span>
+        Search by meaning is on. {status.indexed} of {status.total} recording{status.total === 1 ? "" : "s"} indexed.
+      </span>
+      {missing > 0 && (
+        <Button variant="link" size="sm" className="h-auto p-0 text-xs" disabled={running} onClick={run}>
+          {running ? "Indexing…" : `Index the other ${missing}`}
+        </Button>
+      )}
     </div>
   );
 }
@@ -64,7 +112,7 @@ export default function Ask() {
 
   const ask = trpc.ai.askAcrossRecordings.useMutation({
     onSuccess: result => {
-      setMeta(current => ({ ...current, [answerIndex.current]: { citations: result.citations, searched: result.searched } }));
+      setMeta(current => ({ ...current, [answerIndex.current]: { citations: result.citations, searched: result.searched, retrieval: result.retrieval } }));
       setMessages(previous => [...previous, { role: "assistant", content: result.answer }]);
     },
     onError: error => toast.error(error.message || "The assistant could not answer. Try again."),
@@ -142,9 +190,10 @@ export default function Ask() {
           emptyStateMessage={emptyMessage}
           renderMessageExtra={(message, index) => (message.role === "assistant" && meta[index] ? <SourceChips meta={meta[index]} /> : null)}
         />
-        <p className="mt-3 text-xs text-muted-foreground">
-          Only finished transcripts are searched. Check the linked moment before relying on an answer.
-        </p>
+        <div className="mt-3 space-y-1.5">
+          <p className="text-xs text-muted-foreground">Only finished transcripts are searched. Check the linked moment before relying on an answer.</p>
+          <SmartSearchStatus />
+        </div>
       </main>
     </div>
   );

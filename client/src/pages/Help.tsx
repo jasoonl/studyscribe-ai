@@ -63,7 +63,7 @@ const faqs: FAQItem[] = [
   {
     category: "Organization",
     question: "How does Ask StudyScribe work?",
-    answer: "Choose Ask StudyScribe on your library, type a question, and it looks through the transcripts of your finished recordings (all of them, or just one course) and answers with numbered sources. Select a source to open that recording at the moment it came from. It matches on the words in your question, so name the topic or term you are after.",
+    answer: "Choose Ask StudyScribe on your library, type a question, and it looks through the transcripts of your finished recordings (all of them, or just one course) and answers with numbered sources. Select a source to open that recording at the moment it came from. It matches on the words in your question, and where search by meaning is turned on it also finds passages that say the same thing in other words. The note under the chat shows how many of your recordings are indexed for that; choose Index the other to add the rest.",
   },
   {
     category: "Organization",
@@ -121,6 +121,36 @@ const faqs: FAQItem[] = [
     answer: "From the Dashboard library, click the trash icon on any recording card. Deleted recordings move to the Trash tab where you can restore them or permanently delete them.",
   },
   {
+    category: "Sharing",
+    question: "What can people I share a recording with do?",
+    answer: "Choose Share on a recording and pick a role for each person or group. Can view: listen and read the transcript and study materials. Can comment: also highlight words and comment on the transcript. Can edit: also correct the transcript text and rename speakers. You can change a role or stop sharing at any time from the same window. A public link is always view only, and never shows comments.",
+  },
+  {
+    category: "Sharing",
+    question: "How do comments and highlights work?",
+    answer: "On a transcript you own, or one shared with you at comment or edit access, select some words in a line. Choose Highlight to mark them or Comment to start a thread. With a keyboard, Tab to a line's comment button. Threads are listed under the transcript: reply, resolve when it's settled (the person who started it, an editor or the owner can), or delete your own. As the owner you can delete any comment on your recording.",
+  },
+  {
+    category: "Sharing",
+    question: "How do study groups work?",
+    answer: "Open Groups from your library and start one for a class. Add classmates who already have an account by email, or send them the join link. Share a recording or a whole course to the group and pick what members can do; a shared course includes recordings you add to it later. The group page shows what's shared and recent comments. Leaving a group stops sharing what you shared there.",
+  },
+  {
+    category: "Sharing",
+    question: "Can I send notes to Notion or Google Docs?",
+    answer: "Yes, where the site has it set up. Connect Notion or Google Docs once under Settings, Connected apps. Then use Send to on any study note or study guide. Notion asks which pages StudyScribe may add to, and the note becomes a new page under the one you pick. Google Docs creates a new document in your Drive; StudyScribe can only see the files it created. Disconnect at any time.",
+  },
+  {
+    category: "Sharing",
+    question: "How do webhooks work?",
+    answer: "Under Settings, Webhooks, add a public https address and pick events: a recording finishes processing (recording.completed), a transcript is ready (transcript.ready, includes the text), or notes are written (notes.generated). Each delivery is a JSON POST with a StudyScribe-Signature header of the form t=<unix time>,v1=<hex>. To check it, compute HMAC-SHA256 of '<t>.<raw body>' with your signing secret and compare it to v1, and reject times more than 5 minutes old. Failed deliveries are retried for about a day with growing gaps; you can send a test or redeliver from Settings.",
+  },
+  {
+    category: "AI Features",
+    question: "What does Skip silence do?",
+    answer: "Turn on Skip silence under the audio player and playback jumps over pauses of 2 seconds or more between spoken lines, using the transcript's timestamps. The player shows how much it will skip. It stays on for your browser until you turn it off.",
+  },
+  {
     category: "Account",
     question: "How do I reset my password?",
     answer: "On the Login page, click 'Forgot password?' and enter your email address. You'll receive a password reset link. Click the link in the email and enter your new password.",
@@ -145,6 +175,7 @@ const features = [
   { icon: MessageSquare, title: "AI Assistant", desc: "Chat with an AI tutor about your recording content using Socratic method.", color: "bg-primary/5 text-primary" },
   { icon: MessageSquare, title: "Ask StudyScribe", desc: "Ask a question across every lecture or one course and jump to the cited moment.", color: "bg-sky-50 text-sky-600" },
   { icon: Search, title: "Knowledge Base", desc: "Full-text search across all your recordings and transcripts.", color: "bg-teal-50 text-teal-600" },
+  { icon: MessageSquare, title: "Comments and groups", desc: "Share with view, comment or edit access, discuss transcript lines and share courses with a study group.", color: "bg-sky-50 text-sky-600" },
 ];
 
 export default function Help() {

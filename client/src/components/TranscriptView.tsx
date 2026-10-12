@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, Download, Pencil, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, MessageSquarePlus, Pencil, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { trpc } from "@/lib/trpc";
 import { KeyTermChips } from "@/components/KeyTermChips";
 import { downloadTranscriptExport, type TranscriptExportFormat } from "@/lib/transcriptExports";
 import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
+import { CommentsPanel, SelectionToolbar, anchorIsCurrent, readSelection, useTranscriptAnnotations, type AnnotationThread, type PendingSelection } from "@/components/TranscriptAnnotations";
+import { splitIntoRuns } from "@shared/annotations";
 
 /** Manual scrolling pauses follow-along for this long, so reading back isn't fought. */
 const FOLLOW_PAUSE_MS = 5000;
@@ -29,7 +31,8 @@ function SpeakerRename({ recordingId, speaker, speakers, children }: { recording
   const utils = trpc.useUtils();
   const rename = trpc.transcription.renameSpeaker.useMutation({
     onSuccess: async () => {
-      await utils.transcription.get.invalidate({ recordingId });
+      // The owner's page and a shared editor's page read the transcript through different queries.
+      await Promise.all([utils.transcription.get.invalidate({ recordingId }), utils.sharing.getSharedWithMe.invalidate({ recordingId })]);
       setOpen(false);
       toast.success("Speaker renamed");
     },
@@ -73,6 +76,9 @@ export function TranscriptView({
   hasAudio,
   playbackTime,
   onSeek,
+  annotations = false,
+  canRenameSpeakers = true,
+  showKeyTerms = true,
 }: {
   recordingId: number;
   title: string;
@@ -81,6 +87,12 @@ export function TranscriptView({
   hasAudio: boolean;
   playbackTime: number;
   onSeek: (seconds: number) => void;
+  /** Show comments and highlights (B7) when the viewer's role allows it. */
+  annotations?: boolean;
+  /** Owner and editors can rename speakers; others see plain labels. */
+  canRenameSpeakers?: boolean;
+  /** Key terms are generated per owner, so shared views leave them out. */
+  showKeyTerms?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [matchCursor, setMatchCursor] = useState(0);
@@ -88,6 +100,49 @@ export function TranscriptView({
   const rowRefs = useRef<Array<HTMLDivElement | null>>([]);
   const lastManualScroll = useRef(0);
   const programmaticScroll = useRef(false);
+
+  const notes = useTranscriptAnnotations(recordingId, annotations);
+  const permissions = notes.permissions;
+  const showAnnotations = annotations && !!permissions?.canSee && notes.available;
+  const canComment = showAnnotations && !!permissions?.canComment;
+  const [pending, setPending] = useState<PendingSelection | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
+
+  // Open (unresolved) threads whose words are still where they were, by line.
+  const rangesBySegment = useMemo(() => {
+    const map = new Map<number, Array<{ id: number; start: number; end: number; kind: AnnotationThread["kind"] }>>();
+    if (!showAnnotations) return map;
+    for (const thread of notes.threads) {
+      if (thread.resolved || !anchorIsCurrent(thread, segments)) continue;
+      const list = map.get(thread.segmentIndex) ?? [];
+      list.push({ id: thread.id, start: thread.startOffset, end: thread.endOffset, kind: thread.kind });
+      map.set(thread.segmentIndex, list);
+    }
+    return map;
+  }, [notes.threads, segments, showAnnotations]);
+
+  const captureSelection = () => {
+    if (!canComment || !listRef.current) return;
+    const selection = readSelection(listRef.current);
+    if (selection) setPending(selection);
+  };
+
+  const commentOnLine = (index: number) => {
+    const row = rowRefs.current[index];
+    const text = segments[index]?.text ?? "";
+    let end = Math.min(text.length, 500);
+    while (end > 0 && /\s/.test(text[end - 1])) end--;
+    if (!row || end < 1) return;
+    setPending({
+      segmentIndex: index,
+      segmentId: segments[index].id,
+      startOffset: 0,
+      endOffset: end,
+      quote: text.slice(0, end),
+      top: row.offsetTop + 8,
+      left: Math.min(240, (listRef.current?.clientWidth ?? 480) / 2),
+    });
+  };
 
   const speakers = useMemo(() => Array.from(new Set(segments.map(segment => segment.speaker).filter((speaker): speaker is string => !!speaker))), [segments]);
   const activeIndex = playbackTime > 0 ? getActiveTranscriptSegmentIndex(segments, playbackTime) : -1;
@@ -123,6 +178,33 @@ export function TranscriptView({
   const step = (delta: number) => {
     if (!matchRows.length) return;
     setMatchCursor(cursor => (cursor + delta + matchRows.length) % matchRows.length);
+  };
+
+  const renderSegmentText = (text: string, index: number, rowIsCurrentMatch: boolean, rowIsActive: boolean) => {
+    const ranges = rangesBySegment.get(index);
+    if (!ranges?.length) return highlight(text, rowIsCurrentMatch);
+    return splitIntoRuns(text.length, ranges).map(run => {
+      const piece = highlight(text.slice(run.start, run.end), rowIsCurrentMatch);
+      if (run.ids.length === 0) return <span key={run.start}>{piece}</span>;
+      const isComment = ranges.some(range => run.ids.includes(range.id) && range.kind === "comment");
+      const isSelected = activeThreadId !== null && run.ids.includes(activeThreadId);
+      const tone = rowIsActive ? "bg-primary-foreground/25 text-primary-foreground" : `${isSelected ? "bg-annotation-strong" : "bg-annotation"} text-foreground`;
+      return (
+        <mark
+          key={run.start}
+          data-annotation-ids={run.ids.join(",")}
+          title={isComment ? "Open comment" : "Highlighted"}
+          onClick={event => {
+            if (window.getSelection()?.toString()) return;
+            event.stopPropagation();
+            setActiveThreadId(run.ids[run.ids.length - 1]);
+          }}
+          className={`cursor-pointer rounded-sm px-px ${tone} ${isComment ? "shadow-[inset_0_-2px_0_var(--color-primary)]" : ""}`}
+        >
+          {piece}
+        </mark>
+      );
+    });
   };
 
   const highlight = (text: string, rowIsCurrentMatch: boolean) => {
@@ -180,27 +262,45 @@ export function TranscriptView({
         </DropdownMenu>
       </div>
 
-      <KeyTermChips recordingId={recordingId} query={query} onPick={setQuery} />
+      {showKeyTerms && <KeyTermChips recordingId={recordingId} query={query} onPick={setQuery} />}
 
       {speakers.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">Speakers</span>
-          {speakers.map(speaker => (
-            <SpeakerRename key={speaker} recordingId={recordingId} speaker={speaker} speakers={speakers}>
-              <button type="button" className="group inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-primary hover:border-primary/40">
+          {speakers.map(speaker =>
+            canRenameSpeakers ? (
+              <SpeakerRename key={speaker} recordingId={recordingId} speaker={speaker} speakers={speakers}>
+                <button type="button" className="group inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-primary hover:border-primary/40">
+                  {speaker}
+                  <Pencil className="h-3 w-3 text-muted-foreground group-hover:text-primary" />
+                </button>
+              </SpeakerRename>
+            ) : (
+              <span key={speaker} className="inline-flex items-center rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-primary">
                 {speaker}
-                <Pencil className="h-3 w-3 opacity-50 group-hover:opacity-100" />
-              </button>
-            </SpeakerRename>
-          ))}
+              </span>
+            ),
+          )}
         </div>
       )}
 
       <div
         ref={listRef}
         onScroll={() => { if (!programmaticScroll.current) lastManualScroll.current = Date.now(); }}
+        onMouseUp={captureSelection}
+        onKeyUp={event => { if (event.shiftKey) captureSelection(); }}
         className="relative max-h-[32rem] space-y-1 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2"
       >
+        {pending && canComment && (
+          <SelectionToolbar
+            recordingId={recordingId}
+            selection={pending}
+            onDone={() => {
+              setPending(null);
+              window.getSelection()?.removeAllRanges();
+            }}
+          />
+        )}
         {segments.map((segment, index) => {
           const isActive = index === activeIndex;
           const isCurrentMatch = index === currentMatchRow;
@@ -209,8 +309,12 @@ export function TranscriptView({
             <div
               key={`${segment.id}-${index}`}
               ref={element => { rowRefs.current[index] = element; }}
-              onClick={() => hasAudio && onSeek(segment.start)}
-              className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${hasAudio ? "cursor-pointer" : ""} ${
+              onClick={() => {
+                // Selecting words to comment on must not also jump the audio.
+                if (window.getSelection()?.toString()) return;
+                if (hasAudio) onSeek(segment.start);
+              }}
+              className={`group/row flex w-full items-start gap-3 rounded-lg px-3 py-2.5 transition-colors ${hasAudio ? "cursor-pointer" : ""} ${
                 isActive ? "bg-primary text-primary-foreground shadow-sm" : isCurrentMatch ? "bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-500/10" : "hover:bg-background"
               }`}
             >
@@ -223,25 +327,60 @@ export function TranscriptView({
               >
                 {formatTranscriptTimestamp(segment.start)}
               </button>
-              <span className="min-w-0 text-sm leading-relaxed">
-                {showSpeaker && (
-                  <SpeakerRename recordingId={recordingId} speaker={segment.speaker!} speakers={speakers}>
-                    <button
-                      type="button"
-                      onClick={event => event.stopPropagation()}
-                      title="Rename speaker"
-                      className={`mr-2 rounded text-xs font-semibold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-primary-foreground" : "text-primary"}`}
-                    >
-                      {segment.speaker}
-                    </button>
-                  </SpeakerRename>
-                )}
-                {highlight(segment.text, isCurrentMatch)}
+              <span className="min-w-0 flex-1 text-sm leading-relaxed">
+                {showSpeaker &&
+                  (canRenameSpeakers ? (
+                    <SpeakerRename recordingId={recordingId} speaker={segment.speaker!} speakers={speakers}>
+                      <button
+                        type="button"
+                        onClick={event => event.stopPropagation()}
+                        title="Rename speaker"
+                        className={`mr-2 rounded text-xs font-semibold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-primary-foreground" : "text-primary"}`}
+                      >
+                        {segment.speaker}
+                      </button>
+                    </SpeakerRename>
+                  ) : (
+                    <span className={`mr-2 text-xs font-semibold ${isActive ? "text-primary-foreground" : "text-primary"}`}>{segment.speaker}</span>
+                  ))}
+                <span data-seg-text="" data-seg-index={index} data-seg-id={segment.id ?? ""}>
+                  {renderSegmentText(segment.text, index, isCurrentMatch, isActive)}
+                </span>
               </span>
+              {canComment && (
+                <button
+                  type="button"
+                  onClick={event => {
+                    event.stopPropagation();
+                    commentOnLine(index);
+                  }}
+                  aria-label={`Comment on the line at ${formatTranscriptTimestamp(segment.start)}`}
+                  title="Comment on this line"
+                  className={`shrink-0 rounded p-1 opacity-0 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary group-hover/row:opacity-100 ${isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                >
+                  <MessageSquarePlus className="h-4 w-4" />
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+
+      {showAnnotations && permissions && (
+        <CommentsPanel
+          recordingId={recordingId}
+          threads={notes.threads}
+          permissions={permissions}
+          segments={segments}
+          activeId={activeThreadId}
+          hasAudio={hasAudio}
+          onGoTo={thread => {
+            setActiveThreadId(thread.id);
+            lastManualScroll.current = Date.now();
+            scrollRowIntoView(thread.segmentIndex);
+          }}
+        />
+      )}
     </div>
   );
 }

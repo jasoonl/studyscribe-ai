@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { BookOpen, ArrowLeft, Sparkles, Clock, ChevronRight, FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { SendToMenu } from "@/components/SendToMenu";
 
 /** Key points come back from the model with markdown emphasis (`**Term:** …`); show them as plain text. */
 const plainKeyPoint = (text: string) => text.replace(/[*_`#]+/g, "").trim();
@@ -175,9 +176,12 @@ export default function StudyGuides() {
                       Generated {new Date(selectedGuide.createdAt).toLocaleString()}
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="shrink-0 border-green-500/50 text-green-400">
-                    {selectedGuide.status}
-                  </Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {selectedGuide.status === "completed" && <SendToMenu kind="guide" id={selectedGuide.id} />}
+                    <Badge variant="outline" className="shrink-0 border-green-500/50 text-green-400">
+                      {selectedGuide.status}
+                    </Badge>
+                  </div>
                 </div>
                 {Array.isArray(selectedGuide.keyPoints) && (selectedGuide.keyPoints as string[]).length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">

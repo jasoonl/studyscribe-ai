@@ -1,7 +1,11 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Play, Pause, Volume2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { getSkipSilenceEnabled, setSkipSilenceEnabled } from "@/lib/preferences";
+import { computeSilentGaps, skipTargetAt, totalSilence, type TimedSegment } from "@shared/silence";
 
 interface AudioPlayerProps {
   src: string;
@@ -11,6 +15,14 @@ interface AudioPlayerProps {
   fallbackDuration?: number;
   /** Seek here once, as soon as the audio knows its length (used by deep links like /recording/1?t=754). */
   startAt?: number;
+  /** Timed transcript segments; when given, the player offers "Skip silence" over the gaps between them. */
+  segments?: TimedSegment[];
+}
+
+function formatSkipped(seconds: number) {
+  const whole = Math.round(seconds);
+  if (whole < 60) return `${whole}s`;
+  return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, "0")}s`;
 }
 
 export interface AudioPlayerHandle {
@@ -47,13 +59,22 @@ function describeMediaError(error: MediaError | null): string | null {
   }
 }
 
-export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration, startAt }: AudioPlayerProps, ref) {
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration, startAt, segments }: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [skipSilence, setSkipSilence] = useState(getSkipSilenceEnabled);
+  const [skippedTotal, setSkippedTotal] = useState(0);
+  const skipId = useId();
+
+  // Gaps between transcript segments, worked out once per transcript/length.
+  const knownDuration = duration || (fallbackDuration && fallbackDuration > 0 ? fallbackDuration : 0);
+  const gaps = useMemo(() => (segments?.length ? computeSilentGaps(segments, { duration: knownDuration || undefined }) : []), [segments, knownDuration]);
+  const skipRef = useRef({ enabled: skipSilence, gaps });
+  skipRef.current = { enabled: skipSilence, gaps };
 
   const seekTo = useCallback((time: number, options?: { play?: boolean }) => {
     const audio = audioRef.current;
@@ -86,6 +107,14 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
     if (!audio) return;
 
     const handleTimeUpdate = () => {
+      const { enabled, gaps: silentGaps } = skipRef.current;
+      if (enabled && !audio.paused && silentGaps.length) {
+        const target = skipTargetAt(silentGaps, audio.currentTime);
+        if (target !== null) {
+          setSkippedTotal(total => total + (target - audio.currentTime));
+          audio.currentTime = target;
+        }
+      }
       setCurrentTime(audio.currentTime);
       onTimeUpdate?.(audio.currentTime);
     };
@@ -251,6 +280,32 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
         onValueChange={handleSeek}
         className="w-full"
       />
+
+      {segments && segments.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border pt-3">
+          <div className="flex items-center gap-2.5">
+            <Switch
+              id={skipId}
+              checked={skipSilence}
+              disabled={gaps.length === 0}
+              onCheckedChange={checked => {
+                setSkipSilence(checked);
+                setSkipSilenceEnabled(checked);
+              }}
+            />
+            <Label htmlFor={skipId} className="text-sm font-medium">
+              Skip silence
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {gaps.length === 0
+              ? "No long pauses in this recording"
+              : skipSilence && skippedTotal > 0
+                ? `Skipped ${formatSkipped(skippedTotal)} so far`
+                : `Jumps ${gaps.length} pause${gaps.length === 1 ? "" : "s"} of 2s or more, ${formatSkipped(totalSilence(gaps))} in all`}
+          </p>
+        </div>
+      )}
 
       {/* Speed Controls */}
       <div className="flex gap-2 flex-wrap">

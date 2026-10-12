@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { roleLabel } from "@/components/RoleSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Users2, Mic } from "lucide-react";
@@ -43,7 +44,8 @@ export default function SharedWithMe() {
                     <div className="min-w-0">
                       <h4 className="font-semibold truncate">{item.title}</h4>
                       <p className="text-xs text-muted-foreground">
-                        Shared {new Date(item.sharedAt).toLocaleDateString()}
+                        Shared {new Date(item.sharedAt).toLocaleDateString()} · {roleLabel(item.role)}
+                        {item.viaGroups.length > 0 && ` · through ${item.viaGroups.join(", ")}`}
                       </p>
                     </div>
                   </div>

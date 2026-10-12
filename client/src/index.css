@@ -51,6 +51,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-annotation: var(--annotation);
+  --color-annotation-strong: var(--annotation-strong);
 }
 
 :root {
@@ -99,9 +101,14 @@
   --sidebar-accent-foreground: oklch(0.28 0.08 262);
   --sidebar-border: oklch(0.91 0.018 252);
   --sidebar-ring: oklch(0.6 0.15 240);
+  /* Transcript highlights and comment anchors: a pale sky tint, stronger when selected. */
+  --annotation: oklch(0.9 0.06 225);
+  --annotation-strong: oklch(0.82 0.1 225);
 }
 
 .dark {
+  --annotation: oklch(0.38 0.07 230);
+  --annotation-strong: oklch(0.46 0.1 230);
   --primary: oklch(0.62 0.19 262);
   --primary-foreground: oklch(0.985 0.005 250);
   --sidebar-primary: oklch(0.62 0.19 262);

@@ -55,6 +55,9 @@ const CoursePage = lazy(() => import("./pages/CoursePage"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
+const Groups = lazy(() => import("./pages/Groups"));
+const GroupPage = lazy(() => import("./pages/GroupPage"));
+const JoinGroup = lazy(() => import("./pages/JoinGroup"));
 
 function RouteFallback() {
   return (
@@ -129,6 +132,9 @@ function Router() {
         <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
         <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
         <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />
+        <Route path="/groups" component={() => <ProtectedRoute component={Groups} />} />
+        <Route path="/groups/join/:token" component={() => <ProtectedRoute component={JoinGroup} />} />
+        <Route path="/groups/:id" component={() => <ProtectedRoute component={GroupPage} />} />
         <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
         <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
 

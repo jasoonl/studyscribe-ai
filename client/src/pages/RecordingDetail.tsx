@@ -358,7 +358,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} />
                     <RecordingBookmarks
                       recordingId={recordingId || 0}
                       playbackTime={playbackTime}
@@ -509,6 +509,7 @@ export default function RecordingDetail() {
                               hasAudio={!!recording.audioUrl}
                               playbackTime={playbackTime}
                               onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
+                              annotations
                             />
                           ) : (
                             <div className="prose prose-sm max-w-none dark:prose-invert">

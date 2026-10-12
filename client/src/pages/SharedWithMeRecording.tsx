@@ -43,7 +43,7 @@ export default function SharedWithMeRecording() {
           </Link>
         </div>
       </div>
-      <SharedRecordingView bundle={bundle} />
+      <SharedRecordingView bundle={bundle} role={bundle.role} />
     </div>
   );
 }
