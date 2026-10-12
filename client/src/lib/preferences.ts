@@ -71,3 +71,22 @@ export function setCaptionSize(step: number) {
     // Preference just won't persist.
   }
 }
+
+const SKIP_SILENCE_KEY = "studyscribe_skip_silence";
+
+/** "Skip silence" in the audio player is opt-in and remembered per browser. */
+export function getSkipSilenceEnabled(): boolean {
+  try {
+    return localStorage.getItem(SKIP_SILENCE_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+export function setSkipSilenceEnabled(enabled: boolean) {
+  try {
+    localStorage.setItem(SKIP_SILENCE_KEY, enabled ? "on" : "off");
+  } catch {
+    // Preference just won't persist.
+  }
+}

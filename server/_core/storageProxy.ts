@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { ENV } from "./env";
 import { Readable } from "node:stream";
 import { getSessionFromCookie } from "../sessionManager";
-import { getRecordingByAudioKey, getRecordingShareForUser } from "../db";
+import { getRecordingByAudioKey } from "../db";
+import { getRecordingAccess } from "../recordingAccess";
 import { handleUploadPresigned } from "@vercel/blob/client";
 import { createDirectAudioUpload, issueLargeUploadToken, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
 import { verifyTranscriptionAudioToken } from "../transcriptionAudioLink";
@@ -183,13 +184,13 @@ export function registerStorageProxy(app: Express) {
       // Playback has to work for everyone the recording is legitimately
       // shared with, not just its owner: a public share link carries a token
       // and has no session at all, and a direct recipient has a session but
-      // does not own the row.
+      // does not own the row (a direct share or a study group share, at any role).
       const isOwner = Boolean(session && recording.userId === session.userId);
       const hasValidPublicToken = Boolean(
         shareToken && recording.publicShareToken && recording.publicShareToken === shareToken,
       );
       const isSharedRecipient = Boolean(
-        session && !isOwner && (await getRecordingShareForUser(recording.id, session.userId)),
+        session && !isOwner && (await getRecordingAccess(recording.id, session.userId)),
       );
 
       if (!isOwner && !hasValidPublicToken && !isSharedRecipient) {

@@ -53,6 +53,10 @@ describe("isDisallowedAddress", () => {
   it("blocks IPv4-mapped IPv6 that hides a private address", () => {
     expect(isDisallowedAddress("::ffff:127.0.0.1")).toBe(true);
     expect(isDisallowedAddress("::ffff:169.254.169.254")).toBe(true);
+    // The URL parser's normalised (hex) spelling of the same addresses.
+    expect(isDisallowedAddress("::ffff:7f00:1")).toBe(true);
+    expect(isDisallowedAddress("::ffff:a9fe:a9fe")).toBe(true);
+    expect(isDisallowedAddress("::ffff:5db8:d822")).toBe(false);
   });
 
   it("allows ordinary public addresses", () => {

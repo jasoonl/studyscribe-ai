@@ -1,5 +1,26 @@
 import { sql } from "drizzle-orm";
-import { boolean, date, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, customType, date, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+
+/** MEDIUMTEXT (16MB): webhook payload snapshots can outgrow TEXT's 64KB. */
+const mediumText = customType<{ data: string }>({
+  dataType() {
+    return "mediumtext";
+  },
+});
+
+/**
+ * Raw bytes (MySQL/MariaDB/TiDB BLOB, 64KB). Embeddings are stored as
+ * little-endian float32 arrays here rather than in a TiDB VECTOR column, so the
+ * same schema runs on plain MySQL and MariaDB; ranking happens in Node.
+ */
+const bytes = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "blob";
+  },
+  fromDriver(value) {
+    return Buffer.isBuffer(value) ? value : Buffer.from(value as any);
+  },
+});
 
 /**
  * Core user table backing auth flow.
@@ -373,8 +394,8 @@ export type EmailDraftTone = "formal" | "casual" | "technical" | "persuasive";
 export type InsertEmailDraft = typeof emailDrafts.$inferInsert;
 
 /**
- * Recording shares table — grants a specific registered account read-only
- * access to a recording (transcript, notes, flashcards, quizzes, study
+ * Recording shares table — grants a specific registered account access to a
+ * recording at a role (view, comment or edit) (transcript, notes, flashcards, quizzes, study
  * guides). Independent of `recordings.publicShareToken`, which is a
  * no-login public link instead of a targeted share.
  */
@@ -384,6 +405,12 @@ export const recordingShares = mysqlTable("recordingShares", {
   ownerId: int("ownerId").notNull(),
   sharedWithUserId: int("sharedWithUserId").notNull(),
   sharedWithEmail: varchar("sharedWithEmail", { length: 320 }).notNull(),
+  /**
+   * What the recipient may do (D3): view, comment on the transcript, or also
+   * edit it. Added by migration 0022; until it runs, reads fall back to
+   * "view" (see server/recordingAccess.ts).
+   */
+  role: mysqlEnum("role", ["view", "comment", "edit"]).default("view").notNull(),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
   uniqueIndex("recordingShares_recording_user_unique").on(table.recordingId, table.sharedWithUserId),
@@ -556,3 +583,161 @@ export const followUpSuggestions = mysqlTable("followUpSuggestions", {
 ]);
 
 export type FollowUpSuggestion = typeof followUpSuggestions.$inferSelect;
+
+/**
+ * Highlights and comments on transcript lines (B7). Each row anchors to one
+ * transcript segment by index (and id, as a check) plus character offsets in
+ * that segment's text; `quote` keeps the selected words so a thread still makes
+ * sense if the text is edited later. Replies point at their thread's root with
+ * `parentId`; only roots carry `resolved`.
+ */
+export const transcriptAnnotations = mysqlTable("transcriptAnnotations", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  authorId: int("authorId").notNull(),
+  parentId: int("parentId"),
+  kind: mysqlEnum("kind", ["highlight", "comment"]).default("comment").notNull(),
+  segmentIndex: int("segmentIndex").notNull(),
+  segmentId: varchar("segmentId", { length: 64 }),
+  startOffset: int("startOffset").notNull(),
+  endOffset: int("endOffset").notNull(),
+  quote: varchar("quote", { length: 500 }).notNull(),
+  body: text("body"),
+  resolved: boolean("resolved").default(false).notNull(),
+  resolvedBy: int("resolvedBy"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  index("transcriptAnnotations_recording_idx").on(table.recordingId),
+  index("transcriptAnnotations_author_idx").on(table.authorId),
+]);
+
+export type TranscriptAnnotation = typeof transcriptAnnotations.$inferSelect;
+
+/** Study groups (D2). `joinToken` is the secret in the join link; null when the link is turned off. */
+export const studyGroups = mysqlTable("studyGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerId: int("ownerId").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: varchar("description", { length: 500 }),
+  joinToken: varchar("joinToken", { length: 64 }).unique(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("studyGroups_owner_idx").on(table.ownerId),
+]);
+
+export type StudyGroup = typeof studyGroups.$inferSelect;
+
+export const studyGroupMembers = mysqlTable("studyGroupMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  groupId: int("groupId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "member"]).default("member").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("studyGroupMembers_group_user_unique").on(table.groupId, table.userId),
+  index("studyGroupMembers_user_idx").on(table.userId),
+]);
+
+/**
+ * A recording or a whole course shared to a group, at a role. A course share
+ * covers every recording filed under the course, including ones added later.
+ */
+export const groupShares = mysqlTable("groupShares", {
+  id: int("id").autoincrement().primaryKey(),
+  groupId: int("groupId").notNull(),
+  sharedBy: int("sharedBy").notNull(),
+  itemType: mysqlEnum("itemType", ["recording", "course"]).notNull(),
+  itemId: int("itemId").notNull(),
+  role: mysqlEnum("role", ["view", "comment", "edit"]).default("view").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("groupShares_group_item_unique").on(table.groupId, table.itemType, table.itemId),
+  index("groupShares_item_idx").on(table.itemType, table.itemId),
+]);
+
+export type GroupShare = typeof groupShares.$inferSelect;
+
+/**
+ * Transcript passages with their embedding (C2) for semantic search in Ask.
+ * `contentHash` is a hash of the transcript the chunks were made from, so an
+ * edited transcript is re-embedded; `model` lets a model change re-embed too.
+ */
+export const transcriptChunks = mysqlTable("transcriptChunks", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  chunkIndex: int("chunkIndex").notNull(),
+  startSeconds: int("startSeconds"),
+  text: text("text").notNull(),
+  embedding: bytes("embedding").notNull(),
+  model: varchar("model", { length: 120 }).notNull(),
+  contentHash: varchar("contentHash", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("transcriptChunks_recording_idx").on(table.recordingId),
+  index("transcriptChunks_user_idx").on(table.userId),
+]);
+
+export type TranscriptChunk = typeof transcriptChunks.$inferSelect;
+
+/** Outgoing webhooks (E4): a person's endpoints. `secret` is encrypted at rest (server/tokenCrypto.ts). */
+export const webhookEndpoints = mysqlTable("webhookEndpoints", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  url: varchar("url", { length: 2048 }).notNull(),
+  description: varchar("description", { length: 120 }),
+  /** Comma-separated event names from shared/webhooks.ts. */
+  events: varchar("events", { length: 255 }).notNull(),
+  secret: text("secret").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("webhookEndpoints_user_idx").on(table.userId),
+]);
+
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+
+/** One event sent (or being retried) to one endpoint. */
+export const webhookDeliveries = mysqlTable("webhookDeliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  endpointId: int("endpointId").notNull(),
+  userId: int("userId").notNull(),
+  event: varchar("event", { length: 64 }).notNull(),
+  deliveryId: varchar("deliveryId", { length: 64 }).notNull(),
+  payload: mediumText("payload").notNull(),
+  status: mysqlEnum("status", ["pending", "succeeded", "failed"]).default("pending").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  responseStatus: int("responseStatus"),
+  error: varchar("error", { length: 500 }),
+  nextAttemptAt: timestamp("nextAttemptAt"),
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("webhookDeliveries_endpoint_idx").on(table.endpointId),
+  index("webhookDeliveries_user_idx").on(table.userId),
+  index("webhookDeliveries_due_idx").on(table.status, table.nextAttemptAt),
+]);
+
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+
+/**
+ * OAuth connections to export destinations (E3). Tokens are encrypted at rest
+ * with a key derived from INTEGRATIONS_ENCRYPTION_KEY (or JWT_SECRET).
+ */
+export const integrationConnections = mysqlTable("integrationConnections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  provider: mysqlEnum("provider", ["notion", "google_drive"]).notNull(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  expiresAt: timestamp("expiresAt"),
+  accountLabel: varchar("accountLabel", { length: 255 }),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("integrationConnections_user_provider_unique").on(table.userId, table.provider),
+]);
+
+export type IntegrationConnection = typeof integrationConnections.$inferSelect;

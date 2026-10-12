@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 
 const getRecordingByAudioKey = vi.fn();
-const getRecordingShareForUser = vi.fn(async () => null);
+const getRecordingAccess = vi.fn(async () => null);
 const getSessionFromCookie = vi.fn();
 
 vi.mock("../db", () => ({
   getRecordingByAudioKey: (...args: unknown[]) => getRecordingByAudioKey(...args),
-  getRecordingShareForUser: (...args: unknown[]) => getRecordingShareForUser(...args),
+}));
+
+vi.mock("../recordingAccess", () => ({
+  getRecordingAccess: (...args: unknown[]) => getRecordingAccess(...args),
 }));
 
 vi.mock("../sessionManager", () => ({
@@ -31,7 +34,7 @@ let upstream: (init?: RequestInit) => Response;
 
 beforeEach(() => {
   getRecordingByAudioKey.mockResolvedValue({ id: 1, userId: 7, publicShareToken: "tok_public" });
-  getRecordingShareForUser.mockResolvedValue(null);
+  getRecordingAccess.mockResolvedValue(null);
   getSessionFromCookie.mockReturnValue({ userId: 7 });
   upstream = () => new Response("audio-bytes", { status: 200, headers: { "content-length": "11" } });
 
@@ -120,14 +123,14 @@ describe("audio playback proxy", () => {
 
   it("lets a signed-in share recipient play a recording they do not own", async () => {
     getSessionFromCookie.mockReturnValue({ userId: 99 });
-    getRecordingShareForUser.mockResolvedValue({ id: 5 });
+    getRecordingAccess.mockResolvedValue({ role: "view" } as any);
     const response = await request(url);
     expect(response.status).toBe(200);
   });
 
   it("refuses a signed-in user with no share", async () => {
     getSessionFromCookie.mockReturnValue({ userId: 99 });
-    getRecordingShareForUser.mockResolvedValue(null);
+    getRecordingAccess.mockResolvedValue(null);
     const response = await request(url);
     expect(response.status).toBe(403);
   });

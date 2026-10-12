@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AIProgressBar } from "@/components/AIProgressBar";
+import { SendToMenu } from "@/components/SendToMenu";
 import { trpc } from "@/lib/trpc";
 import { claimAutoNotesAttempt, getAutoNotesEnabled } from "@/lib/preferences";
 import { NOTE_TEMPLATES, defaultNoteTemplate, getNoteTemplate, type NoteTemplateId } from "@shared/noteTemplates";
@@ -118,6 +119,8 @@ export function StudyNotesPanel({
                   <Sparkles className="h-4 w-4 text-primary" />
                   {noteTitle(note)}
                 </h3>
+                <div className="flex shrink-0 items-center gap-1">
+                <SendToMenu kind="note" id={note.id} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2" disabled={translate.isPending}>
@@ -133,6 +136,7 @@ export function StudyNotesPanel({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </div>
               </div>
               <div className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert">
                 <Streamdown>{note.content}</Streamdown>

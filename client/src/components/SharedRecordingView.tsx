@@ -1,12 +1,57 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AudioPlayer } from "@/components/AudioPlayer";
-import { FileText, BookOpen, Layers3, ClipboardCheck, NotebookPen } from "lucide-react";
+import { AudioPlayer, type AudioPlayerHandle } from "@/components/AudioPlayer";
+import { TranscriptView } from "@/components/TranscriptView";
+import { FileText, BookOpen, Layers3, ClipboardCheck, NotebookPen, Loader2, Pencil } from "lucide-react";
 import { Streamdown } from "streamdown";
-import { formatTranscriptTimestamp } from "@/lib/transcriptSegments";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { formatTranscriptTimestamp, type TranscriptSegment } from "@/lib/transcriptSegments";
 import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
+import { roleAllows, type AccessRole } from "@shared/sharing";
+
+const ROLE_SENTENCE: Record<AccessRole, string> = {
+  view: "Shared with you. You can listen and read.",
+  comment: "Shared with you. You can highlight and comment on the transcript.",
+  edit: "Shared with you. You can comment, correct the transcript and rename speakers.",
+  owner: "This is your recording.",
+};
+
+/** Plain-text transcript editing for people with the edit role (same procedure the owner uses). */
+function TranscriptTextEditor({ recordingId, fullText, onClose }: { recordingId: number; fullText: string; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const [text, setText] = useState(fullText);
+  const update = trpc.transcription.update.useMutation({
+    onSuccess: async () => {
+      await utils.sharing.getSharedWithMe.invalidate({ recordingId });
+      toast.success("Transcript saved");
+      onClose();
+    },
+    onError: error => toast.error(error.message || "Could not save the transcript"),
+  });
+  return (
+    <div className="space-y-3">
+      <textarea
+        value={text}
+        onChange={event => setText(event.target.value)}
+        aria-label="Transcript text"
+        className="h-72 w-full resize-y rounded-lg border border-border bg-background p-3 font-mono text-sm text-foreground"
+      />
+      <div className="flex gap-2">
+        <Button size="sm" disabled={!text.trim() || update.isPending} onClick={() => update.mutate({ recordingId, fullText: text })}>
+          {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">The owner sees your changes straight away. Timestamps and speaker lines stay as they were.</p>
+    </div>
+  );
+}
 
 type SharedBundle = {
   recording: {
@@ -56,21 +101,30 @@ function FlashcardItem({ question, answer }: { question: string; answer: string 
   );
 }
 
-export function SharedRecordingView({ bundle }: { bundle: SharedBundle }) {
+export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; role?: AccessRole }) {
   const { recording, transcript, studyNotes, flashcards, studyGuides, quizzes } = bundle;
+  const playerRef = useRef<AudioPlayerHandle>(null);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const segments = (transcript?.segments ?? []) as TranscriptSegment[];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div>
-        <Badge variant="outline" className="mb-2">Shared recording &middot; read-only</Badge>
-        <h1 className="text-2xl font-bold">{recording.title}</h1>
-        {recording.description && (
-          <p className="text-muted-foreground mt-1">{recording.description}</p>
-        )}
+        <h1 className="text-2xl font-bold tracking-tight">{recording.title}</h1>
+        {recording.description && <p className="mt-1 text-muted-foreground">{recording.description}</p>}
+        <p className="mt-2 text-sm text-muted-foreground">{role ? ROLE_SENTENCE[role] : "Shared recording, read only."}</p>
       </div>
 
       <Card className="p-4">
-        <AudioPlayer src={recording.audioUrl} title={recording.title} fallbackDuration={recording.duration ?? undefined} />
+        <AudioPlayer
+          ref={playerRef}
+          src={recording.audioUrl}
+          title={recording.title}
+          fallbackDuration={recording.duration ?? undefined}
+          onTimeUpdate={role ? setPlaybackTime : undefined}
+          segments={segments.length ? segments : undefined}
+        />
       </Card>
 
       <Tabs defaultValue="transcript" className="w-full">
@@ -90,8 +144,33 @@ export function SharedRecordingView({ bundle }: { bundle: SharedBundle }) {
         </TabsList>
 
         <TabsContent value="transcript" className="mt-4">
-          <Card className="p-6">
-            {transcript?.segments?.length ? (
+          <Card className="p-4 sm:p-6">
+            {role && transcript && roleAllows(role, "edit") && (
+              <div className="mb-4 flex justify-end">
+                {!editing && (
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
+                    <Pencil className="h-4 w-4" />
+                    Edit text
+                  </Button>
+                )}
+              </div>
+            )}
+            {editing && transcript ? (
+              <TranscriptTextEditor recordingId={recording.id} fullText={transcript.fullText} onClose={() => setEditing(false)} />
+            ) : role && segments.length ? (
+              <TranscriptView
+                recordingId={recording.id}
+                title={recording.title}
+                segments={segments}
+                fullText={transcript?.fullText ?? ""}
+                hasAudio={!!recording.audioUrl}
+                playbackTime={playbackTime}
+                onSeek={seconds => playerRef.current?.seekTo(seconds, { play: true })}
+                annotations={roleAllows(role, "comment")}
+                canRenameSpeakers={roleAllows(role, "edit")}
+                showKeyTerms={false}
+              />
+            ) : transcript?.segments?.length ? (
               <div className="space-y-3">
                 {transcript.segments.map((seg) => (
                   <div key={seg.id} className="flex gap-3 text-sm">

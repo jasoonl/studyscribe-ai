@@ -33,6 +33,7 @@ function StorageTable({ caption, rows }: { caption: string; rows: Row[] }) {
 
 const COOKIES: Row[] = [
   { name: "studyscribe_session", purpose: "Keeps you signed in. Essential: the app cannot work without it.", lasts: "30 days, or until you sign out" },
+  { name: "studyscribe_integration_state", purpose: "Checks that a Notion or Google sign-in that comes back to StudyScribe is the one you started. Essential, and only set when you connect an app.", lasts: "10 minutes" },
 ];
 
 const BROWSER_STORAGE: Row[] = [
@@ -43,6 +44,7 @@ const BROWSER_STORAGE: Row[] = [
   { name: "studyscribe_auto_notes_tried_*", purpose: "Stops the same notes being generated twice in one tab (session storage).", lasts: "Until you close the tab" },
   { name: "studyscribe_live_transcript", purpose: "Remembers whether you turned on live transcript while recording.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_caption_size", purpose: "Remembers the text size you chose for live captions.", lasts: "Until you change it or clear site data" },
+  { name: "studyscribe_skip_silence", purpose: "Remembers whether the player skips silent stretches.", lasts: "Until you change it or clear site data" },
   { name: "sidebar-width", purpose: "Remembers how wide you made the app sidebar.", lasts: "Until you clear site data" },
 ];
 

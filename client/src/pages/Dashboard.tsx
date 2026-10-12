@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, Sparkles, ListChecks, GraduationCap } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, UsersRound, Sparkles, ListChecks, GraduationCap } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -346,6 +346,12 @@ export default function Dashboard() {
             <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <SettingsIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
+            </button>
+          </Link>
+          <Link href="/groups">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
+              <UsersRound className="w-4 h-4" />
+              <span>Groups</span>
             </button>
           </Link>
           <Link href="/shared-with-me">

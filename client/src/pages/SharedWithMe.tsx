@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { roleLabel } from "@/components/RoleSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Users2, Mic } from "lucide-react";
@@ -36,14 +37,15 @@ export default function SharedWithMe() {
         ) : (
           <div className="space-y-3">
             {shared.map((item) => (
-              <Link key={item.shareId} href={`/shared-with-me/${item.recordingId}`}>
+              <Link key={item.recordingId} href={`/shared-with-me/${item.recordingId}`}>
                 <Card className="p-4 flex items-center justify-between hover:border-accent transition-colors cursor-pointer">
                   <div className="flex items-center gap-3 min-w-0">
                     <Mic className="w-5 h-5 text-muted-foreground shrink-0" />
                     <div className="min-w-0">
                       <h4 className="font-semibold truncate">{item.title}</h4>
                       <p className="text-xs text-muted-foreground">
-                        Shared {new Date(item.sharedAt).toLocaleDateString()}
+                        Shared {new Date(item.sharedAt).toLocaleDateString()} · {roleLabel(item.role)}
+                        {item.viaGroups.length > 0 && ` · through ${item.viaGroups.join(", ")}`}
                       </p>
                     </div>
                   </div>

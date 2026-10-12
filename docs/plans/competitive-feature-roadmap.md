@@ -84,9 +84,9 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 | B2 | **Custom vocabulary** (course terms, names) | O | Per-user and per-recording word list sent as AssemblyAI `word_boost`/keyterms on submission and retry. Settings page section. | S |
 | B3 | **In-transcript search with highlight & jump** | O | Search box above the transcript tab; highlights matches, next/prev, seeks audio. | S |
 | B4 | **Auto-scroll / karaoke follow-along** | O | Highlight the active segment while audio plays (AudioPlayer already emits `onTimeUpdate`). | S |
-| B5 | **Skip silence** in playback | O | Use word timestamps to compute silent gaps > 2s; player jumps them when toggle is on. | M |
+| B5 | **Skip silence** in playback (shipped, Phase 4) | O | Use word timestamps to compute silent gaps > 2s; player jumps them when toggle is on. | M |
 | B6 | **Keyword cloud / topic chips** | O | LLM or TF-IDF keywords stored with the transcript; chips filter the transcript. | S |
-| B7 | **Comments & highlights on transcript lines** | O | `transcriptAnnotations` table (segment index, type highlight/comment, text, author). Visible to people the recording is shared with. | M |
+| B7 | **Comments & highlights on transcript lines** (shipped, Phase 4) | O | `transcriptAnnotations` table (segment index, type highlight/comment, text, author). Visible to people the recording is shared with. | M |
 | B8 | **Chapters / auto outline with timestamps** | O | New note type `outline` (`studyNotes.type` enum extension) with timestamped sections that seek on click. | M |
 
 ### C. AI intelligence
@@ -94,7 +94,7 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 | # | Gap | Src | Adaptation | Effort |
 |---|---|---|---|---|
 | C1 | **Cross-recording AI chat** ("What did the professor say about mitosis across all lectures?") | O | "Ask StudyScribe" page: retrieve top segments via Knowledge Base search (later embeddings, C2) → LLM answer with citations that link to `recording/:id?t=`. Extends the existing tutor; per-recording tutor stays. | M |
-| C2 | **Semantic search (embeddings)** | O | `transcriptChunks` table with embedding vectors (TiDB supports vector columns) generated after transcription completes; Knowledge Base gets a "smart search" toggle. | L |
+| C2 | **Semantic search (embeddings)** (shipped, Phase 4) | O | `transcriptChunks` table with embedding vectors (TiDB supports vector columns) generated after transcription completes; Knowledge Base gets a "smart search" toggle. | L |
 | C3 | **Action items with owners & due dates; checkable** | O | Structured `actionItems` table generated from the existing `action_items` note type; checkbox UI; Dashboard "To-do" widget. For students: assignments/deadlines extraction. | M |
 | C4 | **Automatic summary on completion** (no button click) | O | After `finalizeCompletedTranscription`, enqueue summary generation (polling-safe: generate on first view if not ready, or via a follow-up webhook/cron). User setting to opt out. | S |
 | C5 | **Custom summary templates** (Lecture, Lab, Seminar, Meeting, Interview) | O | Template picker on generate; templates are prompt presets in `shared/`. | S |
@@ -107,8 +107,8 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 | # | Gap | Src | Adaptation | Effort |
 |---|---|---|---|---|
 | D1 | **Folders / Courses** | O | `courses` table (name, color, term); recordings get `courseId`. Dashboard filter + course page. The `tags` tables already exist in the schema but have no router/UI — wire them up at the same time. | M |
-| D2 | **Study groups / channels** (Otter "channels") | O | `groups` + `groupMembers`; share a recording or course to a group; group feed. Builds on `recordingShares`. | L |
-| D3 | **Share permissions** (view vs. comment vs. edit) | O | Add `role` to `recordingShares`. | S |
+| D2 | **Study groups / channels** (shipped, Phase 4) (Otter "channels") | O | `groups` + `groupMembers`; share a recording or course to a group; group feed. Builds on `recordingShares`. | L |
+| D3 | **Share permissions** (view vs. comment vs. edit) (shipped, Phase 4) | O | Add `role` to `recordingShares`. | S |
 | D4 | **Auto-share to attendees** | O | With calendar (A5), offer to share notes to event attendees by email (Resend). | M |
 
 ### E. Export & integrations
@@ -117,8 +117,8 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 |---|---|---|---|---|
 | E1 | **TXT, DOCX, SRT/VTT export; audio download** | O | Extend `server/export.ts`; `docx` npm package for DOCX; SRT from segments. Add to `ExportButton`. | S |
 | E2 | **Anki / Quizlet flashcard export** | — (student-specific) | CSV/TSV export importable by Anki and Quizlet. | S |
-| E3 | **Notion / Google Docs / Google Drive export** | O | OAuth connect per service; "Send to Notion/Docs" on notes. | M each |
-| E4 | **Slack / Discord / Zapier webhooks** | O | Generic outgoing webhook per user ("on recording completed"), then native Slack later. | M |
+| E3 | **Notion / Google Docs / Google Drive export** (shipped, Phase 4: Notion and Google Docs) | O | OAuth connect per service; "Send to Notion/Docs" on notes. | M each |
+| E4 | **Slack / Discord / Zapier webhooks** (shipped, Phase 4: generic signed webhooks) | O | Generic outgoing webhook per user ("on recording completed"), then native Slack later. | M |
 | E5 | **Public API** | O | Personal API keys + REST wrapper over existing procedures. Low priority for students. | L |
 | E6 | **Chrome extension** | O+C | "Record this tab" + quick capture of a lecture video page → `createFromUrl`. | L |
 | E7 | **Desktop app** (Mac/Windows) | C | Electron/Tauri wrapper around the SPA adding system-audio capture and an always-on-top Live Companion window (A2). Reuses the web build. | XL |
@@ -163,7 +163,10 @@ Status (needs `npm run db:migrate` for migration 0021, and `CRON_SECRET` set in 
 A1 live transcription · A2 Live Lecture Companion panel · A3 tab/system audio · F6 live captions mode · C7 follow-up suggestions.
 _Technical note_: AssemblyAI streaming is a WebSocket from the **browser** directly to AssemblyAI using a temporary token from a new `recordings.liveToken` procedure, so no Vercel function holds the socket open. Companion prompts call a new `ai.liveAssist` mutation with the last N seconds of live text — each call is short and well under 60s.
 
-### Phase 4 — Collaboration & integrations (≈4 weeks)
+### Phase 4 — Collaboration & integrations (≈4 weeks) · shipped 2026-10-12
+
+Status (needs `npm run db:migrate` for migration 0022; until then the features below report "not set up on this server" and sharing keeps working as view only): D3 share roles (view, comment, edit on direct and group shares, checked on the server by `requireRecordingAccess` for every shared-content procedure; edit allows correcting transcript text and renaming speakers), B7 comments and highlights (select words in a line, or use the line's keyboard button; threads with replies, resolve, delete; owner moderates; hidden from view-only shares and public links), D2 study groups (members by email or join link, share a recording or a whole course at a role, group page with what's shared and recent comments), C2 smart search (OpenAI-compatible embeddings stored as float32 BLOBs and ranked in Node, so it also runs on MySQL/MariaDB; Ask fuses keyword and embedding rankings and falls back to keywords; off unless `OPENAI_EMBEDDING_MODEL` is set), B5 skip silence (gaps of 2s or more between transcript segments; no audio-energy analysis), E4 outgoing webhooks (HMAC-signed, SSRF-checked with the connection pinned, retried with backoff from the event's request, Settings and the existing daily cron; test and redeliver in Settings) and E3 Send to Notion / Google Docs for notes and study guides (per-person OAuth, `drive.file` scope only, tokens encrypted at rest, disconnect revokes). Verified in Chromium against local MariaDB with a mock of the embeddings, chat, webhook, Notion, Google and AssemblyAI endpoints (`scripts/dev/mock-phase4-services.mjs`); not yet run against the real Notion and Google APIs. Not done: native Slack/Discord apps (a generic webhook covers them through Zapier or Make), @mentions in comments, comments on transcripts without timed segments, Google Drive file export other than Docs, and a Knowledge Base "smart search" toggle (Ask uses it).
+
 B7 comments/highlights · D2 study groups · D3 share roles · E3 Notion/Google Docs · E4 webhooks · C2 embeddings search · B5 skip silence.
 
 ### Phase 5 — Reach & revenue (ongoing)
