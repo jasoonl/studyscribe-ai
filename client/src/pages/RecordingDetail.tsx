@@ -1,5 +1,4 @@
 import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
-import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -8,13 +7,17 @@ import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText, ClipboardCheck, Layers3, NotebookPen, Share2 } from "lucide-react";
 import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
+import { StudyNotesPanel } from "@/components/StudyNotesPanel";
+import { RecordingBookmarks } from "@/components/RecordingBookmarks";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { FlashcardReview } from "@/components/FlashcardReview";
 import { FlashcardLearnMode } from "@/components/FlashcardLearnMode";
 import { FlashcardTestMode } from "@/components/FlashcardTestMode";
 import { type AudioPlayerHandle } from "@/components/AudioPlayer";
-import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
+import { type TranscriptSegment } from "@/lib/transcriptSegments";
+import { TranscriptView } from "@/components/TranscriptView";
+import { downloadTranscriptExport } from "@/lib/transcriptExports";
 import { downloadFlashcardExport } from "@/lib/flashcardExports";
 import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useState, useEffect, useRef } from "react";
@@ -92,7 +95,6 @@ export default function RecordingDetail() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
 
-  const generateStudyNotesMutation = trpc.ai.generateStudyNotes.useMutation();
   const generateFlashcardsMutation = trpc.ai.generateFlashcards.useMutation();
   const updateTranscriptMutation = trpc.transcription.update.useMutation();
   const utils = trpc.useUtils();
@@ -310,6 +312,11 @@ export default function RecordingDetail() {
                       Play Recording
                     </h3>
                     <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} />
+                    <RecordingBookmarks
+                      recordingId={recordingId || 0}
+                      playbackTime={playbackTime}
+                      onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
+                    />
                   </div>
                 )}
               </div>
@@ -373,23 +380,17 @@ export default function RecordingDetail() {
                               Edit
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const element = document.createElement("a");
-                              element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(transcript.fullText));
-                              element.setAttribute("download", `${recording?.title || 'transcript'}.txt`);
-                              element.style.display = "none";
-                              document.body.appendChild(element);
-                              element.click();
-                              document.body.removeChild(element);
-                            }}
-                            className="gap-2"
-                          >
-                            <Download className="w-4 h-4" />
-                            Export
-                          </Button>
+                          {!(Array.isArray(transcript.segments) && transcript.segments.length > 0) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadTranscriptExport({ segments: [], fullText: transcript.fullText, title: recording?.title || "Transcript" }, "txt")}
+                              className="gap-2"
+                            >
+                              <Download className="w-4 h-4" />
+                              Export
+                            </Button>
+                          )}
                         </div>
                       </div>
                       {isEditingTranscript ? (
@@ -445,40 +446,15 @@ export default function RecordingDetail() {
                       ) : (
                         <div className="space-y-4">
                           {Array.isArray(transcript.segments) && transcript.segments.length > 0 ? (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-semibold">Timestamped transcript</p>
-                                <p className="text-xs text-muted-foreground">Select a timestamp to play from that point.</p>
-                              </div>
-                              <div className="max-h-[32rem] space-y-1 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2">
-                                {(transcript.segments as TranscriptSegment[]).map((segment, index) => {
-                                  const isActive = playbackTime > 0 && getActiveTranscriptSegmentIndex(transcript.segments as TranscriptSegment[], playbackTime) === index;
-                                  return (
-                                    <button
-                                      key={`${segment.id}-${index}`}
-                                      type="button"
-                                      disabled={!recording.audioUrl}
-                                      onClick={() => audioPlayerRef.current?.seekTo(segment.start, { play: true })}
-                                      className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 ${
-                                        isActive ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-background"
-                                      }`}
-                                    >
-                                      <span className={`shrink-0 py-0.5 font-mono text-xs font-semibold ${isActive ? "text-primary-foreground" : "text-primary"}`}>
-                                        {formatTranscriptTimestamp(segment.start)}
-                                      </span>
-                                      <span className="min-w-0 text-sm leading-relaxed">
-                                        {segment.speaker && segment.speaker !== (transcript.segments as TranscriptSegment[])[index - 1]?.speaker && (
-                                          <span className={`mr-2 text-xs font-semibold ${isActive ? "text-primary-foreground" : "text-violet-700 dark:text-violet-300"}`}>
-                                            {segment.speaker}
-                                          </span>
-                                        )}
-                                        {segment.text}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                            <TranscriptView
+                              recordingId={recordingId || 0}
+                              title={recording.title}
+                              segments={transcript.segments as TranscriptSegment[]}
+                              fullText={transcript.fullText}
+                              hasAudio={!!recording.audioUrl}
+                              playbackTime={playbackTime}
+                              onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
+                            />
                           ) : (
                             <div className="prose prose-sm max-w-none dark:prose-invert">
                               <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
@@ -497,70 +473,15 @@ export default function RecordingDetail() {
                 </Card>
               </TabsContent>
 
-              {/* Study Notes Tab */}
-              <TabsContent value="notes">
-                <div className="space-y-4">
-                  <AIProgressBar
-                    isLoading={generateStudyNotesMutation.isPending}
-                    title="Generating Study Notes"
-                    description="Analyzing transcript and creating comprehensive study materials..."
-                  />
-                  {generateStudyNotesMutation.isError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Generation Failed</AlertTitle>
-                      <AlertDescription>
-                        {generateStudyNotesMutation.error instanceof Error 
-                          ? generateStudyNotesMutation.error.message 
-                          : "Failed to generate study notes. Please try again."}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {studyNotes && studyNotes.length > 0 ? (
-                    studyNotes.map((note) => (
-                      <Card key={note.id} className="p-6 border-2 border-border">
-                        <h3 className="font-bold mb-3 flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-accent" />
-                          {note.type.replace(/_/g, " ").toUpperCase()}
-                        </h3>
-                        <div className="prose prose-sm max-w-none dark:prose-invert text-foreground/90">
-                          <Streamdown>{note.content}</Streamdown>
-                        </div>
-                      </Card>
-                    ))
-                  ) : (
-                    <Card className="p-6 border-2 border-border text-center">
-                      <BookOpen className="w-8 h-8 mx-auto mb-3 text-muted-foreground opacity-50" />
-                      <p className="text-muted-foreground mb-4">
-                        No study notes generated yet
-                      </p>
-                      <Button
-                        className="bg-accent hover:bg-accent/90 text-primary"
-                        onClick={async () => {
-                          try {
-                            await generateStudyNotesMutation.mutateAsync({
-                              recordingId: recordingId || 0,
-                            });
-                            await utils.ai.getStudyNotes.invalidate({ recordingId: recordingId || 0 });
-                            toast.success("Study notes generated successfully!");
-                          } catch (error) {
-                            console.error("Failed to generate study notes:", error);
-                            const errorMsg = error instanceof Error ? error.message : "Unknown error";
-                            toast.error(`Failed to generate study notes: ${errorMsg}`);
-                          }
-                        }}
-                        disabled={generateStudyNotesMutation.isPending}
-                      >
-                        {generateStudyNotesMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4 mr-2" />
-                        )}
-                        {generateStudyNotesMutation.isPending ? "Generating..." : "Generate Study Notes"}
-                      </Button>
-                    </Card>
-                  )}
-                </div>
+              {/* Study Notes Tab: kept mounted so a finished transcript gets notes
+                  automatically even while another tab is open. */}
+              <TabsContent value="notes" forceMount className="data-[state=inactive]:hidden">
+                <StudyNotesPanel
+                  recordingId={recordingId || 0}
+                  audience={recording.audience}
+                  transcriptReady={recording.status === "completed" && !!transcript?.fullText?.trim()}
+                  notes={studyNotes}
+                />
               </TabsContent>
 
               {/* Flashcards Tab */}

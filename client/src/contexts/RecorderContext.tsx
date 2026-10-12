@@ -35,7 +35,7 @@ import {
  */
 export type RecorderStatus = "idle" | "recording" | "paused" | "stopped";
 
-export type FinishedRecording = { blob: Blob; mimeType: string; durationSeconds: number };
+export type FinishedRecording = { blob: Blob; mimeType: string; durationSeconds: number; bookmarks: number[] };
 
 type RecorderContextValue = {
   status: RecorderStatus;
@@ -56,6 +56,10 @@ type RecorderContextValue = {
   /** Drops the audio and its backup (after a successful upload, or on Discard). */
   discard: () => void;
   getRecording: () => FinishedRecording | null;
+  /** Seconds into the recording marked with "Mark moment". */
+  bookmarks: number[];
+  /** Marks the current moment; returns its time, or null when not recording. */
+  addBookmark: () => number | null;
   /** Offers back the newest unsaved recording for this user, if any survived. */
   restoreUnsaved: (userId: number | null) => Promise<void>;
 };
@@ -125,6 +129,8 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
   const mimeTypeRef = useRef("");
   const sessionIdRef = useRef<string | null>(null);
   const sessionMetaRef = useRef<{ userId: number | null; startedAt: number } | null>(null);
+  const bookmarksRef = useRef<number[]>([]);
+  const [bookmarks, setBookmarks] = useState<number[]>([]);
   const seqRef = useRef(0);
   const userStopRef = useRef(false);
   const stopResolversRef = useRef<Array<() => void>>([]);
@@ -263,6 +269,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
         startedAt: meta.startedAt,
         elapsedSeconds: readElapsedSeconds(clockRef.current, Date.now()),
         updatedAt: Date.now(),
+        bookmarks: bookmarksRef.current,
       });
     }
     if (statusRef.current !== "idle") {
@@ -345,6 +352,8 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     const startedAt = Date.now();
     sessionIdRef.current = sessionId;
     sessionMetaRef.current = { userId, startedAt };
+    bookmarksRef.current = [];
+    setBookmarks([]);
     seqRef.current = 0;
     chunksRef.current = [];
     mimeTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
@@ -439,6 +448,8 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     releaseLockRef.current = null;
     sessionIdRef.current = null;
     sessionMetaRef.current = null;
+    bookmarksRef.current = [];
+    setBookmarks([]);
     chunksRef.current = [];
     clockRef.current = idleClock;
     setElapsedSeconds(0);
@@ -457,7 +468,29 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       blob: new Blob(chunksRef.current, { type: mimeType }),
       mimeType,
       durationSeconds: readElapsedSeconds(clockRef.current, Date.now()),
+      bookmarks: bookmarksRef.current,
     };
+  }, []);
+
+  const addBookmark = useCallback((): number | null => {
+    const sessionId = sessionIdRef.current;
+    const meta = sessionMetaRef.current;
+    if (!isLive() || !sessionId || !meta) return null;
+    const at = readElapsedSeconds(clockRef.current, Date.now());
+    // Two taps in the same second are one moment.
+    if (bookmarksRef.current.includes(at)) return at;
+    bookmarksRef.current = [...bookmarksRef.current, at];
+    setBookmarks(bookmarksRef.current);
+    void saveSession({
+      id: sessionId,
+      userId: meta.userId,
+      mimeType: mimeTypeRef.current,
+      startedAt: meta.startedAt,
+      elapsedSeconds: at,
+      updatedAt: Date.now(),
+      bookmarks: bookmarksRef.current,
+    });
+    return at;
   }, []);
 
   const restoreUnsaved = useCallback(async (userId: number | null) => {
@@ -469,6 +502,8 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       if (!backup || statusRef.current !== "idle") return;
       sessionIdRef.current = backup.id;
       sessionMetaRef.current = { userId: backup.userId, startedAt: backup.startedAt };
+      bookmarksRef.current = backup.bookmarks ?? [];
+      setBookmarks(bookmarksRef.current);
       chunksRef.current = [backup.blob];
       mimeTypeRef.current = backup.mimeType;
       clockRef.current = { runningSince: null, accumulatedMs: backup.elapsedSeconds * 1000 };
@@ -540,8 +575,10 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     stop,
     discard,
     getRecording,
+    bookmarks,
+    addBookmark,
     restoreUnsaved,
-  }), [status, elapsedSeconds, micReconnecting, recovered, returnPath, onScreenCount, registerOnScreen, start, pause, resume, stop, discard, getRecording, restoreUnsaved]);
+  }), [status, elapsedSeconds, micReconnecting, recovered, returnPath, onScreenCount, registerOnScreen, start, pause, resume, stop, discard, getRecording, bookmarks, addBookmark, restoreUnsaved]);
 
   return <RecorderContext.Provider value={value}>{children}</RecorderContext.Provider>;
 }

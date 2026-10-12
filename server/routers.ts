@@ -3,14 +3,15 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, createStudyNote, getStudyNotesByRecordingId, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
+import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
 import { isYouTubeProxyConfigured, probeYouTubeClients } from "./youtubeAudio";
 import { youtubeRelayStatus } from "./youtubeRelay";
 import { buildTranscriptionAudioUrl } from "./transcriptionAudioLink";
-import { TRANSCRIPTION_LANGUAGE_CODES } from "@shared/languages";
+import { TRANSCRIPTION_LANGUAGE_CODES, TRANSCRIPTION_LANGUAGES } from "@shared/languages";
+import { NOTE_TEMPLATES, defaultNoteTemplate, getNoteTemplate, type NoteTemplateId } from "@shared/noteTemplates";
 import { isAssemblyAiWebhookConfigured, submitTranscriptionJob, checkTranscriptionStatus, buildAssemblyAiWebhookUrl, getTranscriptionConfigStatus, type SpeakerSegment } from "./speakerDiarization";
 import { getBrowserPushConfiguration, sendBrowserPush } from "./pushNotifications";
 import { invokeLLM } from "./_core/llm";
@@ -21,10 +22,13 @@ import { customAuthRouter } from "./customAuthRouter";
 import { accountRouter } from "./accountRouter";
 import { purgeRecordings } from "./purgeRecordings";
 import { sharingRouter } from "./sharingRouter";
+import { MAX_BOOKMARKS_PER_RECORDING, bookmarkInputSchema, bookmarksRouter, saveBookmarks } from "./bookmarks";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
-import { transcriptUpdateInputSchema } from "./transcriptInput";
+import { renameSpeakerInSegments, speakerRenameInputSchema, transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
 import { createHash } from "crypto";
+
+const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
 // "auto" (or omitted) lets the provider detect the language.
 const languageInput = z.enum(TRANSCRIPTION_LANGUAGE_CODES).optional();
@@ -113,6 +117,8 @@ export const appRouter = router({
         }).optional(),
         duration: z.number().optional(),
         language: languageInput,
+        /** Moments marked with "Mark moment" while recording. */
+        bookmarks: z.array(bookmarkInputSchema).max(MAX_BOOKMARKS_PER_RECORDING).optional(),
       }).refine((value) => Boolean(value.audioBase64 || value.audioUpload), {
         message: "Audio data is required",
       }))
@@ -177,6 +183,13 @@ export const appRouter = router({
 
         if (!recording) {
           throw new Error("Failed to create recording");
+        }
+
+        // Losing a bookmark must never lose the recording itself.
+        try {
+          await saveBookmarks(recording.id, ctx.user.id, input.bookmarks ?? []);
+        } catch (error) {
+          console.warn("[bookmarks] could not save bookmarks for recording", recording.id, error);
         }
 
         await startTranscription(recording, actualFileKey, mimeType, input.language);
@@ -355,6 +368,27 @@ export const appRouter = router({
         if (!updated) throw new Error("Failed to save transcript");
         return updated;
       }),
+
+    renameSpeaker: protectedProcedure
+      .input(speakerRenameInputSchema)
+      .mutation(async ({ input, ctx }) => {
+        const recording = await getRecordingByIdDb(input.recordingId);
+        if (!recording || recording.userId !== ctx.user.id) {
+          throw new Error("Recording not found");
+        }
+
+        const transcript = await getTranscriptByRecordingId(input.recordingId);
+        if (!transcript || transcript.userId !== ctx.user.id || !Array.isArray(transcript.segments)) {
+          throw new Error("Transcript not found");
+        }
+
+        const segments = renameSpeakerInSegments(transcript.segments, input.from, input.to);
+        if (!segments) throw new Error("That speaker is not in this transcript");
+
+        const updated = await updateTranscriptSegments({ recordingId: input.recordingId, userId: ctx.user.id, segments });
+        if (!updated) throw new Error("Failed to save speaker name");
+        return updated;
+      }),
   }),
 
   ai: router({
@@ -369,7 +403,7 @@ export const appRouter = router({
       }),
 
     generateStudyNotes: protectedProcedure
-      .input(z.object({ recordingId: z.number() }))
+      .input(z.object({ recordingId: z.number(), template: z.enum(NOTE_TEMPLATE_IDS).optional() }))
       .mutation(async ({ input, ctx }) => {
         try {
           const recording = await getRecordingByIdDb(input.recordingId);
@@ -387,10 +421,8 @@ export const appRouter = router({
             throw new Error("Transcript is empty");
           }
 
-          // Generate study notes using LLM
-          const prompt = recording.audience === "student"
-            ? `Analyze this lecture transcript and create comprehensive study notes. Include: 1) Key Concepts (main ideas), 2) Important Formulas (if any), 3) Reading Assignments (topics to explore further). Format as clear, organized notes.\n\nTranscript:\n${transcript.fullText}`
-            : `Analyze this meeting transcript and create executive summary. Include: 1) Key Decisions (what was decided), 2) Action Items (tasks with owners), 3) Deadlines (important dates). Format as clear, actionable items.\n\nTranscript:\n${transcript.fullText}`;
+          const template = getNoteTemplate(input.template) ?? defaultNoteTemplate(recording.audience);
+          const prompt = `${template.instructions} Use Markdown headings and bullet points. Only include what the transcript supports; do not invent details.\n\nTranscript:\n${transcript.fullText}`;
 
           const response = await invokeLLM({
             messages: [
@@ -412,13 +444,12 @@ export const appRouter = router({
             throw new Error("LLM returned empty content");
           }
 
-          // Save study notes
-          const noteType = recording.audience === "student" ? "key_concepts" : "summary";
           await createStudyNote({
             recordingId: input.recordingId,
             userId: ctx.user.id,
-            type: noteType,
+            type: template.noteType,
             content,
+            metadata: { template: template.id },
           });
 
           return { success: true, content };
@@ -427,6 +458,33 @@ export const appRouter = router({
           console.error("Study notes generation failed:", errorMsg, error);
           throw new Error(`Failed to generate study notes: ${errorMsg}`);
         }
+      }),
+
+    /**
+     * Translates one of the user's study notes. Notes are short enough to
+     * translate inside one request; whole transcripts are not, given the 60s
+     * function limit, so they are left out. The result is returned, not stored.
+     */
+    translateNote: protectedProcedure
+      .input(z.object({ noteId: z.number().int().positive(), language: z.string().min(2).max(10) }))
+      .mutation(async ({ input, ctx }) => {
+        const language = TRANSCRIPTION_LANGUAGES.find(candidate => candidate.code === input.language);
+        if (!language) throw new Error("Unsupported language");
+        const note = await getStudyNoteById(input.noteId);
+        if (!note || note.userId !== ctx.user.id) throw new Error("Note not found");
+
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Translate the user's Markdown study notes into ${language.label.replace(/ \(.*\)/, "")}. Keep the Markdown structure, headings, lists, formulas, names and numbers exactly. Return only the translation.`,
+            },
+            { role: "user", content: note.content },
+          ],
+        });
+        const content = typeof response.choices?.[0]?.message.content === "string" ? response.choices[0].message.content.trim() : "";
+        if (!content) throw new Error("The translation came back empty. Please try again.");
+        return { content, language: language.code };
       }),
 
     getFlashcards: protectedProcedure
@@ -656,6 +714,7 @@ export const appRouter = router({
   }),
   notifications: notificationsRouter,
   sharing: sharingRouter,
+  bookmarks: bookmarksRouter,
 
   studyGuides: router({
     list: protectedProcedure

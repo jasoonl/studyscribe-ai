@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { getAutoNotesEnabled, setAutoNotesEnabled } from "@/lib/preferences";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -15,6 +17,7 @@ export default function Settings() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [autoNotes, setAutoNotes] = useState(getAutoNotesEnabled);
 
   const exportMutation = trpc.account.exportData.useMutation();
   const deleteMutation = trpc.account.deleteAccount.useMutation();
@@ -69,6 +72,25 @@ export default function Settings() {
             <div><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{user?.name || "Not set"}</dd></div>
             <div><dt className="text-muted-foreground">Email</dt><dd className="font-medium">{user?.email}</dd></div>
           </dl>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <Label htmlFor="auto-notes" className="text-lg font-semibold">Write notes automatically</Label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                When you open a recording whose transcript is ready and has no notes yet, StudyScribe writes them with the Lecture or Meeting template. Saved in this browser.
+              </p>
+            </div>
+            <Switch
+              id="auto-notes"
+              checked={autoNotes}
+              onCheckedChange={checked => {
+                setAutoNotes(checked);
+                setAutoNotesEnabled(checked);
+              }}
+            />
+          </div>
         </Card>
 
         <Card className="p-6">

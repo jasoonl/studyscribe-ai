@@ -16,6 +16,8 @@ export type BackupSession = {
   startedAt: number;
   elapsedSeconds: number;
   updatedAt: number;
+  /** Seconds marked with "Mark moment"; absent on sessions saved before bookmarks existed. */
+  bookmarks?: number[];
 };
 
 export type RecoveredRecording = BackupSession & { blob: Blob };
