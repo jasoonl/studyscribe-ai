@@ -25,7 +25,7 @@ export const DEMO_SLIDES: Slide[] = [
 
 /** Rendered by scripts/demo-video/v2 (see CLAUDE.md). */
 const DEMO_VIDEO = "/demo/studyscribe-demo.mp4";
-/** A frame from the video (20s in), so the player never opens on a black frame. */
+/** A frame from the video (22s in), so the player never opens on a black frame. */
 const DEMO_POSTER = "/demo/poster.jpg";
 
 const SLIDE_MS = 6000;
