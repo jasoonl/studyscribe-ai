@@ -653,7 +653,7 @@ export async function recordFlashcardReview(data: {
 
 // Chat history helpers
 export async function addChatMessage(data: {
-  recordingId: number;
+  recordingId: number | null;
   userId: number;
   role: "user" | "assistant";
   content: string;

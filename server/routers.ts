@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
@@ -27,6 +28,10 @@ import { customNotificationInputSchema, dismissNotificationInputSchema } from ".
 import { renameSpeakerInSegments, speakerRenameInputSchema, transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and } from "drizzle-orm";
 import { createHash } from "crypto";
+import { assignRecordingToCourse, attachOrganization, coursesRouter, recordingIdsInCourse } from "./courses";
+import { tagsRouter } from "./tagsRouter";
+import { askAcrossRecordings } from "./ask";
+import { checkTrpcRateLimit } from "./_core/rateLimit";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -91,9 +96,22 @@ export const appRouter = router({
   }),
 
   recordings: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return getRecordingsByUserId(ctx.user.id);
-    }),
+    /** The library, with each recording's course and tags. `courseId` narrows it to one course. */
+    list: protectedProcedure
+      .input(z.object({ courseId: z.number().int().positive().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        let rows = await getRecordingsByUserId(ctx.user.id);
+        if (input?.courseId !== undefined) {
+          const inCourse = new Set(await recordingIdsInCourse(ctx.user.id, input.courseId));
+          rows = rows.filter(row => inCourse.has(row.id));
+        }
+        return attachOrganization(ctx.user.id, rows);
+      }),
+
+    /** Files a recording under one of the person's courses, or takes it out of its course with `courseId: null`. */
+    setCourse: protectedProcedure
+      .input(z.object({ recordingId: z.number().int().positive(), courseId: z.number().int().positive().nullable() }))
+      .mutation(({ ctx, input }) => assignRecordingToCourse(ctx.user.id, input.recordingId, input.courseId)),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -627,6 +645,24 @@ export const appRouter = router({
         return getChatHistoryByRecordingId(input.recordingId);
       }),
 
+    /**
+     * Ask StudyScribe: answers a question from the person's own transcripts,
+     * across every recording or just one course, and cites where each point
+     * came from. Retrieval is keyword-based for now (see server/askRetrieval.ts).
+     */
+    askAcrossRecordings: protectedProcedure
+      .input(z.object({
+        question: z.string().trim().min(2, "Ask a question").max(1000),
+        courseId: z.number().int().positive().optional(),
+        history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(6000) })).max(8).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!checkTrpcRateLimit(`ask:${ctx.user.id}`, 10 * 60 * 1000, 30)) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "That is a lot of questions in a short time. Give it a few minutes." });
+        }
+        return askAcrossRecordings({ userId: ctx.user.id, question: input.question, courseId: input.courseId, history: input.history });
+      }),
+
     assistantChat: protectedProcedure
       .input(z.object({
         recordingId: z.number(),
@@ -715,6 +751,8 @@ export const appRouter = router({
   notifications: notificationsRouter,
   sharing: sharingRouter,
   bookmarks: bookmarksRouter,
+  courses: coursesRouter,
+  tags: tagsRouter,
 
   studyGuides: router({
     list: protectedProcedure

@@ -4,6 +4,7 @@ import {
   recordings, studyGuides, studyNotes, transcripts, userNotifications,
 } from "../drizzle/schema";
 import { deleteBookmarksForRecordings } from "./bookmarks";
+import { deleteCourseLinksForRecordings } from "./courses";
 import { getDb } from "./db";
 import { deleteStoredAudio } from "./storage";
 
@@ -33,6 +34,7 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
     await db.delete(emailDrafts).where(inArray(emailDrafts.recordingId, batch));
     await db.delete(recordingShares).where(inArray(recordingShares.recordingId, batch));
     await deleteBookmarksForRecordings(batch);
+    await deleteCourseLinksForRecordings(batch);
     await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));
     await db.delete(recordings).where(inArray(recordings.id, batch));
   }

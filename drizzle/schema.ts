@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -145,7 +145,8 @@ export type InsertFlashcardReview = typeof flashcardReviews.$inferInsert;
  */
 export const chatHistory = mysqlTable("chatHistory", {
   id: int("id").autoincrement().primaryKey(),
-  recordingId: int("recordingId").notNull(),
+  /** Null for "Ask StudyScribe" questions, which span recordings instead of belonging to one. */
+  recordingId: int("recordingId"),
   userId: int("userId").notNull(),
   role: mysqlEnum("role", ["user", "assistant"]).notNull(),
   content: text("content").notNull(),
@@ -414,3 +415,42 @@ export const appSettings = mysqlTable("appSettings", {
   value: text("value").notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
+
+/**
+ * Courses (folders) a student files recordings under. Archiving hides a
+ * course from the sidebar-style lists but keeps its recordings assigned.
+ * `color` is a key from shared/courseColors.ts, not a CSS value.
+ */
+export const courses = mysqlTable("courses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  color: varchar("color", { length: 16 }).default("blue").notNull(),
+  term: varchar("term", { length: 64 }),
+  archived: boolean("archived").default(false).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("courses_user_idx").on(table.userId),
+]);
+
+export type Course = typeof courses.$inferSelect;
+
+/**
+ * Which course a recording belongs to (at most one). This is a table of its
+ * own rather than a `recordings.courseId` column so that a server which has
+ * not run the migration yet keeps loading recordings: an unknown column on
+ * `recordings` would break every query against it, an unknown table only
+ * turns courses off.
+ */
+export const recordingCourses = mysqlTable("recordingCourses", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  courseId: int("courseId").notNull(),
+  userId: int("userId").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("recordingCourses_recording_unique").on(table.recordingId),
+  index("recordingCourses_course_idx").on(table.courseId),
+]);
+
+export type RecordingCourse = typeof recordingCourses.$inferSelect;
