@@ -2,8 +2,8 @@
 // fourteen lectures and meetings across subjects (one transcribed in Spanish), with
 // notes, flashcards and review history, quizzes, a study guide, an email draft and a
 // tutor chat. Narration lines in storyboard.json refer to some of this content
-// ("What does AI stand for?", the 40-second reading, the 7-minute class), so keep the
-// two in step.
+// ("What does AI stand for?", and the three newest recordings: the 40-second reading,
+// the 7-minute class and the 52-minute cell biology lecture), so keep the two in step.
 //
 //   DATABASE_URL=mysql://user:pass@127.0.0.1:3306/db node seed-library.mjs
 //
@@ -32,9 +32,12 @@ for (const table of ["recordingBookmarks", "chatHistory", "emailDrafts", "quizze
 
 const daysAgo = n => new Date(Date.now() - n * 86400000);
 
+// A line may carry its own start time in seconds (third element), so excerpts of a long
+// lecture are spread across its whole length; otherwise lines follow on from each other.
 function segmentsFrom(lines) {
   let t = 0;
-  return lines.map(([speaker, text], i) => {
+  return lines.map(([speaker, text, at], i) => {
+    if (at != null) t = at;
     const length = Math.max(4, Math.round(text.split(" ").length / 2.6));
     const seg = { id: String(i + 1), start: t, end: t + length, text, speaker };
     t += length + 1;
@@ -47,7 +50,7 @@ async function addRecording({ title, audience = "student", minutes, seconds, ago
     "INSERT INTO recordings (`userId`,`title`,`audioUrl`,`audioKey`,`duration`,`audience`,`status`,`createdAt`) VALUES (?,?,?,?,?,?,?,?)",
     [userId, title, "/qa-audio.mp3", `qa/${title}.bin`, seconds ?? minutes * 60, audience, "completed", daysAgo(ago)],
   );
-  const named = lines.map(([s, text]) => [speakers[s] ?? s, text]);
+  const named = lines.map(([s, text, at]) => [speakers[s] ?? s, text, at]);
   const segments = segmentsFrom(named);
   await db.query("INSERT INTO `transcripts` (`recordingId`,`userId`,`fullText`,`segments`,`language`,`status`) VALUES (?,?,?,?,?,?)", [
     r.insertId, userId, named.map(l => l[1]).join(" "), JSON.stringify(segments), language, "completed",
@@ -57,18 +60,20 @@ async function addRecording({ title, audience = "student", minutes, seconds, ago
 
 const ids = {};
 
+// 52m 7s, and one of the three newest recordings (the library scene names it).
 ids.bio = await addRecording({
-  title: "Cell Biology: Mitochondria and ATP", minutes: 52, ago: 1, speakers: { A: "Dr. Okafor", B: "Student" },
+  title: "Cell Biology: Mitochondria and ATP", seconds: 52 * 60 + 7, ago: 0.1, speakers: { A: "Dr. Okafor", B: "Student" },
   lines: [
-    ["A", "Today we follow a glucose molecule all the way to ATP, the cell's energy currency."],
-    ["A", "Glycolysis happens in the cytoplasm and nets two ATP per glucose."],
-    ["A", "Pyruvate then moves into the mitochondrion, where the Krebs cycle runs in the matrix."],
-    ["B", "Why does the cell bother with the mitochondria if glycolysis already makes ATP?"],
-    ["A", "Because the electron transport chain yields roughly thirty more ATP. Glycolysis alone is a trickle."],
-    ["A", "The inner membrane is folded into cristae, which gives the chain more surface area."],
-    ["A", "Protons are pumped into the intermembrane space, and ATP synthase lets them flow back."],
-    ["A", "That flow turns the synthase like a turbine. This is chemiosmosis."],
-    ["A", "Oxygen is the final electron acceptor. Without it the chain backs up and stops."],
+    ["A", "Today we follow a glucose molecule all the way to ATP, the cell's energy currency.", 0],
+    ["A", "Glycolysis happens in the cytoplasm and nets two ATP per glucose.", 262],
+    ["A", "Pyruvate then moves into the mitochondrion, where the Krebs cycle runs in the matrix.", 731],
+    ["B", "Why does the cell bother with the mitochondria if glycolysis already makes ATP?", 1104],
+    ["A", "Because the electron transport chain yields roughly thirty more ATP. Glycolysis alone is a trickle.", 1112],
+    ["A", "The inner membrane is folded into cristae, which gives the chain more surface area.", 1609],
+    ["A", "Protons are pumped into the intermembrane space, and ATP synthase lets them flow back.", 2016],
+    ["A", "That flow turns the synthase like a turbine. This is chemiosmosis.", 2049],
+    ["A", "Oxygen is the final electron acceptor. Without it the chain backs up and stops.", 2734],
+    ["A", "For next week, read chapter nine and redraw the chain from memory.", 3098],
   ],
 });
 ids.econ = await addRecording({
@@ -173,8 +178,9 @@ ids.poem = await addRecording({
     ["A", "I took the one less traveled by, and that has made all the difference."],
   ],
 });
+// Older than the three newest, but still the source of the flashcard and quiz scenes.
 ids.ai = await addRecording({
-  title: "Intro to Artificial Intelligence", seconds: 73, ago: 0.12, speakers: { A: "Dr. Patel" },
+  title: "Intro to Artificial Intelligence", seconds: 73, ago: 0.75, speakers: { A: "Dr. Patel" },
   lines: [
     ["A", "AI is one of the most transformative technologies of our time."],
     ["A", "It lets computers learn from data, spot patterns, and make decisions."],
@@ -240,13 +246,18 @@ for (const [i, [question, answer, difficulty]] of cards.entries()) {
     await db.query("INSERT INTO flashcardReviews (`userId`,`flashcardId`,`recordingId`,`status`,`reviewCount`,`lastReviewedAt`,`masteredAt`) VALUES (?,?,?,?,?,NOW(),?)", [userId, card.insertId, ids.bio, status, 1, status === "mastered" ? new Date() : null]);
   }
 }
-for (const [question, answer, difficulty] of [
-  ["What does AI stand for?", "Artificial intelligence", "easy"],
-  ["What are three capabilities AI enables computers to do?", "Learn from data, recognize patterns, and make decisions.", "medium"],
-  ["Name two everyday uses of AI from the lecture.", "Virtual assistants and recommendations.", "easy"],
-  ["How does AI help in healthcare?", "It helps doctors read scans and catch disease earlier.", "medium"],
+// The Intro to AI deck is the one the flashcard scenes show: "What does AI stand for?" stays
+// first in the review queue (new), with one card being learned and one mastered.
+for (const [question, answer, difficulty, status] of [
+  ["What does AI stand for?", "Artificial intelligence", "easy", null],
+  ["What are three capabilities AI enables computers to do?", "Learn from data, recognize patterns, and make decisions.", "medium", "learning"],
+  ["Name two everyday uses of AI from the lecture.", "Virtual assistants and recommendations.", "easy", "mastered"],
+  ["How does AI help in healthcare?", "It helps doctors read scans and catch disease earlier.", "medium", null],
 ]) {
-  await db.query("INSERT INTO flashcards (`recordingId`,`userId`,`question`,`answer`,`difficulty`) VALUES (?,?,?,?,?)", [ids.ai, userId, question, answer, difficulty]);
+  const [card] = await db.query("INSERT INTO flashcards (`recordingId`,`userId`,`question`,`answer`,`difficulty`) VALUES (?,?,?,?,?)", [ids.ai, userId, question, answer, difficulty]);
+  if (status) {
+    await db.query("INSERT INTO flashcardReviews (`userId`,`flashcardId`,`recordingId`,`status`,`reviewCount`,`lastReviewedAt`,`masteredAt`) VALUES (?,?,?,?,?,NOW(),?)", [userId, card.insertId, ids.ai, status, 1, status === "mastered" ? new Date() : null]);
+  }
 }
 const aiQuiz = [
   { q: "What is AI described as in the transcript?", o: ["A futuristic concept that is yet to be developed.", "A simple computer program for basic tasks.", "One of the most transformative technologies of our time.", "A technology primarily used for entertainment."], a: 2, e: "The lecture opens by calling AI one of the most transformative technologies of our time." },

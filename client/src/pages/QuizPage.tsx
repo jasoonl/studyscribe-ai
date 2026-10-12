@@ -111,7 +111,7 @@ export default function QuizPage() {
     return (
       <div className="min-h-screen bg-background">
         {/* Quiz header */}
-        <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="border-b border-border bg-card sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -229,7 +229,7 @@ export default function QuizPage() {
 
     return (
       <div className="min-h-screen bg-background">
-        <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="border-b border-border bg-card sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => setMode("list")} className="gap-1">
               <ArrowLeft className="w-4 h-4" />
@@ -307,7 +307,7 @@ export default function QuizPage() {
   // List mode
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href={`/recording/${recId}`}>
             <Button variant="ghost" size="sm" className="gap-2">

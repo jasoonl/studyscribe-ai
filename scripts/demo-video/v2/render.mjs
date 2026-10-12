@@ -17,6 +17,7 @@ const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { execut
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
 await page.addInitScript((tl) => { window.__TL = tl; }, timeline);
 await page.goto(pathToFileURL(resolve(here, "index.html")).href);
+await page.waitForFunction(() => window.renderAt); // scenes.js builds once the bundled fonts have loaded
 await page.evaluate(async () => {
   await document.fonts.ready;
   await Promise.all([...document.images].map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; }))));

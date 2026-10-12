@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 import { authLimiter, passwordResetLimiter } from "./_core/rateLimit";
+import { MIN_AGE } from "@shared/legal";
 
 export function registerAuthRoutes(app: Express) {
   /**
@@ -64,10 +65,15 @@ export function registerAuthRoutes(app: Express) {
    */
   app.post("/api/auth/signup", authLimiter, async (req: Request, res: Response) => {
     try {
-      const { email, password, name, inviteCode, acceptedTerms } = req.body;
+      const { email, password, name, inviteCode, acceptedTerms, confirmedAge } = req.body;
 
       if (!email || !password || !name || !inviteCode) {
         res.status(400).json({ error: "Email, password, name, and invite code are required" });
+        return;
+      }
+
+      if (confirmedAge !== true) {
+        res.status(400).json({ error: `You must confirm you are at least ${MIN_AGE} years old to create an account` });
         return;
       }
 
@@ -213,7 +219,9 @@ export function registerAuthRoutes(app: Express) {
       );
       const mode = ((req.query.mode as string) || "login") as "login" | "signup";
 
-      const authUrl = getGoogleAuthUrl(origin, mode);
+      // Sign-up must carry the age and Terms confirmations ticked on the sign-up page.
+      const consented = req.query.acceptedTerms === "1" && req.query.confirmedAge === "1";
+      const authUrl = getGoogleAuthUrl(origin, mode, undefined, mode === "signup" && consented);
 
       res.json({ authUrl });
     } catch (error) {
@@ -237,7 +245,7 @@ export function registerAuthRoutes(app: Express) {
       }
 
       // Decode state to get the origin and mode
-      let stateData: { origin?: string; mode?: "login" | "signup" };
+      let stateData: { origin?: string; mode?: "login" | "signup"; consented?: boolean };
       try {
         stateData = JSON.parse(Buffer.from(state, "base64").toString());
       } catch {
@@ -260,6 +268,10 @@ export function registerAuthRoutes(app: Express) {
       // Use different auth logic based on mode
       let user;
       if (mode === "signup") {
+        if (stateData.consented !== true) {
+          res.redirect(302, `${origin}/login?error=${encodeURIComponent(`To sign up, confirm you are at least ${MIN_AGE} and accept the Terms on the sign-up page.`)}`);
+          return;
+        }
         // Signup: allow auto-creating new users
         user = await getOrCreateGoogleUser(result.user);
       } else {

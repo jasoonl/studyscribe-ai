@@ -82,7 +82,7 @@ function CopyButton({ text }: { text: string }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopy}>
-          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}
         </Button>
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied!" : "Copy code"}</TooltipContent>
@@ -150,7 +150,7 @@ export default function AdminInviteCodes() {
     onError: (err) => toast.error(err.message),
   });
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   if (!user || user.role !== "admin") {
     return (
@@ -200,7 +200,7 @@ export default function AdminInviteCodes() {
       <TableBody>
         {items.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={showActions ? 7 : 6} className="text-center text-gray-400 py-8">
+            <TableCell colSpan={showActions ? 7 : 6} className="text-center text-gray-500 py-8">
               No codes
             </TableCell>
           </TableRow>
@@ -208,7 +208,7 @@ export default function AdminInviteCodes() {
           <TableRow key={code.id} className={code.isUsed ? "opacity-60" : ""}>
             <TableCell>
               <div className="flex items-center gap-1">
-                <code className="font-mono text-sm text-indigo-700 font-semibold">{code.code}</code>
+                <code className="font-mono text-sm text-primary font-semibold">{code.code}</code>
                 <CopyButton text={code.code} />
               </div>
             </TableCell>
@@ -220,7 +220,7 @@ export default function AdminInviteCodes() {
                 {fmt(code.expiresAt)}
               </span>
             </TableCell>
-            <TableCell className="text-sm text-gray-400">{fmt(code.createdAt)}</TableCell>
+            <TableCell className="text-sm text-gray-500">{fmt(code.createdAt)}</TableCell>
             {showActions && (
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
@@ -276,7 +276,7 @@ export default function AdminInviteCodes() {
           <h1 className="text-lg font-semibold text-gray-900">Invite Code Management</h1>
         </div>
         <Button
-          className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+          className="bg-primary hover:bg-primary text-white gap-2"
           onClick={() => setShowCreate(true)}
         >
           <Plus className="w-4 h-4" />
@@ -296,7 +296,7 @@ export default function AdminInviteCodes() {
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary/70" />
           </div>
         ) : (
           <>
@@ -340,7 +340,7 @@ export default function AdminInviteCodes() {
             )}
 
             {codes?.length === 0 && (
-              <div className="text-center py-20 text-gray-400">
+              <div className="text-center py-20 text-gray-500">
                 <Clock className="w-10 h-10 mx-auto mb-3 text-gray-300" />
                 <p className="text-lg">No invite codes yet</p>
                 <p className="text-sm mt-1">Create one to get started</p>
@@ -366,7 +366,7 @@ export default function AdminInviteCodes() {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
               />
-              <p className="text-xs text-gray-400">The code will be tied to this email address.</p>
+              <p className="text-xs text-gray-500">The code will be tied to this email address.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="new-expiry">Expires in (days)</Label>
@@ -378,7 +378,7 @@ export default function AdminInviteCodes() {
                 value={newExpiry}
                 onChange={(e) => setNewExpiry(Number(e.target.value))}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500">
                 Expires: {new Date(Date.now() + newExpiry * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
               </p>
             </div>
@@ -386,7 +386,7 @@ export default function AdminInviteCodes() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary text-white"
               disabled={!newEmail.trim() || createMutation.isPending}
               onClick={() => createMutation.mutate({ email: newEmail.trim(), expiresInDays: newExpiry })}
             >
@@ -404,7 +404,7 @@ export default function AdminInviteCodes() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-gray-600">
-              Code: <code className="font-mono text-indigo-700 font-semibold">{editTarget?.code}</code>
+              Code: <code className="font-mono text-primary font-semibold">{editTarget?.code}</code>
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="edit-date">New expiration date</Label>
@@ -420,7 +420,7 @@ export default function AdminInviteCodes() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary text-white"
               disabled={!editDate || updateExpiryMutation.isPending}
               onClick={handleConfirmExpiry}
             >
@@ -443,7 +443,7 @@ export default function AdminInviteCodes() {
               {confirmTarget?.action === "delete"
                 ? `This will permanently delete the code `
                 : `This will revoke the code `}
-              <code className="font-mono text-indigo-700 font-semibold">{confirmTarget?.code.code}</code>
+              <code className="font-mono text-primary font-semibold">{confirmTarget?.code.code}</code>
               {confirmTarget?.action === "delete"
                 ? ". This cannot be undone."
                 : ". It will no longer be usable for sign-up."}

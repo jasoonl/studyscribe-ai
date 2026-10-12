@@ -37,7 +37,7 @@ export default function Hero() {
               <span className="h-2.5 w-2.5 rounded-full bg-border" />
               <span className="h-2.5 w-2.5 rounded-full bg-border" />
             </div>
-            <img src="/landing/dashboard.jpg" alt="The StudyScribe dashboard showing a library of recordings" className="block w-full" width={1600} height={1080} fetchPriority="high" />
+            <img src="/landing/dashboard.jpg" alt="The StudyScribe dashboard showing a library of recordings" className="block w-full" width={1600} height={896} fetchPriority="high" />
           </div>
         </div>
       </div>

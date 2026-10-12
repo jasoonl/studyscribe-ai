@@ -28,7 +28,7 @@ export default function PricingSection({ id = "pricing", heading = "Simple prici
               <ul className="mt-6 flex-1 space-y-3 text-sm">
                 {PLAN_FEATURES.map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5">
-                    <Check className={`mt-0.5 h-4 w-4 shrink-0 ${plan.highlight ? "text-brand-sky" : "text-primary"}`} strokeWidth={3} />
+                    <Check className={`mt-0.5 h-4 w-4 shrink-0 ${plan.highlight ? "text-primary-foreground" : "text-primary"}`} strokeWidth={3} />
                     {feature}
                   </li>
                 ))}
@@ -55,6 +55,10 @@ export default function PricingSection({ id = "pricing", heading = "Simple prici
             </div>
           ))}
         </div>
+        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted-foreground">
+          Prices are in US dollars per month. Paid plans are not on sale yet. When they are, checkout will show the full price, including any tax, before you pay. No setup or hidden fees, and you can cancel any time.{" "}
+          <Link href="/refunds" className="font-medium text-primary underline underline-offset-2">Refund Policy</Link>
+        </p>
       </div>
     </section>
   );

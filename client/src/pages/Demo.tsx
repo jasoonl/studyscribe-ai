@@ -17,9 +17,10 @@ export default function Demo() {
         <div className="shadow-apple mt-12 overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-6">
           <DemoWalkthrough />
         </div>
+        <p className="mt-3 text-sm text-muted-foreground">Narration voice generated with ElevenLabs. The people and courses shown are fictional.</p>
       </section>
 
-      <section className="border-t border-border bg-brand-mist/50">
+      <section id="tour" className="scroll-mt-24 border-t border-border bg-brand-mist/50">
         <div className="mx-auto grid max-w-5xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_1.4fr]">
           <div>
             <h2 className="text-balance text-3xl font-bold tracking-[-0.03em] sm:text-4xl">What the tour covers</h2>

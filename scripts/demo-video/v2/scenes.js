@@ -1,454 +1,588 @@
 // Deterministic scene engine: window.renderAt(t) draws the whole frame for time t (seconds),
 // so render.mjs can step through the video one frame at a time and screenshot each one.
-// Callouts, highlights and clicks are timed to the narration through W(scene, /word/).
+// Callouts, highlights and clicks are timed to the narration through W(scene, /word/), and every
+// position on a screenshot comes from rects.js, which capture.mjs measures in the live app.
 (() => {
-  // R holds every highlight/click target, measured from the live app by capture.mjs (rects.js).
-  const TL = window.__TL, OV = TL.overlap, S = {}, R = window.__RECTS;
-  const mid = ([x, y, w, ht]) => [x + w / 2, y + ht / 2];
-  TL.scenes.forEach((s, i) => { s.i = i; s.end = i < TL.scenes.length - 1 ? TL.scenes[i + 1].start : TL.total; S[s.id] = s; });
-  const stage = document.getElementById("stage");
-  const E = {
-    lin: (u) => u,
-    out: (u) => 1 - Math.pow(1 - u, 3),
-    inOut: (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2),
-    expo: (u) => (u >= 1 ? 1 : 1 - Math.pow(2, -10 * u)),
-    back: (u) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); },
-  };
-  const DEF = { x: 0, y: 0, s: 1, r: 0, rx: 0, ry: 0, op: 1, blur: 0 };
-  const tracks = [], ticks = [];
-  const val = (f, t) => {
-    if (t <= f[0][0]) return f[0][1];
-    for (let i = 1; i < f.length; i++) {
-      if (t <= f[i][0]) { const u = (t - f[i - 1][0]) / (f[i][0] - f[i - 1][0] || 1e-6); return f[i - 1][1] + (f[i][1] - f[i - 1][1]) * E[f[i][2] || "out"](u); }
-    }
-    return f[f.length - 1][1];
-  };
-  const tw = (el, prop, frames) => tracks.push({ el, prop, frames });
-  const h = (tag, cls, html, parent = stage) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; parent.appendChild(e); return e; };
-  const put = (e, x, y, w, ht) => { e.style.left = x + "px"; e.style.top = y + "px"; if (w != null) e.style.width = w + "px"; if (ht != null) e.style.height = ht + "px"; return e; };
-  const at = (s, f) => s.start + s.dur * f;
-  // Time (seconds) the narrator says the first word of scene s matching `re` (nth match), minus a small lead so a callout lands with the word.
-  const W = (s, re, nth = 0, lead = 0.12) => {
-    const rx = new RegExp(re, "i"), m = (s.words || []).filter((w) => rx.test(w.w)), w = m[nth] || m[0];
-    return (w ? s.start + s.voiceAt + w.t0 : at(s, 0.5)) - lead;
-  };
-
-  // ---- backgrounds ----------------------------------------------------------------------
-  const bgDark = h("div", "abs"); bgDark.id = "bgDark";
-  const bgLight = h("div", "abs"); bgLight.id = "bgLight";
-  const blobs = [];
-  [[200, 150, 760, "rgba(47,107,255,.34)"], [1500, 700, 820, "rgba(34,211,238,.26)"], [900, -100, 640, "rgba(120,160,255,.30)"]].forEach(([x, y, d, c], i) => {
-    const b = h("div", "blob"); b.style.cssText += `left:${x}px;top:${y}px;width:${d}px;height:${d}px;background:${c};`; blobs.push([b, x, y, i]);
-  });
-  ticks.push((t) => blobs.forEach(([b, x, y, i]) => { b.style.transform = `translate(${Math.sin(t * 0.22 + i * 2) * 90}px, ${Math.cos(t * 0.18 + i) * 70}px)`; }));
-  tw(bgLight, "op", [[S.product.start, 0], [S.product.start + 0.5, 1], [S.steps.end, 1], [S.steps.end + 0.5, 0]]);
-
-  // ---- helpers ----------------------------------------------------------------------------
-  const scene = (s) => {
-    const g = h("div", "scene");
-    const last = s.i === TL.scenes.length - 1;
-    const op = s.i === 0 ? [[0, 1]] : [[s.start, 0], [s.start + 0.45, 1]];
-    if (!last) op.push([s.end, 1], [s.end + OV - 0.05, 0]);
-    tw(g, "op", op);
-    if (s.i > 0) tw(g, "s", [[s.start, 0.975], [s.start + 0.6, 1]]);
-    if (!last) tw(g, "s", [[s.end, 1], [s.end + OV, 1.03, "lin"]]);
-    return g;
-  };
-  const chip = (p, text, x, y, t, cls = "") => {
-    const e = h("div", "chip " + cls, `<i></i>${text}`, p); put(e, x, y);
-    tw(e, "op", [[t, 0], [t + 0.2, 1]]); tw(e, "s", [[t, 0.6], [t + 0.55, 1, "back"]]); tw(e, "y", [[t, 20], [t + 0.5, 0]]);
-    return e;
-  };
-  // A row of callouts centred just above the captions; each pops in when its word is spoken.
-  const strip = (p, items, y = 866) => {
-    const row = h("div", "strip", null, p); row.style.top = y + "px";
-    items.forEach(([text, t, cls]) => {
-      const e = h("div", "chip " + (cls || ""), `<i></i>${text}`, row);
-      tw(e, "op", [[t, 0], [t + 0.2, 1]]); tw(e, "s", [[t, 0.6], [t + 0.55, 1, "back"]]); tw(e, "y", [[t, 20], [t + 0.5, 0]]);
-    });
-  };
-  const screen = (p, img, free = false) => h("div", "screen" + (free ? " free" : ""), `<img src="../frames/${img}.jpg">`, p);
-  const camera = (el, base, pivot, keys) => {
-    const fx = [], fy = [], fs = [];
-    keys.forEach(([t, cx, cy, z, ease]) => {
-      const sc = base * z; let px = pivot[0], py = pivot[1];
-      if (z >= 1.3) {
-        // Zoomed in: keep the screenshot's left/right/top edges off-screen and its bottom edge above the captions.
-        px = Math.max(Math.min(px, cx * sc - 30), 1950 - (1600 - cx) * sc); py = Math.min(py, cy * sc - 20); py = Math.max(py, 935 - (896 - cy) * sc);
-      }
-      fs.push([t, sc, ease]); fx.push([t, px - cx * sc, ease]); fy.push([t, py - cy * sc, ease]);
-    });
-    tw(el, "x", fx); tw(el, "y", fy); tw(el, "s", fs);
-  };
-  const rim = (scr, [x, y, w, ht], on, off, soft = false) => {
-    const e = h("div", "rim" + (soft ? " soft" : ""), null, scr); put(e, x, y, w, ht); e.style.transformOrigin = "50% 50%";
-    tw(e, "op", [[on, 0], [on + 0.2, 1], [off ?? 1e6, 1], [(off ?? 1e6) + 0.3, 0]]); tw(e, "s", [[on, 1.05], [on + 0.35, 1, "back"]]);
-    return e;
-  };
-  const ARROW = '<svg viewBox="0 0 24 24" width="36" height="36"><path d="M3 2l15.5 9.2-6.9 1.6 4 7.4-3 1.6-4-7.4L3 18.5z" fill="#fff" stroke="#111b3c" stroke-width="1.6" stroke-linejoin="round"/></svg>';
-  const cursor = (scr, pts) => {
-    const c = h("div", "cur", ARROW, scr);
-    tw(c, "x", pts.map(([t, x], i) => [t, x, i ? "inOut" : "lin"])); tw(c, "y", pts.map(([t, , y], i) => [t, y, i ? "inOut" : "lin"]));
-    tw(c, "op", [[pts[0][0], 0], [pts[0][0] + 0.25, 1]]);
-    pts.forEach(([t, x, y, click]) => {
-      if (!click) return;
-      const r = h("div", "ripple", null, scr); put(r, x, y);
-      tw(r, "op", [[t - 0.01, 0], [t, 0.9], [t + 0.55, 0]]); tw(r, "s", [[t, 0.3], [t + 0.55, 1.7]]);
-      tw(c, "s", [[t - 0.1, 1], [t, 0.82], [t + 0.12, 1]]);
-    });
-  };
-  const typing = (el, text, t0, cps) => ticks.push((t) => { const n = Math.max(0, Math.min(text.length, Math.floor((t - t0) * cps))); el.textContent = t < t0 ? "" : text.slice(0, n) + (n < text.length ? "|" : ""); });
-  const fadeScreen = (el, a) => tw(el, "op", [[a, 0], [a + 0.5, 1]]);
-  // Burned-in captions from the narration timing (for viewers watching without sound).
-  const captions = (g, s) => {
-    if (!s.words || !s.words.length) return;
-    const lines = []; let cur = [];
-    s.words.forEach((w) => { cur.push(w); if (/[.?!]$/.test(w.raw) || cur.map((x) => x.raw).join(" ").length > 46) { lines.push(cur); cur = []; } });
-    if (cur.length) lines.push(cur);
-    const spans = lines.map((L) => [s.start + s.voiceAt + L[0].t0 - 0.05, s.start + s.voiceAt + L[L.length - 1].t1 + 0.25]);
-    spans.forEach((sp, i) => { if (i + 1 < spans.length) sp[1] = Math.min(sp[1], spans[i + 1][0] - 0.02); });
-    lines.forEach((L, i) => {
-      const [t0, t1] = spans[i];
-      const e = h("div", "cap", `<span>${L.map((x) => x.raw).join(" ")}</span>`, g); put(e, 0, 960, 1920);
-      tw(e, "op", [[t0, 0], [t0 + 0.1, 1], [t1 - 0.08, 1], [t1, 0]]); tw(e, "y", [[t0, 10], [t0 + 0.18, 0]]);
-    });
-  };
-  // A screen that eases in and then gets a camera path.
-  const tour = (s, g, img, keys) => { const scr = screen(g, img); fadeScreen(scr, s.start); camera(scr, 0.975, [960, 500], keys); return scr; };
-
-  // ================= 1. HOOK (dark, kinetic type) =================
-  {
-    const s = S.hook, g = scene(s);
-    const wt = (i) => s.start + s.voiceAt + s.words[i].t0; // each word appears as it is spoken
-    const lines = [
-      { w: ["You", "sat", "through", "the", "whole", "lecture."], i0: 0 },
-      { w: ["You", "even", "took", "notes."], i0: 6 },
-      { w: ["And", "by", "Friday,", "most", "of", "it", "was", '<span class="gone">gone.</span>'], i0: 10 },
-    ];
-    lines.forEach((L, li) => {
-      const el = h("div", "big", null, g); put(el, 0, 410, 1920);
-      L.w.forEach((txt, wi) => {
-        const w = h("span", "w", txt + (wi < L.w.length - 1 ? " " : ""), el), t0 = wt(L.i0 + wi) - 0.1;
-        tw(w, "op", [[t0, 0], [t0 + 0.4, 1]]); tw(w, "y", [[t0, 40], [t0 + 0.55, 0, "expo"]]); tw(w, "blur", [[t0, 14], [t0 + 0.45, 0]]);
-        if (li === 2 && wi === L.w.length - 1) { const f = t0 + 1.0; tw(w, "blur", [[t0, 14], [t0 + 0.45, 0], [f, 0], [f + 1.2, 16, "inOut"]]); tw(w, "op", [[t0, 0], [t0 + 0.4, 1], [f, 1], [f + 1.2, 0.12, "inOut"]]); }
-      });
-      if (li < 2) { const out = wt(lines[li + 1].i0) - 0.45; tw(el, "op", [[out, 1], [out + 0.35, 0]]); tw(el, "y", [[out, 0], [out + 0.35, -40]]); }
-    });
-  }
-
-  // ================= 2. BRAND (dark) =================
-  {
-    const s = S.brand, g = scene(s), t = s.start;
-    for (let i = 0; i < 3; i++) { const r = h("div", "ring", null, g); put(r, 780, 250); tw(r, "s", [[t + 0.2 + i * 0.4, 0.3], [t + 2.6 + i * 0.4, 3.4, "out"]]); tw(r, "op", [[t + 0.2 + i * 0.4, 0.9], [t + 2.6 + i * 0.4, 0]]); }
-    const logo = h("img", "abs", null, g); logo.src = "assets/logo.webp"; put(logo, 865, 280, 190, 190);
-    tw(logo, "op", [[t + 0.3, 0], [t + 0.5, 1]]); tw(logo, "s", [[t + 0.3, 0], [t + 1.1, 1, "back"]]);
-    const mark = h("div", "abs mark", "StudyScribe AI", g); put(mark, 0, 500, 1920);
-    const tm = W(s, "^studyscribe", 0, 0.1); tw(mark, "op", [[tm, 0], [tm + 0.6, 1]]); tw(mark, "y", [[tm, 60], [tm + 0.8, 0, "expo"]]); tw(mark, "blur", [[tm, 16], [tm + 0.6, 0]]);
-    const tag = h("div", "abs tag", "Record once. Study smarter.", g); put(tag, 0, 710, 1920);
-    const tg = W(s, "^record", 0, 0.1); tw(tag, "op", [[tg, 0], [tg + 0.6, 1]]); tw(tag, "y", [[tg, 24], [tg + 0.6, 0]]);
-  }
-
-
-  // ================= NEW A. PIPELINE (dark): one recording becomes a whole study set =================
-  {
-    const s = S.pipeline, g = scene(s), a = s.start;
-    const file = h("div", "dcard", '<small>YOUR LECTURE</small><div style="display:flex;align-items:flex-end;gap:7px;height:120px" id="wv"></div><div class="dline" style="margin:22px 0 0;font-size:30px;font-weight:600">Intro to AI.m4a</div><div class="dline" style="margin:0;color:#8ec1ff;font-size:24px">1:13</div>', g); put(file, 110, 360, 420, 360);
-    const bars = file.querySelector("#wv"); const hs = []; for (let i = 0; i < 22; i++) { const b = h("div", "", null, bars); const v = 24 + 90 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.6)); b.style.cssText = `width:10px;border-radius:5px;background:linear-gradient(#7db4ff,#22d3ee);height:${v}px;`; hs.push([b, v]); }
-    ticks.push((t) => hs.forEach(([b, v], i) => { b.style.height = (v * (0.7 + 0.3 * Math.sin(t * 6 + i))) + "px"; }));
-    const td = W(s, "^drop", 0, 0.1); tw(file, "op", [[td, 0], [td + 0.3, 1]]); tw(file, "y", [[td - 0.1, -260], [td + 0.55, 0, "back"]]); tw(file, "r", [[td - 0.1, -8], [td + 0.55, 0, "back"]]);
-    const tr = h("div", "dcard", "<small>TRANSCRIPT</small>", g); put(tr, 640, 300, 640, 480);
-    const lines = [["0:00", "AI is one of the most transformative"], ["0:07", "technologies of our time. It lets"], ["0:14", "computers learn from data, spot"], ["0:21", "patterns, and make decisions."]];
-    const tt = W(s, "^transcript", 0, 0.1); tw(tr, "op", [[tt, 0], [tt + 0.3, 1]]); tw(tr, "y", [[tt, 50], [tt + 0.6, 0, "expo"]]);
-    lines.forEach(([ts, tx], i) => { const l = h("div", "dline", `<b>${ts}</b><span></span>`, tr); typing(l.querySelector("span"), tx, tt + 0.35 + i * 0.5, 34); });
-    const tiles = [["Study notes", "^notes", 300, '<path d="M6 4h9l4 4v12H6zM9 12h7M9 16h7" />'], ["Flashcards", "^flashcards", 440, '<rect x="4" y="7" width="14" height="10" rx="2"/><path d="M8 4h12v10"/>'], ["Practice quiz", "^quiz", 580, '<circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1-1.5 2M12 17v.01"/>']];
-    tiles.forEach(([name, w, y, path]) => {
-      const e = h("div", "ftile", `<i><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</svg></i>${name}`, g); put(e, 1410, y);
-      const t0 = W(s, w, 0, 0.1); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "x", [[t0, -160], [t0 + 0.6, 0, "expo"]]); tw(e, "s", [[t0, 0.8], [t0 + 0.55, 1, "back"]]);
-    });
-    // light streaming from file to transcript to tiles
-    const arrows = [[540, 540, 90, "^drop"], [1290, 540, 110, "^notes"]];
-    arrows.forEach(([x, y, w, k]) => { const ar = h("div", "abs", null, g); ar.style.cssText += "height:6px;border-radius:3px;background:linear-gradient(90deg,#2f6bff,#22d3ee);"; put(ar, x, y, w); const t0 = W(s, k === "^drop" ? "^transcript" : "^notes", 0, 0.3); tw(ar, "op", [[t0, 0], [t0 + 0.3, 1]]); });
-    captions(g, s);
-  }
-
-  // ================= 3. PRODUCT: the library of lectures and meetings =================
-  {
-    const s = S.product, g = scene(s), scr = screen(g, "dashboard", true); put(scr, 160, 40);
-    tw(scr, "op", [[s.start, 0], [s.start + 0.6, 1]]); tw(scr, "y", [[s.start, 150], [s.start + 1.2, 0, "expo"]]); tw(scr, "rx", [[s.start, 18], [s.start + 1.2, 0, "expo"]]);
-    tw(scr, "s", [[s.start, 0.84], [s.start + 1.2, 0.975, "expo"], [s.end, 1.0, "lin"]]);
-    chip(g, "Record live", 150, 300, W(s, "^record$")); chip(g, "Upload a file", 1430, 170, W(s, "^upload$")); chip(g, "Paste a link", 1400, 836, W(s, "^paste$"));
-    captions(g, s);
-  }
-
-  // ================= 4. ADD: three ways in, then the language picker =================
-  {
-    const s = S.add, g = scene(s), a = s.start, ck = s.clickTimes[0], tl = W(s, "^twenty-seven", 0, 0.35);
-    const [cx, cy] = mid(R.add.cards[1]);
-    const scr = tour(s, g, "add-recording", [[a, 800, 448, 0.94], [a + 0.8, cx, cy, 1.12, "inOut"]]);
-    rim(scr, R.add.cards[0], a + 0.25, a + 0.55, true); rim(scr, R.add.cards[1], a + 0.5, a + 0.8, true); rim(scr, R.add.cards[2], a + 0.75, tl);
-    const [bx, by] = R.add.buttons[2];
-    cursor(scr, [[a + 0.2, cx, cy], [ck - 0.3, bx - 10, by - 6], [ck, bx - 10, by - 6, true]]);
-    // The link form opens with its spoken-language list: auto-detect or one of 27 languages.
-    const lang = screen(g, "language"); fadeScreen(lang, tl);
-    const [lx, ly] = mid(R.language.list), [sx, sy] = mid(R.language.spanish);
-    camera(lang, 0.975, [960, 470], [[tl, lx, ly, 1.0], [tl + 1.0, lx, ly, 1.12, "inOut"]]);
-    rim(lang, R.language.spanish, tl + 0.9);
-    chip(g, "Starts automatically", 150, 840, W(s, "^starts")); chip(g, "27 languages, or auto-detect", 1290, 840, W(s, "^twenty-seven"));
-    captions(g, s);
-  }
-
-  // ================= 5. TRANSCRIPT (Thermodynamics): speaker labels, timestamps, click a line =================
-  {
-    const s = S.transcript, g = scene(s), a = s.start, ck = s.clickTimes[0];
-    const [lx, ly] = mid(R.transcript.line), [px, py] = mid(R.transcript.speaker);
-    const scr = tour(s, g, "transcript", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, lx - 120, ly - 40, 1.5, "inOut"]]);
-    rim(scr, R.transcript.speaker.map((v, i) => v + [-6, -4, 12, 8][i]), W(s, "^labeled"), ck - 0.2);
-    rim(scr, R.transcript.line, ck + 0.1, null, true);
-    cursor(scr, [[W(s, "^labeled") - 0.4, px + 90, py + 60], [W(s, "^labeled"), px + 8, py + 4], [ck - 0.3, R.transcript.click[0], R.transcript.click[1]], [ck, R.transcript.click[0], R.transcript.click[1], true]]);
-    strip(g, [["Timestamps", W(s, "^timestamped")], ["Speaker labels", W(s, "^speaker")], ["Jump to any moment", W(s, "^click")]]);
-    captions(g, s);
-  }
-
-  // ================= 6. NOTES (Microeconomics) =================
-  {
-    const s = S.notes, g = scene(s), a = s.start;
-    const [ax, ay] = mid(R.notes.concepts), [bx, by] = mid(R.notes.formulas);
-    const scr = tour(s, g, "study-notes", [[a, 800, 448, 0.94], [a + 0.9, ax, ay, 1.35, "inOut"], [s.end, bx, by - 60, 1.35, "inOut"]]);
-    rim(scr, R.notes.concepts, W(s, "^organized"), W(s, "^ideas"), true); rim(scr, R.notes.formulas, W(s, "^ideas"), null, true);
-    strip(g, [["Study notes", W(s, "^study")], ["Organized by idea", W(s, "^organized")]]);
-    captions(g, s);
-  }
-
-  // ================= 7. CARDS (Intro to AI deck, over the Cell Biology review screen) =================
-  {
-    const s = S.cards, g = scene(s), a = s.start;
-    const scr = screen(g, "flashcards", true); put(scr, 1380 - 800, 470 - 448);
-    tw(scr, "op", [[a, 0], [a + 0.6, 1]]); tw(scr, "x", [[a, 160], [a + 1, 0, "expo"]]); tw(scr, "s", [[a, 0.55], [a + 1, 0.62]]); tw(scr, "ry", [[a, -22], [a + 1.1, -9, "expo"]]);
-    [[-5, 14], [4, 28]].forEach(([deg, off], i) => {
-      const back = h("div", "card", null, g); back.style.cssText += "height:400px;width:640px;"; put(back, 300 + off * 0.6, 270 + off);
-      back.style.display = "block"; tw(back, "r", [[a, deg]]); tw(back, "op", [[a + 0.2 + i * 0.1, 0], [a + 0.7 + i * 0.1, 0.85]]);
-    });
-    const mk = (q, ans, x, y, small) => {
-      const c = h("div", "fc", null, g); put(c, x, y);
-      h("div", "face", `<small>QUESTION</small><p>${q}</p>`, c); h("div", "face back", `<small>ANSWER</small><p style="${small ? "font-size:46px;line-height:1.15" : ""}">${ans}</p>`, c); return c;
+  const build = () => {
+    // R: highlight/click targets as [x, y, w, h, radius] in the 1600x896 space screenshots are drawn in.
+    const TL = window.__TL, OV = TL.overlap, S = {}, R = window.__RECTS;
+    TL.scenes.forEach((s, i) => { s.i = i; s.end = i < TL.scenes.length - 1 ? TL.scenes[i + 1].start : TL.total; S[s.id] = s; });
+    const stage = document.getElementById("stage");
+    // Layout. A screenshot first appears whole, as a window (scale L.win); zoomed in, it fills the frame
+    // down to a band edge: L.band when its callouts sit in the empty column beside it, L.bandStrip when
+    // they sit in a row under it (at L.stripY). Captions always sit below the band.
+    // Detail pages zoom to L.detail: the page header's Share button then sits just past the right edge
+    // (at 1.225 it is still whole; anything between would cut it in half).
+    const L = { win: 0.86, winY: 420, band: 935, bandStrip: 828, stripY: 848, detail: 1.36, detailWide: 1.225 };
+    const E = {
+      lin: (u) => u,
+      out: (u) => 1 - Math.pow(1 - u, 3),
+      inOut: (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2),
+      expo: (u) => (u >= 1 ? 1 : 1 - Math.pow(2, -10 * u)),
+      back: (u) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); },
     };
-    const A = mk("What does AI stand for?", "Artificial intelligence", 300, 270), B = mk("What are three capabilities AI enables computers to do?", "Learn from data, recognize patterns, and make decisions.", 300, 270, true);
-    const f1 = W(s, "^write", 0, 0.05), swap = W(s, "^export", 0, 0.1);
-    tw(A, "op", [[a + 0.3, 0], [a + 0.8, 1], [swap, 1], [swap + 0.5, 0]]); tw(A, "s", [[a + 0.3, 0.8], [a + 0.9, 1, "back"]]); tw(A, "ry", [[f1, 0], [f1 + 0.7, 180, "inOut"]]);
-    tw(A, "x", [[swap, 0], [swap + 0.55, -1000, "inOut"]]); tw(A, "r", [[swap, 0], [swap + 0.55, -14, "inOut"]]);
-    tw(B, "op", [[swap, 0], [swap + 0.45, 1]]); tw(B, "s", [[swap, 0.9], [swap + 0.55, 1, "back"]]); tw(B, "ry", [[W(s, "^anki", 0, -0.2), 0], [W(s, "^anki", 0, -0.2) + 0.8, 180, "inOut"]]);
-    chip(g, "Quizlet", 960, 800, W(s, "^quizlet")); chip(g, "Anki", 1180, 800, W(s, "^anki")); chip(g, "Notion", 1340, 800, W(s, "^notion"));
-    captions(g, s);
-  }
+    const DEF = { x: 0, y: 0, s: 1, r: 0, rx: 0, ry: 0, op: 1, blur: 0 };
+    const tracks = [], ticks = [];
+    const val = (f, t) => {
+      if (t <= f[0][0]) return f[0][1];
+      for (let i = 1; i < f.length; i++) {
+        if (t <= f[i][0]) { const u = (t - f[i - 1][0]) / (f[i][0] - f[i - 1][0] || 1e-6); return f[i - 1][1] + (f[i][1] - f[i - 1][1]) * E[f[i][2] || "out"](u); }
+      }
+      return f[f.length - 1][1];
+    };
+    // One track per element and property: a later track for the same pair replaces the earlier one.
+    const tw = (el, prop, frames) => tracks.push({ el, prop, frames });
+    const h = (tag, cls, html, parent = stage) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; parent.appendChild(e); return e; };
+    const put = (e, x, y, w, ht) => { e.style.left = x + "px"; e.style.top = y + "px"; if (w != null) e.style.width = w + "px"; if (ht != null) e.style.height = ht + "px"; return e; };
+    const at = (s, f) => s.start + s.dur * f;
+    // Time (seconds) the narrator says the first word of scene s matching `re` (nth match), minus a small lead so a callout lands with the word.
+    const W = (s, re, nth = 0, lead = 0.12) => {
+      const rx = new RegExp(re, "i"), m = (s.words || []).filter((w) => rx.test(w.w)), w = m[nth] || m[0];
+      return (w ? s.start + s.voiceAt + w.t0 : at(s, 0.5)) - lead;
+    };
 
+    // ---- backgrounds ----------------------------------------------------------------------
+    const bgDark = h("div", "abs"); bgDark.id = "bgDark";
+    const bgLight = h("div", "abs"); bgLight.id = "bgLight";
 
-  // ================= NEW B. FLIP (light): try a flashcard yourself =================
-  {
-    const s = S.flip, g = scene(s), a = s.start;
-    const t0 = W(s, "^let", 0, 0.1), tt = W(s, "^second", 0, 0.1), tf = W(s, "^artificial", 0, 0.15);
-    const hd = h("div", "abs", "Your turn", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 70);
-    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
-    const c = h("div", "fc", null, g); put(c, 640, 250); c.style.width = "640px"; c.style.height = "400px";
-    h("div", "face", "<small>QUESTION</small><p>What does AI stand for?</p>", c); h("div", "face back", "<small>ANSWER</small><p>Artificial intelligence</p>", c);
-    c.querySelector(".back p").style.fontSize = "62px";
-    tw(c, "op", [[a + 0.3, 0], [a + 0.8, 1]]); tw(c, "s", [[a + 0.3, 0.7], [a + 1.0, 1.35, "back"]]); tw(c, "y", [[a + 0.3, 80], [a + 1.0, 0, "expo"]]); tw(c, "ry", [[tf, 0], [tf + 0.8, 180, "inOut"]]);
-    const cd = h("div", "abs", "3", g); cd.style.cssText += "width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font-size:84px;font-weight:700;color:#2f6bff;background:#fff;box-shadow:0 0 0 6px #cfe0ff,0 20px 50px rgba(37,79,200,.28);"; put(cd, 885, 780);
-    tw(cd, "op", [[tt, 0], [tt + 0.2, 1], [tf - 0.05, 1], [tf + 0.2, 0]]); tw(cd, "s", [[tt, 0.6], [tt + 0.4, 1, "back"]]);
-    ticks.push((t) => { const u = Math.max(0, Math.min(0.999, (t - tt) / Math.max(0.3, tf - tt))); cd.textContent = String(3 - Math.floor(u * 3)); });
-    chip(g, "Recall beats re-reading", 1130, 820, W(s, "^recall", 0, 0.05), "ok");
-    // confetti burst when the card turns
-    for (let i = 0; i < 18; i++) { const d = h("div", "dot", null, g); d.style.background = ["#2f6bff", "#22d3ee", "#7db4ff", "#ffffff"][i % 4]; put(d, 960, 450); const ang = (i / 18) * 6.283, r = 300 + (i % 3) * 90; tw(d, "x", [[tf + 0.4, 0], [tf + 1.3, Math.cos(ang) * r, "expo"]]); tw(d, "y", [[tf + 0.4, 0], [tf + 1.3, Math.sin(ang) * r * 0.8, "expo"]]); tw(d, "op", [[tf + 0.39, 0], [tf + 0.4, 1], [tf + 1.3, 0]]); }
-    captions(g, s);
-  }
-
-  // ================= 8. LEARN (Cell Biology): written recall =================
-  {
-    const s = S.learn, g = scene(s), a = s.start;
-    const [ix, iy] = mid(R.learn.input);
-    const scr = tour(s, g, "learn-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, ix, iy - 60, 1.4, "inOut"]]);
-    const [x, y, w] = R.learn.input, tt = W(s, "^graduate", 0, -0.1);
-    const box = h("div", "abs typed", "", scr); put(box, x + 2, y + 2, w - 4, 46); box.style.cssText += "background:#fff;padding:9px 14px;box-sizing:border-box;border-radius:8px;";
-    tw(box, "op", [[tt - 0.02, 0], [tt, 1]]); typing(box, "In the cytoplasm", tt, 15);
-    rim(scr, R.learn.input, W(s, "^written", 0, 0.25), null, false);
-    strip(g, [["Recognition", W(s, "^recognition")], ["Written recall", W(s, "^written")]]);
-    captions(g, s);
-  }
-
-  // ================= 9. TEST (Cell Biology): practice exam =================
-  {
-    const s = S.test, g = scene(s), a = s.start, ck = s.clickTimes[0];
-    const [ox, oy] = mid(R.test.option);
-    const scr = tour(s, g, "test-mode", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, ox + 200, oy - 60, 1.4, "inOut"]]);
-    rim(scr, R.test.option, ck + 0.05); cursor(scr, [[a + 1.0, ox + 400, oy + 160], [ck - 0.3, R.test.click[0], R.test.click[1]], [ck, R.test.click[0], R.test.click[1], true]]);
-    strip(g, [["Answers shown after you submit", W(s, "^exam", 0, 0.2)]]);
-    captions(g, s);
-  }
-
-  // ================= 10. QUIZ (World War I, ten questions) =================
-  {
-    const s = S.quiz, g = scene(s), a = s.start, ck = s.clickTimes[0];
-    const [ox, oy] = mid(R.quiz.option);
-    const scr = tour(s, g, "quiz", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.5, ox, oy + 60, 1.4, "inOut"]]);
-    rim(scr, R.quiz.option, ck + 0.05); cursor(scr, [[a + 1.0, ox + 220, oy + 220], [ck - 0.3, R.quiz.click[0], R.quiz.click[1]], [ck, R.quiz.click[0], R.quiz.click[1], true]]);
-    strip(g, [["10 questions", W(s, "^ten")], ["Instant feedback", W(s, "^instant")]]);
-    captions(g, s);
-  }
-
-
-  // ================= NEW C. CHALLENGE (light): a real quiz question with a timer =================
-  {
-    const s = S.challenge, g = scene(s), a = s.start, ck = s.clickTimes[0];
-    const tp = W(s, "^pick", 0, 0.1);
-    const q = h("div", "qcard", '<small>QUESTION 1 OF 10 &nbsp;·&nbsp; MULTIPLE CHOICE</small><h3>What is AI described as in the transcript?</h3>', g); put(q, 380, 150);
-    const opts = ["A futuristic concept that is yet to be developed.", "A simple computer program for basic tasks.", "One of the most transformative technologies of our time.", "A technology primarily used for entertainment."].map((tx, i) => h("div", "opt" + (i === 2 ? " right" : ""), `<u></u>${tx}`, q));
-    tw(q, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(q, "y", [[a + 0.2, 70], [a + 0.9, 0, "expo"]]);
-    opts.forEach((o, i) => { if (i === 2) { o.classList.remove("right"); ticks.push((t) => o.classList.toggle("right", t >= ck)); } else tw(o, "op", [[ck, 1], [ck + 0.4, 0.35]]); });
-    const bar = h("div", "abs", null, g); bar.style.cssText += "height:14px;border-radius:7px;background:linear-gradient(90deg,#2f6bff,#22d3ee);"; put(bar, 380, 112, 1160);
-    tw(bar, "op", [[tp - 0.1, 0], [tp, 1], [ck, 1], [ck + 0.3, 0]]);
-    ticks.push((t) => { const u = Math.max(0, Math.min(1, (t - tp) / Math.max(0.5, ck - tp))); bar.style.width = (1160 * (1 - u)) + "px"; });
-    const cur = h("div", "cur", ARROW, g);
-    tw(cur, "x", [[a + 1.2, 1500, "lin"], [ck - 0.25, 760, "inOut"]]); tw(cur, "y", [[a + 1.2, 800, "lin"], [ck - 0.25, 700, "inOut"]]); tw(cur, "op", [[a + 1.2, 0], [a + 1.5, 1]]);
-    const rp = h("div", "ripple", null, g); put(rp, 760, 700); tw(rp, "op", [[ck - 0.01, 0], [ck, 0.9], [ck + 0.55, 0]]); tw(rp, "s", [[ck, 0.3], [ck + 0.55, 1.7]]); tw(cur, "s", [[ck - 0.1, 1], [ck, 0.82], [ck + 0.12, 1]]);
-    chip(g, "Correct!", 1560, 560, ck + 0.1, "ok"); chip(g, "Instant feedback", 820, 880, W(s, "^instant", 0, 0.05));
-    captions(g, s);
-  }
-
-  // ================= 11. GUIDE (Organic Chemistry) =================
-  {
-    const s = S.guide, g = scene(s), a = s.start;
-    const [hx, hy] = mid(R.guide.header);
-    const scr = tour(s, g, "study-guide", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, hx, hy + 120, 1.35, "inOut"]]);
-    rim(scr, R.guide.header, W(s, "^structured", 0, 0.1), null, true);
-    strip(g, [["Structured guide", W(s, "^structured")], ["From your lecture", W(s, "^lecture")]]);
-    captions(g, s);
-  }
-
-  // ================= 12. TUTOR (Psychology) =================
-  {
-    const s = S.tutor, g = scene(s), a = s.start;
-    const scr = tour(s, g, "ai-tutor", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.6, 560, 420, 1.35, "inOut"], [s.end, 560, 560, 1.35, "inOut"]]);
-    strip(g, [["Answers from your lecture", W(s, "^answers")]]);
-    const th = h("div", "think", `<span class="lat">${"<u></u>".repeat(9)}</span>Thinking`, g); put(th, 1380, 120);
-    tw(th, "op", [[W(s, "^ask") - 0.1, 0], [W(s, "^ask") + 0.1, 1], [W(s, "^answers"), 1], [W(s, "^answers") + 0.2, 0]]); tw(th, "s", [[W(s, "^ask") - 0.1, 0.7], [W(s, "^ask") + 0.4, 1, "back"]]);
-    const cells = th.querySelectorAll("u"), ring = [0, 1, 2, 5, 8, 7, 6, 3];
-    ticks.push((t) => cells.forEach((c, i) => { const k = ring.indexOf(i); c.style.opacity = k < 0 ? 0.07 : Math.max(0.15, 1 - ((((t * 7 - k) % 8) + 8) % 8) / 3.2); }));
-    captions(g, s);
-  }
-
-  // ================= 13. PRO: meetings (Q3 roadmap sync email) =================
-  {
-    const s = S.pro, g = scene(s), a = s.start, ck = s.clickTimes[0];
-    const scr = tour(s, g, "email-drafts", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 2.0, 1010, 330, 1.4, "inOut"]]);
-    rim(scr, R.email.copy, ck + 0.05); cursor(scr, [[W(s, "^follow-up") - 0.2, 1000, 420], [ck - 0.35, R.email.click[0], R.email.click[1]], [ck, R.email.click[0], R.email.click[1], true]]);
-    strip(g, [["Summary email", W(s, "^summaries")], ["Follow-up emails", W(s, "^follow-up")], ["Tone: Formal", W(s, "^tone")]]); chip(g, "Copied", 1400, 40, ck + 0.1, "ok");
-    captions(g, s);
-  }
-
-
-  // ================= NEW D. WHO IT IS FOR (light) =================
-  {
-    const s = S.who, g = scene(s), a = s.start;
-    const hd = h("div", "abs", "Made for the way you work", g); hd.style.cssText += "font-size:80px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 140);
-    const tSpanish = W(s, "^another", 0, 0.1) + 0.5;
-    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1], [tSpanish, 1], [tSpanish + 0.4, 0]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
-    const ic = (p) => `<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-    [["Students", "Cram smarter for finals", "^students", 110, '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/>'],
-     ["Professionals", "Meetings into follow-ups", "^professionals", 700, '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M3 13h18"/>'],
-     ["Language learners", "27 languages supported", "^another", 1290, '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>']].forEach(([t, sub, w, x, p]) => {
-      const e = h("div", "pcard", `<em>${ic(p)}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 330);
-      const t0 = W(s, w, 0, 0.15), tl = W(s, "^another", 0, 0.1) + 0.5;
-      tw(e, "op", [[t0, 0], [t0 + 0.25, 1], [tl, 1], [tl + 0.4, 0.18]]); tw(e, "y", [[t0, 90], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.85], [t0 + 0.6, 1, "back"]]);
-    });
-    const tl = W(s, "^another", 0, 0.1) + 0.5, es = screen(g, "spanish-transcript", true); put(es, 160, 70);
-    tw(es, "op", [[tl, 0], [tl + 0.4, 1]]); tw(es, "y", [[tl, 160], [tl + 0.9, 0, "expo"]]); tw(es, "s", [[tl, 0.6], [tl + 0.9, 0.78, "expo"]]); tw(es, "ry", [[tl, -10], [tl + 1.2, -4, "expo"]]);
-    chip(g, "Spanish lecture, transcribed in Spanish", 640, 40, tl + 0.5, "ok");
-    captions(g, s);
-  }
-
-  // ================= 14. LIBRARY (analytics): a 40-second reading, a 7-minute class, a 1-minute lecture =================
-  {
-    const s = S.library, g = scene(s), a = s.start;
-    const [rx, ry] = mid(R.library.rows[1]);
-    const scr = tour(s, g, "analytics", [[a, 800, 448, 0.94], [a + 0.9, 800, 448, 1, "inOut"], [a + 1.8, rx - 260, ry, 1.5, "inOut"]]);
-    const [r0, r1, r2] = R.library.rows;
-    rim(scr, r0, W(s, "^forty-second"), W(s, "^seven-minute", 0, 0.1), true); rim(scr, r1, W(s, "^seven-minute"), W(s, "^one-minute", 0, 0.1), true); rim(scr, r2, W(s, "^one-minute"), null, true);
-    strip(g, [["Poetry reading: 40s", W(s, "^forty-second")], ["Spanish 201: 7m", W(s, "^seven-minute")], ["Intro to AI: 1m 13s", W(s, "^one-minute")], ["One library", W(s, "^library")]]);
-    captions(g, s);
-  }
-
-  // ================= 15. TRUST =================
-  {
-    const s = S.trust, g = scene(s), a = s.start;
-    const shield = h("div", "abs", '<svg viewBox="0 0 64 64" width="150" height="150"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#1b8fe0"/></linearGradient></defs><path d="M32 4l22 8v16c0 14-9 26-22 32C19 54 10 42 10 28V12z" fill="url(#sg)"/><path d="M22 32l7 7 14-15" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>', g);
-    put(shield, 885, 140); tw(shield, "op", [[a + 0.2, 0], [a + 0.5, 1]]); tw(shield, "s", [[a + 0.2, 0], [a + 0.9, 1, "back"]]);
-    const hl = h("div", "abs", "Your data. Your call.", g); hl.style.cssText += "font-size:96px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hl, 0, 320);
-    tw(hl, "op", [[a + 0.6, 0], [a + 1.1, 1]]); tw(hl, "y", [[a + 0.6, 40], [a + 1.2, 0, "expo"]]);
-    const ex = h("div", "card", '<em><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#2f6bff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg></em>Export my data', g);
-    const dl = h("div", "card del", '<em><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#e11d48" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></em>Delete my account', g);
-    put(ex, 330, 560); put(dl, 1030, 560);
-    [[ex, 0.3], [dl, 0.42]].forEach(([el, d]) => { tw(el, "op", [[a + 0.9 + d, 0], [a + 1.4 + d, 1]]); tw(el, "y", [[a + 0.9 + d, 60], [a + 1.6 + d, 0, "expo"]]); });
-    const [c1, c2] = s.clickTimes;
-    tw(ex, "s", [[c1, 1], [c1 + 0.12, 0.95], [c1 + 0.4, 1, "back"]]); tw(dl, "s", [[c2, 1], [c2 + 0.12, 0.95], [c2 + 0.4, 1, "back"]]);
-    const cur = h("div", "cur", ARROW, g);
-    tw(cur, "x", [[a + 1.2, 1000, "lin"], [c1 - 0.2, 640, "inOut"], [c2 - 0.2, 1240, "inOut"]]); tw(cur, "y", [[a + 1.2, 470, "lin"], [c1 - 0.2, 650, "inOut"], [c2 - 0.2, 650, "inOut"]]); tw(cur, "op", [[a + 1.2, 0], [a + 1.5, 1]]);
-    chip(g, "studyscribe-export.json", 360, 820, c1 + 0.15, "ok"); chip(g, "All data deleted", 1130, 820, c2 + 0.15, "ok");
-    captions(g, s);
-  }
-
-
-  // ================= NEW E. THREE STEPS (light) =================
-  {
-    const s = S.steps, g = scene(s), a = s.start;
-    const hd = h("div", "abs", "Start in three steps", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 150);
-    tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
-    const line = h("div", "abs", null, g); line.style.cssText += "height:6px;border-radius:3px;background:linear-gradient(90deg,#2f6bff,#22d3ee);transform-origin:0 50%;"; put(line, 420, 466, 1080);
-    const steps = [["1", "Request your invite", "Free to start", "^request", 150], ["2", "Add a lecture", "Record, upload, or paste", "^add", 730], ["3", "Start studying", "Notes, cards, quizzes", "^studying", 1310]];
-    steps.forEach(([n, t, sub, w, x], i) => {
-      const e = h("div", "step", `<em>${n}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 400);
-      const t0 = W(s, w, 0, 0.15); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "y", [[t0, 70], [t0 + 0.7, 0, "expo"]]); tw(e, "s", [[t0, 0.8], [t0 + 0.6, 1, "back"]]);
-    });
-    tw(line, "s", [[W(s, "^request", 0, 0.1), 0.001], [W(s, "^studying", 0, 0.1), 1, "inOut"]]);
-    captions(g, s);
-  }
-
-  // ================= 16. FINALE (dark) =================
-  {
-    const s = S.finale, g = scene(s);
-    const names = ["Lecture", "Transcript", "Notes", "Flashcards", "Quiz", "Ready"], widths = [220, 270, 200, 270, 190, 200], gap = 36;
-    const total = widths.reduce((p, w) => p + w, 0) + gap * 5; let x = (1920 - total) / 2;
-    const rowT = s.start + 0.5, rowOut = W(s, "^studyscribe", 0, 0.35);
-    names.forEach((n, i) => {
-      const off = h("div", "pill dark off", n, g), on = h("div", "pill on", n, g); [off, on].forEach((e) => { put(e, x, 470, widths[i]); e.style.justifyContent = "center"; e.style.padding = "0"; });
-      const t0 = rowT + 0.3 + i * 0.4;
-      tw(off, "op", [[rowT - 0.3, 0], [rowT, 1], [rowOut, 1], [rowOut + 0.4, 0]]); tw(off, "y", [[rowT - 0.3, 40], [rowT, 0], [rowOut, 0], [rowOut + 0.4, -50]]);
-      tw(on, "op", [[t0, 0], [t0 + 0.3, 1], [rowOut, 1], [rowOut + 0.4, 0]]); tw(on, "s", [[t0, 0.88], [t0 + 0.5, 1, "back"]]); tw(on, "y", [[rowOut, 0], [rowOut + 0.4, -50]]);
-      x += widths[i] + gap;
-    });
-    const logo = h("img", "abs", null, g); logo.src = "assets/logo.webp"; put(logo, 900, 190, 120, 120);
-    const hd = h("div", "abs mark", "Record once.<br>Study smarter.", g); hd.style.cssText += "font-size:132px;line-height:1.04;"; put(hd, 0, 330, 1920);
-    const cta = h("div", "cta", "Get started free", g); put(cta, 700, 700, 520); cta.style.justifyContent = "center"; cta.style.padding = "0";
-    const url = h("div", "url", "studyscribe-ai.vercel.app", g); put(url, 0, 860);
-    const tIn = W(s, "^studyscribe", 0, 0.3);
-    tw(logo, "op", [[tIn, 0], [tIn + 0.5, 1]]); tw(logo, "s", [[tIn, 0], [tIn + 0.8, 1, "back"]]);
-    tw(hd, "op", [[tIn + 0.2, 0], [tIn + 0.8, 1]]); tw(hd, "y", [[tIn + 0.2, 60], [tIn + 1, 0, "expo"]]); tw(hd, "blur", [[tIn + 0.2, 16], [tIn + 0.8, 0]]);
-    tw(cta, "op", [[W(s, "^try") - 0.2, 0], [W(s, "^try") + 0.3, 1]]); tw(cta, "s", [[W(s, "^try") - 0.2, 0.8], [W(s, "^try") + 0.4, 1, "back"]]);
-    tw(url, "op", [[W(s, "^free") - 0.1, 0], [W(s, "^free") + 0.5, 1]]);
-    captions(g, s);
-  }
-
-  // ---- slide-wipe at every scene change --------------------------------------------------
-  TL.scenes.slice(1).forEach((s) => {
-    const w = h("div", "wipe"); w.style.zIndex = 5;
-    tw(w, "x", [[s.start - 0.25, 0], [s.start + 0.55, 3200, "inOut"]]); tw(w, "op", [[s.start - 0.26, 0], [s.start - 0.25, 0.92], [s.start + 0.5, 0.92], [s.start + 0.56, 0]]);
-  });
-
-  window.renderAt = (t) => {
-    const state = new Map();
-    for (const tr of tracks) { let st = state.get(tr.el); if (!st) { st = Object.assign({}, DEF); state.set(tr.el, st); } st[tr.prop] = val(tr.frames, t); }
-    for (const [el, st] of state) {
-      el.style.transform = `translate3d(${st.x}px,${st.y}px,0) rotateX(${st.rx}deg) rotateY(${st.ry}deg) rotate(${st.r}deg) scale(${st.s})`;
-      el.style.opacity = st.op; el.style.visibility = st.op < 0.003 ? "hidden" : "visible"; el.style.filter = st.blur > 0.1 ? `blur(${st.blur}px)` : "none";
+    // ---- scene changes: a band sweeps across and the next scene is revealed exactly behind its centre
+    // line, so no frame ever mixes two scenes (a crossfade between the dark and light looks muddy grey).
+    // The band starts and ends off-screen; its centre line is slanted 12 degrees like the band.
+    const WIPE = { pre: 0.3, post: 0.5, from: -560, to: 2600, slant: Math.tan((12 * Math.PI) / 180) };
+    const wipeX = (T, t) => val([[T - WIPE.pre, WIPE.from], [T + WIPE.post, WIPE.to, "inOut"]], t);
+    const lineX = (T, t, y) => 50 + wipeX(T, t) - WIPE.slant * (y - 550); // stage x of the band's centre line at height y
+    // clip-path polygon (in an element's own coordinates, given its scale about the frame centre) for the
+    // part of the frame left of the line ("in": the incoming scene) or right of it ("out").
+    const wiped = (T, t, side, sc = 1) => {
+      const lx = (x) => (x - 960) / sc + 960, ly = (y) => (y - 540) / sc + 540, a = lineX(T, t, -60), b = lineX(T, t, 1140);
+      const edge = side === "in" ? [-60, -60] : [1980, 1980];
+      return `polygon(${lx(edge[0])}px ${ly(-60)}px, ${lx(a)}px ${ly(-60)}px, ${lx(b)}px ${ly(1140)}px, ${lx(edge[1])}px ${ly(1140)}px)`;
+    };
+    const inWipe = (T, t) => t >= T - WIPE.pre && t <= T + WIPE.post;
+    // The light background shows from the product scene to the end of the steps scene.
+    {
+      const on = S.product.start, off = S.finale.start;
+      tw(bgLight, "op", [[on - WIPE.pre - 0.01, 0], [on - WIPE.pre, 1], [off + WIPE.post, 1], [off + WIPE.post + 0.01, 0]]);
+      ticks.push((t) => { bgLight.style.clipPath = inWipe(on, t) ? wiped(on, t, "in") : inWipe(off, t) ? wiped(off, t, "out") : "none"; });
     }
-    ticks.forEach((f) => f(t));
+
+    // ---- helpers ----------------------------------------------------------------------------
+    const scene = (s) => {
+      const g = h("div", "scene");
+      const first = s.i === 0, last = s.i === TL.scenes.length - 1;
+      const op = first ? [[0, 1]] : [[s.start - WIPE.pre - 0.01, 0], [s.start - WIPE.pre, 1]];
+      if (!last) op.push([s.end + WIPE.post, 1], [s.end + WIPE.post + 0.01, 0]);
+      tw(g, "op", op);
+      const sc = first ? [[0, 1]] : [[s.start - WIPE.pre, 0.975], [s.start + 0.6, 1]];
+      if (!last) sc.push([s.end, 1], [s.end + OV, 1.03, "lin"]);
+      const scale = (t) => val(sc, t);
+      tw(g, "s", sc);
+      ticks.push((t) => { g.style.clipPath = !first && inWipe(s.start, t) ? wiped(s.start, t, "in", scale(t)) : !last && inWipe(s.end, t) ? wiped(s.end, t, "out", scale(t)) : "none"; });
+      return g;
+    };
+    const pop = (e, t) => { tw(e, "op", [[t, 0], [t + 0.2, 1]]); tw(e, "s", [[t, 0.6], [t + 0.55, 1, "back"]]); tw(e, "y", [[t, 20], [t + 0.5, 0]]); return e; };
+    // Callout chips [text, time, class] laid out as a row or a column and anchored at (x, y): ax/ay pick
+    // the point of the group that sits there (0.5, 0.5 is its centre). Each pops in when its word is spoken.
+    const callouts = (p, items, x, y, { ax = 0.5, ay = 0, dir = "row" } = {}) => {
+      const box = h("div", "callouts " + dir, null, p); put(box, x, y);
+      box.style.transform = `translate(${-ax * 100}%, ${-ay * 100}%)`;
+      items.forEach(([text, t, cls]) => pop(h("div", "chip " + (cls || ""), `<i></i>${text}`, box), t));
+      return box;
+    };
+    const strip = (p, items) => callouts(p, items, 960, L.stripY);
+    // A column of callouts centred in the empty page to the right of a zoomed screenshot's content.
+    const beside = (p, items, right) => callouts(p, items, (right + 1920) / 2, L.band / 2, { ay: 0.5, dir: "column" });
+
+    const screen = (p, img, free = false) => h("div", "screen" + (free ? " free" : ""), `<img src="../frames/${img}.jpg">`, p);
+    // Camera views of a screenshot: {s, x, y} = its scale and the stage position of its top-left corner.
+    const view = {
+      win: (s = L.win) => ({ s, x: 960 - 800 * s, y: L.winY - 448 * s }),
+      // Zoomed in: screenshot x=cx at the centre of the frame (side edges kept off-screen) and screenshot y=top at its top edge.
+      zoom: (s, cx, top) => {
+        let x = 960 - cx * s;
+        if (1600 * s >= 1960) x = Math.min(-20, Math.max(1940 - 1600 * s, x));
+        return { s, x, y: -top * s };
+      },
+    };
+    const cam = (el, keys) => {
+      const fx = keys.map(([t, v, e]) => [t, v.x, e]), fy = keys.map(([t, v, e]) => [t, v.y, e]), fs = keys.map(([t, v, e]) => [t, v.s, e]);
+      tw(el, "x", fx); tw(el, "y", fy); tw(el, "s", fs);
+      const now = (t) => ({ x: val(fx, t), y: val(fy, t), s: val(fs, t) });
+      return { now, pt: (t, [px, py]) => { const c = now(t); return [c.x + px * c.s, c.y + py * c.s]; } };
+    };
+    // Cuts a zoomed screenshot off at the band edge, so it never runs under the callouts or captions,
+    // and shades the edge like the bottom of a sheet.
+    const band = (g, scr, c, bottom) => {
+      const edge = h("div", "edge", null, g);
+      ticks.push((t) => {
+        const v = c.now(t), local = (bottom - v.y) / v.s;
+        scr.style.clipPath = local < 896 ? `inset(0 0 ${896 - local}px 0)` : "none";
+        const left = Math.max(0, v.x), right = Math.min(1920, v.x + 1600 * v.s);
+        put(edge, left, bottom, right - left);
+        edge.style.opacity = Math.max(0, Math.min(1, (v.y + 896 * v.s - bottom) / 40)) * (parseFloat(scr.style.opacity) || 0);
+      });
+    };
+    // A screenshot that fades in as a window and then follows the camera keys [t, view, ease].
+    const tour = (s, g, img, keys, { bottom = L.band, out = null } = {}) => {
+      const scr = screen(g, img);
+      tw(scr, "op", out == null ? [[s.start, 0], [s.start + 0.5, 1]] : [[s.start, 0], [s.start + 0.5, 1], [out, 1], [out + 0.45, 0]]);
+      const c = cam(scr, [[s.start, view.win(L.win - 0.03)], ...keys]);
+      band(g, scr, c, bottom);
+      return { scr, c };
+    };
+    // A highlight box around [x, y, w, h, r] on a screenshot, `pad` stage px outside it (padX across),
+    // with corners concentric to the target's. k = 1 / the screenshot's scale while it shows, so the box
+    // looks the same at any zoom.
+    const rim = (scr, [x, y, w, ht, r = 0], on, off, { soft = false, k = 1, pad = 10, padX = pad } = {}) => {
+      const px = padX * k, py = pad * k;
+      const e = h("div", "rim" + (soft ? " soft" : ""), null, scr); put(e, x - px, y - py, w + 2 * px, ht + 2 * py);
+      e.style.setProperty("--k", k); e.style.borderRadius = r + Math.max(px, py) + "px"; e.style.transformOrigin = "50% 50%";
+      tw(e, "op", [[on, 0], [on + 0.2, 1], [off ?? 1e6, 1], [(off ?? 1e6) + 0.3, 0]]); tw(e, "s", [[on, 1.04], [on + 0.35, 1, "back"]]);
+      return e;
+    };
+    // The pointer's tip is at (3, 2) of its 24-unit box; points [t, x, y, click] place the tip itself.
+    const ARROW = '<svg viewBox="0 0 24 24"><path d="M3 2l15.5 9.2-6.9 1.6 4 7.4-3 1.6-4-7.4L3 18.5z" fill="#fff" stroke="#111b3c" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    const cursor = (p, pts, k = 1) => {
+      const size = 34 * k, tx = (size * 3) / 24, ty = (size * 2) / 24;
+      const c = h("div", "cur", ARROW, p);
+      c.style.cssText += `width:${size}px;height:${size}px;margin:${-ty}px 0 0 ${-tx}px;transform-origin:${tx}px ${ty}px;`;
+      c.firstChild.style.filter = `drop-shadow(0 ${3 * k}px ${4 * k}px rgba(0,0,0,.32))`;
+      tw(c, "x", pts.map(([t, x], i) => [t, x, i ? "inOut" : "lin"])); tw(c, "y", pts.map(([t, , y], i) => [t, y, i ? "inOut" : "lin"]));
+      tw(c, "op", [[pts[0][0], 0], [pts[0][0] + 0.25, 1]]);
+      const sc = [[pts[0][0], 1]];
+      pts.forEach(([t, x, y, click]) => {
+        if (!click) return;
+        const d = 64 * k, r = h("div", "ripple", null, p); put(r, x - d / 2, y - d / 2, d, d); r.style.borderWidth = 3 * k + "px";
+        tw(r, "op", [[t - 0.01, 0], [t, 0.9], [t + 0.55, 0]]); tw(r, "s", [[t, 0.3], [t + 0.55, 1.7]]);
+        sc.push([t - 0.1, 1], [t, 0.82], [t + 0.12, 1]);
+      });
+      tw(c, "s", sc);
+    };
+    // A flashcard: an outer box takes fades, moves and spins, and the card inside flips in 3D. (Fading the
+    // flipping element itself would flatten it, showing its hidden face mirrored through the other.)
+    const flashcard = (p, q, ans, x, y, ansStyle = "") => {
+      const w = h("div", "abs", null, p); put(w, x, y, 640, 400); w.style.perspective = "2200px";
+      const c = h("div", "fc", null, w);
+      h("div", "face", `<small>QUESTION</small><p>${q}</p>`, c); h("div", "face back", `<small>ANSWER</small><p style="${ansStyle}">${ans}</p>`, c);
+      return [w, c];
+    };
+    const typing = (el, text, t0, cps) => ticks.push((t) => { const n = Math.max(0, Math.min(text.length, Math.floor((t - t0) * cps))); el.textContent = t < t0 ? "" : text.slice(0, n) + (n < text.length ? "|" : ""); });
+    // Burned-in captions from the narration timing (for viewers watching without sound), one phrase at a
+    // time: a sentence stays whole when it is short, otherwise it splits at its commas (neighbouring
+    // pieces merged while they fit), and only a long piece with no comma splits at its middle word.
+    const phrases = (words) => {
+      const text = (ws) => ws.map((x) => x.raw).join(" "), out = [];
+      const halve = (p) => {
+        if (text(p).length <= 54 || p.length < 2) return [p];
+        let best = 1, score = 1e9;
+        for (let i = 1; i < p.length; i++) { const m = Math.max(text(p.slice(0, i)).length, text(p.slice(i)).length); if (m < score) { score = m; best = i; } }
+        return [p.slice(0, best), p.slice(best)];
+      };
+      let sent = [];
+      const flush = () => {
+        if (!sent.length) return;
+        if (text(sent).length <= 54) out.push(sent);
+        else {
+          const parts = []; let cur = [];
+          sent.forEach((w) => { cur.push(w); if (/[,;:]$/.test(w.raw)) { parts.push(cur); cur = []; } });
+          if (cur.length) parts.push(cur);
+          const merged = [];
+          parts.forEach((p) => { const last = merged[merged.length - 1]; if (last && text(last.concat(p)).length <= 50) merged[merged.length - 1] = last.concat(p); else merged.push(p); });
+          merged.forEach((p) => out.push(...halve(p)));
+        }
+        sent = [];
+      };
+      words.forEach((w) => { sent.push(w); if (/[.?!]$/.test(w.raw)) flush(); });
+      flush();
+      return out;
+    };
+    const captions = (g, s) => {
+      if (!s.words || !s.words.length) return;
+      const lines = phrases(s.words);
+      const spans = lines.map((P) => [s.start + s.voiceAt + P[0].t0 - 0.05, s.start + s.voiceAt + P[P.length - 1].t1 + 0.25]);
+      spans.forEach((sp, i) => { if (i + 1 < spans.length) sp[1] = Math.min(sp[1], spans[i + 1][0] - 0.02); });
+      lines.forEach((P, i) => {
+        const [t0, t1] = spans[i];
+        const e = h("div", "cap", `<span>${P.map((x) => x.raw).join(" ")}</span>`, g); put(e, 0, 960, 1920);
+        tw(e, "op", [[t0, 0], [t0 + 0.1, 1], [t1 - 0.08, 1], [t1, 0]]); tw(e, "y", [[t0, 10], [t0 + 0.18, 0]]);
+      });
+    };
+    // Stage x of a screenshot's content column right edge, for callouts beside a zoomed detail page.
+    const rightOf = (v, col) => v.x + (col[0] + col[2]) * v.s;
+
+    // ================= 1. HOOK (dark, kinetic type) =================
+    {
+      const s = S.hook, g = scene(s);
+      const wt = (i) => s.start + s.voiceAt + s.words[i].t0; // each word appears as it is spoken
+      const lines = [
+        { w: ["You", "sat", "through", "the", "whole", "lecture."], i0: 0 },
+        { w: ["You", "even", "took", "notes."], i0: 6 },
+        { w: ["And", "by", "Friday,", "most", "of", "it", "was", '<span class="gone">gone.</span>'], i0: 10 },
+      ];
+      lines.forEach((Ln, li) => {
+        const el = h("div", "big", null, g); put(el, 0, 410, 1920);
+        Ln.w.forEach((txt, wi) => {
+          const w = h("span", "w", txt + (wi < Ln.w.length - 1 ? " " : ""), el), t0 = wt(Ln.i0 + wi) - 0.1;
+          tw(w, "op", [[t0, 0], [t0 + 0.4, 1]]); tw(w, "y", [[t0, 40], [t0 + 0.55, 0, "expo"]]); tw(w, "blur", [[t0, 14], [t0 + 0.45, 0]]);
+          if (li === 2 && wi === Ln.w.length - 1) { const f = t0 + 1.0; tw(w, "blur", [[t0, 14], [t0 + 0.45, 0], [f, 0], [f + 1.2, 16, "inOut"]]); tw(w, "op", [[t0, 0], [t0 + 0.4, 1], [f, 1], [f + 1.2, 0.12, "inOut"]]); }
+        });
+        if (li < 2) { const out = wt(lines[li + 1].i0) - 0.45; tw(el, "op", [[out, 1], [out + 0.35, 0]]); tw(el, "y", [[out, 0], [out + 0.35, -40]]); }
+      });
+    }
+
+    // ================= 2. BRAND (dark) =================
+    {
+      const s = S.brand, g = scene(s), t = s.start;
+      for (let i = 0; i < 3; i++) { const r = h("div", "ring", null, g); put(r, 780, 250); tw(r, "s", [[t + 0.2 + i * 0.4, 0.3], [t + 2.6 + i * 0.4, 3.4, "out"]]); tw(r, "op", [[t + 0.2 + i * 0.4, 0.9], [t + 2.6 + i * 0.4, 0]]); }
+      const logo = h("img", "abs", null, g); logo.src = "assets/logo.webp"; put(logo, 865, 280, 190, 190);
+      tw(logo, "op", [[t + 0.3, 0], [t + 0.5, 1]]); tw(logo, "s", [[t + 0.3, 0], [t + 1.1, 1, "back"]]);
+      const mark = h("div", "abs mark", "StudyScribe AI", g); put(mark, 0, 500, 1920);
+      const tm = W(s, "^studyscribe", 0, 0.1); tw(mark, "op", [[tm, 0], [tm + 0.6, 1]]); tw(mark, "y", [[tm, 60], [tm + 0.8, 0, "expo"]]); tw(mark, "blur", [[tm, 16], [tm + 0.6, 0]]);
+      const tag = h("div", "abs tag", "Record once. Study smarter.", g); put(tag, 0, 710, 1920);
+      const tg = W(s, "^record", 0, 0.1); tw(tag, "op", [[tg, 0], [tg + 0.6, 1]]); tw(tag, "y", [[tg, 24], [tg + 0.6, 0]]);
+    }
+
+    // ================= 3. PIPELINE (dark): one recording becomes a whole study set =================
+    {
+      const s = S.pipeline, g = scene(s);
+      // Three columns centred on y = 540: the file, its transcript, and what it turns into. On "Here is the
+      // whole idea" they appear as empty outlines, each filled in as it is named.
+      const slots = [[110, 380, 420, 320, W(s, "^drop", 0, 0.1)], [640, 380, 640, 320, W(s, "^transcript", 0, 0.1)], [1410, 344, 400, 112, W(s, "^notes", 0, 0.1)], [1410, 484, 400, 112, W(s, "^flashcards", 0, 0.1)], [1410, 624, 400, 112, W(s, "^quiz", 0, 0.1)]];
+      slots.forEach(([x, y, w, ht, filled], i) => {
+        const e = h("div", "ghost", null, g); put(e, x, y, w, ht); e.style.borderRadius = (i < 2 ? 30 : 26) + "px";
+        const t0 = s.start + 0.6 + i * 0.1; tw(e, "op", [[t0, 0], [t0 + 0.4, 1], [filled, 1], [filled + 0.2, 0]]);
+      });
+      const file = h("div", "dcard", '<small>YOUR LECTURE</small><div class="wave"></div><div class="dline" style="margin:22px 0 0;font-size:30px;font-weight:600">Intro to AI.m4a</div><div class="dline" style="margin:0;color:#8ec1ff;font-size:24px">1:13</div>', g); put(file, 110, 380, 420, 320);
+      const bars = file.querySelector(".wave"); bars.style.cssText = "display:flex;align-items:flex-end;gap:7px;height:120px;";
+      const hs = []; for (let i = 0; i < 22; i++) { const b = h("div", "", null, bars); const v = 24 + 90 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.6)); b.style.cssText = `width:10px;border-radius:5px;background:#7db4ff;height:${v}px;`; hs.push([b, v]); }
+      ticks.push((t) => hs.forEach(([b, v], i) => { b.style.height = v * (0.7 + 0.3 * Math.sin(t * 6 + i)) + "px"; }));
+      const td = W(s, "^drop", 0, 0.1); tw(file, "op", [[td, 0], [td + 0.3, 1]]); tw(file, "y", [[td - 0.1, -260], [td + 0.55, 0, "back"]]); tw(file, "r", [[td - 0.1, -8], [td + 0.55, 0, "back"]]);
+      const tr = h("div", "dcard", "<small>TRANSCRIPT</small>", g); put(tr, 640, 380, 640, 320);
+      const lines = [["0:00", "AI is one of the most transformative"], ["0:07", "technologies of our time. It lets"], ["0:14", "computers learn from data, spot"], ["0:21", "patterns, and make decisions."]];
+      const tt = W(s, "^transcript", 0, 0.1); tw(tr, "op", [[tt, 0], [tt + 0.3, 1]]); tw(tr, "y", [[tt, 50], [tt + 0.6, 0, "expo"]]);
+      lines.forEach(([ts, tx], i) => {
+        const l = h("div", "dline", `<b>${ts}</b><span></span>`, tr), t0 = tt + 0.35 + i * 0.5;
+        tw(l, "op", [[t0 - 0.05, 0], [t0 + 0.1, 1]]); typing(l.querySelector("span"), tx, t0, 34);
+      });
+      const tiles = [["Study notes", "^notes", 344], ["Flashcards", "^flashcards", 484], ["Practice quiz", "^quiz", 624]];
+      tiles.forEach(([name, w, y]) => {
+        const e = h("div", "ftile", name, g); put(e, 1410, y);
+        const t0 = W(s, w, 0, 0.1); tw(e, "op", [[t0, 0], [t0 + 0.25, 1]]); tw(e, "x", [[t0, -160], [t0 + 0.6, 0, "expo"]]); tw(e, "s", [[t0, 0.8], [t0 + 0.55, 1, "back"]]);
+      });
+      // light streaming from file to transcript to tiles
+      [[540, 90, "^transcript"], [1290, 110, "^notes"]].forEach(([x, w, k]) => {
+        const ar = h("div", "abs", null, g); ar.style.cssText += "height:6px;border-radius:3px;background:#2f6bff;"; put(ar, x, 537, w);
+        const t0 = W(s, k, 0, 0.3); tw(ar, "op", [[t0, 0], [t0 + 0.3, 1]]);
+      });
+      captions(g, s);
+    }
+
+    // ================= 4. PRODUCT: the library of lectures and meetings =================
+    {
+      const s = S.product, g = scene(s), scr = screen(g, "dashboard", true); put(scr, 160, L.winY - 448);
+      tw(scr, "op", [[s.start, 0], [s.start + 0.6, 1]]); tw(scr, "y", [[s.start, 150], [s.start + 1.2, 0, "expo"]]); tw(scr, "rx", [[s.start, 18], [s.start + 1.2, 0, "expo"]]);
+      tw(scr, "s", [[s.start, 0.72], [s.start + 1.2, L.win - 0.02, "expo"], [s.end, L.win, "lin"]]);
+      strip(g, [["Record live", W(s, "^record$")], ["Upload a file", W(s, "^upload$")], ["Paste a link", W(s, "^paste$")]]);
+      captions(g, s);
+    }
+
+    // ================= 5. ADD: three ways in, then the language picker =================
+    {
+      const s = S.add, g = scene(s), a = s.start, ck = s.clickTimes[0], tl = W(s, "^twenty-seven", 0, 0.35), A = R.add;
+      // Zoomed on the three cards, cropped in the gap between the consent note and the cards.
+      const zA = view.zoom(1.3, 800, (A.banner[1] + A.banner[3] + A.cards[0][1]) / 2), kA = 1 / zA.s;
+      const add = tour(s, g, "add-recording", [[a + 0.9, zA, "inOut"]], { bottom: L.bandStrip, out: tl });
+      rim(add.scr, A.cards[0], a + 0.35, a + 0.65, { soft: true, k: kA }); rim(add.scr, A.cards[1], a + 0.6, a + 0.9, { soft: true, k: kA }); rim(add.scr, A.cards[2], a + 0.85, tl + 0.45, { k: kA });
+      const [bx, by] = A.buttons[2];
+      cursor(add.scr, [[a + 0.5, 800, 620], [ck - 0.3, bx, by], [ck, bx, by, true]], kA);
+      // The link form comes up with its spoken-language list open, cropped just above the list's label.
+      const Lg = R.language, topL = Math.max(Lg.radios[1] + Lg.radios[3] + 2, Lg.label[1] - 14), kL = 1 / 1.25;
+      const lang = screen(g, "language"); tw(lang, "op", [[tl, 0], [tl + 0.45, 1]]);
+      const cL = cam(lang, [[tl, view.zoom(1.22, 800, topL)], [s.end, view.zoom(1.25, 800, topL), "out"]]);
+      band(g, lang, cL, L.bandStrip);
+      rim(lang, Lg.spanish, tl + 0.6, null, { k: kL, pad: 6 }); // the option is inset only a little from the list's edge
+      strip(g, [["Starts automatically", W(s, "^starts")], ["27 languages, or auto-detect", W(s, "^twenty-seven")]]);
+      captions(g, s);
+    }
+
+    // ================= 6. TRANSCRIPT (Thermodynamics): timestamps, speaker labels, click a line =================
+    {
+      const s = S.transcript, g = scene(s), a = s.start, ck = s.clickTimes[0], T = R.transcript;
+      const z = view.zoom(L.detail, 540, 0), k = 1 / z.s;
+      const { scr } = tour(s, g, "transcript", [[a + 0.9, view.win(), "inOut"], [a + 1.7, z, "inOut"]]);
+      // Inline labels sit close to the words beside them, so their boxes hug them a little tighter.
+      rim(scr, T.stamp, W(s, "^timestamped"), W(s, "^labeled"), { k, pad: 8, padX: 7 });
+      rim(scr, T.speaker, W(s, "^labeled"), ck - 0.2, { k, pad: 8, padX: 7 });
+      rim(scr, T.line, ck + 0.1, null, { soft: true, k, pad: 0 });
+      const [cx, cy] = T.click;
+      cursor(scr, [[ck - 1.0, cx + 220, cy + 110], [ck - 0.3, cx, cy], [ck, cx, cy, true]], k);
+      beside(g, [["Timestamps", W(s, "^timestamped")], ["Speaker labels", W(s, "^speaker")], ["Jump to any moment", W(s, "^click")]], rightOf(z, T.column));
+      captions(g, s);
+    }
+
+    // ================= 7. NOTES (Microeconomics) =================
+    {
+      const s = S.notes, g = scene(s), a = s.start, N = R.notes;
+      const z = view.zoom(L.detail, 540, 0), k = 1 / z.s;
+      const { scr } = tour(s, g, "study-notes", [[a + 0.7, view.win(), "inOut"], [a + 1.4, z, "inOut"]]);
+      // Each section is shaded across the card's width (its list markers hang left of the text).
+      const across = ([, y, , ht]) => [N.column[0] + 6, y, N.column[2] - 12, ht, 14];
+      rim(scr, across(N.concepts), W(s, "^organized"), W(s, "^ideas"), { soft: true, k, padX: 0 });
+      rim(scr, across(N.formulas), W(s, "^ideas"), null, { soft: true, k, padX: 0 });
+      beside(g, [["Study notes", W(s, "^study")], ["Organized by idea", W(s, "^organized")]], rightOf(z, N.column));
+      captions(g, s);
+    }
+
+    // ================= 8. CARDS (the Intro to AI deck, over its review screen) =================
+    {
+      const s = S.cards, g = scene(s), a = s.start;
+      // The review screen on the right (centred on x = 1360) and the card stack left of it, not overlapping it.
+      const scr = screen(g, "flashcards", true); put(scr, 1360 - 800, 470 - 448);
+      tw(scr, "op", [[a, 0], [a + 0.6, 1]]); tw(scr, "x", [[a, 160], [a + 1, 0, "expo"]]); tw(scr, "s", [[a, 0.54], [a + 1, 0.6]]); tw(scr, "ry", [[a, -22], [a + 1.1, -9, "expo"]]);
+      [[-5, 14], [4, 28]].forEach(([deg, off], i) => {
+        const back = h("div", "card", null, g); back.style.cssText += "height:400px;width:640px;"; put(back, 170 + off * 0.6, 270 + off);
+        back.style.display = "block"; tw(back, "r", [[a, deg]]); tw(back, "op", [[a + 0.2 + i * 0.1, 0], [a + 0.7 + i * 0.1, 0.85]]);
+      });
+      const [A, Af] = flashcard(g, "What does AI stand for?", "Artificial intelligence", 170, 270), [B, Bf] = flashcard(g, "What are three capabilities AI enables computers to do?", "Learn from data, recognize patterns, and make decisions.", 170, 270, "font-size:46px;line-height:1.15");
+      const f1 = W(s, "^write", 0, 0.05), swap = W(s, "^export", 0, 0.1), f2 = W(s, "^anki", 0, -0.2);
+      tw(A, "op", [[a + 0.3, 0], [a + 0.8, 1], [swap, 1], [swap + 0.4, 0]]); tw(A, "s", [[a + 0.3, 0.8], [a + 0.9, 1, "back"]]); tw(Af, "ry", [[f1, 0], [f1 + 0.7, 180, "inOut"]]);
+      tw(A, "x", [[swap, 0], [swap + 0.55, -1000, "inOut"]]); tw(A, "r", [[swap, 0], [swap + 0.55, -14, "inOut"]]);
+      // The next card comes in once the first has mostly slid away, so the two never blend.
+      tw(B, "op", [[swap + 0.25, 0], [swap + 0.6, 1]]); tw(B, "s", [[swap + 0.25, 0.9], [swap + 0.75, 1, "back"]]); tw(Bf, "ry", [[f2, 0], [f2 + 0.8, 180, "inOut"]]);
+      strip(g, [["Quizlet", W(s, "^quizlet")], ["Anki", W(s, "^anki")], ["Notion", W(s, "^notion")]]);
+      captions(g, s);
+    }
+
+    // ================= 9. FLIP (light): try a flashcard yourself =================
+    {
+      const s = S.flip, g = scene(s), a = s.start;
+      const tt = W(s, "^second", 0, 0.1), tf = W(s, "^artificial", 0, 0.15);
+      const hd = h("div", "abs", "Your turn", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 96);
+      tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+      // The card is centred on (960, 500) and grows to 1.2x: 768 x 480, from y = 260 to 740.
+      const [c, cf] = flashcard(g, "What does AI stand for?", "Artificial intelligence", 640, 300, "font-size:62px");
+      tw(c, "op", [[a + 0.3, 0], [a + 0.8, 1]]); tw(c, "s", [[a + 0.3, 0.7], [a + 1.0, 1.2, "back"]]); tw(c, "y", [[a + 0.3, 80], [a + 1.0, 0, "expo"]]); tw(cf, "ry", [[tf, 0], [tf + 0.8, 180, "inOut"]]);
+      const cd = h("div", "abs", "3", g); cd.style.cssText += "width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font-size:64px;font-weight:700;color:#2f6bff;background:#fff;box-shadow:0 0 0 6px #cfe0ff,0 20px 50px rgba(37,79,200,.28);"; put(cd, 900, 790);
+      tw(cd, "op", [[tt, 0], [tt + 0.2, 1], [tf - 0.05, 1], [tf + 0.2, 0]]); tw(cd, "s", [[tt, 0.6], [tt + 0.4, 1, "back"]]);
+      ticks.push((t) => { const u = Math.max(0, Math.min(0.999, (t - tt) / Math.max(0.3, tf - tt))); cd.textContent = String(3 - Math.floor(u * 3)); });
+      callouts(g, [["Recall beats re-reading", W(s, "^recall", 0, 0.05), "ok"]], 960, 800);
+      // confetti burst when the card turns
+      for (let i = 0; i < 18; i++) { const d = h("div", "dot", null, g); d.style.background = ["#2f6bff", "#22d3ee", "#7db4ff", "#ffffff"][i % 4]; put(d, 960, 500); const ang = (i / 18) * 6.283, r = 300 + (i % 3) * 90; tw(d, "x", [[tf + 0.4, 0], [tf + 1.3, Math.cos(ang) * r, "expo"]]); tw(d, "y", [[tf + 0.4, 0], [tf + 1.3, Math.sin(ang) * r * 0.8, "expo"]]); tw(d, "op", [[tf + 0.39, 0], [tf + 0.4, 1], [tf + 1.3, 0]]); }
+      captions(g, s);
+    }
+
+    // ================= 10. LEARN (Cell Biology): written recall =================
+    {
+      const s = S.learn, g = scene(s), a = s.start, Ln = R.learn;
+      // Less zoom than the other detail pages, so the answer box stays clear of the band edge.
+      const z = view.zoom(L.detailWide, 540, 0), k = 1 / z.s;
+      const { scr } = tour(s, g, "learn-mode", [[a + 0.9, view.win(), "inOut"], [a + 1.6, z, "inOut"]]);
+      // The answer is typed over the box's placeholder in the textarea's own font, size, padding and colour.
+      const [x, y, w, , r] = Ln.input, F = Ln.font, b = F.border, tt = W(s, "^graduate", 0, -0.1);
+      const box = h("div", "abs typed", "", scr); put(box, x + b, y + b, w - 2 * b, F.padY * 2 + F.lineHeight);
+      box.style.cssText += `background:${F.background};padding:${F.padY}px ${F.padX}px;border-radius:${r - b}px ${r - b}px 0 0;font-size:${F.size}px;line-height:${F.lineHeight}px;font-weight:${F.weight};color:${F.color};letter-spacing:${F.letterSpacing};`;
+      tw(box, "op", [[tt - 0.02, 0], [tt, 1]]); typing(box, "In the cytoplasm", tt, 15);
+      rim(scr, Ln.input, W(s, "^written", 0, 0.25), null, { k });
+      beside(g, [["Recognition", W(s, "^recognition")], ["Written recall", W(s, "^written")]], rightOf(z, Ln.card));
+      captions(g, s);
+    }
+
+    // ================= 11. TEST (Cell Biology): practice exam =================
+    {
+      const s = S.test, g = scene(s), a = s.start, ck = s.clickTimes[0], Tt = R.test;
+      const z = view.zoom(L.detail, 540, 0), k = 1 / z.s, [cx, cy] = Tt.click;
+      const { scr } = tour(s, g, "test-mode", [[a + 0.8, view.win(), "inOut"], [a + 1.4, z, "inOut"]]);
+      rim(scr, Tt.option, ck + 0.05, null, { k });
+      cursor(scr, [[a + 0.9, cx + 300, cy + 150], [ck - 0.3, cx, cy], [ck, cx, cy, true]], k);
+      beside(g, [["Practice exam", W(s, "^practice")], ["Answers after you submit", W(s, "^exam", 0, -0.3)]], rightOf(z, Tt.column));
+      captions(g, s);
+    }
+
+    // ================= 12. QUIZ (World War I, ten questions) =================
+    {
+      const s = S.quiz, g = scene(s), a = s.start, ck = s.clickTimes[0], Q = R.quiz;
+      // Cropped in the gap between the quiz header and the question card, down to the page dots.
+      const z = view.zoom(1.28, 800, (Q.top + Q.card[1]) / 2), k = 1 / z.s, [cx, cy] = Q.click;
+      const { scr } = tour(s, g, "quiz", [[a + 0.8, view.win(), "inOut"], [a + 1.4, z, "inOut"]], { bottom: L.bandStrip });
+      rim(scr, Q.option, ck + 0.05, null, { k });
+      cursor(scr, [[a + 0.9, cx + 220, cy + 200], [ck - 0.3, cx, cy], [ck, cx, cy, true]], k);
+      strip(g, [["10 questions", W(s, "^ten")], ["Instant feedback", W(s, "^instant")]]);
+      captions(g, s);
+    }
+
+    // ================= 13. CHALLENGE (light): a real quiz question with a timer =================
+    {
+      const s = S.challenge, g = scene(s), a = s.start, ck = s.clickTimes[0];
+      const tp = W(s, "^pick", 0, 0.1), qx = 380, qy = 150, qw = 1160;
+      const q = h("div", "qcard", '<small>QUESTION 1 OF 10 &nbsp;·&nbsp; MULTIPLE CHOICE</small><h3>What is AI described as in the transcript?</h3>', g); put(q, qx, qy);
+      const opts = ["A futuristic concept that is yet to be developed.", "A simple computer program for basic tasks.", "One of the most transformative technologies of our time.", "A technology primarily used for entertainment."].map((tx) => h("div", "opt", `<u></u>${tx}`, q));
+      tw(q, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(q, "y", [[a + 0.2, 70], [a + 0.9, 0, "expo"]]);
+      opts.forEach((o, i) => { if (i === 2) ticks.push((t) => o.classList.toggle("right", t >= ck)); else tw(o, "op", [[ck, 1], [ck + 0.4, 0.35]]); });
+      // The third option's centre, from the laid-out card (fonts are loaded before this runs).
+      const o3 = opts[2], ox = qx + o3.offsetLeft + o3.offsetWidth / 2, oy = qy + o3.offsetTop + o3.offsetHeight / 2;
+      const bar = h("div", "abs", null, g); bar.style.cssText += "height:14px;border-radius:7px;background:#2f6bff;"; put(bar, qx, qy - 38, qw);
+      tw(bar, "op", [[tp - 0.1, 0], [tp, 1], [ck, 1], [ck + 0.3, 0]]);
+      ticks.push((t) => { const u = Math.max(0, Math.min(1, (t - tp) / Math.max(0.5, ck - tp))); bar.style.width = qw * (1 - u) + "px"; });
+      cursor(g, [[a + 1.2, 1500, 820], [ck - 0.25, ox, oy], [ck, ox, oy, true]]);
+      callouts(g, [["Correct!", ck + 0.1, "ok"]], qx + qw + 28, oy, { ax: 0, ay: 0.5 });
+      strip(g, [["Instant feedback", W(s, "^instant", 0, 0.05)]]);
+      captions(g, s);
+    }
+
+    // ================= 14. GUIDE (Organic Chemistry) =================
+    {
+      const s = S.guide, g = scene(s), a = s.start, G = R.guide;
+      const z = view.zoom(1.3, 800, 0), k = 1 / z.s;
+      const { scr } = tour(s, g, "study-guide", [[a + 0.8, view.win(), "inOut"], [a + 1.5, z, "inOut"]], { bottom: L.bandStrip });
+      rim(scr, [G.card[0] + 12, G.header[1], G.card[2] - 24, G.header[3], 14], W(s, "^structured", 0, 0.1), null, { soft: true, k, padX: 0 });
+      strip(g, [["Structured guide", W(s, "^structured")], ["From your lecture", W(s, "^lecture")]]);
+      captions(g, s);
+    }
+
+    // ================= 15. TUTOR (Psychology) =================
+    {
+      const s = S.tutor, g = scene(s), a = s.start, Tu = R.tutor;
+      // Less zoom than the other detail pages, so the whole conversation fits above the band edge.
+      const z = view.zoom(L.detailWide, 540, 0);
+      tour(s, g, "ai-tutor", [[a + 0.9, view.win(), "inOut"], [a + 1.6, z, "inOut"]]);
+      const cx = (rightOf(z, Tu.card) + 1920) / 2, cy = L.band / 2;
+      const tb = h("div", "callouts", null, g); put(tb, cx, cy); tb.style.transform = "translate(-50%, -50%)";
+      const th = h("div", "think", `<span class="lat">${"<u></u>".repeat(9)}</span>Thinking`, tb); th.style.position = "relative";
+      const ta = Math.max(W(s, "^ask"), a + 1.7), tn = W(s, "^answers"); // once the zoom has settled
+      tw(th, "op", [[ta - 0.1, 0], [ta + 0.1, 1], [tn - 0.15, 1], [tn + 0.05, 0]]); tw(th, "s", [[ta - 0.1, 0.7], [ta + 0.4, 1, "back"]]);
+      const cells = th.querySelectorAll("u"), ring = [0, 1, 2, 5, 8, 7, 6, 3];
+      ticks.push((t) => cells.forEach((c, i) => { const n = ring.indexOf(i); c.style.opacity = n < 0 ? 0.07 : Math.max(0.15, 1 - ((((t * 7 - n) % 8) + 8) % 8) / 3.2); }));
+      callouts(g, [["Answers from your lecture", tn]], cx, cy, { ay: 0.5 });
+      captions(g, s);
+    }
+
+    // ================= 16. PRO: meetings (Q3 roadmap sync email) =================
+    {
+      const s = S.pro, g = scene(s), a = s.start, ck = s.clickTimes[0], Em = R.email;
+      // 1.25 puts the band edge in the gap below the first two bullet points of the email.
+      const z = view.zoom(1.25, 800, 0), k = 1 / z.s, [cx, cy] = Em.click;
+      const { scr, c } = tour(s, g, "email-drafts", [[a + 0.9, view.win(), "inOut"], [a + 1.8, z, "inOut"]], { bottom: L.bandStrip });
+      rim(scr, Em.tone, W(s, "^tone"), null, { k });
+      rim(scr, Em.copy, ck + 0.05, null, { k });
+      cursor(scr, [[W(s, "^follow-up") - 0.2, cx - 260, cy + 180], [ck - 0.35, cx, cy], [ck, cx, cy, true]], k);
+      // "Copied" confirmation beside the Copy button, clear of its highlight box.
+      const [bx, by] = c.pt(s.end, [Em.copy[0], cy]);
+      callouts(g, [["Copied", ck + 0.1, "ok"]], bx - 28, by, { ax: 1, ay: 0.5 });
+      strip(g, [["Summary email", W(s, "^summaries")], ["Follow-up emails", W(s, "^follow-up")], ["Tone: Formal", W(s, "^tone")]]);
+      captions(g, s);
+    }
+
+    // ================= 17. WHO IT IS FOR (light) =================
+    {
+      const s = S.who, g = scene(s), a = s.start;
+      const hd = h("div", "abs", "Made for the way you work", g); hd.style.cssText += "font-size:80px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 140);
+      const tl = W(s, "^language", 0, 0.1) + 0.3; // the Spanish transcript follows the last card
+      tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1], [tl, 1], [tl + 0.4, 0]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+      // Who it is for, as three lines of type, each landing as it is said (the last one stays lit).
+      [["Students, before finals.", "^students"], ["Professionals, after meetings.", "^professionals"], ["Anyone learning a language.", "^anyone"]].forEach(([t, w], i, all) => {
+        const e = h("div", "abs who", t, g); put(e, 0, 360 + i * 120);
+        const t0 = W(s, w, 0, 0.15), dim = i + 1 < all.length ? W(s, all[i + 1][1], 0, 0.15) : null;
+        tw(e, "op", dim ? [[t0, 0], [t0 + 0.3, 1], [dim, 1], [dim + 0.3, 0.35], [tl, 0.35], [tl + 0.4, 0]] : [[t0, 0], [t0 + 0.3, 1], [tl, 1], [tl + 0.4, 0]]);
+        tw(e, "y", [[t0, 30], [t0 + 0.6, 0, "expo"]]);
+      });
+      const es = screen(g, "spanish-transcript", true); put(es, 160, 70);
+      tw(es, "op", [[tl, 0], [tl + 0.4, 1]]); tw(es, "y", [[tl, 160], [tl + 0.9, 0, "expo"]]); tw(es, "s", [[tl, 0.6], [tl + 0.9, 0.78, "expo"]]); tw(es, "ry", [[tl, -10], [tl + 1.2, -4, "expo"]]);
+      callouts(g, [["Spanish lecture, transcribed in Spanish", tl + 0.5, "ok"]], 960, 52);
+      captions(g, s);
+    }
+
+    // ================= 18. LIBRARY (analytics): a 40-second reading, a 7-minute class, a 52-minute lecture =================
+    {
+      const s = S.library, g = scene(s), a = s.start, Lb = R.library;
+      // Cropped just above the "Recent recordings" heading, wide enough for the whole list.
+      const top = Math.max(Lb.stats[1] + Lb.stats[3] + 4, Lb.heading[1] - 20), z = view.zoom(1.42, 800, top), k = 1 / z.s;
+      const { scr } = tour(s, g, "analytics", [[a + 0.9, view.win(), "inOut"], [a + 1.8, z, "inOut"]], { bottom: L.bandStrip });
+      const row = ([x, y, w, ht]) => [x + 10, y + 5, w - 20, ht - 10, 12];
+      const [r0, r1, r2] = Lb.rows;
+      rim(scr, row(r0), W(s, "^forty-second"), W(s, "^seven-minute", 0, 0.1), { soft: true, k, pad: 0 });
+      rim(scr, row(r1), W(s, "^seven-minute"), W(s, "^fifty-two", 0, 0.1), { soft: true, k, pad: 0 });
+      rim(scr, row(r2), W(s, "^fifty-two"), null, { soft: true, k, pad: 0 });
+      strip(g, [["Poetry reading: 40s", W(s, "^forty-second")], ["Spanish 201: 7m", W(s, "^seven-minute")], ["Cell Biology: 52m", W(s, "^fifty-two")], ["One library", W(s, "^library")]]);
+      captions(g, s);
+    }
+
+    // ================= 19. TRUST =================
+    {
+      const s = S.trust, g = scene(s), a = s.start;
+      const hl = h("div", "abs", "Your data. Your call.", g); hl.style.cssText += "font-size:96px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hl, 0, 340);
+      tw(hl, "op", [[a + 0.6, 0], [a + 1.1, 1]]); tw(hl, "y", [[a + 0.6, 40], [a + 1.2, 0, "expo"]]);
+      const ex = h("div", "card", "Export my data", g);
+      const dl = h("div", "card", "Delete my account", g);
+      // Two 560 x 200 cards centred on (610, 700) and (1310, 700).
+      put(ex, 330, 600); put(dl, 1030, 600);
+      [[ex, 0.3], [dl, 0.42]].forEach(([el, d]) => { tw(el, "op", [[a + 0.9 + d, 0], [a + 1.4 + d, 1]]); tw(el, "y", [[a + 0.9 + d, 60], [a + 1.6 + d, 0, "expo"]]); });
+      const [c1, c2] = s.clickTimes;
+      tw(ex, "s", [[c1, 1], [c1 + 0.12, 0.95], [c1 + 0.4, 1, "back"]]); tw(dl, "s", [[c2, 1], [c2 + 0.12, 0.95], [c2 + 0.4, 1, "back"]]);
+      cursor(g, [[a + 1.2, 960, 520], [c1 - 0.2, 610, 700], [c1, 610, 700, true], [c2 - 0.2, 1310, 700], [c2, 1310, 700, true]]);
+      callouts(g, [["studyscribe-export.json", c1 + 0.15, "ok"]], 610, 834); callouts(g, [["All data deleted", c2 + 0.15, "ok"]], 1310, 834);
+      captions(g, s);
+    }
+
+    // ================= 20. THREE STEPS (light) =================
+    {
+      const s = S.steps, g = scene(s), a = s.start;
+      const hd = h("div", "abs", "Start in three steps", g); hd.style.cssText += "font-size:84px;font-weight:700;letter-spacing:-0.04em;color:#0b1f55;text-align:center;width:1920px;"; put(hd, 0, 190);
+      tw(hd, "op", [[a + 0.2, 0], [a + 0.7, 1]]); tw(hd, "y", [[a + 0.2, 40], [a + 0.8, 0, "expo"]]);
+      const line = h("div", "abs", null, g); line.style.cssText += "height:6px;border-radius:3px;background:#2f6bff;transform-origin:0 50%;"; put(line, 420, 501, 1080);
+      // The three steps wait, faded, from the start and light up as each is named.
+      const steps = [["1", "Request your invite", "Free to start", "^request", 150], ["2", "Add a lecture", "Record, upload, or paste", "^add", 730], ["3", "Start studying", "Notes, cards, quizzes", "^studying", 1310]];
+      steps.forEach(([n, t, sub, w, x], i) => {
+        const e = h("div", "step", `<em>${n}</em><b>${t}</b><span>${sub}</span>`, g); put(e, x, 440);
+        const t0 = W(s, w, 0, 0.15), tg = a + 0.7 + i * 0.12;
+        tw(e, "op", [[tg, 0], [tg + 0.4, 0.28], [t0, 0.28], [t0 + 0.25, 1]]); tw(e, "y", [[tg, 30], [tg + 0.6, 0, "expo"]]); tw(e, "s", [[t0, 0.94], [t0 + 0.55, 1, "back"]]);
+      });
+      tw(line, "s", [[W(s, "^request", 0, 0.1), 0.001], [W(s, "^studying", 0, 0.1), 1, "inOut"]]);
+      captions(g, s);
+    }
+
+    // ================= 21. FINALE (dark) =================
+    {
+      const s = S.finale, g = scene(s);
+      const names = ["Lecture", "Transcript", "Notes", "Flashcards", "Quiz", "Ready"], widths = [220, 270, 200, 270, 190, 200], gap = 36;
+      const total = widths.reduce((p, w) => p + w, 0) + gap * 5; let x = (1920 - total) / 2;
+      const rowT = s.start + 0.5, rowOut = W(s, "^studyscribe", 0, 0.35);
+      names.forEach((n, i) => {
+        const off = h("div", "pill dark off", n, g), on = h("div", "pill on", n, g); [off, on].forEach((e) => { put(e, x, 470, widths[i]); e.style.justifyContent = "center"; e.style.padding = "0"; });
+        const t0 = rowT + 0.3 + i * 0.4;
+        tw(off, "op", [[rowT - 0.3, 0], [rowT, 1], [rowOut, 1], [rowOut + 0.4, 0]]); tw(off, "y", [[rowT - 0.3, 40], [rowT, 0], [rowOut, 0], [rowOut + 0.4, -50]]);
+        tw(on, "op", [[t0, 0], [t0 + 0.3, 1], [rowOut, 1], [rowOut + 0.4, 0]]); tw(on, "s", [[t0, 0.88], [t0 + 0.5, 1, "back"]]); tw(on, "y", [[rowOut, 0], [rowOut + 0.4, -50]]);
+        x += widths[i] + gap;
+      });
+      const logo = h("img", "abs", null, g); logo.src = "assets/logo.webp"; put(logo, 900, 190, 120, 120);
+      const hd = h("div", "abs mark", "Record once.<br>Study smarter.", g); hd.style.cssText += "font-size:132px;line-height:1.04;"; put(hd, 0, 330, 1920);
+      const cta = h("div", "cta", "Get started free", g); put(cta, 700, 700, 520); cta.style.justifyContent = "center"; cta.style.padding = "0";
+      const url = h("div", "url", "studyscribe-ai.vercel.app", g); put(url, 0, 860);
+      const tIn = W(s, "^studyscribe", 0, 0.3);
+      tw(logo, "op", [[tIn, 0], [tIn + 0.5, 1]]); tw(logo, "s", [[tIn, 0], [tIn + 0.8, 1, "back"]]);
+      tw(hd, "op", [[tIn + 0.2, 0], [tIn + 0.8, 1]]); tw(hd, "y", [[tIn + 0.2, 60], [tIn + 1, 0, "expo"]]); tw(hd, "blur", [[tIn + 0.2, 16], [tIn + 0.8, 0]]);
+      tw(cta, "op", [[W(s, "^try") - 0.2, 0], [W(s, "^try") + 0.3, 1]]); tw(cta, "s", [[W(s, "^try") - 0.2, 0.8], [W(s, "^try") + 0.4, 1, "back"]]);
+      tw(url, "op", [[W(s, "^free") - 0.1, 0], [W(s, "^free") + 0.5, 1]]);
+      captions(g, s);
+    }
+
+    // ---- the band of every scene change (see WIPE) --------------------------------------------
+    TL.scenes.slice(1).forEach((s) => {
+      const w = h("div", "wipe", "<i></i>"); w.style.zIndex = 5;
+      tw(w, "x", [[s.start - WIPE.pre, WIPE.from], [s.start + WIPE.post, WIPE.to, "inOut"]]);
+      tw(w, "op", [[s.start - WIPE.pre - 0.01, 0], [s.start - WIPE.pre, 1], [s.start + WIPE.post, 1], [s.start + WIPE.post + 0.01, 0]]);
+    });
+
+    window.renderAt = (t) => {
+      const state = new Map();
+      for (const tr of tracks) { let st = state.get(tr.el); if (!st) { st = Object.assign({}, DEF); state.set(tr.el, st); } st[tr.prop] = val(tr.frames, t); }
+      for (const [el, st] of state) {
+        el.style.transform = `translate3d(${st.x}px,${st.y}px,0) rotateX(${st.rx}deg) rotateY(${st.ry}deg) rotate(${st.r}deg) scale(${st.s})`;
+        el.style.opacity = st.op; el.style.visibility = st.op < 0.003 ? "hidden" : "visible"; el.style.filter = st.blur > 0.1 ? `blur(${st.blur}px)` : "none";
+      }
+      ticks.forEach((f) => f(t));
+    };
   };
+  // Positions measured from laid-out text (the challenge card) need the real fonts, so the scenes are
+  // built once they have loaded; render.mjs waits for window.renderAt.
+  Promise.all(["400 20px Geist", "700 20px Geist", "500 20px 'Geist Mono'"].map((f) => document.fonts.load(f))).then(build);
 })();

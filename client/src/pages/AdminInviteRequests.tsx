@@ -76,7 +76,7 @@ export default function AdminInviteRequests() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -137,15 +137,15 @@ export default function AdminInviteRequests() {
             </Button>
           </Link>
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-500" />
+            <Users className="w-5 h-5 text-primary" />
             <h1 className="text-lg font-semibold text-gray-900">Invite Requests</h1>
             {pending.length > 0 && (
-              <Badge className="bg-indigo-600 text-white text-xs">{pending.length} pending</Badge>
+              <Badge className="bg-primary text-white text-xs">{pending.length} pending</Badge>
             )}
           </div>
         </div>
         <Link href="/admin/invite-codes">
-          <Button variant="outline" size="sm" className="gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+          <Button variant="outline" size="sm" className="gap-1.5 text-primary border-primary/30 hover:bg-primary/5">
             Manage Invite Codes
           </Button>
         </Link>
@@ -159,10 +159,10 @@ export default function AdminInviteRequests() {
           </h2>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary/70" />
             </div>
           ) : pending.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
               <Clock className="w-8 h-8 mx-auto mb-2 text-gray-300" />
               <p>No pending requests</p>
             </div>
@@ -181,7 +181,7 @@ export default function AdminInviteRequests() {
                         "{req.reason}"
                       </p>
                     )}
-                    <p className="text-xs text-gray-400 mt-2">
+                    <p className="text-xs text-gray-500 mt-2">
                       Requested {new Date(req.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
@@ -222,14 +222,14 @@ export default function AdminInviteRequests() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700 text-sm">{req.name}</span>
-                      <span className="text-gray-400 text-xs">{req.email}</span>
+                      <span className="text-gray-500 text-xs">{req.email}</span>
                       {statusBadge(req.status)}
                     </div>
                     {req.reviewNote && (
-                      <p className="text-xs text-gray-400 mt-1">Note: {req.reviewNote}</p>
+                      <p className="text-xs text-gray-500 mt-1">Note: {req.reviewNote}</p>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 shrink-0">
+                  <span className="text-xs text-gray-500 shrink-0">
                     {new Date(req.createdAt).toLocaleDateString()}
                   </span>
                 </div>
@@ -255,7 +255,7 @@ export default function AdminInviteRequests() {
             </p>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Note <span className="text-gray-400 font-normal">(optional)</span>
+                Note <span className="text-gray-500 font-normal">(optional)</span>
               </label>
               <Textarea
                 placeholder={actionType === "approve" ? "Welcome note for your records..." : "Reason for denial..."}
@@ -297,14 +297,14 @@ export default function AdminInviteRequests() {
               Share this invite code with <strong>{selectedRequest?.name}</strong> ({selectedRequest?.email}). It expires in 30 days.
             </p>
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-              <code className="flex-1 text-indigo-700 font-mono font-semibold text-lg tracking-wider">
+              <code className="flex-1 text-primary font-mono font-semibold text-lg tracking-wider">
                 {approvedCode}
               </code>
               <Button size="sm" variant="ghost" onClick={copyCode} className="shrink-0">
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
               </Button>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               You also received a notification with this code. Forward it to the user via email.
             </p>
           </div>

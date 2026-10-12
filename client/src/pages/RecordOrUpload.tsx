@@ -13,6 +13,7 @@ import { probeAudioDuration } from "@/lib/probeAudioDuration";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
 import { MarkMoment } from "@/components/MarkMoment";
 import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
+import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
 
 type Mode = "choose" | "record" | "upload" | "link";
 
@@ -265,7 +266,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "choose") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "hidden" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "hidden" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">
@@ -388,7 +389,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "record") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -601,7 +602,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "link") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -709,7 +710,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   if (mode === "upload") {
     return (
       <div className={embedded ? "text-foreground" : "min-h-screen bg-background text-foreground"}>
-        <header className={`border-b border-border bg-background/95 backdrop-blur-md ${embedded ? "" : "sticky top-0 z-40"}`}>
+        <header className={`border-b border-border bg-background/95 ${embedded ? "" : "sticky top-0 z-40"}`}>
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
@@ -735,10 +736,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               <>
                 {/* File Upload Area */}
                 <Card
-                  className="p-12 border-2 border-dashed border-border hover:border-accent/50 transition-colors cursor-pointer"
+                  className={`p-12 border-2 border-dashed border-border hover:border-accent/50 transition-colors cursor-pointer ${PRESSABLE_FOCUS}`}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
+                  {...pressable(() => fileInputRef.current?.click())}
                 >
                   <div className="text-center space-y-4">
                     <UploadCloud className="w-16 h-16 text-muted-foreground mx-auto" />

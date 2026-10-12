@@ -22,6 +22,7 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [confirmedAge, setConfirmedAge] = useState(false);
   const [inviteChecked, setInviteChecked] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -74,8 +75,14 @@ export default function Signup() {
       return;
     }
 
+    if (!confirmedAge) {
+      toast.error(`Please confirm you are at least ${MIN_AGE} years old to continue`);
+      setIsLoading(false);
+      return;
+    }
     if (!acceptedTerms) {
       toast.error("Please accept the Terms of Service and Privacy Policy to continue");
+      setIsLoading(false);
       return;
     }
 
@@ -96,6 +103,7 @@ export default function Signup() {
           name: formData.name,
           inviteCode,
           acceptedTerms,
+          confirmedAge,
         }),
       });
 
@@ -115,6 +123,10 @@ export default function Signup() {
   };
 
   const handleGoogleSignup = async () => {
+    if (!confirmedAge) {
+      toast.error(`Please confirm you are at least ${MIN_AGE} years old to continue`);
+      return;
+    }
     if (!acceptedTerms) {
       toast.error("Please accept the Terms of Service and Privacy Policy to continue");
       return;
@@ -124,6 +136,8 @@ export default function Signup() {
       const params = new URLSearchParams({
         origin: window.location.origin,
         mode: "signup",
+        acceptedTerms: "1",
+        confirmedAge: "1",
       });
       const response = await fetch(`/api/auth/google?${params}`, {
         method: "GET",
@@ -178,14 +192,23 @@ export default function Signup() {
           <p className="text-muted-foreground">Welcome! Your invite has been verified.</p>
         </div>
 
-        <div className="mb-5 flex items-start gap-3 rounded-lg border border-border bg-secondary/50 p-3">
-          <Checkbox id="accept-terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
-          <label htmlFor="accept-terms" className="text-sm text-foreground">
-            I am at least {MIN_AGE} years old and agree to the{" "}
-            <a href="/terms" target="_blank" rel="noopener" className="font-medium text-primary underline">Terms of Service</a> and{" "}
-            <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-primary underline">Privacy Policy</a>.
-          </label>
-        </div>
+        <fieldset className="mb-5 space-y-3 rounded-lg border border-border bg-secondary/50 p-3">
+          <legend className="sr-only">Before you sign up</legend>
+          <div className="flex items-start gap-3">
+            <Checkbox id="confirm-age" checked={confirmedAge} onCheckedChange={(v) => setConfirmedAge(v === true)} className="mt-0.5" />
+            <label htmlFor="confirm-age" className="text-sm text-foreground">
+              I am at least {MIN_AGE} years old. If I am under 18, a parent or guardian has agreed to the Terms for me.
+            </label>
+          </div>
+          <div className="flex items-start gap-3">
+            <Checkbox id="accept-terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
+            <label htmlFor="accept-terms" className="text-sm text-foreground">
+              I agree to the{" "}
+              <a href="/terms" target="_blank" rel="noopener" className="font-medium text-primary underline">Terms of Service</a> and have read the{" "}
+              <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-primary underline">Privacy Policy</a>.
+            </label>
+          </div>
+        </fieldset>
 
         {/* Google Sign-Up Button */}
         <Button

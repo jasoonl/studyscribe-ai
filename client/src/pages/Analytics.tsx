@@ -1,3 +1,4 @@
+import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
 import { trpc } from "@/lib/trpc";
 import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useLocation } from "wouter";
@@ -100,8 +101,8 @@ export default function Analytics() {
                   {data.recentActivity.map((r) => (
                     <div
                       key={r.id}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/recording/${r.id}`)}
+                      className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors ${PRESSABLE_FOCUS}`}
+                      {...pressable(() => navigate(`/recording/${r.id}`), "link")}
                     >
                       <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                         <Mic className="w-4 h-4 text-muted-foreground" />

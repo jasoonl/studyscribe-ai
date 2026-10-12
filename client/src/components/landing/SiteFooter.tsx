@@ -1,10 +1,11 @@
 import { Link } from "wouter";
-import { CONTACT_EMAIL } from "@/lib/legal";
+import { CONTACT_EMAIL, OPERATOR_NAME } from "@shared/legal";
+import { openCookieSettings } from "@/lib/cookieConsent";
 
 const COLUMNS = [
   { title: "Product", links: [["Features", "/#features"], ["How it works", "/#how"], ["Pricing", "/pricing"], ["Demo", "/demo"]] },
   { title: "Account", links: [["Sign in", "/login"], ["Get started", "/request-access"], ["Settings", "/settings"]] },
-  { title: "Legal", links: [["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"]] },
+  { title: "Legal", links: [["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Cookie Policy", "/cookies"], ["Refund Policy", "/refunds"], ["Credits and licences", "/credits"]] },
 ];
 
 export default function SiteFooter() {
@@ -29,14 +30,21 @@ export default function SiteFooter() {
                   )}
                 </li>
               ))}
+              {column.title === "Legal" && (
+                <li>
+                  <button type="button" onClick={openCookieSettings} className="transition-colors hover:text-primary">Cookie settings</button>
+                </li>
+              )}
             </ul>
           </nav>
         ))}
       </div>
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-muted-foreground sm:flex-row sm:justify-between sm:px-6">
-          <p>&copy; 2026 StudyScribe AI</p>
-          {CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-primary">{CONTACT_EMAIL}</a>}
+          <p>&copy; 2026 {OPERATOR_NAME}. All rights reserved.</p>
+          <p>
+            Contact: <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-primary">{CONTACT_EMAIL}</a>
+          </p>
         </div>
       </div>
     </footer>

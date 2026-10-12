@@ -28,7 +28,7 @@ export default function FeatureBento() {
               <h3 className="text-2xl font-bold tracking-[-0.03em] sm:text-3xl">{cell.title}</h3>
               <p className={`mt-3 max-w-sm text-base leading-snug ${cell.tone === "blue" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{cell.text}</p>
               <div className="mt-8 flex-1 overflow-hidden rounded-lg border border-border/60 bg-card">
-                <img src={cell.image} alt={cell.alt} loading="lazy" className="h-full w-full object-cover object-top" />
+                <img src={cell.image} alt={cell.alt} width={1600} height={896} loading="lazy" className="h-full w-full object-cover object-top" />
               </div>
             </article>
           ))}

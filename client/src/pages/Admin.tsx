@@ -56,7 +56,7 @@ export default function Admin() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -86,7 +86,7 @@ export default function Admin() {
           </Button>
         </Link>
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-indigo-500" />
+          <ShieldCheck className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-semibold text-gray-900">Admin</h1>
         </div>
       </div>
@@ -95,26 +95,26 @@ export default function Admin() {
         {/* Stat cards / quick links */}
         <div className="grid sm:grid-cols-3 gap-4">
           <Link href="/admin/invite-requests">
-            <Card className="p-5 hover:border-indigo-300 transition-colors cursor-pointer">
+            <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Invite Requests</p>
                   <p className="text-2xl font-bold mt-1">{pendingCount}</p>
-                  <p className="text-xs text-gray-400 mt-1">pending review</p>
+                  <p className="text-xs text-gray-500 mt-1">pending review</p>
                 </div>
-                <Clock className="w-6 h-6 text-indigo-400" />
+                <Clock className="w-6 h-6 text-primary/70" />
               </div>
             </Card>
           </Link>
           <Link href="/admin/invite-codes">
-            <Card className="p-5 hover:border-indigo-300 transition-colors cursor-pointer">
+            <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Invite Codes</p>
                   <p className="text-2xl font-bold mt-1">Manage</p>
-                  <p className="text-xs text-gray-400 mt-1">issue &amp; revoke codes</p>
+                  <p className="text-xs text-gray-500 mt-1">issue &amp; revoke codes</p>
                 </div>
-                <KeyRound className="w-6 h-6 text-indigo-400" />
+                <KeyRound className="w-6 h-6 text-primary/70" />
               </div>
             </Card>
           </Link>
@@ -123,9 +123,9 @@ export default function Admin() {
               <div>
                 <p className="text-sm text-gray-500">Total Users</p>
                 <p className="text-2xl font-bold mt-1">{users?.length ?? "…"}</p>
-                <p className="text-xs text-gray-400 mt-1">{adminCount} admin{adminCount === 1 ? "" : "s"}</p>
+                <p className="text-xs text-gray-500 mt-1">{adminCount} admin{adminCount === 1 ? "" : "s"}</p>
               </div>
-              <Users className="w-6 h-6 text-indigo-400" />
+              <Users className="w-6 h-6 text-primary/70" />
             </div>
           </Card>
         </div>
@@ -188,7 +188,7 @@ export default function Admin() {
                     </div>
                     <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${percent >= 90 ? "bg-red-500" : percent >= 70 ? "bg-amber-500" : "bg-indigo-500"}`}
+                        className={`h-full rounded-full ${percent >= 90 ? "bg-red-500" : percent >= 70 ? "bg-amber-500" : "bg-primary"}`}
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -260,7 +260,7 @@ export default function Admin() {
           <Card className="overflow-hidden">
             {usersLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-primary/70" />
               </div>
             ) : (
               <Table>

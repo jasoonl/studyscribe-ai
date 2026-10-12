@@ -4,6 +4,8 @@ import { Route, Switch, Redirect } from "wouter";
 import { lazy, Suspense } from "react";
 import { RecorderProvider } from "./contexts/RecorderContext";
 import RecordingIndicator from "./components/RecordingIndicator";
+import CookieBanner from "./components/CookieBanner";
+import SkipLink from "./components/SkipLink";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./components/NotificationContainer";
@@ -16,6 +18,9 @@ import { Loader2 } from "lucide-react";
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Cookies = lazy(() => import("./pages/Cookies"));
+const Refunds = lazy(() => import("./pages/Refunds"));
+const Credits = lazy(() => import("./pages/Credits"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -90,6 +95,9 @@ function Router() {
         <Route path="/demo" component={Demo} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
+        <Route path="/cookies" component={Cookies} />
+        <Route path="/refunds" component={Refunds} />
+        <Route path="/credits" component={Credits} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/billing" component={Billing} />
         <Route path="/shared/:token" component={PublicSharedRecording} />
@@ -141,9 +149,11 @@ function App() {
         <NotificationProvider>
           <TooltipProvider>
             <RecorderProvider>
+              <SkipLink />
               <Toaster />
               <Router />
               <RecordingIndicator />
+              <CookieBanner />
             </RecorderProvider>
           </TooltipProvider>
         </NotificationProvider>

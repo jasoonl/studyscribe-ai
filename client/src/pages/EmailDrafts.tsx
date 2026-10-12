@@ -102,7 +102,7 @@ export default function EmailDrafts() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href={`/recording/${recId}`}>
             <Button variant="ghost" size="sm" className="gap-2">

@@ -118,6 +118,8 @@ export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
     googleId: googleUser.id,
     loginMethod: "google",
     emailVerified: 1,
+    // Only reached from sign-up, which requires the age and Terms confirmations.
+    termsAcceptedAt: new Date(),
     role: "user",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -136,11 +138,11 @@ export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
 /**
  * Generate Google OAuth URL
  */
-export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string): string {
+export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string, consented = false): string {
   const scopes = ["openid", "email", "profile"];
 
   // Encode origin and mode in state
-  const stateData = JSON.stringify({ origin, mode });
+  const stateData = JSON.stringify(consented ? { origin, mode, consented } : { origin, mode });
   const state = Buffer.from(stateData).toString("base64");
 
   const finalRedirectUri = redirectUri || getGoogleRedirectUri(origin);
