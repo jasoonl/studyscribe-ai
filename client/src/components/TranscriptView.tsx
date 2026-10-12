@@ -288,6 +288,7 @@ export function TranscriptView({
         ref={listRef}
         onScroll={() => { if (!programmaticScroll.current) lastManualScroll.current = Date.now(); }}
         onMouseUp={captureSelection}
+        onTouchEnd={() => window.setTimeout(captureSelection, 350)}
         onKeyUp={event => { if (event.shiftKey) captureSelection(); }}
         className="relative max-h-[32rem] space-y-1 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2"
       >
@@ -356,7 +357,7 @@ export function TranscriptView({
                   }}
                   aria-label={`Comment on the line at ${formatTranscriptTimestamp(segment.start)}`}
                   title="Comment on this line"
-                  className={`shrink-0 rounded p-1 opacity-0 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary group-hover/row:opacity-100 ${isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                  className={`shrink-0 rounded p-1 opacity-0 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary group-hover/row:opacity-100 [@media(hover:none)]:opacity-100 ${isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
                 >
                   <MessageSquarePlus className="h-4 w-4" />
                 </button>

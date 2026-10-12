@@ -19,7 +19,7 @@ export function RoleSelect({
 }) {
   return (
     <Select value={value} onValueChange={next => onChange(next as ShareRole)} disabled={disabled}>
-      <SelectTrigger aria-label={label} className={cn("h-9 w-[8.5rem] shrink-0 text-sm", className)}>
+      <SelectTrigger aria-label={label} className={cn("h-9 w-[9.5rem] shrink-0 text-sm", className)}>
         <SelectValue>{SHARE_ROLE_LABELS[value].label}</SelectValue>
       </SelectTrigger>
       <SelectContent align="end" className="w-72">

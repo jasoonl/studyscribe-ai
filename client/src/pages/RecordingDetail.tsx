@@ -257,7 +257,7 @@ export default function RecordingDetail() {
             </Button>
           </Link>
           <h1 className="text-xl font-bold flex-1 ml-4 truncate">{recording.title}</h1>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsShareDialogOpen(true)}>
+          <Button variant="outline" size="sm" className="gap-2" aria-label="Share" onClick={() => setIsShareDialogOpen(true)}>
             <Share2 className="w-4 h-4" />
             <span className="hidden sm:inline">Share</span>
           </Button>

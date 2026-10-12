@@ -144,7 +144,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
         </TabsList>
 
         <TabsContent value="transcript" className="mt-4">
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             {role && transcript && roleAllows(role, "edit") && (
               <div className="mb-4 flex justify-end">
                 {!editing && (

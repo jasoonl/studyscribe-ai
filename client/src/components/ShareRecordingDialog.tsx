@@ -46,8 +46,8 @@ function GroupShares({ recordingId, open }: { recordingId: number; open: boolean
       ) : (
         <ul className="space-y-2">
           {data.groups.map(group => (
-            <li key={group.id} className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
+            <li key={group.id} className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0 flex-1 basis-full sm:basis-0">
                 <p className="truncate text-sm font-medium">{group.name}</p>
                 {group.viaCourseRole && !group.shareId && (
                   <p className="text-xs text-muted-foreground">Shared through its course: {roleLabel(group.viaCourseRole).toLowerCase()}</p>
