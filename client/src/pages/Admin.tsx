@@ -122,7 +122,7 @@ export default function Admin() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Users</p>
-                <p className="text-2xl font-bold mt-1">{users?.length ?? "—"}</p>
+                <p className="text-2xl font-bold mt-1">{users?.length ?? "…"}</p>
                 <p className="text-xs text-gray-400 mt-1">{adminCount} admin{adminCount === 1 ? "" : "s"}</p>
               </div>
               <Users className="w-6 h-6 text-indigo-400" />
@@ -276,7 +276,7 @@ export default function Admin() {
                 <TableBody>
                   {users?.map((u) => (
                     <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.name || "—"}</TableCell>
+                      <TableCell className="font-medium">{u.name || "No name"}</TableCell>
                       <TableCell className="text-gray-500">{u.email}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">{u.loginMethod || "unknown"}</Badge>

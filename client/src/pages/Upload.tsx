@@ -264,7 +264,7 @@ export default function Upload() {
                   </div>
                   {uploadComplete && (
                     <p className="text-xs text-muted-foreground text-center">
-                      Transcription in progress — you'll be redirected automatically when done.
+                      Transcription in progress. You'll be redirected automatically when it's done.
                     </p>
                   )}
                 </div>
@@ -308,7 +308,7 @@ export default function Upload() {
 
           <Card className="mt-6 p-6 border-2 border-border">
             <h3 className="font-bold mb-3">Supported Formats</h3>
-            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4, MOV — max {MAX_UPLOAD_LABEL}</p>
+            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4 or MOV, up to {MAX_UPLOAD_LABEL}</p>
           </Card>
         </div>
       </main>

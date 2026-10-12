@@ -7,16 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, Clock, ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-
-function formatDuration(seconds: number | null | undefined) {
-  if (!seconds) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
+import { formatRecordingDuration } from "@/lib/formatDuration";
 
 function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "—";
+  if (!date) return "Unknown date";
   return new Date(date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -149,7 +143,7 @@ export default function KnowledgeBase() {
                         )}
                         {!result.snippet && (
                           <p className="text-xs sm:text-sm text-muted-foreground italic">
-                            Title match — open to view transcript
+                            Title match. Open it to see the transcript.
                           </p>
                         )}
                       </div>
@@ -162,7 +156,7 @@ export default function KnowledgeBase() {
                         </Badge>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
-                          {formatDuration(result.recordingDuration)}
+                          {formatRecordingDuration(result.recordingDuration)}
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {formatDate(result.recordingCreatedAt)}

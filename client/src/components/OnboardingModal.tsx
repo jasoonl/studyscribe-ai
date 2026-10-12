@@ -11,22 +11,22 @@ const steps = [
     title: "Record or Upload",
     description:
       "Use the built-in recorder to capture lectures and meetings live, or upload an existing audio file (MP3, WAV, M4A, WebM). StudyScribe AI handles the rest.",
-    tip: "Tip: You can record directly from your browser — no app needed.",
+    tip: "Tip: You can record directly in your browser, no app needed.",
     color: "bg-blue-50",
     dot: "bg-blue-500",
   },
   {
-    icon: <FileText className="w-10 h-10 text-purple-500" />,
+    icon: <FileText className="w-10 h-10 text-primary" />,
     title: "Get Your Transcript",
     description:
       "Your audio is automatically transcribed using AI. Review and edit the transcript, then explore key insights, action items, and summaries generated for you.",
     tip: "Tip: Transcription usually takes 1–2 minutes for a 30-minute recording.",
-    color: "bg-purple-50",
-    dot: "bg-purple-500",
+    color: "bg-brand-mist",
+    dot: "bg-primary",
   },
   {
     icon: <Sparkles className="w-10 h-10 text-amber-500" />,
-    title: "Study Smarter with AI",
+    title: "Study from the Transcript",
     description:
       "Generate study guides, practice quizzes, email drafts, and flashcards from any recording. Use the AI Assistant to ask questions about your content.",
     tip: "Tip: Try the Knowledge Base to search across all your transcripts at once.",

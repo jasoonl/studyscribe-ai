@@ -581,7 +581,7 @@ export default function RecordingDetail() {
                       />
                     ) : (
                       <div className="space-y-4">
-                        <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-indigo-50 p-5 dark:from-cyan-950/30 dark:to-indigo-950/30">
+                        <Card className="border-2 border-primary/20 bg-primary/5 p-5 dark:bg-primary/15">
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <h3 className="font-bold">Ready to actively recall?</h3>

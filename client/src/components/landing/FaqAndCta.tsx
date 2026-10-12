@@ -1,6 +1,5 @@
 import { Link } from "wouter";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import Reveal from "./Reveal";
 
 const FAQ = [
   { q: "How accurate are the transcripts?", a: "Accuracy depends on audio quality, accents and background noise. Clear recordings transcribe well, and you can edit any transcript by hand. AI-generated notes, flashcards and answers can contain mistakes, so check them against your source material." },
@@ -16,9 +15,7 @@ export function Faq() {
   return (
     <section id="faq" className="scroll-mt-24 py-32">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        <Reveal>
-          <h2 className="text-center text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Questions, answered</h2>
-        </Reveal>
+        <h2 className="text-center text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Questions, answered</h2>
         <Accordion type="single" collapsible className="mt-10">
           {FAQ.map((item) => (
             <AccordionItem key={item.q} value={item.q}>
@@ -35,19 +32,18 @@ export function Faq() {
 export function FinalCta() {
   return (
     <section className="px-4 pb-24 sm:px-6">
-      <Reveal className="relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-brand-deep px-6 py-16 text-center text-primary-foreground shadow-2xl shadow-primary/30 sm:px-12">
-        <div className="aurora-blob pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand-sky/40 blur-3xl" aria-hidden="true" />
-        <h2 className="relative text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Your next lecture deserves better notes</h2>
-        <p className="relative mx-auto mt-4 max-w-lg text-primary-foreground/80">Try StudyScribe on one recording and see the difference.</p>
-        <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/request-access" className="whitespace-nowrap rounded-full bg-background px-7 py-3.5 text-base font-semibold text-primary shadow-lg transition-transform hover:-translate-y-0.5 active:scale-[0.98]">
+      <div className="mx-auto max-w-5xl rounded-xl bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
+        <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Your next lecture deserves better notes</h2>
+        <p className="mx-auto mt-4 max-w-lg text-primary-foreground/80">Try StudyScribe on one recording and see the difference.</p>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/request-access" className="whitespace-nowrap rounded-md bg-background px-7 py-3.5 text-base font-semibold text-primary transition-[filter,transform] hover:brightness-95 active:scale-[0.98]">
             Get started
           </Link>
-          <Link href="/demo" className="whitespace-nowrap rounded-full border border-white/40 px-7 py-3.5 text-base font-semibold text-primary-foreground transition-colors hover:bg-white/10">
+          <Link href="/demo" className="whitespace-nowrap rounded-md border border-white/40 px-7 py-3.5 text-base font-semibold text-primary-foreground transition-colors hover:bg-white/10">
             Watch the demo
           </Link>
         </div>
-      </Reveal>
+      </div>
     </section>
   );
 }

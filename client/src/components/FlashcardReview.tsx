@@ -135,7 +135,7 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
           <Button variant="outline" size="sm" onClick={onExit}>Browse cards</Button>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary" aria-label={`${Math.round(progress)}% through review set`}>
-          <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
           <div className="rounded-xl bg-slate-100 px-2 py-2 dark:bg-slate-800"><span className="font-bold">{counts.new}</span><span className="ml-1 text-muted-foreground">new</span></div>

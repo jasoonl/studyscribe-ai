@@ -23,8 +23,10 @@ export const DEMO_SLIDES: Slide[] = [
   { image: "/demo/analytics.jpg", title: "Track your progress", caption: "See your recordings, transcripts, flashcards and quizzes at a glance." },
 ];
 
-/** Built by scripts/make-demo-video.swift from the same screenshots. */
+/** Rendered by scripts/demo-video/v2 (see CLAUDE.md). */
 const DEMO_VIDEO = "/demo/studyscribe-demo.mp4";
+/** A frame from the video (20s in), so the player never opens on a black frame. */
+const DEMO_POSTER = "/demo/poster.jpg";
 
 const SLIDE_MS = 6000;
 const TICK_MS = 100;
@@ -109,6 +111,7 @@ export default function DemoWalkthrough() {
     return (
       <video
         src={DEMO_VIDEO}
+        poster={DEMO_POSTER}
         controls
         playsInline
         preload="metadata"
