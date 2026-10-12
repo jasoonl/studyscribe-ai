@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
-import { ArchiveRestore, ArrowLeft, Archive, Loader2, Pencil, Sparkles } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, Archive, GraduationCap, Loader2, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CourseDialog } from "@/components/CourseDialog";
 import { CourseDot } from "@/components/CourseDot";
@@ -80,6 +80,12 @@ export default function CoursePage() {
                   <Sparkles className="h-4 w-4" />
                   <span className="hidden sm:inline">Ask this course</span>
                   <span className="sm:hidden">Ask</span>
+                </Button>
+              </Link>
+              <Link href={`/exam-packs?course=${course.id}`}>
+                <Button size="sm" variant="outline" className="gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  <span className="sr-only sm:not-sr-only">Exam pack</span>
                 </Button>
               </Link>
               <Button size="sm" variant="outline" className="gap-2" onClick={() => setEditing(true)}>
