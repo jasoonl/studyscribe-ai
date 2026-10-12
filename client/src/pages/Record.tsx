@@ -9,6 +9,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
 import { formatClockTime } from "@/lib/recordingClock";
+import { MarkMoment } from "@/components/MarkMoment";
 
 export default function Record() {
   // ALL hooks at the top — no early returns before hooks
@@ -90,7 +91,7 @@ export default function Record() {
     setIsUploading(true);
     setUploadProgress(10);
     try {
-      const { blob: audioBlob, mimeType: actualMimeType, durationSeconds } = finished;
+      const { blob: audioBlob, mimeType: actualMimeType, durationSeconds, bookmarks } = finished;
       const fileName = `recording-${Date.now()}.${actualMimeType.startsWith("audio/mp4") ? "mp4" : "webm"}`;
       const directUpload = await uploadAudioDirectly(audioBlob, fileName, setUploadProgress);
       const base64String = directUpload ? undefined : await readBlobAsBase64(audioBlob);
@@ -101,6 +102,7 @@ export default function Record() {
         audience,
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration: durationSeconds,
+        bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
       });
 
       setUploadProgress(100);
@@ -214,6 +216,7 @@ export default function Record() {
                   </>
                 )}
               </div>
+              {!uploadComplete && <MarkMoment />}
 
               {/* Upload Progress */}
               {(isUploading || uploadComplete) && (

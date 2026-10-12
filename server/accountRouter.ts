@@ -6,6 +6,7 @@ import {
   pushSubscriptions, quizAttempts, quizzes, recordingShares, recordingTags, recordings, studyGuides, studyNotes, tags,
   transcripts, userNotifications, users,
 } from "../drizzle/schema";
+import { deleteBookmarksForUser, listBookmarksForUser } from "./bookmarks";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
@@ -70,6 +71,7 @@ export const accountRouter = router({
       studyGuides: await db.select().from(studyGuides).where(eq(studyGuides.userId, userId)),
       quizzes: quizRows,
       quizAttempts: await db.select().from(quizAttempts).where(eq(quizAttempts.userId, userId)),
+      bookmarks: await listBookmarksForUser(userId),
       emailDrafts: await db.select().from(emailDrafts).where(eq(emailDrafts.userId, userId)),
       chatHistory: await db.select().from(chatHistory).where(eq(chatHistory.userId, userId)),
       tags: await db.select().from(tags).where(eq(tags.userId, userId)),
@@ -137,6 +139,7 @@ export const accountRouter = router({
       await db.delete(chatHistory).where(eq(chatHistory.userId, userId));
       await db.delete(studyGuides).where(eq(studyGuides.userId, userId));
       await db.delete(quizAttempts).where(eq(quizAttempts.userId, userId));
+      await deleteBookmarksForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

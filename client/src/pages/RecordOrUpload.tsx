@@ -11,6 +11,7 @@ import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { probeAudioDuration } from "@/lib/probeAudioDuration";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
+import { MarkMoment } from "@/components/MarkMoment";
 import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 
 type Mode = "choose" | "record" | "upload" | "link";
@@ -121,7 +122,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
 
     setIsUploading(true);
     try {
-      const { blob: audioBlob, mimeType, durationSeconds } = finished;
+      const { blob: audioBlob, mimeType, durationSeconds, bookmarks } = finished;
       const extension = mimeType.startsWith("audio/mp4") ? "mp4" : "webm";
       const directUpload = await uploadAudioDirectly(audioBlob, `recording-${Date.now()}.${extension}`);
       const base64String = directUpload ? undefined : await readAsBase64(audioBlob);
@@ -131,6 +132,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration: durationSeconds,
         language: languageForRequest(language),
+        bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
       });
       setUploadComplete(true);
       recorder.discard();
@@ -447,6 +449,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                         </>
                       )}
                     </div>
+                    <MarkMoment />
                   </div>
                 </Card>
 

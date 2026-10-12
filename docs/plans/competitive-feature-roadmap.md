@@ -141,7 +141,10 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 
 Phases are ordered by student value ÷ effort, and so that each phase ships independently on `main` (Vercel auto-deploys).
 
-### Phase 1 — Quick wins on the existing recording page (≈2 weeks)
+### Phase 1 — Quick wins on the existing recording page (≈2 weeks) · shipped 2026-10-12
+
+Status: B1 rename speakers (with merge), B3 search, B4 follow-along scrolling, A7 bookmarks (needs `npm run db:migrate` for migration 0018), A8 pause/resume (already existed), E1 TXT/SRT/VTT export, E2 Anki/Quizlet (already existed), C4 automatic notes, C5 note templates and F7 note translation are done. DOCX export is left out because it needs a new dependency, and transcript translation is left out because a long transcript can exceed the 60s function limit.
+
 B1 rename speakers · B3 transcript search · B4 follow-along highlight · A7 bookmarks · A8 pause/resume · E1 TXT/DOCX/SRT export · E2 Anki/Quizlet CSV · C4 auto-summary · C5 summary templates · F7 translate.
 _Why first_: all build on existing components (`RecordingDetail` tabs, `AudioPlayer`, `ExportButton`, `studyNotes`), no new providers, no new env vars.
 

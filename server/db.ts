@@ -1,7 +1,7 @@
 import { eq, and, like, or, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
-import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares, appSettings } from "../drizzle/schema";
+import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares, appSettings, type Transcript } from "../drizzle/schema";
 import crypto from "crypto";
 import { ENV } from './_core/env';
 
@@ -516,6 +516,22 @@ export async function updateTranscriptText(data: {
   return getTranscriptByRecordingId(data.recordingId);
 }
 
+export async function updateTranscriptSegments(data: {
+  recordingId: number;
+  userId: number;
+  segments: NonNullable<Transcript["segments"]>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(transcripts)
+    .set({ segments: data.segments, updatedAt: new Date() })
+    .where(and(eq(transcripts.recordingId, data.recordingId), eq(transcripts.userId, data.userId)));
+
+  return getTranscriptByRecordingId(data.recordingId);
+}
+
 // Study notes helpers
 export async function createStudyNote(data: {
   recordingId: number;
@@ -528,6 +544,14 @@ export async function createStudyNote(data: {
   if (!db) throw new Error("Database not available");
 
   return db.insert(studyNotes).values(data);
+}
+
+export async function getStudyNoteById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const rows = await db.select().from(studyNotes).where(eq(studyNotes.id, id)).limit(1);
+  return rows[0];
 }
 
 export async function getStudyNotesByRecordingId(recordingId: number) {

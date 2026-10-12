@@ -391,6 +391,23 @@ export const recordingShares = mysqlTable("recordingShares", {
 export type RecordingShare = typeof recordingShares.$inferSelect;
 export type InsertRecordingShare = typeof recordingShares.$inferInsert;
 
+/**
+ * Moments the user marked while recording ("Mark moment") or while listening
+ * back, in seconds from the start of the audio.
+ */
+export const recordingBookmarks = mysqlTable("recordingBookmarks", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  atSeconds: int("atSeconds").notNull(),
+  label: varchar("label", { length: 120 }),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("recordingBookmarks_recording_idx").on(table.recordingId),
+]);
+
+export type RecordingBookmark = typeof recordingBookmarks.$inferSelect;
+
 /** Small server-owned key/value settings (e.g. the YouTube relay's current tunnel address). Never exposed to clients. */
 export const appSettings = mysqlTable("appSettings", {
   key: varchar("key", { length: 64 }).primaryKey(),

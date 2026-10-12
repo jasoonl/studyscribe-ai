@@ -127,6 +127,13 @@
       "when": 1790909114917,
       "tag": "0017_terms_accepted_at",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1791815938988,
+      "tag": "0018_recording_bookmarks",
+      "breakpoints": true
     }
   ]
 }
