@@ -89,7 +89,8 @@ export const followUpsRouter = router({
           .orderBy(asc(followUpSuggestions.dueDate), asc(followUpSuggestions.id)),
       null,
     );
-    return { available: items !== null, items: items ?? [] };
+    // Reminders go out only where the daily cron is set up.
+    return { available: items !== null, items: items ?? [], reminders: Boolean(process.env.CRON_SECRET) };
   }),
 
   /**
