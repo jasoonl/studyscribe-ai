@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { type SQL, and, eq, inArray, or } from "drizzle-orm";
+import { type SQL, and, eq, inArray, or, sql } from "drizzle-orm";
 import { groupShares, recordingCourses, recordingShares, recordings, studyGroupMembers, studyGroups } from "../drizzle/schema";
 import { type AccessRole, type ShareRole, roleAllows, strongestRole } from "@shared/sharing";
 import { getDb, getRecordingById } from "./db";
@@ -76,8 +76,10 @@ export async function upsertDirectShare(data: { recordingId: number; ownerId: nu
     if (data.role !== "view") {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Comment and edit roles are not set up on this server yet. Share as view only for now." });
     }
-    const { role: _role, ...legacy } = data;
-    await db.insert(recordingShares).values(legacy as any).onDuplicateKeyUpdate({ set: { sharedWithEmail: data.sharedWithEmail } });
+    // Raw SQL: drizzle would still list the missing `role` column (as DEFAULT).
+    await db.execute(
+      sql`insert into recordingShares (recordingId, ownerId, sharedWithUserId, sharedWithEmail) values (${data.recordingId}, ${data.ownerId}, ${data.sharedWithUserId}, ${data.sharedWithEmail}) on duplicate key update sharedWithEmail = ${data.sharedWithEmail}`,
+    );
   }
 }
 
