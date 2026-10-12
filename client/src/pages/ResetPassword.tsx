@@ -95,7 +95,7 @@ export default function ResetPassword() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/10 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md p-8 shadow-lg text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Validating reset link...</p>
@@ -106,7 +106,7 @@ export default function ResetPassword() {
 
   if (!isValidToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/10 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md p-8 shadow-lg">
           <div className="flex justify-center mb-4">
             <AlertCircle className="w-12 h-12 text-red-600" />
@@ -125,7 +125,7 @@ export default function ResetPassword() {
 
   if (resetSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/10 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md p-8 shadow-lg text-center">
           <div className="flex justify-center mb-4">
             <CheckCircle className="w-12 h-12 text-green-600" />
@@ -143,7 +143,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/10 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">

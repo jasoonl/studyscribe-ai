@@ -34,7 +34,10 @@ const SECTIONS: LegalSection[] = [
     </ul>
     <p>We may also disclose information if the law requires it, or to protect people's safety or the Service. If you share a recording with someone, they can see it.</p>
   </>) },
-  { heading: "Cookies and analytics", body: <p>We use only an essential cookie that keeps you signed in. We do not use advertising or cross-site tracking cookies. If privacy-friendly, cookie-free analytics are enabled, they count page visits without identifying you across sites. Fonts are served from our own site, not from a third party.</p> },
+  { heading: "Cookies, browser storage and analytics", body: (<>
+    <p>We use only an essential cookie that keeps you signed in. We do not use advertising or cross-site tracking cookies. If privacy-friendly, cookie-free analytics are enabled, they count page visits without identifying you across sites. Fonts are served from our own site, not from a third party.</p>
+    <p>While you record in the browser, the audio is also saved in your browser's own storage on your device, so a crash or closed tab does not lose it. That copy is deleted when the recording is uploaded or you discard it. The app also keeps a few display preferences there, such as the colour theme and whether you have seen the welcome tour. None of this leaves your device unless you upload the recording.</p>
+  </>) },
   { heading: "How long we keep it", body: <p>We keep your data until you delete it or delete your account. Recordings you move to Trash keep their audio until you delete them permanently. When you delete your account, we permanently delete your recordings, audio files, transcripts, study materials and account details, and ask our transcription provider to delete its copies. Encrypted backups kept by our database provider can hold residual copies until they expire in the ordinary course. We may keep limited records where the law requires.</p> },
   { heading: "Your choices and rights", body: (<>
     <p>You can see, correct and download your data, and delete your account, yourself in <Link href="/settings" className="text-primary hover:underline">Settings</Link>. "Export my data" gives you a file of everything we hold about you; "Delete my account" removes it permanently.</p>

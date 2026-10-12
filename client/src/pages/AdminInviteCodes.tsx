@@ -180,7 +180,7 @@ export default function AdminInviteCodes() {
   };
 
   const fmt = (d: Date | string | null) => {
-    if (!d) return "—";
+    if (!d) return "Never";
     return new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   };
 
@@ -214,7 +214,7 @@ export default function AdminInviteCodes() {
             </TableCell>
             <TableCell className="text-sm text-gray-600">{code.email}</TableCell>
             <TableCell><StatusBadge code={code} /></TableCell>
-            <TableCell className="text-sm text-gray-500">{code.usedByEmail ?? "—"}</TableCell>
+            <TableCell className="text-sm text-gray-500">{code.usedByEmail ?? "Not used"}</TableCell>
             <TableCell className="text-sm text-gray-500">
               <span className={getCodeStatus(code) === "expiring_soon" ? "text-orange-500 font-medium" : ""}>
                 {fmt(code.expiresAt)}

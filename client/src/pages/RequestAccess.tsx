@@ -36,7 +36,7 @@ export default function RequestAccess() {
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-2">
         <img
-          src="https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/studyscribe-logo-YqjarSv2s9a5LtpKjX9CE5.webp"
+          src="/logo.webp"
           alt="StudyScribe AI"
           className="w-12 h-12 rounded-xl shadow-sm"
         />
@@ -52,11 +52,11 @@ export default function RequestAccess() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Request Received!</h1>
             <p className="text-gray-500 text-sm leading-relaxed">
-              Thanks, <strong>{name}</strong>! We've received your request and will review it shortly.
+              Thanks, <strong>{name}</strong>. We've received your request and will review it.
               If approved, you'll receive an invite code at <strong>{email}</strong>.
             </p>
             <p className="text-gray-400 text-xs">
-              Keep an eye on your inbox (and spam folder) — we typically respond within 24–48 hours.
+              Check your inbox, and your spam folder, for the code.
             </p>
             <Link href="/login">
               <Button variant="outline" className="mt-2 gap-2">

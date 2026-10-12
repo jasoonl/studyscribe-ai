@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
 import { BookOpen, Brain, FileText, GraduationCap, Briefcase, Menu, MessageSquare, Mic, X } from "lucide-react";
 
-const LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/studyscribe-logo-YqjarSv2s9a5LtpKjX9CE5.webp";
+const LOGO = "/logo.webp";
 
 type Item = { icon: typeof Mic; title: string; text: string; href: string };
 const MENUS: Record<string, { label: string; items: Item[] }> = {
@@ -42,13 +42,13 @@ export default function SiteNav() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 20 }}
         className={`relative w-full max-w-4xl rounded-[1.75rem] border border-white/50 bg-background/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl transition-shadow dark:border-white/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${
-          stuck ? "shadow-lg shadow-primary/10" : ""
+          stuck ? "shadow-lg" : ""
         }`}
       >
         <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
-          <Link href="/" className="flex shrink-0 items-center gap-2 rounded-full pr-2">
+          <Link href="/" className="flex shrink-0 items-center gap-2 rounded-md pr-2">
             <img src={LOGO} alt="" className="h-7 w-7" />
-            <span className="bg-gradient-to-r from-primary to-brand-sky bg-clip-text text-base font-semibold text-transparent">StudyScribe AI</span>
+            <span className="text-base font-semibold text-foreground">StudyScribe AI</span>
           </Link>
 
           <div className="ml-4 hidden items-center gap-1 md:flex">
@@ -60,26 +60,26 @@ export default function SiteNav() {
                 onMouseEnter={() => setOpen(key)}
                 onFocus={() => setOpen(key)}
                 onClick={() => setOpen(open === key ? null : key)}
-                className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${open === key ? "bg-secondary text-primary" : "text-foreground/80 hover:text-foreground"}`}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${open === key ? "bg-secondary text-primary" : "text-foreground/80 hover:text-foreground"}`}
               >
                 {menu.label}
               </button>
             ))}
-            <Link href="/pricing" onMouseEnter={() => setOpen(null)} className="rounded-full px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
+            <Link href="/pricing" onMouseEnter={() => setOpen(null)} className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
               Pricing
             </Link>
-            <Link href="/demo" onMouseEnter={() => setOpen(null)} className="rounded-full px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
+            <Link href="/demo" onMouseEnter={() => setOpen(null)} className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
               Demo
             </Link>
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
-            <Link href="/login" className="hidden rounded-full px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground sm:block">
+            <Link href="/login" className="hidden rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground sm:block">
               Sign in
             </Link>
             <Link
               href="/request-access"
-              className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-px active:scale-[0.98]"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-[0.98]"
             >
               Get started
             </Link>
@@ -88,7 +88,7 @@ export default function SiteNav() {
               aria-label={mobile ? "Close menu" : "Open menu"}
               aria-expanded={mobile}
               onClick={() => setMobile((v) => !v)}
-              className="grid h-9 w-9 place-items-center rounded-full text-foreground md:hidden"
+              className="grid h-9 w-9 place-items-center rounded-md text-foreground md:hidden"
             >
               {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -103,7 +103,7 @@ export default function SiteNav() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.98 }}
               transition={{ type: "spring", stiffness: 260, damping: 26 }}
-              className="absolute left-0 right-0 top-[calc(100%+0.5rem)] hidden rounded-3xl border border-white/50 bg-background/85 p-3 shadow-xl shadow-primary/10 backdrop-blur-xl dark:border-white/10 md:block"
+              className="absolute left-0 right-0 top-[calc(100%+0.5rem)] hidden rounded-3xl border border-white/50 bg-background/85 p-3 shadow-xl backdrop-blur-xl dark:border-white/10 md:block"
             >
               <ul className="grid grid-cols-2 gap-1">
                 {MENUS[open].items.map(({ icon: Icon, title, text, href }) => (

@@ -289,7 +289,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               {/* Record Option */}
               <Card className="p-8 border-2 border-border hover:border-accent/50 transition-all cursor-pointer hover:shadow-lg" onClick={() => setMode("record")}>
                 <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                     <Mic className="w-8 h-8 text-primary" />
                   </div>
                   <div>
@@ -319,7 +319,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               {/* Upload Option */}
               <Card className="p-8 border-2 border-border hover:border-accent/50 transition-all cursor-pointer hover:shadow-lg" onClick={() => setMode("upload")}>
                 <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                     <UploadCloud className="w-8 h-8 text-primary" />
                   </div>
                   <div>
@@ -349,7 +349,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               {/* Link Option */}
               <Card className="p-8 border-2 border-border hover:border-accent/50 transition-all cursor-pointer hover:shadow-lg" onClick={() => setMode("link")}>
                 <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                     <LinkIcon className="w-8 h-8 text-primary" />
                   </div>
                   <div>
@@ -498,7 +498,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               <>
                 {/* Upload Success */}
                 {uploadComplete ? (
-                  <Card className="p-8 border-2 border-accent bg-gradient-to-br from-accent/5 to-primary/5">
+                  <Card className="p-8 border-2 border-accent bg-primary/5">
                     <div className="text-center space-y-4">
                       <CheckCircle className="w-16 h-16 text-accent mx-auto" />
                       <h3 className="text-2xl font-bold">Recording uploaded successfully!</h3>
@@ -612,7 +612,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         <main className="container py-12">
           <div className="max-w-2xl mx-auto space-y-8">
             {linkComplete ? (
-              <Card className="p-8 border-2 border-accent bg-gradient-to-br from-accent/5 to-primary/5">
+              <Card className="p-8 border-2 border-accent bg-primary/5">
                 <div className="text-center space-y-4">
                   <CheckCircle className="w-16 h-16 text-accent mx-auto" />
                   <h3 className="text-2xl font-bold">Audio imported successfully!</h3>
@@ -720,7 +720,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         <main className="container py-12">
           <div className="max-w-2xl mx-auto space-y-8">
             {uploadFileComplete ? (
-              <Card className="p-8 border-2 border-accent bg-gradient-to-br from-accent/5 to-primary/5">
+              <Card className="p-8 border-2 border-accent bg-primary/5">
                 <div className="text-center space-y-4">
                   <CheckCircle className="w-16 h-16 text-accent mx-auto" />
                   <h3 className="text-2xl font-bold">File uploaded successfully!</h3>

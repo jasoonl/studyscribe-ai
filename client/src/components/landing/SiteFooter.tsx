@@ -12,7 +12,7 @@ export default function SiteFooter() {
     <footer className="border-t border-border bg-brand-mist/60">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div className="max-w-xs space-y-3">
-          <p className="bg-gradient-to-r from-primary to-brand-sky bg-clip-text text-xl font-bold text-transparent">StudyScribe AI</p>
+          <p className="text-xl font-bold text-primary">StudyScribe AI</p>
           <p className="text-sm text-muted-foreground">Record once. Study from the transcript, the flashcards and an AI tutor.</p>
           <p className="text-sm text-muted-foreground">You can export or delete all of your data at any time from Settings.</p>
         </div>

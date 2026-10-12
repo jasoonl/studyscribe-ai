@@ -87,7 +87,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
 
   return (
     <div className="space-y-4">
-      <Card className="border-2 border-primary/20 bg-gradient-to-r from-cyan-50 to-primary/10 p-4 dark:from-cyan-950/30 dark:to-primary/30 sm:p-5">
+      <Card className="border-2 border-primary/20 bg-primary/5 p-4 dark:bg-primary/15 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2 font-semibold"><Sparkles className="h-4 w-4 text-primary" /> Learn Mode</div>
@@ -95,7 +95,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
           </div>
           <Button size="sm" variant="outline" className="shrink-0" onClick={onExit}><ArrowLeft className="mr-1 h-4 w-4" /> Study modes</Button>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-background/80"><div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-all" style={{ width: `${progress}%` }} /></div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-background/80"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div>
         <p className="mt-2 text-xs font-medium text-muted-foreground">{activeIndex + 1} of {queue.length} cards in your active learning queue</p>
       </Card>
 
@@ -142,7 +142,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
             <div className="flex gap-3">
               {isCorrect ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> : <Lightbulb className="mt-0.5 h-5 w-5 shrink-0" />}
               <div>
-                <p className="font-semibold">{isCorrect ? "Correct — nice recall." : "Keep working on this concept."}</p>
+                <p className="font-semibold">{isCorrect ? "Correct. Nice recall." : "Keep working on this concept."}</p>
                 <p className="mt-1 text-sm">{currentCard.answer}</p>
               </div>
             </div>

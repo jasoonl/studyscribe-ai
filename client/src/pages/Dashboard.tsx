@@ -224,11 +224,11 @@ export default function Dashboard() {
         <div className="container h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663693064768/ASvCfiALmBkqdhfm8YoYdn/studyscribe-logo-YqjarSv2s9a5LtpKjX9CE5.webp"
+              src="/logo.webp"
               alt="StudyScribe AI"
               className="w-8 h-8"
             />
-            <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className="text-lg font-bold text-primary">
               StudyScribe AI
             </span>
           </div>

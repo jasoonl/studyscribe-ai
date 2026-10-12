@@ -27,8 +27,8 @@ export default function HowItWorks() {
                 <button
                   type="button"
                   onClick={() => setActive(i)}
-                  className={`w-full rounded-2xl border p-6 text-left transition-all duration-300 ${
-                    active === i ? "border-primary/40 bg-card shadow-lg shadow-primary/10" : "border-transparent opacity-60 hover:opacity-100"
+                  className={`w-full rounded-xl border p-6 text-left transition-[opacity,border-color,background-color] duration-300 ${
+                    active === i ? "border-primary/40 bg-card" : "border-transparent opacity-60 hover:opacity-100"
                   }`}
                   aria-current={active === i}
                 >
@@ -41,7 +41,7 @@ export default function HowItWorks() {
         </div>
 
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/10">
+          <div className="shadow-apple relative overflow-hidden rounded-xl border border-border bg-card">
             <AnimatePresence mode="wait">
               <motion.img
                 key={STEPS[active].image}

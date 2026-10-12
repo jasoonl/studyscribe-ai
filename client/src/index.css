@@ -268,19 +268,14 @@
   }
 }
 
-/* Landing page motion: each effect is decorative and switches off for reduced motion */
+/* Landing page motion: the language marquee, off for reduced motion */
 @keyframes marquee-scroll {
   to { transform: translateX(-50%); }
 }
-@keyframes aurora-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(3%, -4%, 0) scale(1.08); }
-}
 .marquee-track { animation: marquee-scroll 55s linear infinite; }
 .marquee:hover .marquee-track { animation-play-state: paused; }
-.aurora-blob { animation: aurora-drift 18s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .marquee-track, .aurora-blob { animation: none; }
+  .marquee-track { animation: none; }
 }
 
 /* Apple-style surfaces: translucent glass and soft, layered shadows */

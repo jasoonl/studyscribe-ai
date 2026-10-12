@@ -158,7 +158,7 @@ export async function assertPublicHttpUrl(rawUrl: string): Promise<URL> {
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
   if (STREAMING_PAGE_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`))) {
     throw new Error(
-      `${host} links can't be imported — their terms don't allow downloading the media. Use a direct link to an audio or video file, or a page that hosts the file itself (like archive.org). If it's your own video, download the file from the site and upload it instead.`,
+      `${host} links can't be imported because their terms don't allow downloading the media. Use a direct link to an audio or video file, or a page that hosts the file itself (like archive.org). If it's your own video, download the file from the site and upload it instead.`,
     );
   }
 

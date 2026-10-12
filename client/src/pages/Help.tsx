@@ -180,7 +180,7 @@ export default function Help() {
         </div>
 
         {/* Contact / Support */}
-        <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50">
+        <Card className="border-0 shadow-sm bg-brand-mist">
           <CardContent className="p-6 text-center">
             <MessageSquare className="w-8 h-8 text-blue-500 mx-auto mb-2" />
             <h3 className="font-semibold mb-1">Still have questions?</h3>
