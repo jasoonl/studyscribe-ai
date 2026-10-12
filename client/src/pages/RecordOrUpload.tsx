@@ -15,6 +15,11 @@ import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
 import { MarkMoment } from "@/components/MarkMoment";
 import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
+import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
+import type { LiveTurn } from "@/lib/liveTurns";
+import { LiveTextToggle, TabAudioControl, TabAudioOption } from "@/components/live/RecordingOptions";
+import { LiveTranscriptSection, useLiveLayout } from "@/components/live/LiveTranscriptSection";
+import { StudyHelpPanel } from "@/components/live/StudyHelpPanel";
 
 type Mode = "choose" | "record" | "upload" | "link";
 
@@ -22,6 +27,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const { user } = useCustomAuth();
   const [, navigate] = useLocation();
   const recorder = useRecorder();
+  const live = useLiveTranscript();
   // A recording keeps running while the user is elsewhere; reopen straight onto it.
   const [mode, setMode] = useState<Mode>(() => (recorder.status !== "idle" ? "record" : "choose"));
   useShowsRecorder(mode === "record");
@@ -32,6 +38,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
   const [audience, setAudience] = useState<"student" | "professional">("student");
+  const [withTabAudio, setWithTabAudio] = useState(false);
+  // Live text kept on screen after upload, until the real transcript replaces it.
+  const [liveSnapshot, setLiveSnapshot] = useState<LiveTurn[] | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const recordingStopped = recorder.status === "stopped" || uploadComplete;
@@ -58,6 +67,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [isPolling, setIsPolling] = useState(false);
   const createRecordingMutation = trpc.recordings.create.useMutation();
   const createFromUrlMutation = trpc.recordings.createFromUrl.useMutation();
+  const liveLayout = useLiveLayout(liveSnapshot);
 
   // Poll for transcription status after upload/record
   const { data: statusData } = trpc.recordings.getStatus.useQuery(
@@ -73,6 +83,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
     if (!isPolling || !createdRecordingId || !statusData) return;
     if (statusData.status === "completed" || statusData.status === "failed") {
       setIsPolling(false);
+      setLiveSnapshot(null);
       navigate(`/recording/${createdRecordingId}`);
     }
   }, [statusData, isPolling, createdRecordingId, navigate]);
@@ -89,7 +100,8 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   // Recording functions
   const startRecording = async () => {
     setUploadComplete(false);
-    const started = await recorder.start({ userId: user?.id ?? null, returnPath: "/record-or-upload" });
+    setLiveSnapshot(null);
+    const started = await recorder.start({ userId: user?.id ?? null, returnPath: "/record-or-upload", tabAudio: withTabAudio });
     if (started) toast.success("Recording started. It keeps going if you switch tabs or windows.");
   };
 
@@ -139,6 +151,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
       });
       setUploadComplete(true);
+      if (live.turns.length > 0) setLiveSnapshot(live.turns);
       recorder.discard();
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
@@ -406,7 +419,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         </header>
 
         <main className="container py-12">
-          <div className="max-w-2xl mx-auto space-y-8">
+          <div className={liveLayout.wide ? "mx-auto max-w-6xl" : "mx-auto max-w-2xl"}>
+          {!uploadComplete && <RecordingConsentNotice />}
+          <div className={liveLayout.wide ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" : ""}>
+          <div className="min-w-0 space-y-8">
             {!recordingStopped ? (
               <>
                 {/* Recording Controls */}
@@ -456,6 +472,11 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       )}
                     </div>
                     <MarkMoment />
+                    <TabAudioControl />
+                    <div className="space-y-5 border-t border-border pt-6">
+                      <LiveTextToggle />
+                      {!isRecording && <TabAudioOption checked={withTabAudio} onCheckedChange={setWithTabAudio} />}
+                    </div>
                   </div>
                 </Card>
 
@@ -598,6 +619,14 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                 )}
               </>
             )}
+            {liveLayout.showTranscript && <LiveTranscriptSection snapshot={liveSnapshot} />}
+          </div>
+          {liveLayout.showHelp && (
+            <div className="lg:sticky lg:top-24">
+              <StudyHelpPanel audience={audience} className="lg:max-h-[calc(100vh-8rem)]" />
+            </div>
+          )}
+          </div>
           </div>
         </main>
       </div>
