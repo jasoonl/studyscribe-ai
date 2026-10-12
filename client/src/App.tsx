@@ -51,6 +51,9 @@ const Analytics = lazy(() => import("./pages/Analytics"));
 const Help = lazy(() => import("./pages/Help"));
 const Ask = lazy(() => import("./pages/Ask"));
 const CoursePage = lazy(() => import("./pages/CoursePage"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const ExamPacks = lazy(() => import("./pages/ExamPacks"));
+const ExamPack = lazy(() => import("./pages/ExamPack"));
 
 function RouteFallback() {
   return (
@@ -122,6 +125,9 @@ function Router() {
         <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
         <Route path="/ask" component={() => <ProtectedRoute component={Ask} />} />
         <Route path="/courses/:id" component={() => <ProtectedRoute component={CoursePage} />} />
+        <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
+        <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
+        <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />
         <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
         <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
 

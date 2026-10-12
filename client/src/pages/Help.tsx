@@ -67,6 +67,26 @@ const faqs: FAQItem[] = [
   },
   {
     category: "Organization",
+    question: "How do I keep track of homework and deadlines?",
+    answer: "Open a recording and choose Find tasks in the Tasks and deadlines panel. StudyScribe reads the transcript for assignments, readings, exam dates and action items, and works out due dates from what was said (\"next Friday\" counts from the day of the recording). Tick items off, change a date, add your own, or select the time beside one to hear where it was said. Tasks on your library page lists everything across your recordings by due date, and the next few appear under Coming up.",
+  },
+  {
+    category: "AI Features",
+    question: "What are key terms and chapters?",
+    answer: "On a recording, Find key terms (above the transcript) picks out the important words and names; select one to search the transcript for it, and again to clear the search. Make chapters (under the player) splits the recording into sections by topic, each with a start time; select a chapter to play from there. Both are written once and kept; Redo or the refresh button writes them again.",
+  },
+  {
+    category: "AI Features",
+    question: "How do I make an exam pack?",
+    answer: "Choose Exam packs on your library (or Exam pack on a course page), then pick a whole course or up to 12 recordings. StudyScribe writes one study guide organised by topic across all of them, then a 15-question practice exam. Check your answers to see your score and an explanation for each question. Permanently deleting a recording also deletes the exam packs made from it.",
+  },
+  {
+    category: "Getting Started",
+    question: "Transcripts keep getting a name or term wrong. Can I fix that?",
+    answer: "Yes. In Settings, add names and terms to listen for (one per line, up to six words each), and they are sent with every new recording. When you record, upload or import a link you can also add terms for that recording only, and the same box appears when you retry a failed transcription. It improves new transcriptions; to fix one that is done, edit the transcript.",
+  },
+  {
+    category: "Organization",
     question: "How do I search across all my recordings?",
     answer: "Use the Knowledge Base (accessible from the Dashboard header). Type any keyword and it will search across all your recording titles and transcript content, showing relevant snippets with highlighted matches.",
   },
