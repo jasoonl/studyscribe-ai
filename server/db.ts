@@ -1091,20 +1091,6 @@ export async function getRecordingByPublicShareToken(token: string) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function shareRecordingWithUser(data: {
-  recordingId: number;
-  ownerId: number;
-  sharedWithUserId: number;
-  sharedWithEmail: string;
-}) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db.insert(recordingShares).values(data).onDuplicateKeyUpdate({
-    set: { sharedWithEmail: data.sharedWithEmail },
-  });
-}
-
 export async function unshareRecordingWithUser(recordingId: number, sharedWithUserId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1112,44 +1098,6 @@ export async function unshareRecordingWithUser(recordingId: number, sharedWithUs
   await db.delete(recordingShares).where(
     and(eq(recordingShares.recordingId, recordingId), eq(recordingShares.sharedWithUserId, sharedWithUserId))
   );
-}
-
-export async function getSharesForRecording(recordingId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  return db.select().from(recordingShares).where(eq(recordingShares.recordingId, recordingId));
-}
-
-export async function getRecordingShareForUser(recordingId: number, userId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const result = await db.select().from(recordingShares).where(
-    and(eq(recordingShares.recordingId, recordingId), eq(recordingShares.sharedWithUserId, userId))
-  ).limit(1);
-  return result.length > 0 ? result[0] : null;
-}
-
-export async function getRecordingsSharedWithUser(userId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  return db
-    .select({
-      shareId: recordingShares.id,
-      sharedAt: recordingShares.createdAt,
-      recordingId: recordings.id,
-      title: recordings.title,
-      duration: recordings.duration,
-      status: recordings.status,
-      createdAt: recordings.createdAt,
-      ownerId: recordings.userId,
-    })
-    .from(recordingShares)
-    .innerJoin(recordings, eq(recordings.id, recordingShares.recordingId))
-    .where(and(eq(recordingShares.sharedWithUserId, userId), eq(recordings.isDeleted, 0)))
-    .orderBy(desc(recordingShares.createdAt));
 }
 
 // Server-owned settings: never return these through any client-facing procedure.

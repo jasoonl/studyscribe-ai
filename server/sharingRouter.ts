@@ -6,11 +6,7 @@ import {
   getRecordingByPublicShareToken,
   enablePublicShare,
   disablePublicShare,
-  shareRecordingWithUser,
   unshareRecordingWithUser,
-  getSharesForRecording,
-  getRecordingShareForUser,
-  getRecordingsSharedWithUser,
   getUserByEmail,
   getTranscriptByRecordingId,
   getStudyNotesByRecordingId,
@@ -19,6 +15,11 @@ import {
   getQuizzesByRecordingId,
   normalizeAuthEmail,
 } from "./db";
+import { SHARE_ROLES } from "@shared/sharing";
+import { getSharesForRecording, listRecordingsSharedWithUser, requireRecordingAccess, setDirectShareRole, upsertDirectShare } from "./recordingAccess";
+import { notifyUser } from "./collabNotifications";
+
+const shareRoleInput = z.enum(SHARE_ROLES);
 
 async function assertOwner(recordingId: number, userId: number) {
   const recording = await getRecordingById(recordingId);
@@ -84,6 +85,7 @@ export const sharingRouter = router({
           id: s.id,
           sharedWithUserId: s.sharedWithUserId,
           sharedWithEmail: s.sharedWithEmail,
+          role: s.role,
           createdAt: s.createdAt,
         })),
       };
@@ -106,9 +108,9 @@ export const sharingRouter = router({
     }),
 
   shareWithUser: protectedProcedure
-    .input(z.object({ recordingId: z.number(), email: z.string().email() }))
+    .input(z.object({ recordingId: z.number(), email: z.string().email(), role: shareRoleInput.default("view") }))
     .mutation(async ({ input, ctx }) => {
-      await assertOwner(input.recordingId, ctx.user.id);
+      const recording = await assertOwner(input.recordingId, ctx.user.id);
       const normalizedEmail = normalizeAuthEmail(input.email);
       const recipient = await getUserByEmail(normalizedEmail);
       if (!recipient) {
@@ -120,13 +122,28 @@ export const sharingRouter = router({
       if (recipient.id === ctx.user.id) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "You already own this recording" });
       }
-      await shareRecordingWithUser({
+      await upsertDirectShare({
         recordingId: input.recordingId,
         ownerId: ctx.user.id,
         sharedWithUserId: recipient.id,
         sharedWithEmail: recipient.email,
+        role: input.role,
+      });
+      await notifyUser(recipient.id, {
+        title: "A recording was shared with you",
+        message: `${ctx.user.name || ctx.user.email} shared "${recording.title}" with you.`,
+        url: `/shared-with-me/${recording.id}`,
       });
       return { success: true, sharedWithEmail: recipient.email };
+    }),
+
+  /** Owner: change what an existing recipient may do. */
+  setShareRole: protectedProcedure
+    .input(z.object({ recordingId: z.number(), sharedWithUserId: z.number(), role: shareRoleInput }))
+    .mutation(async ({ input, ctx }) => {
+      await assertOwner(input.recordingId, ctx.user.id);
+      await setDirectShareRole(input.recordingId, input.sharedWithUserId, input.role);
+      return { success: true };
     }),
 
   unshareWithUser: protectedProcedure
@@ -139,22 +156,18 @@ export const sharingRouter = router({
 
   /** Recordings other people have shared with the current user */
   sharedWithMe: protectedProcedure.query(async ({ ctx }) => {
-    return getRecordingsSharedWithUser(ctx.user.id);
+    return listRecordingsSharedWithUser(ctx.user.id);
   }),
 
   /** A logged-in recipient viewing a recording shared directly with them */
   getSharedWithMe: protectedProcedure
     .input(z.object({ recordingId: z.number() }))
     .query(async ({ input, ctx }) => {
-      const recording = await getRecordingById(input.recordingId);
-      const isOwner = recording && recording.userId === ctx.user.id;
-      if (!isOwner) {
-        const share = await getRecordingShareForUser(input.recordingId, ctx.user.id);
-        if (!share) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "This recording has not been shared with you" });
-        }
-      }
-      return buildSharedBundle(input.recordingId);
+      // Direct shares and study group shares both count; the role decides
+      // what the page offers (comments, editing) and is enforced again by
+      // each of those procedures.
+      const access = await requireRecordingAccess(input.recordingId, ctx.user.id, "view");
+      return { ...(await buildSharedBundle(input.recordingId)), role: access.role };
     }),
 
   /** Public, no-login access via a share link token */
