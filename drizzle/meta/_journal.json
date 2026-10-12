@@ -148,6 +148,13 @@
       "when": 1791829539429,
       "tag": "0020_phase2_tasks_vocabulary_exam_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1791840013818,
+      "tag": "0021_follow_up_suggestions",
+      "breakpoints": true
     }
   ]
 }

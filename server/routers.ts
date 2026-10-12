@@ -37,6 +37,9 @@ import { insightsRouter } from "./recordingInsights";
 import { examPacksRouter } from "./examPacks";
 import { rememberRecordingVocabulary, resolveKeyterms, vocabularyRouter } from "./vocabulary";
 import { keytermsInput } from "./vocabularyInput";
+import { LiveTokenError, getLiveAvailability, getLiveTranscriptionStatus, mintLiveToken } from "./liveTranscription";
+import { liveAssistInputSchema, runLiveAssist } from "./liveAssist";
+import { followUpsRouter } from "./followUps";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -51,7 +54,7 @@ export const appRouter = router({
    * scheme) silently failed every transcript with no way to see why.
    */
   diagnostics: router({
-    transcription: adminProcedure.query(() => getTranscriptionConfigStatus()),
+    transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
     storage: adminProcedure.query(() => getBlobUsage()),
     youtube: adminProcedure
       .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
@@ -101,6 +104,31 @@ export const appRouter = router({
   }),
 
   recordings: router({
+    /** Whether live transcription can run here, so the Record page only offers it when it can. */
+    liveAvailability: protectedProcedure.query(() => {
+      const availability = getLiveAvailability();
+      return availability.available ? { available: true as const, message: null } : { available: false as const, message: availability.message };
+    }),
+
+    /**
+     * A short-lived AssemblyAI streaming token for live text while recording.
+     * The browser opens the WebSocket itself with it; the API key stays here.
+     * Each token opens one session (reconnects and the hourly rollover ask again).
+     */
+    liveToken: protectedProcedure.mutation(async ({ ctx }) => {
+      if (!checkTrpcRateLimit(`live-token:${ctx.user.id}`, 10 * 60 * 1000, 60)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Live transcription is reconnecting too often. It will try again shortly." });
+      }
+      try {
+        return await mintLiveToken();
+      } catch (error) {
+        if (error instanceof LiveTokenError) {
+          throw new TRPCError({ code: error.kind === "unavailable" ? "PRECONDITION_FAILED" : "BAD_GATEWAY", message: error.message });
+        }
+        throw error;
+      }
+    }),
+
     /** The library, with each recording's course and tags. `courseId` narrows it to one course. */
     list: protectedProcedure
       .input(z.object({ courseId: z.number().int().positive().optional() }).optional())
@@ -422,6 +450,11 @@ export const appRouter = router({
   }),
 
   ai: router({
+    /** "Study help" during a recording: one short answer about the last few minutes of live text. */
+    liveAssist: protectedProcedure
+      .input(liveAssistInputSchema)
+      .mutation(({ ctx, input }) => runLiveAssist(ctx.user.id, input)),
+
     getStudyNotes: protectedProcedure
       .input(z.object({ recordingId: z.number() }))
       .query(async ({ input, ctx }) => {
@@ -769,6 +802,7 @@ export const appRouter = router({
   insights: insightsRouter,
   vocabulary: vocabularyRouter,
   examPacks: examPacksRouter,
+  followUps: followUpsRouter,
 
   studyGuides: router({
     list: protectedProcedure

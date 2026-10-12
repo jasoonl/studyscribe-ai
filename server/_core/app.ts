@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { handleAssemblyAiWebhook } from "../transcriptionWebhook";
 import { registerSchemaInitRoute } from "../schemaInit";
+import { registerFollowUpCron } from "../followUps";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -32,6 +33,7 @@ export function createApp() {
 
   app.post("/api/webhooks/assemblyai", handleAssemblyAiWebhook);
   registerSchemaInitRoute(app);
+  registerFollowUpCron(app);
   registerStorageProxy(app);
   registerAuthRoutes(app);
   registerOAuthRoutes(app);

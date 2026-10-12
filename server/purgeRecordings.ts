@@ -8,6 +8,7 @@ import { deleteCourseLinksForRecordings } from "./courses";
 import { deleteActionItemsForRecordings } from "./actionItems";
 import { deleteExamPacksForRecordings } from "./examPacks";
 import { deleteVocabularyForRecordings } from "./vocabulary";
+import { deleteFollowUpsForRecordings } from "./followUps";
 import { getDb } from "./db";
 import { deleteStoredAudio } from "./storage";
 
@@ -40,6 +41,7 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
     await deleteCourseLinksForRecordings(batch);
     await deleteActionItemsForRecordings(batch);
     await deleteVocabularyForRecordings(batch);
+    await deleteFollowUpsForRecordings(batch);
     // Before the recordings rows go: it looks up whose packs to check.
     await deleteExamPacksForRecordings(batch);
     await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));
