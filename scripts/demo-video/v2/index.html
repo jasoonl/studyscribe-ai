@@ -26,8 +26,7 @@
   .cap { text-align: center; }
   .cap span { display: inline-block; padding: 12px 30px; border-radius: 22px; background: #0b1f55; color: #fff; font-size: 38px; font-weight: 600; letter-spacing: -0.015em; }
   /* Highlight boxes sit on a screenshot, so their sizes are multiplied by --k (1 / the screenshot's scale) to look the same at any zoom. */
-  .rim { --k: 1; box-sizing: border-box; border: calc(3px * var(--k)) solid #2f6bff; background: rgba(47, 107, 255, .06); box-shadow: 0 0 0 calc(5px * var(--k)) rgba(47, 107, 255, .16); }
-  .rim.soft { border: 0; background: rgba(47, 107, 255, .09); box-shadow: 0 0 0 calc(2px * var(--k)) rgba(47, 107, 255, .32); }
+  .rim { --k: 1; box-sizing: border-box; border: calc(3px * var(--k)) solid #2f6bff; }
   .cur svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .ripple { box-sizing: border-box; border-radius: 50%; border: 3px solid #2f6bff; }
   .edge { height: 30px; background: linear-gradient(rgba(20, 45, 130, .16), rgba(20, 45, 130, 0)); border-top: 1px solid rgba(40, 70, 160, .14); box-sizing: border-box; }
