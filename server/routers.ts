@@ -120,7 +120,8 @@ export const appRouter = router({
         if (!recording || recording.userId !== ctx.user.id) {
           throw new Error("Recording not found");
         }
-        return recording;
+        const [withOrganization] = await attachOrganization(ctx.user.id, [recording]);
+        return withOrganization;
       }),
 
     create: protectedProcedure

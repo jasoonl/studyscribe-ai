@@ -149,6 +149,9 @@ B1 rename speakers · B3 transcript search · B4 follow-along highlight · A7 bo
 _Why first_: all build on existing components (`RecordingDetail` tabs, `AudioPlayer`, `ExportButton`, `studyNotes`), no new providers, no new env vars.
 
 ### Phase 2 — Organisation & cross-recording intelligence (≈3 weeks)
+
+Status (first slice shipped 2026-10-12, needs `npm run db:migrate` for migration 0019): D1 courses/folders + tags UI and C1 Ask StudyScribe are done. Courses use a `recordingCourses` join table instead of `recordings.courseId` so an unmigrated database keeps working, and the courses UI lives on the dashboard and `/courses/:id` because the dashboard does not use `DashboardLayout`. Ask uses keyword retrieval; embeddings (C2) would replace it. C3, B2, B6, B8, C8 remain.
+
 D1 courses/folders + tags UI · C1 "Ask StudyScribe" cross-recording chat · C3 action items/assignments to-do · B2 custom vocabulary · B6 keyword chips · B8 chapters/outline · C8 multi-recording exam pack.
 
 ### Phase 3 — Real-time (the Otter + Cluely core) (≈4 weeks)

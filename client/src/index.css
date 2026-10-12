@@ -31,6 +31,13 @@
   --color-brand-sky: var(--brand-sky);
   --color-brand-deep: var(--brand-deep);
   --color-brand-mist: var(--brand-mist);
+  --color-course-blue: var(--course-blue);
+  --color-course-teal: var(--course-teal);
+  --color-course-green: var(--course-green);
+  --color-course-amber: var(--course-amber);
+  --color-course-rose: var(--course-rose);
+  --color-course-violet: var(--course-violet);
+  --color-course-slate: var(--course-slate);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -57,6 +64,14 @@
   --brand-sky: oklch(0.72 0.13 225);
   --brand-deep: oklch(0.32 0.12 264);
   --brand-mist: oklch(0.96 0.02 250);
+  /* Course and tag dots: muted, same chroma band, so a row of them reads as one set */
+  --course-blue: oklch(0.55 0.17 262);
+  --course-teal: oklch(0.62 0.1 195);
+  --course-green: oklch(0.62 0.12 150);
+  --course-amber: oklch(0.72 0.13 75);
+  --course-rose: oklch(0.62 0.17 12);
+  --course-violet: oklch(0.57 0.17 300);
+  --course-slate: oklch(0.55 0.03 255);
   --chart-1: oklch(0.6 0.15 232);
   --chart-2: oklch(0.5 0.21 264);
   --chart-3: oklch(0.72 0.13 225);
@@ -96,6 +111,13 @@
   --brand-sky: oklch(0.76 0.12 225);
   --brand-deep: oklch(0.22 0.07 264);
   --brand-mist: oklch(0.24 0.04 262);
+  --course-blue: oklch(0.68 0.15 262);
+  --course-teal: oklch(0.72 0.1 195);
+  --course-green: oklch(0.72 0.12 150);
+  --course-amber: oklch(0.8 0.12 78);
+  --course-rose: oklch(0.7 0.15 12);
+  --course-violet: oklch(0.7 0.15 300);
+  --course-slate: oklch(0.7 0.03 255);
   --background: oklch(0.16 0.03 263);
   --foreground: oklch(0.94 0.012 250);
   --card: oklch(0.2 0.035 263);

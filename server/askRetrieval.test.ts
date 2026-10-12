@@ -109,6 +109,12 @@ describe("rankPassages", () => {
     expect(ranked[0].recordingId).toBe(2);
   });
 
+  it("matches at the start of words, so a short term does not hit the middle of another word", () => {
+    const short = [passage(1, "She said the maid paid for it."), passage(2, "AI tutors answer questions. Artificial intelligence (AI) is broad.")];
+    expect(rankPassages(short, ["ai"]).map(item => item.recordingId)).toEqual([2]);
+    expect(rankPassages(short, ["tutor"]).map(item => item.recordingId)).toEqual([2]);
+  });
+
   it("caps passages per recording so one lecture cannot crowd out the rest", () => {
     const many = [
       ...Array.from({ length: 10 }, (_, index) => passage(1, `mitosis detail ${index}`)),

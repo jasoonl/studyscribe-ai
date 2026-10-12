@@ -4,6 +4,10 @@
  * and read the citations back out of the answer. No database, no network.
  */
 
+import { formatTimestamp } from "@shared/timestamp";
+
+export { formatTimestamp };
+
 export type TranscriptSegmentLike = { start: number; end?: number; text: string; speaker?: string };
 
 export type AskSource = {
@@ -55,11 +59,13 @@ export function stem(word: string): string {
   return result;
 }
 
+const WORD_SEPARATOR = /[\s.,;:!?()\[\]{}"“”‘’'`´\-–—/\\|<>=+*&^%$#@~]+/;
+
 export function extractSearchTerms(question: string): string[] {
   const words = question
     .toLowerCase()
     .replace(/['’]s\b/g, "")
-    .split(/[\s.,;:!?()\[\]{}"“”‘’'`´\-–—/\\|<>=+*&^%$#@~]+/)
+    .split(WORD_SEPARATOR)
     .filter(word => word.length >= 2 && !STOPWORDS.has(word));
   const seen = new Set<string>();
   const terms: string[] = [];
@@ -126,12 +132,15 @@ export function buildPassages(source: AskSource, maxChars = PASSAGE_TARGET_CHARS
   return passages;
 }
 
-function countOccurrences(haystack: string, needle: string): number {
+/**
+ * How many words in a passage start with `term`. Matching on word starts keeps
+ * "ai" from hitting "said" while still letting the stem "mitosi" find "mitosis".
+ * Terms under three characters must match a whole word.
+ */
+function countWordMatches(words: string[], term: string): number {
   let count = 0;
-  let index = haystack.indexOf(needle);
-  while (index !== -1) {
-    count += 1;
-    index = haystack.indexOf(needle, index + needle.length);
+  for (const word of words) {
+    if (term.length < 3 ? word === term : word.startsWith(term)) count += 1;
   }
   return count;
 }
@@ -151,15 +160,15 @@ export function rankPassages(
   const perRecording = options.perRecording ?? MAX_PASSAGES_PER_RECORDING;
   if (terms.length === 0 || passages.length === 0) return [];
 
-  const lowered = passages.map(passage => passage.text.toLowerCase());
-  const docFrequency = terms.map(term => lowered.filter(text => text.includes(term)).length);
+  const words = passages.map(passage => passage.text.toLowerCase().split(WORD_SEPARATOR));
+  const docFrequency = terms.map(term => words.filter(list => countWordMatches(list, term) > 0).length);
 
   const scored = passages
     .map((passage, index) => {
       let score = 0;
       let matched = 0;
       terms.forEach((term, termIndex) => {
-        const tf = countOccurrences(lowered[index], term);
+        const tf = countWordMatches(words[index], term);
         if (tf === 0) return;
         matched += 1;
         const idf = Math.log(1 + passages.length / (1 + docFrequency[termIndex]));
@@ -180,15 +189,6 @@ export function rankPassages(
     if (result.length >= limit) break;
   }
   return result;
-}
-
-export function formatTimestamp(seconds: number | null): string {
-  if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return "";
-  const total = Math.floor(seconds);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export type AskHistoryMessage = { role: "user" | "assistant"; content: string };

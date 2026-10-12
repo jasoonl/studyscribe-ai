@@ -58,6 +58,12 @@ export type AIChatBoxProps = {
    * Click to send directly
    */
   suggestedPrompts?: string[];
+
+  /**
+   * Optional content rendered under a message's bubble, e.g. source chips.
+   * `index` is the position among the visible (non-system) messages.
+   */
+  renderMessageExtra?: (message: Message, index: number) => React.ReactNode;
 };
 
 /**
@@ -120,6 +126,7 @@ export function AIChatBox({
   height = "600px",
   emptyStateMessage = "Start a conversation with AI",
   suggestedPrompts,
+  renderMessageExtra,
 }: AIChatBoxProps) {
   const [input, setInput] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -253,9 +260,10 @@ export function AIChatBox({
                       </div>
                     )}
 
+                    <div className="flex min-w-0 max-w-[80%] flex-col gap-2">
                     <div
                       className={cn(
-                        "max-w-[80%] rounded-2xl px-4 py-2.5",
+                        "rounded-2xl px-4 py-2.5",
                         message.role === "user"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-foreground"
@@ -270,6 +278,8 @@ export function AIChatBox({
                           {message.content}
                         </p>
                       )}
+                    </div>
+                    {renderMessageExtra?.(message, index)}
                     </div>
 
                     {message.role === "user" && (

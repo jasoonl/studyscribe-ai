@@ -6,6 +6,8 @@ import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText, ClipboardCheck, Layers3, NotebookPen, Share2 } from "lucide-react";
+import { RecordingOrganizer } from "@/components/RecordingOrganizer";
+import { CourseDot } from "@/components/CourseDot";
 import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
 import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
@@ -21,14 +23,33 @@ import { downloadTranscriptExport } from "@/lib/transcriptExports";
 import { downloadFlashcardExport } from "@/lib/flashcardExports";
 import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useState, useEffect, useRef } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useSearch } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 
+function DetailTags({ tagIds }: { tagIds: number[] }) {
+  const { data: tags } = trpc.tags.list.useQuery();
+  const own = (tags ?? []).filter(tag => tagIds.includes(tag.id));
+  if (own.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
+      {own.map(tag => (
+        <li key={tag.id} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-0.5 text-xs">
+          <CourseDot color={tag.color} className="size-1.5" />
+          {tag.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function RecordingDetail() {
   const [, params] = useRoute("/recording/:id");
   const recordingId = params?.id ? parseInt(params.id) : null;
+  // /recording/:id?t=754 opens the recording at 12:34 (links from Ask StudyScribe).
+  const startParam = new URLSearchParams(useSearch()).get("t");
+  const startAt = startParam && /^\d+(\.\d+)?$/.test(startParam) ? Number(startParam) : undefined;
   const { user } = useAuth();
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [editedTranscript, setEditedTranscript] = useState("");
@@ -272,6 +293,11 @@ export default function RecordingDetail() {
                       <span className="font-medium">Created:</span>{" "}
                       {new Date(recording.createdAt).toLocaleDateString()}
                     </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                      <span className="font-medium">Filed under:</span>
+                      <RecordingOrganizer recordingId={recording.id} courseId={recording.courseId} tagIds={recording.tagIds} variant="field" className="-ml-1" />
+                      <DetailTags tagIds={recording.tagIds} />
+                    </div>
                   </div>
                 </div>
 
@@ -311,7 +337,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} />
                     <RecordingBookmarks
                       recordingId={recordingId || 0}
                       playbackTime={playbackTime}
