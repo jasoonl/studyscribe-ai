@@ -10,6 +10,7 @@ const AUDIENCES = {
     text: "Listen in class, then let StudyScribe handle the notes. Review with flashcards and quizzes built from your professor's own words.",
     points: ["Study guides generated from the exact lecture", "Flashcards in Learn and Test modes", "A tutor you can question at midnight before an exam"],
     image: "/landing/flashcards.jpg",
+    alt: "A StudyScribe flashcard from a cell biology lecture, with the question on the front",
   },
   professional: {
     label: "Professionals",
@@ -18,6 +19,7 @@ const AUDIENCES = {
     text: "Capture decisions while you stay in the conversation, then turn the transcript into summaries and drafts you can send.",
     points: ["Executive summaries and action items", "Email drafts in the tone you choose", "Searchable transcripts of past meetings"],
     image: "/landing/email-drafts.jpg",
+    alt: "A follow-up email drafted by StudyScribe from a product roadmap meeting",
   },
 } as const;
 
@@ -69,7 +71,7 @@ export default function UseCases() {
               </Link>
             </div>
             <div className="shadow-apple overflow-hidden rounded-xl border border-border bg-card">
-              <img src={content.image} alt="" loading="lazy" className="block w-full" />
+              <img src={content.image} alt={content.alt} loading="lazy" className="block w-full" />
             </div>
         </div>
       </div>

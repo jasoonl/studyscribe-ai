@@ -17,6 +17,7 @@ export default function Demo() {
         <div className="shadow-apple mt-12 overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-6">
           <DemoWalkthrough />
         </div>
+        <p className="mt-3 text-sm text-muted-foreground">Narration voice generated with ElevenLabs. The people and courses shown are fictional.</p>
       </section>
 
       <section className="border-t border-border bg-brand-mist/50">

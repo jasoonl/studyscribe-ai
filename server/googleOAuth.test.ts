@@ -45,4 +45,12 @@ describe("Google OAuth configuration", () => {
     expect(parsed.searchParams.get("scope")).toContain("email");
     expect(parsed.searchParams.get("response_type")).toBe("code");
   });
+
+  it("records sign-up consent in the OAuth state only when it was given", () => {
+    const origin = "https://example.com";
+    const stateOf = (url: string) => JSON.parse(Buffer.from(new URL(url).searchParams.get("state") ?? "", "base64").toString());
+
+    expect(stateOf(getGoogleAuthUrl(origin, "signup", undefined, true))).toEqual({ origin, mode: "signup", consented: true });
+    expect(stateOf(getGoogleAuthUrl(origin, "signup"))).toEqual({ origin, mode: "signup" });
+  });
 });

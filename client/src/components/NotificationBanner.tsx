@@ -85,7 +85,7 @@ export function NotificationBanner({
           setIsVisible(false);
           onClose?.();
         }}
-        className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+        className="flex-shrink-0 text-gray-500 hover:text-gray-600"
       >
         <X className="h-5 w-5" />
       </button>

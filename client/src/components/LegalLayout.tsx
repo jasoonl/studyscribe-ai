@@ -1,8 +1,14 @@
 import type { ReactNode } from "react";
-import { LEGAL_EFFECTIVE_DATE } from "@shared/legal";
+import { CONTACT_EMAIL, LEGAL_EFFECTIVE_DATE } from "@shared/legal";
 import PublicLayout from "./landing/PublicLayout";
 
 export type LegalSection = { heading: string; body: ReactNode };
+
+/** The public contact address as a mail link, for use inside legal text. */
+export function ContactEmail({ subject }: { subject?: string }) {
+  const href = `mailto:${CONTACT_EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
+  return <a className="text-primary hover:underline" href={href}>{CONTACT_EMAIL}</a>;
+}
 
 export default function LegalLayout({ title, intro, sections }: { title: string; intro: ReactNode; sections: LegalSection[] }) {
   return (

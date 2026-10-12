@@ -82,7 +82,7 @@ function CopyButton({ text }: { text: string }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopy}>
-          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}
         </Button>
       </TooltipTrigger>
       <TooltipContent>{copied ? "Copied!" : "Copy code"}</TooltipContent>
@@ -200,7 +200,7 @@ export default function AdminInviteCodes() {
       <TableBody>
         {items.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={showActions ? 7 : 6} className="text-center text-gray-400 py-8">
+            <TableCell colSpan={showActions ? 7 : 6} className="text-center text-gray-500 py-8">
               No codes
             </TableCell>
           </TableRow>
@@ -220,7 +220,7 @@ export default function AdminInviteCodes() {
                 {fmt(code.expiresAt)}
               </span>
             </TableCell>
-            <TableCell className="text-sm text-gray-400">{fmt(code.createdAt)}</TableCell>
+            <TableCell className="text-sm text-gray-500">{fmt(code.createdAt)}</TableCell>
             {showActions && (
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
@@ -340,7 +340,7 @@ export default function AdminInviteCodes() {
             )}
 
             {codes?.length === 0 && (
-              <div className="text-center py-20 text-gray-400">
+              <div className="text-center py-20 text-gray-500">
                 <Clock className="w-10 h-10 mx-auto mb-3 text-gray-300" />
                 <p className="text-lg">No invite codes yet</p>
                 <p className="text-sm mt-1">Create one to get started</p>
@@ -366,7 +366,7 @@ export default function AdminInviteCodes() {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
               />
-              <p className="text-xs text-gray-400">The code will be tied to this email address.</p>
+              <p className="text-xs text-gray-500">The code will be tied to this email address.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="new-expiry">Expires in (days)</Label>
@@ -378,7 +378,7 @@ export default function AdminInviteCodes() {
                 value={newExpiry}
                 onChange={(e) => setNewExpiry(Number(e.target.value))}
               />
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500">
                 Expires: {new Date(Date.now() + newExpiry * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
               </p>
             </div>

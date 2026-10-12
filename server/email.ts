@@ -1,3 +1,5 @@
+import { CONTACT_EMAIL, OPERATOR_NAME } from "@shared/legal";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 const defaultApplicationOrigin = "https://studyscribe-ai.manus.space";
@@ -73,6 +75,7 @@ export function buildPasswordResetEmail(resetUrl: string) {
       <p style="margin:0 0 28px;"><a href="${safeResetUrl}" style="display:inline-block;border-radius:10px;background:#4f46e5;color:#ffffff;padding:13px 18px;text-decoration:none;font-weight:700;">Reset password</a></p>
       <p style="margin:0 0 8px;line-height:1.6;font-size:14px;color:#596579;">This link expires in 30 minutes and can be used only once.</p>
       <p style="margin:0;line-height:1.6;font-size:14px;color:#596579;">If you did not request a password reset, you can safely ignore this message.</p>
+      <p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #e3e7ef;line-height:1.6;font-size:12px;color:#596579;">You received this one-off account email because a password reset was requested for this address. ${OPERATOR_NAME} does not send marketing email. Questions: <a href="mailto:${CONTACT_EMAIL}" style="color:#4f46e5;">${CONTACT_EMAIL}</a></p>
     </main>
   </body>
 </html>`,

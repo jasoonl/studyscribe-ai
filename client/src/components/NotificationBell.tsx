@@ -180,6 +180,10 @@ export function NotificationBell() {
                     onClick={() => {
                       if (unread) markRead.mutate({ id: notif.id });
                     }}
+                    // Keyboard users reach the item through its buttons and links, so focus counts as reading it.
+                    onFocus={() => {
+                      if (unread && !markRead.isPending) markRead.mutate({ id: notif.id });
+                    }}
                   >
                     {unread && (
                       <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary" aria-label="Unread" />
@@ -208,7 +212,7 @@ export function NotificationBell() {
                       <p className="mt-0.5 break-words text-[13px] leading-snug text-muted-foreground line-clamp-2">
                         {notif.message}
                       </p>
-                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground/80">
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span>{timeAgo(notif.createdAt)}</span>
                         {notif.recordingId && (
                           <>

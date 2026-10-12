@@ -55,7 +55,7 @@ export default function RequestAccess() {
               Thanks, <strong>{name}</strong>. We've received your request and will review it.
               If approved, you'll receive an invite code at <strong>{email}</strong>.
             </p>
-            <p className="text-gray-400 text-xs">
+            <p className="text-gray-500 text-xs">
               Check your inbox, and your spam folder, for the code.
             </p>
             <Link href="/login">
@@ -80,11 +80,11 @@ export default function RequestAccess() {
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Jane Smith"
+                  placeholder="Jane"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -108,7 +108,7 @@ export default function RequestAccess() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="reason">
                   Why do you want access?{" "}
-                  <span className="text-gray-400 font-normal">(optional)</span>
+                  <span className="text-gray-500 font-normal">(optional)</span>
                 </Label>
                 <Textarea
                   id="reason"
@@ -120,11 +120,11 @@ export default function RequestAccess() {
                   disabled={requestInvite.isPending}
                   className="resize-none"
                 />
-                <span className="text-xs text-gray-400 text-right">{reason.length}/1000</span>
+                <span className="text-xs text-gray-500 text-right">{reason.length}/1000</span>
               </div>
 
               {error && (
-                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                   {error}
                 </p>
               )}
@@ -143,6 +143,10 @@ export default function RequestAccess() {
                   "Request Invite"
                 )}
               </Button>
+              <p className="text-xs leading-relaxed text-gray-500">
+                We use these details only to review your request and email you an invite. See our{" "}
+                <Link href="/privacy" className="text-indigo-700 underline">Privacy Policy</Link>.
+              </p>
             </form>
 
             <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col gap-2 text-center text-sm text-gray-500">

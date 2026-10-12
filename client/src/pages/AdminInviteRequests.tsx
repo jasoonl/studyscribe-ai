@@ -162,7 +162,7 @@ export default function AdminInviteRequests() {
               <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
             </div>
           ) : pending.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
               <Clock className="w-8 h-8 mx-auto mb-2 text-gray-300" />
               <p>No pending requests</p>
             </div>
@@ -181,7 +181,7 @@ export default function AdminInviteRequests() {
                         "{req.reason}"
                       </p>
                     )}
-                    <p className="text-xs text-gray-400 mt-2">
+                    <p className="text-xs text-gray-500 mt-2">
                       Requested {new Date(req.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
@@ -222,14 +222,14 @@ export default function AdminInviteRequests() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700 text-sm">{req.name}</span>
-                      <span className="text-gray-400 text-xs">{req.email}</span>
+                      <span className="text-gray-500 text-xs">{req.email}</span>
                       {statusBadge(req.status)}
                     </div>
                     {req.reviewNote && (
-                      <p className="text-xs text-gray-400 mt-1">Note: {req.reviewNote}</p>
+                      <p className="text-xs text-gray-500 mt-1">Note: {req.reviewNote}</p>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 shrink-0">
+                  <span className="text-xs text-gray-500 shrink-0">
                     {new Date(req.createdAt).toLocaleDateString()}
                   </span>
                 </div>
@@ -255,7 +255,7 @@ export default function AdminInviteRequests() {
             </p>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Note <span className="text-gray-400 font-normal">(optional)</span>
+                Note <span className="text-gray-500 font-normal">(optional)</span>
               </label>
               <Textarea
                 placeholder={actionType === "approve" ? "Welcome note for your records..." : "Reason for denial..."}
@@ -304,7 +304,7 @@ export default function AdminInviteRequests() {
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
               </Button>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               You also received a notification with this code. Forward it to the user via email.
             </p>
           </div>

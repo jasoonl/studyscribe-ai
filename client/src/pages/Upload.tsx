@@ -9,6 +9,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { probeAudioDuration } from "@/lib/probeAudioDuration";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
+import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
 
 export default function Upload() {
   // ALL hooks must be called unconditionally at the top
@@ -229,10 +230,10 @@ export default function Upload() {
                   </div>
                 ) : (
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    {...pressable(() => fileInputRef.current?.click())}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
-                    className="p-8 rounded-lg border-2 border-dashed border-border hover:border-accent hover:bg-accent/5 transition-colors cursor-pointer text-center"
+                    className={`p-8 rounded-lg border-2 border-dashed border-border hover:border-accent hover:bg-accent/5 transition-colors cursor-pointer text-center ${PRESSABLE_FOCUS}`}
                   >
                     <UploadCloud className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
                     <p className="font-medium mb-1">Click to select file</p>

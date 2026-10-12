@@ -52,7 +52,7 @@
   --primary-foreground: oklch(0.985 0.005 250);
   --sidebar-primary: oklch(0.5 0.21 264);
   --sidebar-primary-foreground: oklch(0.985 0.005 250);
-  --accent: oklch(0.6 0.15 232);
+  --accent: oklch(0.53 0.15 232);
   --accent-foreground: oklch(0.99 0.003 240);
   --brand-sky: oklch(0.72 0.13 225);
   --brand-deep: oklch(0.32 0.12 264);
@@ -127,6 +127,10 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* The skip link focuses <main> so keyboard users land in the content; no ring around the whole page. */
+  main[tabindex="-1"]:focus {
+    outline: none;
   }
   body {
     @apply bg-background text-foreground;

@@ -120,6 +120,10 @@ The `/demo` page plays `client/public/demo/studyscribe-demo.mp4` when present an
 
 `shared/` holds code imported by both client and server (`shared/const.ts` for shared string constants, `shared/types.ts`) — put cross-cutting constants there rather than duplicating them.
 
+### Legal pages and consent
+
+Policies live at `/terms`, `/privacy`, `/cookies`, `/refunds` and `/credits`, all rendered through `LegalLayout`. Operator name, contact email, minimum age (13) and the effective date come from `shared/legal.ts`; change them there, never inline. `docs/compliance/legal-checklist.md` tracks the compliance checklist and what is still the owner's to do. Analytics (Vercel Web Analytics, plus Umami when `VITE_ANALYTICS_ENDPOINT`/`VITE_ANALYTICS_WEBSITE_ID` are set) load only after the visitor accepts in `CookieBanner` (`client/src/lib/cookieConsent.ts`, localStorage `studyscribe_cookie_consent`; Global Privacy Control counts as declining), so never inject an analytics or tracking script directly; add new cookies or storage keys to the Cookie Policy table. Sign-up requires separate age and Terms confirmations, enforced server-side for email (`confirmedAge` in `/api/auth/signup`) and Google (`consented` in the OAuth state). Screenshot scripts set the consent key so the banner stays out of frames. Make click-only containers keyboard-usable with `pressable()` (`client/src/lib/pressable.ts`).
+
 ### Deployment
 
 Vercel is the active production target: `vercel.json` builds with `npm run build`, routes `/api/*` to the bundled `api/index.mjs` handler, and serves the SPA for everything else. Deploys are automatic on push to `main` via Vercel's GitHub integration — there is no separate deploy step or CI gate to run manually; check deploy status via the GitHub commit status API (`context: "Vercel"`) or the Vercel dashboard. `render.yaml`/`railway.json`/`railway.toml`/`Procfile`/`render-build.sh` exist from an evaluated-but-not-completed migration off Vercel; don't assume they're current.

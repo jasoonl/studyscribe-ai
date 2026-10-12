@@ -6,6 +6,7 @@ import { AudioPlayer } from "@/components/AudioPlayer";
 import { FileText, BookOpen, Layers3, ClipboardCheck, NotebookPen } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { formatTranscriptTimestamp } from "@/lib/transcriptSegments";
+import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
 
 type SharedBundle = {
   recording: {
@@ -41,14 +42,15 @@ function FlashcardItem({ question, answer }: { question: string; answer: string 
   const [revealed, setRevealed] = useState(false);
   return (
     <Card
-      className="p-4 cursor-pointer select-none hover:border-accent transition-colors"
-      onClick={() => setRevealed((r) => !r)}
+      className={`p-4 cursor-pointer select-none hover:border-accent transition-colors ${PRESSABLE_FOCUS}`}
+      {...pressable(() => setRevealed((r) => !r))}
+      aria-expanded={revealed}
     >
       <p className="text-sm font-medium mb-1">{question}</p>
       {revealed ? (
         <p className="text-sm text-muted-foreground">{answer}</p>
       ) : (
-        <p className="text-xs text-muted-foreground italic">Click to reveal answer</p>
+        <p className="text-xs text-muted-foreground italic">Select to reveal the answer</p>
       )}
     </Card>
   );
