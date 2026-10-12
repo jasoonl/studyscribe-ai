@@ -178,8 +178,11 @@ export async function submitTranscriptionJob(input: {
   webhookUrl?: string;
   /** Explicit spoken language; omitted means the provider detects it. */
   language?: string;
+  /** Custom vocabulary (names, course terms), sent as the provider's `keyterms_prompt`. */
+  keyterms?: string[];
 }): Promise<{ providerId: string }> {
-  const submit = async (withSpeakerLabels: boolean) => {
+  const keyterms = (input.keyterms ?? []).filter((term) => term.trim().length > 0);
+  const submit = async (withSpeakerLabels: boolean, withKeyterms: boolean) => {
     const response = await fetch(`${ASSEMBLYAI_BASE_URL}/transcript`, {
       method: "POST",
       headers: { ...getHeaders(), "Content-Type": "application/json" },
@@ -187,6 +190,7 @@ export async function submitTranscriptionJob(input: {
         audio_url: input.audioUrl,
         ...(input.language ? { language_code: input.language } : { language_detection: true }),
         ...(withSpeakerLabels ? { speaker_labels: true } : {}),
+        ...(withKeyterms && keyterms.length > 0 ? { keyterms_prompt: keyterms } : {}),
         ...(input.webhookUrl
           ? {
               webhook_url: input.webhookUrl,
@@ -199,14 +203,21 @@ export async function submitTranscriptionJob(input: {
     return { response, body: await readJson(response) };
   };
 
-  let { response, body } = await submit(true);
+  let { response, body } = await submit(true, true);
+
+  // Custom vocabulary is a hint, not a requirement: if the provider rejects
+  // it (a model or language that does not take key terms), transcribe without.
+  if (!response.ok && response.status === 400 && keyterms.length > 0) {
+    console.warn(`[Transcription] Retrying without custom vocabulary: ${body.error ?? response.status}`);
+    ({ response, body } = await submit(true, false));
+  }
 
   // Speaker labels aren't supported for every detected language, and the
   // provider rejects the whole request when they clash. A transcript without
   // speaker labels beats no transcript, so retry once without them.
   if (!response.ok && response.status === 400) {
     console.warn(`[Transcription] Retrying without speaker labels: ${body.error ?? response.status}`);
-    ({ response, body } = await submit(false));
+    ({ response, body } = await submit(false, false));
   }
 
   if (!response.ok || !body.id) {

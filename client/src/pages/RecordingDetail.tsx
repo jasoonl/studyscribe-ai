@@ -6,9 +6,14 @@ import { AlertCircle } from "lucide-react";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2, Save, X, Brain, Mail, FileText, ClipboardCheck, Layers3, NotebookPen, Share2 } from "lucide-react";
+import { RecordingOrganizer } from "@/components/RecordingOrganizer";
+import { CourseDot } from "@/components/CourseDot";
 import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
 import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
+import { RecordingChapters } from "@/components/RecordingChapters";
+import { RecordingTasks } from "@/components/RecordingTasks";
+import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { FlashcardReview } from "@/components/FlashcardReview";
@@ -21,14 +26,33 @@ import { downloadTranscriptExport } from "@/lib/transcriptExports";
 import { downloadFlashcardExport } from "@/lib/flashcardExports";
 import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useState, useEffect, useRef } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useSearch } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 
+function DetailTags({ tagIds }: { tagIds: number[] }) {
+  const { data: tags } = trpc.tags.list.useQuery();
+  const own = (tags ?? []).filter(tag => tagIds.includes(tag.id));
+  if (own.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
+      {own.map(tag => (
+        <li key={tag.id} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-0.5 text-xs">
+          <CourseDot color={tag.color} className="size-1.5" />
+          {tag.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function RecordingDetail() {
   const [, params] = useRoute("/recording/:id");
   const recordingId = params?.id ? parseInt(params.id) : null;
+  // /recording/:id?t=754 opens the recording at 12:34 (links from Ask StudyScribe).
+  const startParam = new URLSearchParams(useSearch()).get("t");
+  const startAt = startParam && /^\d+(\.\d+)?$/.test(startParam) ? Number(startParam) : undefined;
   const { user } = useAuth();
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [editedTranscript, setEditedTranscript] = useState("");
@@ -99,6 +123,9 @@ export default function RecordingDetail() {
   const updateTranscriptMutation = trpc.transcription.update.useMutation();
   const utils = trpc.useUtils();
   const [retryLanguage, setRetryLanguage] = useState("auto");
+  const [retryVocabulary, setRetryVocabulary] = useState<string | null>(null);
+  const needsRetry = recording?.status === "failed" || (recording?.status === "processing" && !recording?.transcriptionProviderId);
+  const { data: storedVocabulary } = trpc.vocabulary.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && needsRetry });
   const retryTranscription = trpc.recordings.retryTranscription.useMutation({
     onSuccess: () => {
       toast.success("Transcription restarted");
@@ -215,6 +242,8 @@ export default function RecordingDetail() {
     );
   }
 
+  const transcriptReady = recording.status === "completed" && !!transcript?.fullText?.trim();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -272,6 +301,11 @@ export default function RecordingDetail() {
                       <span className="font-medium">Created:</span>{" "}
                       {new Date(recording.createdAt).toLocaleDateString()}
                     </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                      <span className="font-medium">Filed under:</span>
+                      <RecordingOrganizer recordingId={recording.id} courseId={recording.courseId} tagIds={recording.tagIds} variant="field" className="-ml-1" />
+                      <DetailTags tagIds={recording.tagIds} />
+                    </div>
                   </div>
                 </div>
 
@@ -293,11 +327,23 @@ export default function RecordingDetail() {
                         {recording.status === "failed" && " Check your notifications for the reason the provider gave."}
                       </p>
                       <LanguageSelect value={retryLanguage} onChange={setRetryLanguage} id="retry-language" />
+                      <VocabularyField
+                        key={storedVocabulary ? "loaded" : "loading"}
+                        value={retryVocabulary ?? storedVocabulary?.recordingTerms.join("\n") ?? ""}
+                        onChange={setRetryVocabulary}
+                        id="retry-vocabulary"
+                      />
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={retryTranscription.isPending}
-                        onClick={() => retryTranscription.mutate({ id: recording.id, language: languageForRequest(retryLanguage) })}
+                        onClick={() =>
+                          retryTranscription.mutate({
+                            id: recording.id,
+                            language: languageForRequest(retryLanguage),
+                            ...(retryVocabulary !== null ? { keyterms: vocabularyForRequest(retryVocabulary) ?? [] } : {}),
+                          })
+                        }
                       >
                         {retryTranscription.isPending ? "Retrying…" : "Retry transcription"}
                       </Button>
@@ -311,7 +357,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} />
                     <RecordingBookmarks
                       recordingId={recordingId || 0}
                       playbackTime={playbackTime}
@@ -319,6 +365,14 @@ export default function RecordingDetail() {
                     />
                   </div>
                 )}
+
+                <RecordingChapters
+                  recordingId={recording.id}
+                  transcriptReady={transcriptReady}
+                  hasAudio={!!recording.audioUrl}
+                  playbackTime={playbackTime}
+                  onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
+                />
               </div>
             </Card>
 
@@ -479,7 +533,7 @@ export default function RecordingDetail() {
                 <StudyNotesPanel
                   recordingId={recordingId || 0}
                   audience={recording.audience}
-                  transcriptReady={recording.status === "completed" && !!transcript?.fullText?.trim()}
+                  transcriptReady={transcriptReady}
                   notes={studyNotes}
                 />
               </TabsContent>
@@ -650,7 +704,13 @@ export default function RecordingDetail() {
           </div>
           {/* Right sidebar: AI Tools */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <RecordingTasks
+              recordingId={recording.id}
+              transcriptReady={transcriptReady}
+              audience={recording.audience}
+              onSeek={recording.audioUrl ? seconds => audioPlayerRef.current?.seekTo(seconds, { play: true }) : undefined}
+            />
+            <div className="flex items-center justify-between pt-2">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Requires transcript</span>
             </div>

@@ -127,6 +127,30 @@ describe("transcription language selection", () => {
     expect(body.language_detection).toBeUndefined();
   });
 
+  it("sends custom vocabulary as keyterms_prompt, and nothing when there is none", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ id: "t1" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("ASSEMBLYAI_API_KEY", "test-key");
+    await submitTranscriptionJob({ audioUrl: "https://example.com/a.mp3", keyterms: ["Krebs cycle", "Okafor"] });
+    await submitTranscriptionJob({ audioUrl: "https://example.com/a.mp3", keyterms: [] });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).keyterms_prompt).toEqual(["Krebs cycle", "Okafor"]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).word_boost).toBeUndefined();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).keyterms_prompt).toBeUndefined();
+  });
+
+  it("retries without the vocabulary, keeping speaker labels, when the provider rejects it", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "keyterms_prompt is not supported" }), { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "t2" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("ASSEMBLYAI_API_KEY", "test-key");
+    await expect(submitTranscriptionJob({ audioUrl: "https://example.com/a.mp3", keyterms: ["ATP"] })).resolves.toEqual({ providerId: "t2" });
+    const retry = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(retry.keyterms_prompt).toBeUndefined();
+    expect(retry.speaker_labels).toBe(true);
+  });
+
   it("offers the requested languages", () => {
     const codes = TRANSCRIPTION_LANGUAGES.map((l) => l.code);
     for (const code of ["zh", "es", "fr", "la", "de", "ko"]) expect(codes).toContain(code);

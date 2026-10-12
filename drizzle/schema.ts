@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, date, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -145,7 +145,8 @@ export type InsertFlashcardReview = typeof flashcardReviews.$inferInsert;
  */
 export const chatHistory = mysqlTable("chatHistory", {
   id: int("id").autoincrement().primaryKey(),
-  recordingId: int("recordingId").notNull(),
+  /** Null for "Ask StudyScribe" questions, which span recordings instead of belonging to one. */
+  recordingId: int("recordingId"),
   userId: int("userId").notNull(),
   role: mysqlEnum("role", ["user", "assistant"]).notNull(),
   content: text("content").notNull(),
@@ -414,3 +415,120 @@ export const appSettings = mysqlTable("appSettings", {
   value: text("value").notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
+
+/**
+ * Courses (folders) a student files recordings under. Archiving hides a
+ * course from the sidebar-style lists but keeps its recordings assigned.
+ * `color` is a key from shared/courseColors.ts, not a CSS value.
+ */
+export const courses = mysqlTable("courses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  color: varchar("color", { length: 16 }).default("blue").notNull(),
+  term: varchar("term", { length: 64 }),
+  archived: boolean("archived").default(false).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("courses_user_idx").on(table.userId),
+]);
+
+export type Course = typeof courses.$inferSelect;
+
+/**
+ * Which course a recording belongs to (at most one). This is a table of its
+ * own rather than a `recordings.courseId` column so that a server which has
+ * not run the migration yet keeps loading recordings: an unknown column on
+ * `recordings` would break every query against it, an unknown table only
+ * turns courses off.
+ */
+export const recordingCourses = mysqlTable("recordingCourses", {
+  id: int("id").autoincrement().primaryKey(),
+  recordingId: int("recordingId").notNull(),
+  courseId: int("courseId").notNull(),
+  userId: int("userId").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("recordingCourses_recording_unique").on(table.recordingId),
+  index("recordingCourses_course_idx").on(table.courseId),
+]);
+
+export type RecordingCourse = typeof recordingCourses.$inferSelect;
+
+/**
+ * Tasks, assignments and deadlines pulled out of a transcript ("Find tasks"),
+ * plus any the person adds by hand. `dueDate` is a calendar day with no time
+ * zone (YYYY-MM-DD); `dueText` keeps how it was said ("next Friday") so a
+ * worked-out date can be checked against the recording.
+ */
+export const actionItems = mysqlTable("actionItems", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  recordingId: int("recordingId").notNull(),
+  text: varchar("text", { length: 500 }).notNull(),
+  kind: mysqlEnum("kind", ["task", "assignment", "exam", "reading"]).default("task").notNull(),
+  owner: varchar("owner", { length: 120 }),
+  dueDate: date("dueDate", { mode: "string" }),
+  dueText: varchar("dueText", { length: 120 }),
+  atSeconds: int("atSeconds"),
+  source: mysqlEnum("source", ["extracted", "manual"]).default("extracted").notNull(),
+  done: boolean("done").default(false).notNull(),
+  doneAt: timestamp("doneAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("actionItems_user_idx").on(table.userId),
+  index("actionItems_recording_idx").on(table.recordingId),
+]);
+
+export type ActionItem = typeof actionItems.$inferSelect;
+export type InsertActionItem = typeof actionItems.$inferInsert;
+
+/**
+ * Words the transcription provider should listen for (names, course jargon).
+ * One row per person with `recordingId` null holds the list used for every
+ * recording; a row with a `recordingId` holds extra terms for that one only.
+ * `terms` is newline-separated.
+ */
+export const vocabularyLists = mysqlTable("vocabularyLists", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  recordingId: int("recordingId"),
+  terms: text("terms").notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  index("vocabularyLists_user_idx").on(table.userId),
+]);
+
+export type VocabularyList = typeof vocabularyLists.$inferSelect;
+
+/**
+ * A combined study guide and practice quiz made from several recordings (often
+ * a whole course) for exam revision. The guide and the quiz are generated in
+ * separate requests so neither request has to fit two model calls; either is
+ * null until it has been generated.
+ */
+export const examPacks = mysqlTable("examPacks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  courseId: int("courseId"),
+  recordingIds: json("recordingIds").$type<number[]>().notNull(),
+  guide: text("guide"),
+  questions: json("questions").$type<Array<{
+    id: string;
+    question: string;
+    type: "multiple-choice" | "short-answer";
+    options?: string[];
+    correctAnswer: string;
+    explanation: string;
+    recordingId?: number;
+  }>>(),
+  lastScore: int("lastScore"),
+  attempts: int("attempts").default(0).notNull(),
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("examPacks_user_idx").on(table.userId),
+]);
+
+export type ExamPack = typeof examPacks.$inferSelect;

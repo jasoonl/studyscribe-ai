@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
+import { KeyTermChips } from "@/components/KeyTermChips";
 import { downloadTranscriptExport, type TranscriptExportFormat } from "@/lib/transcriptExports";
 import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
 
@@ -178,6 +179,8 @@ export function TranscriptView({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <KeyTermChips recordingId={recordingId} query={query} onPick={setQuery} />
 
       {speakers.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">

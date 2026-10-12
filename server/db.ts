@@ -2,6 +2,7 @@ import { eq, and, like, or, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares, appSettings, type Transcript } from "../drizzle/schema";
+import { isInsightNote } from "./studyExtraction";
 import crypto from "crypto";
 import { ENV } from './_core/env';
 
@@ -558,7 +559,9 @@ export async function getStudyNotesByRecordingId(recordingId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.select().from(studyNotes).where(eq(studyNotes.recordingId, recordingId));
+  const rows = await db.select().from(studyNotes).where(eq(studyNotes.recordingId, recordingId));
+  // Key terms and chapters are stored as notes too (see server/recordingInsights.ts) but are not notes to read.
+  return rows.filter(row => !isInsightNote(row.metadata));
 }
 
 // Flashcard helpers
@@ -653,7 +656,7 @@ export async function recordFlashcardReview(data: {
 
 // Chat history helpers
 export async function addChatMessage(data: {
-  recordingId: number;
+  recordingId: number | null;
   userId: number;
   role: "user" | "assistant";
   content: string;

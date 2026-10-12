@@ -9,6 +9,8 @@ interface AudioPlayerProps {
   onTimeUpdate?: (time: number) => void;
   /** Duration recorded at capture time, used when the file has no duration header. */
   fallbackDuration?: number;
+  /** Seek here once, as soon as the audio knows its length (used by deep links like /recording/1?t=754). */
+  startAt?: number;
 }
 
 export interface AudioPlayerHandle {
@@ -45,7 +47,7 @@ function describeMediaError(error: MediaError | null): string | null {
   }
 }
 
-export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration }: AudioPlayerProps, ref) {
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration, startAt }: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -66,6 +68,19 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
 
   useImperativeHandle(ref, () => ({ seekTo }), [seekTo]);
 
+  // Apply `startAt` once. The streamed-duration probe below parks the playhead
+  // at 0 when it finishes, so it reads the same ref to put it back.
+  const startAtRef = useRef<number | undefined>(startAt);
+  const startedRef = useRef(false);
+  useEffect(() => {
+    startAtRef.current = startAt;
+  }, [startAt]);
+  useEffect(() => {
+    if (startAt === undefined || startedRef.current || duration <= 0) return;
+    startedRef.current = true;
+    seekTo(startAt);
+  }, [startAt, duration, seekTo]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -84,7 +99,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
         if (Number.isFinite(audio.duration) && audio.duration > 0) {
           setDuration(audio.duration);
           audio.removeEventListener("durationchange", onDurationChange);
-          audio.currentTime = 0;
+          audio.currentTime = startAtRef.current ?? 0;
         }
       };
       audio.addEventListener("durationchange", onDurationChange);

@@ -1,4 +1,5 @@
 import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
+import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
 import RecordingConsentNotice from "@/components/RecordingConsentNotice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -49,6 +50,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [linkTitle, setLinkTitle] = useState("");
   const [linkAudience, setLinkAudience] = useState<"student" | "professional">("student");
   const [language, setLanguage] = useState<string>("auto");
+  const [vocabulary, setVocabulary] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [linkComplete, setLinkComplete] = useState(false);
 
@@ -133,6 +135,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration: durationSeconds,
         language: languageForRequest(language),
+        keyterms: vocabularyForRequest(vocabulary),
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
       });
       setUploadComplete(true);
@@ -213,6 +216,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         ...(directUpload ? { audioUpload: directUpload } : { audioBase64: base64String! }),
         duration,
         language: languageForRequest(language),
+        keyterms: vocabularyForRequest(vocabulary),
       });
       setUploadFileComplete(true);
       setCreatedRecordingId(recording.id);
@@ -242,6 +246,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         title: linkTitle.trim() || undefined,
         audience: linkAudience,
         language: languageForRequest(language),
+        keyterms: vocabularyForRequest(vocabulary),
       });
       setLinkComplete(true);
       setCreatedRecordingId(recording.id);
@@ -561,6 +566,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <LanguageSelect value={language} onChange={setLanguage} id="record-language" />
+                      <VocabularyField value={vocabulary} onChange={setVocabulary} id="record-vocabulary" />
 
                       <div className="flex gap-4">
                         <Button
@@ -681,6 +687,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   </div>
 
                   <LanguageSelect value={language} onChange={setLanguage} id="link-language" />
+                  <VocabularyField value={vocabulary} onChange={setVocabulary} id="link-vocabulary" />
 
                   <Button
                     size="lg"
@@ -814,6 +821,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <LanguageSelect value={language} onChange={setLanguage} id="upload-language" />
+                      <VocabularyField value={vocabulary} onChange={setVocabulary} id="upload-vocabulary" />
 
                       <div className="flex gap-4">
                         <Button

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2 } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, Sparkles, ListChecks, GraduationCap } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -11,10 +11,9 @@ import RecordOrUpload from "./RecordOrUpload";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { NotificationBell } from "@/components/NotificationBell";
-import SwipeRow from "@/components/reactbits/SwipeRow";
-import FuseButton from "@/components/reactbits/FuseButton";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { RecordingList } from "@/components/RecordingList";
+import { CourseStrip, TagFilter } from "@/components/CourseStrip";
+import { UpcomingTasks } from "@/components/UpcomingTasks";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -131,9 +130,12 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "student" | "professional">("all");
   const [sortBy, setSortBy] = useState<"recent" | "oldest" | "name">("recent");
+  const [tagFilter, setTagFilter] = useState<number[]>([]);
 
   // Fetch recordings
   const { data: recordings, isLoading, refetch } = trpc.recordings.list.useQuery();
+  const { data: courses } = trpc.courses.list.useQuery();
+  const { data: tags } = trpc.tags.list.useQuery();
   const deleteRecordingMutation = trpc.recordings.delete.useMutation();
   const utils = trpc.useUtils();  // Must be at component level, not inside callbacks
 
@@ -160,6 +162,11 @@ export default function Dashboard() {
       filtered = filtered.filter(r => r.audience === filterType);
     }
 
+    // Keep recordings that carry every selected tag
+    if (tagFilter.length > 0) {
+      filtered = filtered.filter(r => tagFilter.every(id => r.tagIds.includes(id)));
+    }
+
     // Search by title
     if (searchQuery) {
       filtered = filtered.filter(r =>
@@ -177,7 +184,7 @@ export default function Dashboard() {
     }
 
     return filtered;
-  }, [recordings, searchQuery, filterType, sortBy]);
+  }, [recordings, searchQuery, filterType, sortBy, tagFilter]);
 
   const handleDeleteRecording = async (id: number) => {
     try {
@@ -296,7 +303,26 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="container py-6 pb-20">
         {/* Quick Access Buttons */}
-        <div className="flex justify-end gap-2 mb-4">
+        <div className="flex flex-wrap justify-end gap-2 mb-4">
+          <Link href="/ask">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-primary/30 bg-primary text-primary-foreground text-xs sm:text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap">
+              <Sparkles className="w-4 h-4" />
+              <span>Ask<span className="hidden sm:inline"> StudyScribe</span></span>
+            </button>
+          </Link>
+          <Link href="/tasks">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
+              <ListChecks className="w-4 h-4" />
+              <span>Tasks</span>
+            </button>
+          </Link>
+          <Link href="/exam-packs">
+            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
+              <GraduationCap className="w-4 h-4" />
+              <span className="hidden sm:inline">Exam packs</span>
+              <span className="sm:hidden">Exams</span>
+            </button>
+          </Link>
           <Link href="/knowledge-base">
             <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <Database className="w-4 h-4" />
@@ -368,6 +394,8 @@ export default function Dashboard() {
 
           {/* My Library Tab */}
           <TabsContent value="library" className="space-y-6">
+            <CourseStrip />
+            <UpcomingTasks />
             <div className="space-y-4">
               <div className="flex gap-4 flex-col sm:flex-row">
                 <div className="flex-1 relative">
@@ -398,6 +426,11 @@ export default function Dashboard() {
                   <option value="name">Alphabetical</option>
                 </select>
               </div>
+              <TagFilter
+                tags={tags}
+                selected={tagFilter}
+                onToggle={id => setTagFilter(current => (current.includes(id) ? current.filter(item => item !== id) : [...current, id]))}
+              />
             </div>
 
             {filteredRecordings.length === 0 ? (
@@ -410,52 +443,12 @@ export default function Dashboard() {
                 </Button>
               </Card>
             ) : (
-              <div>
-                {filteredRecordings.map((recording) => (
-                  <SwipeRow
-                    key={recording.id}
-                    label={`Recording ${recording.title}`}
-                    height={88}
-                    radius={16}
-                    rowColor="var(--card)"
-                    textColor="var(--foreground)"
-                    drawerColor="#b91c1c"
-                    actionColor="#dc2626"
-                    actions={[{ id: "trash", label: "Trash" }]}
-                    onCommit={() => handleDeleteRecording(recording.id)}
-                    className="rounded-2xl ring-1 ring-border/60"
-                    style={{ marginBottom: 12 }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <Link href={`/recording/${recording.id}`}>
-                        <h4 className="cursor-pointer truncate font-semibold hover:text-primary">{recording.title}</h4>
-                      </Link>
-                      <p className="text-sm text-muted-foreground">{new Date(recording.createdAt).toLocaleDateString()}</p>
-                      <p className="mt-0.5 text-xs capitalize text-muted-foreground">{recording.audience}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Link href={`/recording/${recording.id}`}>
-                        <Button size="sm" variant="outline">View</Button>
-                      </Link>
-                      <FuseButton
-                        label="Delete"
-                        undoLabel="Undo"
-                        doneLabel="Moved to trash"
-                        icon={<HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.8} />}
-                        size="sm"
-                        radius={18}
-                        color="#ffffff"
-                        background="var(--destructive)"
-                        fuseColor="#fde68a"
-                        commitOn="fuseEnd"
-                        settle="stay"
-                        undoWindow={4000}
-                        onCommit={() => handleDeleteRecording(recording.id)}
-                      />
-                    </div>
-                  </SwipeRow>
-                ))}
-              </div>
+              <RecordingList
+                recordings={filteredRecordings}
+                courses={courses}
+                tags={tags}
+                onDelete={handleDeleteRecording}
+              />
             )}
           </TabsContent>
 
