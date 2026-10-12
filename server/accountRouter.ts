@@ -12,6 +12,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
 import { deleteCoursesForUser, exportCoursesForUser } from "./courses";
+import { deleteActionItemsForUser, listActionItemsForUser } from "./actionItems";
+import { deleteExamPacksForUser, exportExamPacksForUser } from "./examPacks";
+import { deleteVocabularyForUser, exportVocabularyForUser } from "./vocabulary";
 import { comparePassword } from "./authService";
 import { getDb } from "./db";
 import { purgeRecordings } from "./purgeRecordings";
@@ -74,6 +77,9 @@ export const accountRouter = router({
       quizAttempts: await db.select().from(quizAttempts).where(eq(quizAttempts.userId, userId)),
       bookmarks: await listBookmarksForUser(userId),
       ...(await exportCoursesForUser(userId)),
+      actionItems: await listActionItemsForUser(userId),
+      vocabulary: await exportVocabularyForUser(userId),
+      examPacks: await exportExamPacksForUser(userId),
       recordingTags: owned.length ? await db.select().from(recordingTags).where(inArray(recordingTags.recordingId, owned)) : [],
       emailDrafts: await db.select().from(emailDrafts).where(eq(emailDrafts.userId, userId)),
       chatHistory: await db.select().from(chatHistory).where(eq(chatHistory.userId, userId)),
@@ -144,6 +150,9 @@ export const accountRouter = router({
       await db.delete(quizAttempts).where(eq(quizAttempts.userId, userId));
       await deleteBookmarksForUser(userId);
       await deleteCoursesForUser(userId);
+      await deleteActionItemsForUser(userId);
+      await deleteVocabularyForUser(userId);
+      await deleteExamPacksForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

@@ -32,6 +32,11 @@ import { assignRecordingToCourse, attachOrganization, coursesRouter, recordingId
 import { tagsRouter } from "./tagsRouter";
 import { askAcrossRecordings } from "./ask";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
+import { actionItemsRouter } from "./actionItems";
+import { insightsRouter } from "./recordingInsights";
+import { examPacksRouter } from "./examPacks";
+import { rememberRecordingVocabulary, resolveKeyterms, vocabularyRouter } from "./vocabulary";
+import { keytermsInput } from "./vocabularyInput";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -138,6 +143,8 @@ export const appRouter = router({
         language: languageInput,
         /** Moments marked with "Mark moment" while recording. */
         bookmarks: z.array(bookmarkInputSchema).max(MAX_BOOKMARKS_PER_RECORDING).optional(),
+        /** Extra words to listen for in this recording only. */
+        keyterms: keytermsInput,
       }).refine((value) => Boolean(value.audioBase64 || value.audioUpload), {
         message: "Audio data is required",
       }))
@@ -211,7 +218,8 @@ export const appRouter = router({
           console.warn("[bookmarks] could not save bookmarks for recording", recording.id, error);
         }
 
-        await startTranscription(recording, actualFileKey, mimeType, input.language);
+        await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await startTranscription(recording, actualFileKey, mimeType, input.language, input.keyterms);
 
         return recording;
       }),
@@ -228,6 +236,7 @@ export const appRouter = router({
         title: z.string().min(1).optional(),
         audience: z.enum(["student", "professional"]).default("student"),
         language: languageInput,
+        keyterms: keytermsInput,
       }))
       .mutation(async ({ input, ctx }) => {
         const { body, mimeType: sourceMimeType, contentLength, finalUrl, title: sourceTitle, durationSec: sourceDuration } = await fetchAudioFromUrl(input.url);
@@ -264,7 +273,8 @@ export const appRouter = router({
         const recording = userRecordings.find(r => r.audioKey === stored.key);
         if (!recording) throw new Error("Failed to create recording");
 
-        await startTranscription(recording, stored.key, stored.mimeType, input.language);
+        await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await startTranscription(recording, stored.key, stored.mimeType, input.language, input.keyterms);
 
         return recording;
       }),
@@ -275,7 +285,7 @@ export const appRouter = router({
      * which is already stored and fine.
      */
     retryTranscription: protectedProcedure
-      .input(z.object({ id: z.number(), language: languageInput }))
+      .input(z.object({ id: z.number(), language: languageInput, keyterms: keytermsInput }))
       .mutation(async ({ input, ctx }) => {
         const recording = await getRecordingByIdDb(input.id);
         if (!recording || recording.userId !== ctx.user.id) {
@@ -286,7 +296,8 @@ export const appRouter = router({
         }
 
         await updateRecordingStatus(input.id, "processing");
-        await startTranscription(recording, recording.audioKey, contentTypeFromStorageKey(recording.audioKey), input.language);
+        await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await startTranscription(recording, recording.audioKey, contentTypeFromStorageKey(recording.audioKey), input.language, input.keyterms);
         return { success: true };
       }),
 
@@ -754,6 +765,10 @@ export const appRouter = router({
   bookmarks: bookmarksRouter,
   courses: coursesRouter,
   tags: tagsRouter,
+  actionItems: actionItemsRouter,
+  insights: insightsRouter,
+  vocabulary: vocabularyRouter,
+  examPacks: examPacksRouter,
 
   studyGuides: router({
     list: protectedProcedure
@@ -1218,7 +1233,14 @@ type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
  * outlived it left the recording silently stuck in "processing" forever,
  * with no error and no way to know why.
  */
-async function startTranscription(recording: { id: number }, audioKey: string, mimeType: string, language?: string): Promise<void> {
+async function startTranscription(
+  recording: { id: number; userId: number },
+  audioKey: string,
+  mimeType: string,
+  language?: string,
+  /** Extra vocabulary given with this request; otherwise the recording's stored terms are used. */
+  keyterms?: string[],
+): Promise<void> {
   try {
     // Hand the provider a link served by this app rather than the raw
     // storage URL: it ends in a real audio extension and serves the real
@@ -1230,7 +1252,8 @@ async function startTranscription(recording: { id: number }, audioKey: string, m
     await assertSignedAudioUrlIsFetchable(providerAudioUrl);
 
     const webhookUrl = isAssemblyAiWebhookConfigured() ? buildAssemblyAiWebhookUrl() : undefined;
-    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl, language });
+    const vocabulary = await resolveKeyterms(recording.userId, recording.id, keyterms);
+    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl, language, keyterms: vocabulary });
     await setRecordingTranscriptionProviderId(recording.id, providerId);
   } catch (error) {
     await updateRecordingStatus(recording.id, "failed");
