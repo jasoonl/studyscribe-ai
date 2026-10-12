@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Briefcase, Check, GraduationCap } from "lucide-react";
+import { Check } from "lucide-react";
 
 const AUDIENCES = {
   student: {
     label: "Students",
-    icon: GraduationCap,
     headline: "Stop copying slides. Start understanding.",
     text: "Listen in class, then let StudyScribe handle the notes. Review with flashcards and quizzes built from your professor's own words.",
     points: ["Study guides generated from the exact lecture", "Flashcards in Learn and Test modes", "A tutor you can question at midnight before an exam"],
@@ -14,7 +13,6 @@ const AUDIENCES = {
   },
   professional: {
     label: "Professionals",
-    icon: Briefcase,
     headline: "Leave the meeting with the follow-up already written.",
     text: "Capture decisions while you stay in the conversation, then turn the transcript into summaries and drafts you can send.",
     points: ["Executive summaries and action items", "Email drafts in the tone you choose", "Searchable transcripts of past meetings"],
@@ -34,7 +32,6 @@ export default function UseCases() {
           <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Built for the way you work</h2>
           <div role="tablist" aria-label="Choose your use case" className="mt-8 inline-flex rounded-lg border border-border bg-card p-1">
             {(Object.keys(AUDIENCES) as Array<keyof typeof AUDIENCES>).map((key) => {
-              const Icon = AUDIENCES[key].icon;
               const on = key === who;
               return (
                 <button
@@ -44,7 +41,6 @@ export default function UseCases() {
                   onClick={() => setWho(key)}
                   className={`flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold transition-colors ${on ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:text-foreground"}`}
                 >
-                  <Icon className="h-4 w-4" />
                   {AUDIENCES[key].label}
                 </button>
               );

@@ -113,7 +113,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
         ))}
       </div>
 
-      <Card className="sticky bottom-3 border-2 border-border bg-card/95 p-4 backdrop-blur">
+      <Card className="sticky bottom-3 border-2 border-border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">{answeredCount}/{questions.length}</span> questions answered</p>
           <Button onClick={() => setIsSubmitted(true)} disabled={answeredCount === 0}><ClipboardCheck className="mr-2 h-4 w-4" /> Submit test</Button>

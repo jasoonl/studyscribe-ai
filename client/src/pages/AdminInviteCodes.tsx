@@ -150,7 +150,7 @@ export default function AdminInviteCodes() {
     onError: (err) => toast.error(err.message),
   });
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   if (!user || user.role !== "admin") {
     return (
@@ -208,7 +208,7 @@ export default function AdminInviteCodes() {
           <TableRow key={code.id} className={code.isUsed ? "opacity-60" : ""}>
             <TableCell>
               <div className="flex items-center gap-1">
-                <code className="font-mono text-sm text-indigo-700 font-semibold">{code.code}</code>
+                <code className="font-mono text-sm text-primary font-semibold">{code.code}</code>
                 <CopyButton text={code.code} />
               </div>
             </TableCell>
@@ -276,7 +276,7 @@ export default function AdminInviteCodes() {
           <h1 className="text-lg font-semibold text-gray-900">Invite Code Management</h1>
         </div>
         <Button
-          className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+          className="bg-primary hover:bg-primary text-white gap-2"
           onClick={() => setShowCreate(true)}
         >
           <Plus className="w-4 h-4" />
@@ -296,7 +296,7 @@ export default function AdminInviteCodes() {
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary/70" />
           </div>
         ) : (
           <>
@@ -386,7 +386,7 @@ export default function AdminInviteCodes() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary text-white"
               disabled={!newEmail.trim() || createMutation.isPending}
               onClick={() => createMutation.mutate({ email: newEmail.trim(), expiresInDays: newExpiry })}
             >
@@ -404,7 +404,7 @@ export default function AdminInviteCodes() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-gray-600">
-              Code: <code className="font-mono text-indigo-700 font-semibold">{editTarget?.code}</code>
+              Code: <code className="font-mono text-primary font-semibold">{editTarget?.code}</code>
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="edit-date">New expiration date</Label>
@@ -420,7 +420,7 @@ export default function AdminInviteCodes() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary text-white"
               disabled={!editDate || updateExpiryMutation.isPending}
               onClick={handleConfirmExpiry}
             >
@@ -443,7 +443,7 @@ export default function AdminInviteCodes() {
               {confirmTarget?.action === "delete"
                 ? `This will permanently delete the code `
                 : `This will revoke the code `}
-              <code className="font-mono text-indigo-700 font-semibold">{confirmTarget?.code.code}</code>
+              <code className="font-mono text-primary font-semibold">{confirmTarget?.code.code}</code>
               {confirmTarget?.action === "delete"
                 ? ". This cannot be undone."
                 : ". It will no longer be usable for sign-up."}

@@ -9,7 +9,7 @@ export default function SharedWithMe() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-border bg-background sticky top-0 z-40">
         <div className="container h-16 flex items-center gap-4">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">

@@ -76,7 +76,7 @@ export default function AdminInviteRequests() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
@@ -137,15 +137,15 @@ export default function AdminInviteRequests() {
             </Button>
           </Link>
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-500" />
+            <Users className="w-5 h-5 text-primary" />
             <h1 className="text-lg font-semibold text-gray-900">Invite Requests</h1>
             {pending.length > 0 && (
-              <Badge className="bg-indigo-600 text-white text-xs">{pending.length} pending</Badge>
+              <Badge className="bg-primary text-white text-xs">{pending.length} pending</Badge>
             )}
           </div>
         </div>
         <Link href="/admin/invite-codes">
-          <Button variant="outline" size="sm" className="gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+          <Button variant="outline" size="sm" className="gap-1.5 text-primary border-primary/30 hover:bg-primary/5">
             Manage Invite Codes
           </Button>
         </Link>
@@ -159,7 +159,7 @@ export default function AdminInviteRequests() {
           </h2>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary/70" />
             </div>
           ) : pending.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
@@ -297,7 +297,7 @@ export default function AdminInviteRequests() {
               Share this invite code with <strong>{selectedRequest?.name}</strong> ({selectedRequest?.email}). It expires in 30 days.
             </p>
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-              <code className="flex-1 text-indigo-700 font-mono font-semibold text-lg tracking-wider">
+              <code className="flex-1 text-primary font-mono font-semibold text-lg tracking-wider">
                 {approvedCode}
               </code>
               <Button size="sm" variant="ghost" onClick={copyCode} className="shrink-0">
