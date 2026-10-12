@@ -124,6 +124,14 @@ function isDisallowedIpv6(ip: string): boolean {
   // IPv4-mapped (::ffff:127.0.0.1) must be judged on the embedded address.
   const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
   if (mapped) return isDisallowedIpv4(mapped[1]);
+  // The WHATWG URL parser rewrites [::ffff:127.0.0.1] as [::ffff:7f00:1], so
+  // the hex form has to be unpacked too or it would pass as a public address.
+  const mappedHex = normalized.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (mappedHex) {
+    const high = Number.parseInt(mappedHex[1], 16);
+    const low = Number.parseInt(mappedHex[2], 16);
+    return isDisallowedIpv4(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`);
+  }
 
   if (normalized === "::" || normalized === "::1") return true;
   if (normalized.startsWith("fe80") || normalized.startsWith("fec0")) return true; // link/site-local

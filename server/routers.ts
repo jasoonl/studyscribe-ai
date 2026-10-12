@@ -40,6 +40,12 @@ import { keytermsInput } from "./vocabularyInput";
 import { LiveTokenError, getLiveAvailability, getLiveTranscriptionStatus, mintLiveToken } from "./liveTranscription";
 import { liveAssistInputSchema, runLiveAssist } from "./liveAssist";
 import { followUpsRouter } from "./followUps";
+import { requireRecordingAccess } from "./recordingAccess";
+import { annotationsRouter } from "./annotations";
+import { groupsRouter } from "./groups";
+import { emitWebhookEvent, payloadText, recordingSummary, webhooksRouter } from "./outgoingWebhooks";
+import { indexRecordingQuietly, smartSearchRouter } from "./embeddings";
+import { integrationsRouter } from "./integrations";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -409,20 +415,18 @@ export const appRouter = router({
         return getTranscriptByRecordingId(input.recordingId);
       }),
 
+    /** Owner, or anyone the recording is shared with at the edit role. */
     update: protectedProcedure
       .input(transcriptUpdateInputSchema)
       .mutation(async ({ input, ctx }) => {
-        const recording = await getRecordingByIdDb(input.recordingId);
-        if (!recording || recording.userId !== ctx.user.id) {
-          throw new Error("Recording not found");
-        }
+        const { recording } = await requireRecordingAccess(input.recordingId, ctx.user.id, "edit");
 
         const transcript = await getTranscriptByRecordingId(input.recordingId);
-        if (!transcript || transcript.userId !== ctx.user.id) {
+        if (!transcript || transcript.userId !== recording.userId) {
           throw new Error("Transcript not found");
         }
 
-        const updated = await updateTranscriptText({ ...input, userId: ctx.user.id });
+        const updated = await updateTranscriptText({ ...input, userId: recording.userId });
         if (!updated) throw new Error("Failed to save transcript");
         return updated;
       }),
@@ -430,20 +434,17 @@ export const appRouter = router({
     renameSpeaker: protectedProcedure
       .input(speakerRenameInputSchema)
       .mutation(async ({ input, ctx }) => {
-        const recording = await getRecordingByIdDb(input.recordingId);
-        if (!recording || recording.userId !== ctx.user.id) {
-          throw new Error("Recording not found");
-        }
+        const { recording } = await requireRecordingAccess(input.recordingId, ctx.user.id, "edit");
 
         const transcript = await getTranscriptByRecordingId(input.recordingId);
-        if (!transcript || transcript.userId !== ctx.user.id || !Array.isArray(transcript.segments)) {
+        if (!transcript || transcript.userId !== recording.userId || !Array.isArray(transcript.segments)) {
           throw new Error("Transcript not found");
         }
 
         const segments = renameSpeakerInSegments(transcript.segments, input.from, input.to);
         if (!segments) throw new Error("That speaker is not in this transcript");
 
-        const updated = await updateTranscriptSegments({ recordingId: input.recordingId, userId: ctx.user.id, segments });
+        const updated = await updateTranscriptSegments({ recordingId: input.recordingId, userId: recording.userId, segments });
         if (!updated) throw new Error("Failed to save speaker name");
         return updated;
       }),
@@ -507,12 +508,17 @@ export const appRouter = router({
             throw new Error("LLM returned empty content");
           }
 
-          await createStudyNote({
+          const [inserted] = await createStudyNote({
             recordingId: input.recordingId,
             userId: ctx.user.id,
             type: template.noteType,
             content,
             metadata: { template: template.id },
+          });
+
+          await emitWebhookEvent(ctx.user.id, "notes.generated", {
+            recording: recordingSummary(recording),
+            note: { id: Number((inserted as any)?.insertId) || null, type: template.noteType, template: template.id, content },
           });
 
           return { success: true, content };
@@ -803,6 +809,11 @@ export const appRouter = router({
   vocabulary: vocabularyRouter,
   examPacks: examPacksRouter,
   followUps: followUpsRouter,
+  annotations: annotationsRouter,
+  groups: groupsRouter,
+  webhooks: webhooksRouter,
+  smartSearch: smartSearchRouter,
+  integrations: integrationsRouter,
 
   studyGuides: router({
     list: protectedProcedure
@@ -1352,6 +1363,24 @@ async function finalizeCompletedTranscription(
     });
   }
   await updateRecordingStatus(recording.id, "completed");
+
+  // Only the first completion counts: the webhook and a poll can both land here.
+  if (!existingTranscript) {
+    // Smart search index and outgoing webhooks, each bounded by its own short
+    // timeout and never throwing, so neither can strand the recording.
+    await indexRecordingQuietly(recording.id);
+    const summary = recordingSummary(recording);
+    await emitWebhookEvent(recording.userId, "recording.completed", { recording: { ...summary, status: "completed" } });
+    await emitWebhookEvent(recording.userId, "transcript.ready", {
+      recording: summary,
+      transcript: {
+        language: result.language || "en",
+        wordCount: result.text.split(/\s+/).filter(Boolean).length,
+        segmentCount: result.segments.length,
+        ...payloadText(result.text),
+      },
+    });
+  }
 
   try {
     const db = await getDb();

@@ -17,6 +17,12 @@ import { deleteExamPacksForUser, exportExamPacksForUser } from "./examPacks";
 import { deleteVocabularyForUser, exportVocabularyForUser } from "./vocabulary";
 import { deleteFollowUpsForUser, listFollowUpsForUser } from "./followUps";
 import { comparePassword } from "./authService";
+import { deleteAnnotationsByAuthor, exportAnnotationsByAuthor } from "./annotations";
+import { deleteChunksForUser, exportChunksForUser } from "./embeddings";
+import { deleteGroupDataForUser, exportGroupDataForUser } from "./groups";
+import { deleteIntegrationsForUser, exportIntegrationsForUser } from "./integrations";
+import { deleteWebhooksForUser, exportWebhooksForUser } from "./outgoingWebhooks";
+import { listDirectSharesFor, selectShares } from "./recordingAccess";
 import { getDb } from "./db";
 import { purgeRecordings } from "./purgeRecordings";
 import { deleteProviderTranscript } from "./speakerDiarization";
@@ -88,12 +94,19 @@ export const accountRouter = router({
       tags: await db.select().from(tags).where(eq(tags.userId, userId)),
       notifications: await db.select().from(userNotifications).where(eq(userNotifications.userId, userId)),
       sharedWithOthers: owned.length
-        ? (await db.select().from(recordingShares).where(inArray(recordingShares.recordingId, owned))).map((share) => ({
+        ? (await selectShares(inArray(recordingShares.recordingId, owned))).map((share) => ({
             recordingId: share.recordingId,
             sharedWithEmail: share.sharedWithEmail,
+            role: share.role,
             createdAt: share.createdAt,
           }))
         : [],
+      sharedWithMe: (await listDirectSharesFor(userId)).map((share) => ({ recordingId: share.recordingId, role: share.role, createdAt: share.createdAt })),
+      transcriptComments: await exportAnnotationsByAuthor(userId),
+      ...(await exportGroupDataForUser(userId)),
+      ...(await exportWebhooksForUser(userId)),
+      connectedApps: await exportIntegrationsForUser(userId),
+      smartSearchPassages: await exportChunksForUser(userId),
     };
   }),
 
@@ -156,6 +169,11 @@ export const accountRouter = router({
       await deleteVocabularyForUser(userId);
       await deleteExamPacksForUser(userId);
       await deleteFollowUpsForUser(userId);
+      await deleteAnnotationsByAuthor(userId);
+      await deleteChunksForUser(userId);
+      await deleteGroupDataForUser(userId);
+      await deleteWebhooksForUser(userId);
+      await deleteIntegrationsForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { handleAssemblyAiWebhook } from "../transcriptionWebhook";
 import { registerSchemaInitRoute } from "../schemaInit";
 import { registerFollowUpCron } from "../followUps";
+import { registerIntegrationRoutes } from "../integrations";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -37,6 +38,7 @@ export function createApp() {
   registerStorageProxy(app);
   registerAuthRoutes(app);
   registerOAuthRoutes(app);
+  registerIntegrationRoutes(app);
   app.use(
     "/api/trpc",
     createExpressMiddleware({

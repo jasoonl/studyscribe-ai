@@ -10,6 +10,7 @@ import { getDb, getFlashcardsByRecordingId, getRecordingById, getTranscriptByRec
 import { FOLLOW_UPS_RESPONSE_FORMAT, buildFollowUpMessages, buildReminderMessage, normalizeFollowUps } from "./followUpExtraction";
 import { completeJson } from "./llmJson";
 import { sendBrowserPush } from "./pushNotifications";
+import { runWebhookMaintenance } from "./outgoingWebhooks";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
 import { SINGLE_RECORDING_BUDGET, condenseTranscript } from "./transcriptBudget";
@@ -225,7 +226,13 @@ export function registerFollowUpCron(app: Express) {
     }
     try {
       const result = await sendDueFollowUpReminders(new Date().toISOString().slice(0, 10));
-      res.json(result);
+      // The same daily run retries outgoing webhooks that are due, so they do
+      // not need a cron of their own (Hobby plans allow very few).
+      const webhooks = await runWebhookMaintenance().catch((error) => {
+        console.error("[webhooks] daily retry run failed:", error);
+        return null;
+      });
+      res.json({ ...result, webhooks });
     } catch (error) {
       console.error("[followUps] reminder run failed:", error);
       res.status(500).json({ error: "Reminder run failed" });
