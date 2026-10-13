@@ -162,7 +162,7 @@ function Members({ role, seats }: { role: OrgRole; seats: { limited: boolean; us
         title="Members"
         description={seats?.limited ? `${seats.used} of ${seats.total} seats in use, counting pending invitations.` : "Seats are not limited on this server."}
       />
-      <div className="mt-5 overflow-x-auto rounded-xl border border-border">
+      <div className="relative mt-5 min-w-0 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[34rem] text-sm">
           <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>

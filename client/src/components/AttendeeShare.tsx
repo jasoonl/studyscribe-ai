@@ -86,7 +86,7 @@ function AttendeeShareDialog({ recordingId, open, onOpenChange }: { recordingId:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[92dvh] grid-cols-1 overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Email notes to attendees</DialogTitle>
           <DialogDescription>
@@ -101,8 +101,8 @@ function AttendeeShareDialog({ recordingId, open, onOpenChange }: { recordingId:
         ) : data.notes.length === 0 ? (
           <p className="rounded-xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground">Write notes for this recording first (Notes tab), then come back to send them.</p>
         ) : (
-          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-            <div className="space-y-5">
+          <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+            <div className="min-w-0 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="attendee-note">Notes to send</Label>
                 <Select value={noteId ? String(noteId) : undefined} onValueChange={value => setNoteId(Number(value))}>
@@ -120,7 +120,7 @@ function AttendeeShareDialog({ recordingId, open, onOpenChange }: { recordingId:
                 <Label htmlFor="attendee-message">Message (optional)</Label>
                 <Textarea id="attendee-message" value={message} onChange={event => setMessage(event.target.value)} maxLength={1000} rows={3} placeholder="Thanks for the call. Here are the notes." />
               </div>
-              <fieldset className="space-y-2">
+              <fieldset className="min-w-0 space-y-2">
                 <div className="flex items-baseline justify-between gap-3">
                   <legend className="text-sm font-medium">Send to</legend>
                   {selectable.length > 1 && (

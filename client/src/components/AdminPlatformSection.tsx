@@ -83,7 +83,7 @@ export function AdminPlatformSection() {
             {teams.teams.length === 0 ? (
               <p className="text-sm text-muted-foreground">No teams yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="relative min-w-0 overflow-x-auto rounded-lg border border-border">
                 <table className="w-full min-w-[40rem] text-sm">
                   <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
                     <tr>

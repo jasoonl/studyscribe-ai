@@ -126,7 +126,7 @@ export function ApiKeySettings() {
                 <Label htmlFor="api-key-name">Name</Label>
                 <Input id="api-key-name" value={name} onChange={event => setName(event.target.value)} maxLength={100} placeholder="Obsidian sync script" autoFocus />
               </div>
-              <fieldset className="space-y-2">
+              <fieldset className="min-w-0 space-y-2">
                 <legend className="mb-1 text-sm font-medium">Access</legend>
                 <RadioGroup value={scope} onValueChange={value => setScope(value as "read" | "write")} className="gap-2">
                   <div className="flex items-start gap-2.5">
