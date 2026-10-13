@@ -2,6 +2,7 @@ import { OAuth2Client } from "google-auth-library";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { signOAuthState } from "./googleSignup";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -31,6 +32,8 @@ export interface GoogleUser {
   email: string;
   name: string;
   picture?: string;
+  /** Google Workspace domain (`hd` claim); absent for personal Gmail accounts. */
+  hostedDomain?: string;
 }
 
 /**
@@ -58,6 +61,7 @@ export async function exchangeGoogleCode(
       email: payload.email || "",
       name: payload.name || "",
       picture: payload.picture,
+      hostedDomain: typeof payload.hd === "string" ? payload.hd.toLowerCase() : undefined,
     };
 
     return { tokens, user };
@@ -69,51 +73,38 @@ export async function exchangeGoogleCode(
 }
 
 /**
- * Get or create user from Google OAuth
+ * The account a Google sign-in belongs to: by Google id, else by email
+ * (Google addresses are verified, so the Google id is linked to it). Returns
+ * null when there is no account, so the caller decides whether one may be made.
  */
-export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
+export async function findGoogleAccount(googleUser: GoogleUser) {
   const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
+  if (!db) throw new Error("Database not available");
+
+  const [byGoogleId] = await db.select().from(users).where(eq(users.googleId, googleUser.id)).limit(1);
+  if (byGoogleId) {
+    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, byGoogleId.id));
+    return byGoogleId;
   }
 
-  // Check if user exists by googleId
-  const existingUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.googleId, googleUser.id))
-    .limit(1);
-
-  if (existingUser.length > 0) {
-    return existingUser[0];
-  }
-
-  // Check if user exists by email
-  const userByEmail = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, googleUser.email))
-    .limit(1);
-
-  if (userByEmail.length > 0) {
-    // Update existing user with Google ID
+  const [byEmail] = await db.select().from(users).where(eq(users.email, googleUser.email.trim().toLowerCase())).limit(1);
+  if (byEmail) {
     await db
       .update(users)
-      .set({
-        googleId: googleUser.id,
-        loginMethod: "google",
-        emailVerified: 1,
-        updatedAt: new Date(),
-        lastSignedIn: new Date(),
-      })
-      .where(eq(users.id, userByEmail[0].id));
-
-    return userByEmail[0];
+      .set({ googleId: googleUser.id, emailVerified: 1, updatedAt: new Date(), lastSignedIn: new Date() })
+      .where(eq(users.id, byEmail.id));
+    return byEmail;
   }
+  return null;
+}
 
-  // Create new user
+/** Creates the account for a Google sign-up that `decideGoogleSignup` allowed. */
+export async function createGoogleUser(googleUser: GoogleUser) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const email = googleUser.email.trim().toLowerCase();
   await db.insert(users).values({
-    email: googleUser.email,
+    email,
     name: googleUser.name,
     googleId: googleUser.id,
     loginMethod: "google",
@@ -125,25 +116,23 @@ export async function getOrCreateGoogleUser(googleUser: GoogleUser) {
     updatedAt: new Date(),
     lastSignedIn: new Date(),
   });
-
-  // Fetch the created user
-  const newUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, googleUser.email))
-    .limit(1);
-  return newUser[0];
+  const [created] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return created;
 }
 
 /**
  * Generate Google OAuth URL
  */
-export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string, consented = false): string {
+export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string, consented = false, invite?: string): string {
   const scopes = ["openid", "email", "profile"];
 
-  // Encode origin and mode in state
-  const stateData = JSON.stringify(consented ? { origin, mode, consented } : { origin, mode });
-  const state = Buffer.from(stateData).toString("base64");
+  // Signed, so the callback can trust the mode, the confirmations and the invite.
+  const state = signOAuthState({
+    origin,
+    mode,
+    ...(consented ? { consented: true } : {}),
+    ...(mode === "signup" && invite ? { invite } : {}),
+  });
 
   const finalRedirectUri = redirectUri || getGoogleRedirectUri(origin);
   const client = createClient(finalRedirectUri);

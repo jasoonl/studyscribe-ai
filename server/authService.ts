@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { getUserByEmail as dbGetUserByEmail, getUserByGoogleId, upsertUser, createInviteCode, getInviteCodeByCode, markInviteCodeAsUsed, createPasswordResetToken, getPasswordResetTokenByToken, deletePasswordResetToken, getDb, normalizeAuthEmail } from './db';
 import { User } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
+import { claimInviteCode, releaseInviteCode } from './googleSignup';
 import { users } from '../drizzle/schema';
 
 const SALT_ROUNDS = 10;
@@ -117,26 +118,33 @@ export async function registerWithEmailPassword(
       return { error: 'Database not available' };
     }
 
-    await upsertUser({
-      email: normalizedEmail,
-      passwordHash,
-      name: name || null,
-      loginMethod: 'email',
-      emailVerified: 1, // Verified via invite code
-      termsAcceptedAt: new Date(),
-      lastSignedIn: new Date(),
-    });
+    // Claim the invite first, in one conditional update, so the same code
+    // cannot create two accounts (Google sign-up claims it the same way).
+    if (!(await claimInviteCode(invite.code))) {
+      return { error: 'Invite code already used' };
+    }
 
-    // Mark invite as used
-    const userId = (await dbGetUserByEmail(normalizedEmail))?.id;
-    if (userId) {
-      await markInviteCodeAsUsed(inviteCode, userId);
+    try {
+      await upsertUser({
+        email: normalizedEmail,
+        passwordHash,
+        name: name || null,
+        loginMethod: 'email',
+        emailVerified: 1, // Verified via invite code
+        termsAcceptedAt: new Date(),
+        lastSignedIn: new Date(),
+      });
+    } catch (error) {
+      await releaseInviteCode(invite.code);
+      throw error;
     }
 
     const user = await dbGetUserByEmail(normalizedEmail);
     if (!user) {
+      await releaseInviteCode(invite.code);
       return { error: 'Failed to create user' };
     }
+    await markInviteCodeAsUsed(invite.code, user.id);
 
     return { user };
   } catch (error) {
@@ -260,65 +268,6 @@ export async function loginWithGoogleExistingOnly(
 
     // User does not exist - reject (no auto-create for login)
     return { error: 'User not found. Please sign up with an invite code first.' };
-  } catch (error) {
-    console.error('[Auth] Google login error:', error);
-    return { error: 'Google login failed' };
-  }
-}
-
-/**
- * Login or register with Google OAuth - auto-creates for signup
- */
-export async function loginWithGoogle(
-  googleId: string,
-  email: string,
-  name: string
-): Promise<{ user: User; isNewUser: boolean; error?: undefined } | { user?: undefined; isNewUser?: undefined; error: string }> {
-  try {
-    // Check if user exists by Google ID
-    let user = await getUserByGoogleId(googleId);
-
-    if (user) {
-      // Update last signed in
-      const db = await getDb();
-      if (db) {
-        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
-      }
-      return { user, isNewUser: false };
-    }
-
-    // Check if user exists by email
-    user = await getUserByEmail(normalizeAuthEmail(email));
-
-    if (user) {
-      // Link Google ID to existing user
-      const db = await getDb();
-      if (db) {
-        await db.update(users).set({
-          googleId,
-          lastSignedIn: new Date(),
-        }).where(eq(users.id, user.id));
-      }
-      return { user, isNewUser: false };
-    }
-
-    // Create new user
-    await upsertUser({
-      email: normalizeAuthEmail(email),
-      googleId,
-      name: name || null,
-      loginMethod: 'google',
-      emailVerified: 1, // Google emails are verified
-      termsAcceptedAt: new Date(), // the signup page shows the Terms/Privacy notice beside the Google button
-      lastSignedIn: new Date(),
-    });
-
-    const newUser = await getUserByEmail(email);
-    if (!newUser) {
-      return { error: 'Failed to create user' };
-    }
-
-    return { user: newUser, isNewUser: true };
   } catch (error) {
     console.error('[Auth] Google login error:', error);
     return { error: 'Google login failed' };

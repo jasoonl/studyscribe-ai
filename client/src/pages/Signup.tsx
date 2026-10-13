@@ -26,6 +26,7 @@ export default function Signup() {
   const [confirmedAge, setConfirmedAge] = useState(false);
   const [inviteChecked, setInviteChecked] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
 
   // Without an invite code the form is only for open sign-up; otherwise go to /invite.
   const mode = trpc.signup.mode.useQuery(undefined, { enabled: !inviteCode, retry: false, refetchOnWindowFocus: false });
@@ -52,6 +53,7 @@ export default function Signup() {
         if (data.valid) {
           setInviteChecked(true);
           if (data.email) {
+            setInviteEmail(data.email);
             setFormData((prev) => ({ ...prev, email: data.email }));
           }
         } else {
@@ -146,6 +148,8 @@ export default function Signup() {
         acceptedTerms: "1",
         confirmedAge: "1",
       });
+      // The server checks the invite again after Google answers; it works for the invited address only.
+      if (!openSignup && inviteCode) params.set("inviteCode", inviteCode);
       const response = await fetch(`/api/auth/google?${params}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -236,6 +240,9 @@ export default function Signup() {
           )}
           Continue with Google
         </Button>
+        {!openSignup && inviteEmail ? (
+          <p className="-mt-2 mb-4 text-center text-xs text-muted-foreground">Choose the Google account for {inviteEmail}. The invite works for that address only.</p>
+        ) : null}
 
         {/* Divider */}
         <div className="relative mb-6">
