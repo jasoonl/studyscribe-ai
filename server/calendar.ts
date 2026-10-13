@@ -80,19 +80,25 @@ export function parseCalendarEvents(items: unknown): CalendarEvent[] {
 /**
  * The event a recording started at `at` belongs to: one that is on at that
  * moment, or starts within the next ten minutes (people press Record early).
- * All-day events never name a recording. With several, the one that started
- * most recently wins.
+ * All-day events never name a recording. When two qualify (a class about to
+ * end and the next one about to start), an event with more than ten minutes
+ * left wins, then the one about to start, then one that is ending.
  */
 export function eventForRecordingAt(events: CalendarEvent[], at: Date): CalendarEvent | null {
   const now = at.getTime();
-  const candidates = events.filter((event) => {
-    if (event.allDay) return false;
-    const start = Date.parse(event.start);
-    const end = event.end ? Date.parse(event.end) : start + 60 * 60_000;
-    return start - AUTO_TITLE_LEAD_MS <= now && now < end;
-  });
-  candidates.sort((a, b) => Math.abs(Date.parse(a.start) - now) - Math.abs(Date.parse(b.start) - now));
-  return candidates[0] ?? null;
+  const ranked = events
+    .filter((event) => !event.allDay)
+    .map((event) => {
+      const start = Date.parse(event.start);
+      const end = event.end ? Date.parse(event.end) : start + 60 * 60_000;
+      if (!(start - AUTO_TITLE_LEAD_MS <= now && now < end)) return null;
+      const rank = start <= now ? (end - now > AUTO_TITLE_LEAD_MS ? 0 : 2) : 1;
+      // Within a rank: the most recently started, or the soonest to start.
+      return { event, rank, order: rank === 1 ? start - now : now - start };
+    })
+    .filter((item): item is { event: CalendarEvent; rank: number; order: number } => item !== null)
+    .sort((a, b) => a.rank - b.rank || a.order - b.order);
+  return ranked[0]?.event ?? null;
 }
 
 /** Wording for the daily digest, in the person's own time zone. */

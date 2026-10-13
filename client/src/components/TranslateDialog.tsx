@@ -132,8 +132,8 @@ export function TranslateDialog({ kind, id, language, onClose }: { kind: Transla
 
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
-      <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col gap-4 overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[88vh] flex-col gap-4 overflow-hidden sm:max-w-2xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="pr-6">
             {title} in {language.label}
           </DialogTitle>

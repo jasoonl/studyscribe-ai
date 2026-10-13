@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Bell, BellOff, Loader2, Mic } from "lucide-react";
+import { Bell, BellRing, Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { connectIntegrationUrl } from "@/components/SendToMenu";
@@ -150,7 +150,7 @@ export function UpcomingEvents({ onRecord }: { onRecord: () => void }) {
                           disabled={pending}
                           onClick={() => setReminder.mutate({ eventId: event.id, on: !event.reminder, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
                         >
-                          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : event.reminder ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : event.reminder ? <BellRing className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
                           <span className="hidden sm:inline">{event.reminder ? "Reminder on" : "Remind me"}</span>
                           <span className="sr-only sm:hidden">{event.reminder ? "Reminder on" : "Remind me to record"}</span>
                         </Button>

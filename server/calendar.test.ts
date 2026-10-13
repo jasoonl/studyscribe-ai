@@ -44,6 +44,16 @@ describe("naming a recording after the event", () => {
     expect(eventForRecordingAt(events, new Date("2026-10-14T14:00:00Z"))).toBeNull();
   });
 
+  it("prefers the class that is on over the next one, unless the first is about to end", () => {
+    const back = parseCalendarEvents([
+      { id: "a", summary: "Biology 101", start: { dateTime: "2026-10-14T09:00:00Z" }, end: { dateTime: "2026-10-14T10:00:00Z" } },
+      { id: "b", summary: "Chemistry 210", start: { dateTime: "2026-10-14T10:00:00Z" }, end: { dateTime: "2026-10-14T11:00:00Z" } },
+    ]);
+    expect(eventForRecordingAt(back, new Date("2026-10-14T09:30:00Z"))?.title).toBe("Biology 101");
+    expect(eventForRecordingAt(back, new Date("2026-10-14T09:49:00Z"))?.title).toBe("Biology 101");
+    expect(eventForRecordingAt(back, new Date("2026-10-14T09:55:00Z"))?.title).toBe("Chemistry 210");
+  });
+
   it("never uses an all-day event, and treats an event without an end as an hour long", () => {
     expect(eventForRecordingAt(events, new Date("2026-10-15T12:00:00Z"))).toBeNull();
     expect(eventForRecordingAt(events, new Date("2026-10-16T08:59:00Z"))?.title).toBe("Untitled event");

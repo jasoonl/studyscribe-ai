@@ -72,10 +72,12 @@ export function formatMinutes(minutes: number) {
   return `${minutes.toLocaleString("en-US")} minutes`;
 }
 
+/** "2 hours of transcription"; shown under an "Each month" label. */
 export function describeAllowance(plan: Plan) {
-  return `${formatMinutes(plan.transcriptionMinutesPerMonth)} of transcription a month`;
+  return `${formatMinutes(plan.transcriptionMinutesPerMonth)} of transcription`;
 }
 
+/** "60 AI generations"; shown under an "Each month" label. */
 export function describeGenerations(plan: Plan) {
-  return `${plan.aiGenerationsPerMonth.toLocaleString("en-US")} AI generations a month`;
+  return `${plan.aiGenerationsPerMonth.toLocaleString("en-US")} AI generations`;
 }

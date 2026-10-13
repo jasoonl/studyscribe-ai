@@ -28,9 +28,9 @@ export function AdminBillingSection() {
               <Badge variant={billing.configured ? "default" : "outline"}>{billing.configured ? `Stripe ${billing.mode ?? ""} mode` : "Not configured"}</Badge>
               <Badge variant={billing.secretKey ? "default" : "destructive"}>Secret key {billing.secretKey ? "set" : "missing"}</Badge>
               <Badge variant={billing.webhookSecret ? "default" : "destructive"}>Webhook secret {billing.webhookSecret ? "set" : "missing"}</Badge>
-              {(["basic", "pro", "max"] as const).map((plan) => (
-                <Badge key={plan} variant={billing.prices[plan] ? "default" : "destructive"} className="capitalize">
-                  {plan} price {billing.prices[plan] ? "set" : "missing"}
+              {([["basic", "Basic"], ["pro", "Pro"], ["max", "Max"]] as const).map(([plan, name]) => (
+                <Badge key={plan} variant={billing.prices[plan] ? "default" : "destructive"}>
+                  {name} price {billing.prices[plan] ? "set" : "missing"}
                 </Badge>
               ))}
               <Badge variant="outline">Automatic tax {billing.automaticTax ? "on" : "off"}</Badge>

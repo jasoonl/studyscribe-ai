@@ -31,10 +31,11 @@ export default function PricingSection({ id = "pricing", heading = "Simple prici
                 <span className={plan.highlight ? "text-primary-foreground/70" : "text-muted-foreground"}>/ month</span>
               </p>
               <p className={`mt-3 text-sm ${plan.highlight ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{plan.tagline}</p>
-              <p className={`mt-5 rounded-md px-3 py-2 text-sm font-medium ${plan.highlight ? "bg-white/10" : "bg-brand-mist"}`}>
-                {describeAllowance(plan)}
-                <span className={`block font-normal ${plan.highlight ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{describeGenerations(plan)}</span>
-              </p>
+              <div className={`mt-5 rounded-md px-3 py-2.5 text-sm ${plan.highlight ? "bg-white/10" : "bg-brand-mist"}`}>
+                <p className={`text-xs ${plan.highlight ? "text-primary-foreground/75" : "text-muted-foreground"}`}>Each month</p>
+                <p className="mt-0.5 font-medium">{describeAllowance(plan)}</p>
+                <p className="font-medium">{describeGenerations(plan)}</p>
+              </div>
               <ul className="mt-6 flex-1 space-y-3 text-sm">
                 {PLAN_FEATURES.map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5">
