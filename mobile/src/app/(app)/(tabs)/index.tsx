@@ -25,7 +25,7 @@ export default function LibraryScreen() {
   const unread = trpc.userNotifications.unreadCount.useQuery(undefined, { refetchInterval: 60_000 });
 
   const courseList: CourseSummary[] = useMemo(
-    () => ((courses.data ?? []) as { id: number; name: string; color: string | null; archivedAt?: unknown }[]).filter((course) => !course.archivedAt),
+    () => ((courses.data ?? []) as { id: number; name: string; color: string | null; archived?: unknown }[]).filter((course) => !course.archived),
     [courses.data],
   );
   const courseById = useMemo(() => new Map(courseList.map((course) => [course.id, course])), [courseList]);
@@ -41,7 +41,7 @@ export default function LibraryScreen() {
   const processing = useMemo(() => (recordings.data ?? []).filter((recording) => recording.status === "processing").map((recording) => recording.id), [recordings.data]);
   useProcessingPoller(processing);
 
-  const unreadCount = Number((unread.data as { count?: number } | number | undefined) && typeof unread.data === "object" ? (unread.data as { count: number }).count : unread.data ?? 0);
+  const unreadCount = unread.data?.count ?? 0;
 
   return (
     <Screen refreshing={recordings.isRefetching} onRefresh={() => recordings.refetch()}>

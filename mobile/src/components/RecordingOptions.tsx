@@ -79,7 +79,7 @@ export function RecordingOptions({ value, onChange, showTitle = true }: { value:
   const theme = useTheme();
   const [sheet, setSheet] = useState<"language" | "course" | null>(null);
   const courses = trpc.courses.list.useQuery(undefined, { retry: false });
-  const courseList = ((courses.data ?? []) as { id: number; name: string; color: string | null; archivedAt?: unknown }[]).filter((course) => !course.archivedAt);
+  const courseList = ((courses.data ?? []) as { id: number; name: string; color: string | null; archived?: unknown }[]).filter((course) => !course.archived);
   const languageLabel = value.language === "auto" ? "Detect automatically" : TRANSCRIPTION_LANGUAGES.find((language) => language.code === value.language)?.label ?? value.language;
   const courseLabel = value.courseId ? courseList.find((course) => course.id === value.courseId)?.name ?? "Course" : "No course";
 

@@ -36,7 +36,8 @@
       "expo-audio",
       "expo-secure-store",
       "expo-build-properties",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
