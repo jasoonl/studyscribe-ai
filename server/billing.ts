@@ -3,8 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { stripeEvents, subscriptions, users } from "../drizzle/schema";
-import { getPlan, isPaidPlanId, PAID_PLAN_IDS, withAvailability } from "@shared/plans";
-import { describeStatus, ENTITLED_STATUSES, effectivePlanId, nextSubscriptionState, stateAfterPaymentFailed, type StoredSubscription } from "./billingState";
+import { BILLING_INTERVALS, getPlan, isPaidPlanId, PAID_PLAN_IDS, withAvailability } from "@shared/plans";
+import { describeStatus, ENTITLED_STATUSES, intervalForPrice, effectivePlanId, nextSubscriptionState, stateAfterPaymentFailed, type StoredSubscription } from "./billingState";
 import { notifyUser } from "./collabNotifications";
 import { getDb } from "./db";
 import { getSafeApplicationOrigin } from "./email";
@@ -79,9 +79,16 @@ export function buildCheckoutParams(input: {
   planId: string;
   planName: string;
   priceMonthlyUsd: number;
+  /** Shown as the renewal amount when `interval` is "year". */
+  priceYearlyUsd?: number;
+  interval?: "month" | "year";
   origin: string;
   automaticTax: boolean;
 }) {
+  const yearly = input.interval === "year";
+  const renewal = yearly
+    ? `renews every year at $${input.priceYearlyUsd ?? input.priceMonthlyUsd * 12}`
+    : `renews every month at $${input.priceMonthlyUsd}`;
   return {
     mode: "subscription",
     customer: input.customerId,
@@ -91,13 +98,13 @@ export function buildCheckoutParams(input: {
     automatic_tax: { enabled: input.automaticTax },
     // Automatic tax needs an address on the customer; let Checkout save the one entered.
     ...(input.automaticTax ? { customer_update: { address: "auto", name: "auto" }, billing_address_collection: "required" } : {}),
-    subscription_data: { metadata: { userId: String(input.userId), planId: input.planId } },
-    metadata: { userId: String(input.userId), planId: input.planId },
+    subscription_data: { metadata: { userId: String(input.userId), planId: input.planId, interval: yearly ? "year" : "month" } },
+    metadata: { userId: String(input.userId), planId: input.planId, interval: yearly ? "year" : "month" },
     success_url: `${input.origin}/billing?checkout=success`,
     cancel_url: `${input.origin}/billing?checkout=cancelled`,
     custom_text: {
       submit: {
-        message: `StudyScribe ${input.planName} renews every month at $${input.priceMonthlyUsd} plus any tax shown above, until you cancel. Cancel any time from Billing in StudyScribe; you keep the plan until the end of the period you paid for.`,
+        message: `StudyScribe ${input.planName} ${renewal} plus any tax shown above, until you cancel. Cancel any time from Billing in StudyScribe; you keep the plan until the end of the period you paid for.`,
       },
     },
   };
@@ -323,7 +330,7 @@ export const billingRouter = router({
   /** Public: the plans and whether paid ones can be bought on this server. */
   plans: publicProcedure.query(() => {
     const config = getStripeConfig();
-    return { billingEnabled: !!config, automaticTax: config?.automaticTax ?? false, plans: withAvailability(!!config) };
+    return { billingEnabled: !!config, yearlyEnabled: Boolean(config?.yearlyPrices), automaticTax: config?.automaticTax ?? false, plans: withAvailability(!!config) };
   }),
 
   status: protectedProcedure.query(async ({ ctx }) => {
@@ -337,6 +344,7 @@ export const billingRouter = router({
             status: row.status,
             description: describeStatus(stored),
             planId: row.planId,
+            interval: intervalForPrice(row.stripePriceId, getStripeConfig()),
             currentPeriodEnd: row.currentPeriodEnd,
             cancelAtPeriodEnd: row.cancelAtPeriodEnd,
             hasPortal: true,
@@ -354,7 +362,7 @@ export const billingRouter = router({
     };
   }),
 
-  checkout: sessionProcedure.input(z.object({ plan: paidPlanInput })).mutation(async ({ ctx, input }) => {
+  checkout: sessionProcedure.input(z.object({ plan: paidPlanInput, interval: z.enum(BILLING_INTERVALS).default("month") })).mutation(async ({ ctx, input }) => {
     const config = requireConfig();
     if (!checkTrpcRateLimit(`billing-checkout:${ctx.user.id}`, 10 * 60 * 1000, 10)) {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many checkout attempts. Try again in a few minutes." });
@@ -365,13 +373,15 @@ export const billingRouter = router({
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You already have a paid plan. Use Change plan to switch, so you are not charged twice." });
     }
     const plan = getPlan(input.plan);
+    const priceId = input.interval === "year" ? config.yearlyPrices?.[input.plan] : config.prices[input.plan];
+    if (!priceId) throw new TRPCError({ code: "BAD_REQUEST", message: "Yearly billing is not available yet. Choose monthly." });
     const origin = getSafeApplicationOrigin(typeof ctx.req.headers.origin === "string" ? ctx.req.headers.origin : undefined);
     try {
       const customerId = await ensureCustomer(ctx.user, config);
       const session = await stripeRequest<{ url: string }>(
         "POST",
         "/checkout/sessions",
-        buildCheckoutParams({ userId: ctx.user.id, customerId, priceId: config.prices[input.plan], planId: plan.id, planName: plan.name, priceMonthlyUsd: plan.priceMonthlyUsd, origin, automaticTax: config.automaticTax }),
+        buildCheckoutParams({ userId: ctx.user.id, customerId, priceId, planId: plan.id, planName: plan.name, priceMonthlyUsd: plan.priceMonthlyUsd, priceYearlyUsd: plan.priceYearlyUsd, interval: input.interval, origin, automaticTax: config.automaticTax }),
         { config },
       );
       if (!session?.url) throw new Error("Stripe returned no checkout URL");

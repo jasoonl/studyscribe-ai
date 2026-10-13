@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodeForm, getStripeConfig, signStripePayload, verifyStripeSignature, type StripeConfig } from "./stripe";
-import { describeStatus, effectivePlanId, nextSubscriptionState, planForPrice, stateAfterPaymentFailed, subscriptionFields, type StoredSubscription } from "./billingState";
+import { describeStatus, effectivePlanId, intervalForPrice, nextSubscriptionState, planForPrice, stateAfterPaymentFailed, subscriptionFields, type StoredSubscription } from "./billingState";
 import { buildCheckoutParams, handleStripeWebhookBody, type StripeEvent, type WebhookDeps } from "./billing";
-import { withAvailability } from "@shared/plans";
+import { bestYearlySavingsPercent, formatPlanPrice, getPlan, withAvailability, yearlySavingsPercent } from "@shared/plans";
 
 const config: StripeConfig = {
   secretKey: "sk_test_x",
@@ -171,6 +171,13 @@ describe("checkout session", () => {
     expect(params.customer_update).toBeUndefined();
   });
 
+  it("states the yearly renewal for a yearly price", () => {
+    const params = buildCheckoutParams({ ...base, priceId: "price_pro_y", priceYearlyUsd: 200, interval: "year" }) as any;
+    expect(params.line_items).toEqual([{ price: "price_pro_y", quantity: 1 }]);
+    expect(params.custom_text.submit.message).toMatch(/renews every year at \$200/);
+    expect(params.metadata.interval).toBe("year");
+  });
+
   it("collects an address when automatic tax is on", () => {
     const params = buildCheckoutParams({ ...base, automaticTax: true }) as any;
     expect(params.automatic_tax).toEqual({ enabled: true });
@@ -230,5 +237,33 @@ describe("webhook handler", () => {
     await expect(deliver(event("evt_3"), deps)).resolves.toMatchObject({ status: 200 });
     expect(processed.has("evt_3")).toBe(true);
     expect(failing).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("yearly billing", () => {
+  const yearlyEnv = { ...fullEnv, STRIPE_PRICE_BASIC_YEARLY: "price_by", STRIPE_PRICE_PRO_YEARLY: "price_py", STRIPE_PRICE_MAX_YEARLY: "price_my" } as unknown as NodeJS.ProcessEnv;
+
+  it("is offered only when all three yearly prices are set", () => {
+    expect(getStripeConfig(fullEnv)?.yearlyPrices).toBeNull();
+    expect(getStripeConfig({ ...yearlyEnv, STRIPE_PRICE_MAX_YEARLY: "" } as NodeJS.ProcessEnv)?.yearlyPrices).toBeNull();
+    expect(getStripeConfig(yearlyEnv)?.yearlyPrices).toEqual({ basic: "price_by", pro: "price_py", max: "price_my" });
+  });
+
+  it("maps yearly prices to the same plan and reports the interval", () => {
+    const yearly = getStripeConfig(yearlyEnv)!;
+    expect(planForPrice("price_py", yearly)).toBe("pro");
+    expect(planForPrice("price_p", yearly)).toBe("pro");
+    expect(intervalForPrice("price_py", yearly)).toBe("year");
+    expect(intervalForPrice("price_p", yearly)).toBe("month");
+    expect(intervalForPrice("price_py", null)).toBe("month");
+    expect(subscriptionFields(subscription({ items: { data: [{ price: { id: "price_my" } }] } }), yearly).planId).toBe("max");
+  });
+
+  it("shows yearly prices and the saving", () => {
+    expect(formatPlanPrice(getPlan("pro"), "year")).toBe("$200");
+    expect(formatPlanPrice(getPlan("pro"))).toBe("$20");
+    expect(yearlySavingsPercent(getPlan("pro"))).toBe(17);
+    expect(yearlySavingsPercent(getPlan("free"))).toBe(0);
+    expect(bestYearlySavingsPercent()).toBe(17);
   });
 });

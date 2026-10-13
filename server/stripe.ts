@@ -19,6 +19,8 @@ export type StripeConfig = {
   secretKey: string;
   webhookSecret: string;
   prices: Record<PaidPlanId, string>;
+  /** Yearly prices (STRIPE_PRICE_BASIC_YEARLY etc.); yearly billing is offered only when all three are set. */
+  yearlyPrices?: Record<PaidPlanId, string> | null;
   automaticTax: boolean;
 };
 
@@ -30,7 +32,16 @@ export function getStripeConfig(env: NodeJS.ProcessEnv = process.env): StripeCon
   const pro = env.STRIPE_PRICE_PRO?.trim();
   const max = env.STRIPE_PRICE_MAX?.trim();
   if (!secretKey || !webhookSecret || !basic || !pro || !max) return null;
-  return { secretKey, webhookSecret, prices: { basic, pro, max }, automaticTax: env.STRIPE_AUTOMATIC_TAX?.trim() === "true" };
+  const basicYearly = env.STRIPE_PRICE_BASIC_YEARLY?.trim();
+  const proYearly = env.STRIPE_PRICE_PRO_YEARLY?.trim();
+  const maxYearly = env.STRIPE_PRICE_MAX_YEARLY?.trim();
+  const yearlyPrices = basicYearly && proYearly && maxYearly ? { basic: basicYearly, pro: proYearly, max: maxYearly } : null;
+  return { secretKey, webhookSecret, prices: { basic, pro, max }, yearlyPrices, automaticTax: env.STRIPE_AUTOMATIC_TAX?.trim() === "true" };
+}
+
+/** Whether checkout can offer yearly billing. */
+export function isYearlyBillingConfigured(env: NodeJS.ProcessEnv = process.env) {
+  return Boolean(getStripeConfig(env)?.yearlyPrices);
 }
 
 export function isBillingConfigured(env: NodeJS.ProcessEnv = process.env) {
@@ -47,6 +58,8 @@ export function describeBillingConfig(env: NodeJS.ProcessEnv = process.env) {
     secretKey: has("STRIPE_SECRET_KEY"),
     webhookSecret: has("STRIPE_WEBHOOK_SECRET"),
     prices: { basic: has("STRIPE_PRICE_BASIC"), pro: has("STRIPE_PRICE_PRO"), max: has("STRIPE_PRICE_MAX") },
+    yearlyPrices: { basic: has("STRIPE_PRICE_BASIC_YEARLY"), pro: has("STRIPE_PRICE_PRO_YEARLY"), max: has("STRIPE_PRICE_MAX_YEARLY") },
+    yearly: isYearlyBillingConfigured(env),
     automaticTax: env.STRIPE_AUTOMATIC_TAX?.trim() === "true",
     usingTestApi: Boolean(apiBase(env) !== DEFAULT_API_BASE),
   };

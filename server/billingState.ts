@@ -20,10 +20,17 @@ export type StoredSubscription = {
   lastEventAt: number;
 };
 
-export function planForPrice(priceId: string | null | undefined, config: Pick<StripeConfig, "prices">): PlanId | null {
+/** The plan a Stripe price belongs to, monthly or yearly. */
+export function planForPrice(priceId: string | null | undefined, config: Pick<StripeConfig, "prices" | "yearlyPrices">): PlanId | null {
   if (!priceId) return null;
-  for (const plan of PAID_PLAN_IDS) if (config.prices[plan] === priceId) return plan;
+  for (const plan of PAID_PLAN_IDS) if (config.prices[plan] === priceId || config.yearlyPrices?.[plan] === priceId) return plan;
   return null;
+}
+
+/** "year" for one of the yearly prices, "month" otherwise. */
+export function intervalForPrice(priceId: string | null | undefined, config: Pick<StripeConfig, "yearlyPrices"> | null): "month" | "year" {
+  if (!priceId || !config?.yearlyPrices) return "month";
+  return PAID_PLAN_IDS.some(plan => config.yearlyPrices?.[plan] === priceId) ? "year" : "month";
 }
 
 export function effectivePlanId(row: Pick<StoredSubscription, "planId" | "status"> | null | undefined): PlanId {
@@ -38,7 +45,7 @@ const toDate = (seconds: unknown) => (typeof seconds === "number" && seconds > 0
  * moved the period dates from the subscription onto its items, so both are
  * read. A price that is not one of ours maps to "free" rather than guessing.
  */
-export function subscriptionFields(subscription: any, config: Pick<StripeConfig, "prices">) {
+export function subscriptionFields(subscription: any, config: Pick<StripeConfig, "prices" | "yearlyPrices">) {
   const item = subscription?.items?.data?.[0];
   const priceId: string | null = item?.price?.id ?? subscription?.plan?.id ?? null;
   const status: string = typeof subscription?.status === "string" ? subscription.status : "incomplete";
@@ -65,7 +72,7 @@ export function isStale(lastEventAt: number, eventCreated: number) {
 export function nextSubscriptionState(
   current: StoredSubscription | null,
   event: { type: string; created: number; subscription: any },
-  config: Pick<StripeConfig, "prices">,
+  config: Pick<StripeConfig, "prices" | "yearlyPrices">,
 ): StoredSubscription | null {
   if (current && isStale(current.lastEventAt, event.created)) return null;
   const fields = subscriptionFields(event.subscription, config);

@@ -177,6 +177,7 @@ Policies live at `/terms`, `/privacy`, `/cookies`, `/refunds` and `/credits`, al
 3. Customer portal (Settings > Billing > Customer portal): allow cancelling (at period end), switching between the three prices (with proration), updating payment methods and viewing invoices; set the business name, privacy and terms links.
 4. Tax: to collect sales tax/VAT, turn on Stripe Tax, add your registrations, set the products' tax codes, and set `STRIPE_AUTOMATIC_TAX=true` (Checkout then collects a billing address). Leave it unset otherwise.
 5. Turn on Smart Retries and the failed-payment emails under Billing > Revenue recovery; the app keeps a `past_due` plan active while Stripe retries.
+5a. Yearly billing (optional, Phase 6): add a recurring yearly price to each product matching `priceYearlyUsd` in `shared/plans.ts` ($50, $200, $500) and set `STRIPE_PRICE_BASIC_YEARLY`, `STRIPE_PRICE_PRO_YEARLY`, `STRIPE_PRICE_MAX_YEARLY` (all three, or yearly stays hidden). Allow switching between the six prices in the customer portal, and turn on "Send emails about upcoming renewals" (Settings > Billing > Subscriptions and emails), which the Terms promise for yearly plans.
 6. Redeploy, run `npm run db:migrate` (migration 0023), and check the Billing card on the Admin page. Test with test-mode keys first.
 
 ### Phase 5 part 2 setup (owner)
