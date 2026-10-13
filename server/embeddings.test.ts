@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  capPerRecording,
   chunkTranscript,
   cosineSimilarity,
   decodeVector,
@@ -122,5 +123,13 @@ describe("embedTexts", () => {
   it("explains a provider error", async () => {
     vi.stubGlobal("fetch", async () => new Response("bad key", { status: 401 }));
     await expect(embedTexts(["a"], { config: { baseUrl: "https://x/v1", apiKey: "k", model: "m" } })).rejects.toThrow(/401/);
+  });
+});
+
+describe("capPerRecording", () => {
+  it("keeps the best two from each recording, in rank order, up to the limit", () => {
+    const ranked = [1, 1, 2, 1, 3, 2, 2, 4].map((recordingId, index) => ({ recordingId, index }));
+    expect(capPerRecording(ranked, 2, 10).map(item => item.index)).toEqual([0, 1, 2, 4, 5, 7]);
+    expect(capPerRecording(ranked, 2, 3).map(item => item.index)).toEqual([0, 1, 2]);
   });
 });
