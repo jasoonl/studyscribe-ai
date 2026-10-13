@@ -114,7 +114,7 @@ export function TranscriptView({
           type="button"
           onClick={() => setOpenSlide(number)}
           aria-label={`Open slide ${number + 1}, captured at ${formatTranscriptTimestamp(slide.atSeconds)}`}
-          className="block w-full max-w-sm overflow-hidden rounded-lg border border-border bg-muted transition-colors hover:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="block w-full max-w-64 overflow-hidden rounded-lg border border-border bg-muted transition-colors hover:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <img src={slide.url} alt="" loading="lazy" width={slide.width} height={slide.height} className="h-auto w-full" />
         </button>

@@ -23,6 +23,15 @@ function createClient(redirectUri: string) {
   return new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirectUri);
 }
 
+/**
+ * GOOGLE_SIGNIN_TEST_BASE_URL points Google sign-in at a local mock
+ * (scripts/dev/mock-phase5-platform.mjs) so sign-up rules can be exercised in
+ * a browser. Ignored in production, where the ID token is always verified.
+ */
+function signInTestBase() {
+  return process.env.NODE_ENV !== "production" ? process.env.GOOGLE_SIGNIN_TEST_BASE_URL?.trim().replace(/\/$/, "") || null : null;
+}
+
 export function isGoogleOAuthConfigured(): boolean {
   return Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 }
@@ -43,6 +52,12 @@ export async function exchangeGoogleCode(
   code: string,
   redirectUri: string
 ): Promise<{ tokens: any; user: GoogleUser }> {
+  const testBase = signInTestBase();
+  if (testBase) {
+    const response = await fetch(`${testBase}/google-signin-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
+    const payload = (await response.json()) as { sub: string; email: string; name?: string; hd?: string };
+    return { tokens: {}, user: { id: payload.sub, email: payload.email, name: payload.name ?? "", hostedDomain: payload.hd?.toLowerCase() } };
+  }
   try {
     const client = createClient(redirectUri);
     const { tokens } = await client.getToken(code);
@@ -136,6 +151,8 @@ export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "log
   });
 
   const finalRedirectUri = redirectUri || getGoogleRedirectUri(origin);
+  const testBase = signInTestBase();
+  if (testBase) return `${testBase}/google-signin-authorize?${new URLSearchParams({ redirect_uri: finalRedirectUri, state })}`;
   const client = createClient(finalRedirectUri);
   const url = client.generateAuthUrl({
     access_type: "offline",

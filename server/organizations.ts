@@ -245,7 +245,10 @@ async function sendInviteEmail(input: { to: string; orgName: string; inviterName
 export async function lookupTxt(domain: string): Promise<string[][]> {
   if (process.env.NODE_ENV !== "production" && process.env.DNS_TXT_TEST_RECORDS) {
     try {
-      const table = JSON.parse(process.env.DNS_TXT_TEST_RECORDS) as Record<string, string[]>;
+      // Either the JSON itself or the path of a JSON file (read on every check, so it can change while the app runs).
+      const source = process.env.DNS_TXT_TEST_RECORDS.trim();
+      const text = source.startsWith("{") ? source : (await import("fs")).readFileSync(source, "utf8");
+      const table = JSON.parse(text) as Record<string, string[]>;
       return (table[domain] ?? []).map((value) => [value]);
     } catch {
       return [];
