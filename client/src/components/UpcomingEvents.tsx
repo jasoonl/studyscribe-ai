@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Bell, BellRing, Loader2, Mic } from "lucide-react";
+import { Bell, BellRing, Bot, Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { connectIntegrationUrl } from "@/components/SendToMenu";
@@ -17,6 +17,7 @@ type Event = {
   end: string | null;
   allDay: boolean;
   location: string | null;
+  meetingUrl: string | null;
   reminder: boolean;
 };
 
@@ -42,7 +43,7 @@ function readHidden() {
 }
 
 /** Dashboard "Upcoming" (A5): the next seven days from Google Calendar, with "Remind me to record". */
-export function UpcomingEvents({ onRecord }: { onRecord: () => void }) {
+export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => void; onSendNoteTaker?: (event: { id: string; title: string; start: string; meetingUrl: string }) => void }) {
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.calendar.upcoming.useQuery(undefined, { staleTime: 60_000, refetchInterval: 5 * 60_000 });
   const setReminder = trpc.calendar.setReminder.useMutation({
@@ -125,6 +126,7 @@ export function UpcomingEvents({ onRecord }: { onRecord: () => void }) {
                   const onNow = start !== null && start - 10 * 60_000 <= now && (end === null || now < end);
                   const canRemind = start !== null && start > now;
                   const pending = setReminder.isPending && setReminder.variables?.eventId === event.id;
+                  const canSendNoteTaker = Boolean(onSendNoteTaker && event.meetingUrl && !event.allDay && (end === null || now < end));
                   return (
                     <li key={event.id} className="flex items-center gap-2 px-4 py-3 sm:gap-3">
                       <span className="w-16 shrink-0 text-sm tabular-nums text-muted-foreground sm:w-20">{event.allDay ? "All day" : time(event.start)}</span>
@@ -136,6 +138,18 @@ export function UpcomingEvents({ onRecord }: { onRecord: () => void }) {
                           </span>
                         )}
                       </span>
+                      {canSendNoteTaker && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 gap-1.5"
+                          onClick={() => onSendNoteTaker?.({ id: event.id, title: event.title, start: event.start, meetingUrl: event.meetingUrl! })}
+                        >
+                          <Bot className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Note-taker</span>
+                          <span className="sr-only sm:hidden">Send a note-taker to {event.title}</span>
+                        </Button>
+                      )}
                       {onNow ? (
                         <Button size="sm" className="shrink-0 gap-1.5" onClick={onRecord}>
                           <Mic className="h-3.5 w-3.5" />

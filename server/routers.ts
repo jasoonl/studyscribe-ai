@@ -53,7 +53,10 @@ import { translationsRouter } from "./translations";
 import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 import { apiKeysRouter } from "./apiKeys";
+import { startTranscription } from "./transcriptionStart";
 import { slidesRouter } from "./slides";
+import { meetingBotsRouter } from "./meetingBots";
+import { describeRecallConfig } from "./recall";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -71,6 +74,7 @@ export const appRouter = router({
     transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
     storage: adminProcedure.query(() => getBlobUsage()),
     billing: billingDiagnostics,
+    meetingBots: adminProcedure.query(() => describeRecallConfig()),
     youtube: adminProcedure
       .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
       .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
@@ -842,6 +846,7 @@ export const appRouter = router({
   calendar: calendarRouter,
   apiKeys: apiKeysRouter,
   slides: slidesRouter,
+  meetingBots: meetingBotsRouter,
 
   studyGuides: router({
     list: protectedProcedure
@@ -1289,50 +1294,6 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
-
-/**
- * Submits a stored recording's audio to the transcription provider and
- * records the returned job id. Deliberately does only this and returns --
- * it does not itself wait for the result. In webhook mode AssemblyAI calls
- * /api/webhooks/assemblyai back when done; otherwise recordings.getStatus
- * (already polled by the client every 3s) drives completion via
- * advancePollingTranscription below. A submission alone takes a fraction
- * of a second, so unlike the old approach -- submitting AND polling for up
- * to several minutes inside one fire-and-forget call from this mutation --
- * it reliably finishes within the request's own lifecycle regardless of
- * how long transcription ends up taking. That mattered because Vercel does
- * not guarantee unawaited work continues once the HTTP response has been
- * sent, and this function has a 60s maxDuration budget; a poll that
- * outlived it left the recording silently stuck in "processing" forever,
- * with no error and no way to know why.
- */
-async function startTranscription(
-  recording: { id: number; userId: number },
-  audioKey: string,
-  mimeType: string,
-  language?: string,
-  /** Extra vocabulary given with this request; otherwise the recording's stored terms are used. */
-  keyterms?: string[],
-): Promise<void> {
-  try {
-    // Hand the provider a link served by this app rather than the raw
-    // storage URL: it ends in a real audio extension and serves the real
-    // content type, where the stored object is a generic `.bin`, and it
-    // outlives storage's short-lived signed URLs for queued jobs.
-    const providerAudioUrl = process.env.PUBLIC_APP_URL
-      ? buildTranscriptionAudioUrl(audioKey, mimeType, process.env.PUBLIC_APP_URL)
-      : await storageGetSignedUrl(audioKey);
-    await assertSignedAudioUrlIsFetchable(providerAudioUrl);
-
-    const webhookUrl = isAssemblyAiWebhookConfigured() ? buildAssemblyAiWebhookUrl() : undefined;
-    const vocabulary = await resolveKeyterms(recording.userId, recording.id, keyterms);
-    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl, language, keyterms: vocabulary });
-    await setRecordingTranscriptionProviderId(recording.id, providerId);
-  } catch (error) {
-    await updateRecordingStatus(recording.id, "failed");
-    throw error;
-  }
-}
 
 /** Recovers recordings that never got as far as a provider submission, e.g. if the process restarted mid-request. */
 export async function resumeProcessingRecordings(): Promise<void> {

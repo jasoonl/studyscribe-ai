@@ -183,6 +183,13 @@
       "when": 1791852446049,
       "tag": "0025_phase5_slides",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1791852878185,
+      "tag": "0026_phase5_meeting_bots",
+      "breakpoints": true
     }
   ]
 }

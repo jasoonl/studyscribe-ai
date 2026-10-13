@@ -17,6 +17,7 @@ import { UpcomingTasks } from "@/components/UpcomingTasks";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { EmailConfirmationBanner } from "@/components/EmailConfirmationBanner";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
+import { MeetingNoteTakers, SendNoteTakerDialog, type NoteTakerPrefill } from "@/components/MeetingNoteTakers";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -130,6 +131,7 @@ export default function Dashboard() {
   const { user, logout, loading: authLoading, isAdmin } = useAuth();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("library");
+  const [noteTaker, setNoteTaker] = useState<NoteTakerPrefill | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "student" | "professional">("all");
   const [sortBy, setSortBy] = useState<"recent" | "oldest" | "name">("recent");
@@ -405,7 +407,12 @@ export default function Dashboard() {
           <TabsContent value="library" className="space-y-6">
             <EmailConfirmationBanner />
             {user && <OnboardingChecklist userId={user.id} onOpenRecorder={() => setActiveTab("recorder")} />}
-            <UpcomingEvents onRecord={() => setActiveTab("recorder")} />
+            <UpcomingEvents
+              onRecord={() => setActiveTab("recorder")}
+              onSendNoteTaker={event => setNoteTaker({ meetingUrl: event.meetingUrl, title: event.title, calendarEventId: event.id, start: event.start })}
+            />
+            <MeetingNoteTakers onSend={() => setNoteTaker({})} />
+            <SendNoteTakerDialog prefill={noteTaker} onClose={() => setNoteTaker(null)} />
             <CourseStrip />
             <UpcomingTasks />
             <div className="space-y-4">

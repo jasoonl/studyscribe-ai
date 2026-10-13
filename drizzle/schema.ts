@@ -896,3 +896,58 @@ export const recordingSlides = mysqlTable("recordingSlides", {
 ]);
 
 export type RecordingSlide = typeof recordingSlides.$inferSelect;
+
+/**
+ * Meeting note-takers (A4): a Recall.ai bot sent to a Zoom, Google Meet or
+ * Teams call. Its status follows Recall's webhooks (and polling while a page
+ * is open); when the bot is done, its audio is copied into storage as a
+ * normal recording (`recordingId`) and Recall's copy is deleted.
+ */
+export const meetingBots = mysqlTable("meetingBots", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+  userId: int("userId").notNull(),
+  recallBotId: varchar("recallBotId", { length: 128 }),
+  meetingUrl: varchar("meetingUrl", { length: 1024 }).notNull(),
+  platform: varchar("platform", { length: 32 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  botName: varchar("botName", { length: 100 }).notNull(),
+  /** scheduled, joining, waiting_room, in_call, recording, ended, done, importing, imported, failed, cancelled */
+  status: varchar("status", { length: 32 }).default("scheduled").notNull(),
+  statusDetail: varchar("statusDetail", { length: 255 }),
+  joinAt: timestamp("joinAt"),
+  calendarEventId: varchar("calendarEventId", { length: 255 }),
+  /** Attendees copied from the calendar event (JSON text), for sharing notes afterwards (D4). */
+  attendees: text("attendees"),
+  recordingId: int("recordingId"),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  lastEventAt: int("lastEventAt").default(0).notNull(),
+}, (table) => [
+  uniqueIndex("meetingBots_recall_unique").on(table.recallBotId),
+  index("meetingBots_user_idx").on(table.userId, table.status),
+]);
+
+export type MeetingBot = typeof meetingBots.$inferSelect;
+
+/**
+ * The calendar event (or bot meeting) a recording was made from, with the
+ * attendees at the time, so the owner can offer them the notes (D4).
+ * `attendees` is JSON text: [{ email, name }].
+ */
+export const recordingEvents = mysqlTable("recordingEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  source: mysqlEnum("source", ["calendar", "meeting_bot"]).notNull(),
+  eventId: varchar("eventId", { length: 255 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  startsAt: timestamp("startsAt"),
+  attendees: text("attendees"),
+}, (table) => [
+  uniqueIndex("recordingEvents_recording_unique").on(table.recordingId),
+  index("recordingEvents_user_idx").on(table.userId),
+]);
+
+export type RecordingEvent = typeof recordingEvents.$inferSelect;
