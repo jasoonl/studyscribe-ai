@@ -1,6 +1,6 @@
 # StudyScribe AI — Feature Gap Analysis & Roadmap (vs. Otter.ai and Cluely)
 
-_Last updated: 2026-10-10. Supersedes the scope of `competitor-benchmark.md` (Day 6), which is kept for history._
+_Last updated: 2026-10-13. Supersedes the scope of `competitor-benchmark.md` (Day 6), which is kept for history._
 
 ## Ground rules for every item in this plan
 
@@ -143,7 +143,7 @@ Phases are ordered by student value ÷ effort, and so that each phase ships inde
 
 ### Phase 1 — Quick wins on the existing recording page (≈2 weeks) · shipped 2026-10-12
 
-Status: B1 rename speakers (with merge), B3 search, B4 follow-along scrolling, A7 bookmarks (needs `npm run db:migrate` for migration 0018), A8 pause/resume (already existed), E1 TXT/SRT/VTT export, E2 Anki/Quizlet (already existed), C4 automatic notes, C5 note templates and F7 note translation are done. DOCX export is left out because it needs a new dependency, and transcript translation is left out because a long transcript can exceed the 60s function limit.
+Status: B1 rename speakers (with merge), B3 search, B4 follow-along scrolling, A7 bookmarks (needs `npm run db:migrate` for migration 0018), A8 pause/resume (already existed), E1 TXT/SRT/VTT export, E2 Anki/Quizlet (already existed), C4 automatic notes, C5 note templates and F7 note translation are done. DOCX export is left out because it needs a new dependency, and transcript translation was left out because a long transcript can exceed the 60s function limit (it shipped in Phase 5, translated part by part).
 
 B1 rename speakers · B3 transcript search · B4 follow-along highlight · A7 bookmarks · A8 pause/resume · E1 TXT/DOCX/SRT export · E2 Anki/Quizlet CSV · C4 auto-summary · C5 summary templates · F7 translate.
 _Why first_: all build on existing components (`RecordingDetail` tabs, `AudioPlayer`, `ExportButton`, `studyNotes`), no new providers, no new env vars.
@@ -169,8 +169,12 @@ Status (needs `npm run db:migrate` for migration 0022; until then the features b
 
 B7 comments/highlights · D2 study groups · D3 share roles · E3 Notion/Google Docs · E4 webhooks · C2 embeddings search · B5 skip silence.
 
-### Phase 5 — Reach & revenue (ongoing)
-F2 Stripe billing + usage limits · F4 open signup flag · A5 calendar · A4 meeting bot · A6 slide capture · E6 Chrome extension · E7 desktop app · F1 mobile apps (parallel track, see mobile plan) · F3 teams/SSO · E5 public API.
+### Phase 5 — Reach & revenue (ongoing) · first slice shipped 2026-10-13
+
+Status (first slice, needs `npm run db:migrate` for migration 0023; until then billing, usage, saved translations and calendar reminders report "not set up on this server" and nothing else changes): F2 Stripe billing + usage limits (Checkout in subscription mode with promotion codes and optional Stripe Tax, the customer portal for plan changes, card and cancelling, a raw-body signature-verified webhook that is idempotent by event id and ignores out-of-order events, a monthly usage ledger of transcription minutes and AI generations with PROPOSED allowances in `shared/plans.ts`, limits enforced on recording create/import/retry and every AI generation only once Stripe is configured or `USAGE_LIMITS_ENFORCED=true`, a real `/billing` page, usage meters in Settings, billing status on the Admin page, and account deletion that cancels the subscription first), F4 open sign-up flag (admin switch in `appSettings`, only while limits are enforced; per-IP and daily caps; email confirmation through Resend for open sign-ups; landing copy follows the flag), F5 onboarding checklist (five steps from real data on the library), F7 translation of transcripts, study guides and notes (part by part within the 60s limit, stored, one generation per item and language) and A5 Google Calendar (read-only connection on the integrations framework, next seven days on the dashboard, Remind me to record delivered by open tabs at the start time plus a daily digest from the existing cron, and recordings named after the event) are done. Verified in Chromium against local MariaDB with `scripts/dev/mock-phase5-services.mjs` standing in for Stripe, the LLM, Google Calendar, Resend and AssemblyAI; not yet run against real Stripe or Google. Not done in this slice: D4 auto-share notes to event attendees, a templates gallery for F5, reminders at event start when no tab is open (needs a more frequent cron than Hobby allows, or a push service with scheduling), calendars other than the primary one, annual billing, and checking an invite on Google sign-up while sign-up is closed.
+
+Done: F2 Stripe billing + usage limits · F4 open signup flag · F5 onboarding checklist · F7 translation · A5 calendar.
+Remaining: A4 meeting bot · A6 slide capture · D4 auto-share to attendees · E6 Chrome extension · E7 desktop app · F1 mobile apps (parallel track, see mobile plan) · F3 teams/SSO · E5 public API.
 
 ---
 
