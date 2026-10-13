@@ -10,6 +10,7 @@ import { handleAssemblyAiWebhook } from "../transcriptionWebhook";
 import { registerSchemaInitRoute } from "../schemaInit";
 import { registerFollowUpCron } from "../followUps";
 import { registerIntegrationRoutes } from "../integrations";
+import { registerStripeWebhook } from "../billing";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -25,6 +26,8 @@ export function createApp() {
   app.set("trust proxy", 1);
 
   registerYouTubeRelayRoutes(app);
+  // Before the JSON parser: Stripe signs the raw bytes.
+  registerStripeWebhook(app);
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 

@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
+import { useCalendarTitle } from "@/components/CalendarReminderWatcher";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
 import { formatClockTime } from "@/lib/recordingClock";
 import type { LiveTurn } from "@/lib/liveTurns";
@@ -47,6 +48,7 @@ export default function Record() {
   const isPaused = recorder.status === "paused";
   const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
+  const calendarHint = useCalendarTitle(recorder, recordingTitle, setRecordingTitle);
   const [audience, setAudience] = useState<"student" | "professional">(
     "student"
   );
@@ -371,6 +373,7 @@ export default function Record() {
                 onChange={e => setRecordingTitle(e.target.value)}
                 disabled={isUploading}
               />
+              {calendarHint && <p className="mt-1.5 text-xs text-muted-foreground">{calendarHint}</p>}
             </div>
 
             <fieldset>

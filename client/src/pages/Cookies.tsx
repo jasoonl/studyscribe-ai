@@ -33,13 +33,15 @@ function StorageTable({ caption, rows }: { caption: string; rows: Row[] }) {
 
 const COOKIES: Row[] = [
   { name: "studyscribe_session", purpose: "Keeps you signed in. Essential: the app cannot work without it.", lasts: "30 days, or until you sign out" },
-  { name: "studyscribe_integration_state", purpose: "Checks that a Notion or Google sign-in that comes back to StudyScribe is the one you started. Essential, and only set when you connect an app.", lasts: "10 minutes" },
+  { name: "studyscribe_integration_state", purpose: "Checks that a Notion or Google (Docs or Calendar) sign-in that comes back to StudyScribe is the one you started. Essential, and only set when you connect an app.", lasts: "10 minutes" },
 ];
 
 const BROWSER_STORAGE: Row[] = [
   { name: CONSENT_KEY, purpose: "Remembers whether you accepted or declined analytics.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe-recorder", purpose: "Keeps a copy of a recording in progress on your device, so a crash or closed tab does not lose it (IndexedDB).", lasts: "Until the recording is uploaded or discarded" },
   { name: "studyscribe_onboarding_done", purpose: "Remembers that you have seen the welcome tour.", lasts: "Until you clear site data" },
+  { name: "studyscribe_setup_checklist_hidden:*", purpose: "Remembers that you hid the Get set up list on your library.", lasts: "Until you clear site data" },
+  { name: "studyscribe_calendar_prompt_hidden", purpose: "Remembers that you chose Not now for connecting Google Calendar on your library.", lasts: "Until you clear site data" },
   { name: "studyscribe_auto_notes", purpose: "Remembers whether study notes are written automatically (Settings).", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_auto_notes_tried_*", purpose: "Stops the same notes being generated twice in one tab (session storage).", lasts: "Until you close the tab" },
   { name: "studyscribe_live_transcript", purpose: "Remembers whether you turned on live transcript while recording.", lasts: "Until you change it or clear site data" },

@@ -23,6 +23,7 @@ import { FlashcardTestMode } from "@/components/FlashcardTestMode";
 import { type AudioPlayerHandle } from "@/components/AudioPlayer";
 import { type TranscriptSegment } from "@/lib/transcriptSegments";
 import { TranscriptView } from "@/components/TranscriptView";
+import { TranslateMenu } from "@/components/TranslateDialog";
 import { downloadTranscriptExport } from "@/lib/transcriptExports";
 import { downloadFlashcardExport } from "@/lib/flashcardExports";
 import { formatRecordingDuration } from "@/lib/formatDuration";
@@ -510,13 +511,21 @@ export default function RecordingDetail() {
                               playbackTime={playbackTime}
                               onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
                               annotations
+                              translatable
                             />
                           ) : (
-                            <div className="prose prose-sm max-w-none dark:prose-invert">
-                              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                {transcript.fullText}
-                              </p>
-                            </div>
+                            <>
+                              {transcript.fullText.trim() && recordingId ? (
+                                <div className="flex justify-end">
+                                  <TranslateMenu kind="transcript" id={recordingId} variant="outline" />
+                                </div>
+                              ) : null}
+                              <div className="prose prose-sm max-w-none dark:prose-invert">
+                                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                  {transcript.fullText}
+                                </p>
+                              </div>
+                            </>
                           )}
                         </div>
                       )}

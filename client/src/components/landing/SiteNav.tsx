@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
 import { Menu, X } from "lucide-react";
 import { PLANS } from "@shared/plans";
+import { useSignupMode } from "@/lib/signupMode";
 
 const LOGO = "/logo.webp";
 
@@ -45,12 +46,24 @@ const MENUS: Record<string, { label: string; href?: string; items: Item[] }> = {
       { title: "Watch the demo", text: "A narrated tour of the real app.", href: "/demo" },
       { title: "What it covers", text: "Each step, lecture to study guide.", href: "/demo#tour" },
       { title: "How it works", text: "Record, transcribe, then study.", href: "/#how" },
-      { title: "Try it yourself", text: "Request an invite for your lecture.", href: "/request-access" },
     ],
   },
 };
 
 export default function SiteNav() {
+  const signup = useSignupMode();
+  const menus: typeof MENUS = {
+    ...MENUS,
+    demo: {
+      ...MENUS.demo,
+      items: [
+        ...MENUS.demo.items,
+        signup.open
+          ? { title: "Try it yourself", text: "Sign up free and record your lecture.", href: signup.href }
+          : { title: "Try it yourself", text: "Request an invite for your lecture.", href: signup.href },
+      ],
+    },
+  };
   const reduce = useReducedMotion();
   const { scrollY } = useScroll();
   const [stuck, setStuck] = useState(false);
@@ -76,7 +89,7 @@ export default function SiteNav() {
           </Link>
 
           <div className="ml-4 hidden items-center gap-1 md:flex">
-            {Object.entries(MENUS).map(([key, menu]) => {
+            {Object.entries(menus).map(([key, menu]) => {
               const className = `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${open === key ? "bg-secondary text-primary" : "text-foreground/80 hover:text-foreground"}`;
               return menu.href ? (
                 <Link
@@ -111,10 +124,10 @@ export default function SiteNav() {
               Sign in
             </Link>
             <Link
-              href="/request-access"
+              href={signup.href}
               className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-[0.98]"
             >
-              Get started
+              {signup.label}
             </Link>
             <button
               type="button"
@@ -139,7 +152,7 @@ export default function SiteNav() {
               className="absolute left-0 right-0 top-[calc(100%+0.5rem)] hidden rounded-2xl border border-border bg-card p-2 shadow-lg md:block"
             >
               <ul className="grid grid-cols-2 gap-1">
-                {MENUS[open].items.map(({ title, text, href }) => (
+                {menus[open].items.map(({ title, text, href }) => (
                   <li key={title}>
                     <a href={href} onClick={() => setOpen(null)} className="block rounded-xl px-4 py-3 transition-colors hover:bg-secondary">
                       <span className="block text-sm font-semibold text-foreground">{title}</span>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Check } from "lucide-react";
+import { useSignupMode } from "@/lib/signupMode";
 
 const AUDIENCES = {
   student: {
@@ -22,6 +23,7 @@ const AUDIENCES = {
 } as const;
 
 export default function UseCases() {
+  const signup = useSignupMode();
   const [who, setWho] = useState<keyof typeof AUDIENCES>("student");
   const content = AUDIENCES[who];
 
@@ -62,8 +64,8 @@ export default function UseCases() {
                   </li>
                 ))}
               </ul>
-              <Link href="/request-access" className="mt-8 inline-flex whitespace-nowrap rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-[filter,transform] hover:brightness-110 active:scale-[0.98]">
-                Get started
+              <Link href={signup.href} className="mt-8 inline-flex whitespace-nowrap rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-[filter,transform] hover:brightness-110 active:scale-[0.98]">
+                {signup.label}
               </Link>
             </div>
             <div className="shadow-apple overflow-hidden rounded-xl border border-border bg-card">

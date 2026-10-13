@@ -20,6 +20,7 @@ import type { LiveTurn } from "@/lib/liveTurns";
 import { LiveTextToggle, TabAudioControl, TabAudioOption } from "@/components/live/RecordingOptions";
 import { LiveTranscriptSection, useLiveLayout } from "@/components/live/LiveTranscriptSection";
 import { StudyHelpPanel } from "@/components/live/StudyHelpPanel";
+import { useCalendarTitle } from "@/components/CalendarReminderWatcher";
 
 type Mode = "choose" | "record" | "upload" | "link";
 
@@ -37,6 +38,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const isPaused = recorder.status === "paused";
   const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
+  const calendarHint = useCalendarTitle(recorder, recordingTitle, setRecordingTitle);
   const [audience, setAudience] = useState<"student" | "professional">("student");
   const [withTabAudio, setWithTabAudio] = useState(false);
   // Live text kept on screen after upload, until the real transcript replaces it.
@@ -492,6 +494,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                         onChange={(e) => setRecordingTitle(e.target.value)}
                         className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                       />
+                      {calendarHint && <p className="mt-1.5 text-xs text-muted-foreground">{calendarHint}</p>}
                     </div>
 
                     <div>
@@ -555,6 +558,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                             onChange={(e) => setRecordingTitle(e.target.value)}
                             className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                           />
+                          {calendarHint && <p className="mt-1.5 text-xs text-muted-foreground">{calendarHint}</p>}
                         </div>
 
                         <div>

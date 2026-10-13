@@ -729,7 +729,7 @@ export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export const integrationConnections = mysqlTable("integrationConnections", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  provider: mysqlEnum("provider", ["notion", "google_drive"]).notNull(),
+  provider: mysqlEnum("provider", ["notion", "google_drive", "google_calendar"]).notNull(),
   accessToken: text("accessToken").notNull(),
   refreshToken: text("refreshToken"),
   expiresAt: timestamp("expiresAt"),
@@ -741,3 +741,113 @@ export const integrationConnections = mysqlTable("integrationConnections", {
 ]);
 
 export type IntegrationConnection = typeof integrationConnections.$inferSelect;
+
+/**
+ * Phase 5 billing (F2). One row per person who has started a checkout. Only
+ * Stripe identifiers and the subscription state Stripe reports are kept; card
+ * details never reach this server. `lastEventAt` is the `created` time of the
+ * newest Stripe event applied, so an older event delivered late cannot undo a
+ * newer state.
+ */
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).notNull(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  stripePriceId: varchar("stripePriceId", { length: 255 }),
+  planId: varchar("planId", { length: 16 }).default("free").notNull(),
+  status: varchar("status", { length: 32 }).default("none").notNull(),
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  lastEventAt: int("lastEventAt").default(0).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("subscriptions_user_unique").on(table.userId),
+  uniqueIndex("subscriptions_customer_unique").on(table.stripeCustomerId),
+  index("subscriptions_subscription_idx").on(table.stripeSubscriptionId),
+]);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+
+/** Stripe event ids already handled, so a redelivered webhook is applied once. */
+export const stripeEvents = mysqlTable("stripeEvents", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  type: varchar("type", { length: 64 }).notNull(),
+  processedAt: timestamp("processedAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+/**
+ * Monthly usage ledger (F2). `period` is the UTC calendar month (`YYYY-MM`).
+ * Transcription rows hold seconds of audio, AI rows hold 1 per generation.
+ * `dedupeKey` makes a charge happen once (a recording's transcription is
+ * counted once however many times it is retried or its webhook redelivered);
+ * MySQL allows any number of NULLs in a unique index.
+ */
+export const usageEvents = mysqlTable("usageEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  period: varchar("period", { length: 7 }).notNull(),
+  kind: mysqlEnum("kind", ["transcription", "ai_generation"]).notNull(),
+  units: int("units").notNull(),
+  recordingId: int("recordingId"),
+  dedupeKey: varchar("dedupeKey", { length: 191 }),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("usageEvents_user_period_idx").on(table.userId, table.period),
+  uniqueIndex("usageEvents_dedupe_unique").on(table.dedupeKey),
+]);
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
+
+/**
+ * Stored machine translations (F7), one row per chunk so a long transcript is
+ * translated across many short requests. `sourceHash` is the hash of the
+ * chunk's source text: an edit to the source makes the row stale.
+ */
+export const translations = mysqlTable("translations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  kind: mysqlEnum("kind", ["transcript", "guide", "note"]).notNull(),
+  itemId: int("itemId").notNull(),
+  recordingId: int("recordingId"),
+  language: varchar("language", { length: 10 }).notNull(),
+  chunkIndex: int("chunkIndex").notNull(),
+  sourceHash: varchar("sourceHash", { length: 64 }).notNull(),
+  content: mediumText("content").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("translations_item_chunk_unique").on(table.kind, table.itemId, table.language, table.chunkIndex),
+  index("translations_user_idx").on(table.userId),
+  index("translations_recording_idx").on(table.recordingId),
+]);
+
+export type Translation = typeof translations.$inferSelect;
+
+/**
+ * "Remind me to record" for a Google Calendar event (A5). The event's title
+ * and times are copied when the reminder is set; events themselves are read
+ * from Google on demand and not stored.
+ */
+export const calendarReminders = mysqlTable("calendarReminders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  eventId: varchar("eventId", { length: 255 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  // An explicit default keeps servers with explicit_defaults_for_timestamp=OFF
+  // from adding ON UPDATE CURRENT_TIMESTAMP to the first NOT NULL timestamp.
+  startsAt: timestamp("startsAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  endsAt: timestamp("endsAt"),
+  /** The person's IANA time zone when they set the reminder, for the daily digest's wording. */
+  timeZone: varchar("timeZone", { length: 64 }),
+  notifiedAt: timestamp("notifiedAt"),
+  digestedAt: timestamp("digestedAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("calendarReminders_user_event_unique").on(table.userId, table.eventId),
+  index("calendarReminders_starts_idx").on(table.startsAt),
+]);
+
+export type CalendarReminder = typeof calendarReminders.$inferSelect;

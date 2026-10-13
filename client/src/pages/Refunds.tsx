@@ -2,8 +2,8 @@ import { Link } from "wouter";
 import LegalLayout, { ContactEmail, type LegalSection } from "@/components/LegalLayout";
 
 const SECTIONS: LegalSection[] = [
-  { heading: "Right now", body: <p>The Free plan costs nothing and never asks for payment details. Paid plans are not on sale yet, so nobody has been charged and there is nothing to refund. The rest of this policy applies once paid plans launch, and we will not change it for a charge after it has been made.</p> },
-  { heading: "Subscriptions and cancelling", body: <p>Paid plans renew every month until you cancel. You can cancel at any time, in the app or by emailing <ContactEmail subject="Cancel my subscription" />. Cancelling stops the next renewal, and you keep your plan until the end of the period you have already paid for. You will not be charged after you cancel.</p> },
+  { heading: "The Free plan", body: <p>The Free plan costs nothing and never asks for payment details, so there is nothing to refund. This policy covers paid plans, and we will not change it for a charge after it has been made.</p> },
+  { heading: "Subscriptions and cancelling", body: <p>Paid plans renew every month until you cancel. You can cancel at any time: open Billing in the app and choose "Cancel plan", which is one step, or email <ContactEmail subject="Cancel my subscription" />. Cancelling stops the next renewal, and you keep your plan until the end of the period you have already paid for. You will not be charged after you cancel. Deleting your account cancels the plan straight away.</p> },
   { heading: "When we refund in full", body: (<>
     <p>Ask within 14 days of the charge and we will refund it in full if:</p>
     <ul className="list-disc space-y-1.5 pl-6">

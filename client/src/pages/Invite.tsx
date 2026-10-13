@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2, Ticket, CheckCircle, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useSignupMode } from "@/lib/signupMode";
 
 export default function Invite() {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+  const signup = useSignupMode();
 
   const handleValidate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,8 +128,8 @@ export default function Invite() {
         {/* No invite? */}
         <p className="text-center text-sm text-muted-foreground">
           Don't have an invite code?{" "}
-          <a href="/request-access" className="text-accent font-medium hover:underline">
-            Request access
+          <a href={signup.open ? "/signup" : "/request-access"} className="text-accent font-medium hover:underline">
+            {signup.open ? "Sign up free without one" : "Request access"}
           </a>
         </p>
       </div>

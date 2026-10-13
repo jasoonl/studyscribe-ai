@@ -1,7 +1,9 @@
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { useSignupMode } from "@/lib/signupMode";
 
 export default function Hero() {
+  const signup = useSignupMode();
   return (
     <section className="relative pb-24 pt-36 sm:pt-44">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -14,10 +16,10 @@ export default function Hero() {
           </p>
           <div className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/request-access"
+              href={signup.href}
               className="group inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground transition-[filter,transform] hover:brightness-110 active:scale-[0.98]"
             >
-              Get started
+              {signup.label}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link

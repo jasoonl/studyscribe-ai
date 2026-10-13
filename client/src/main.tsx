@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { startAnalyticsIfConsented } from "@/lib/cookieConsent";
+import { offerUpgradeOnUsageLimit } from "@/lib/usageLimit";
 
 import "./index.css";
 
@@ -39,6 +40,7 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
+    offerUpgradeOnUsageLimit(error);
     console.error("[API Mutation Error]", error);
   }
 });

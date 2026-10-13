@@ -12,6 +12,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
+import { CalendarReminderWatcher } from "@/components/CalendarReminderWatcher";
 
 // Route components are code-split per page: eagerly importing every page
 // (including heavy per-page deps like mermaid/streamdown/recharts) bundled
@@ -86,7 +87,12 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     return <Redirect to="/login" />;
   }
 
-  return <Component />;
+  return (
+    <>
+      <Component />
+      <CalendarReminderWatcher />
+    </>
+  );
 }
 
 function Router() {
@@ -108,7 +114,7 @@ function Router() {
         <Route path="/refunds" component={Refunds} />
         <Route path="/credits" component={Credits} />
         <Route path="/pricing" component={Pricing} />
-        <Route path="/billing" component={Billing} />
+        <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
         <Route path="/shared/:token" component={PublicSharedRecording} />
 
         {/* Protected routes */}

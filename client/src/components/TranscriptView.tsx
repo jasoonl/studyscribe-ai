@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 import { KeyTermChips } from "@/components/KeyTermChips";
+import { TranslateMenu } from "@/components/TranslateDialog";
 import { downloadTranscriptExport, type TranscriptExportFormat } from "@/lib/transcriptExports";
 import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
 import { CommentsPanel, SelectionToolbar, anchorIsCurrent, readSelection, useTranscriptAnnotations, type AnnotationThread, type PendingSelection } from "@/components/TranscriptAnnotations";
@@ -79,6 +80,7 @@ export function TranscriptView({
   annotations = false,
   canRenameSpeakers = true,
   showKeyTerms = true,
+  translatable = false,
 }: {
   recordingId: number;
   title: string;
@@ -93,6 +95,8 @@ export function TranscriptView({
   canRenameSpeakers?: boolean;
   /** Key terms are generated per owner, so shared views leave them out. */
   showKeyTerms?: boolean;
+  /** "Translate" next to Export; translations are stored per owner. */
+  translatable?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [matchCursor, setMatchCursor] = useState(0);
@@ -245,9 +249,11 @@ export function TranscriptView({
             </div>
           )}
         </div>
+        <div className="flex shrink-0 gap-2 self-start sm:self-auto">
+        {translatable && <TranslateMenu kind="transcript" id={recordingId} variant="outline" />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 self-start sm:self-auto">
+            <Button variant="outline" size="sm" className="gap-2">
               <Download className="h-4 w-4" /> Export
             </Button>
           </DropdownMenuTrigger>
@@ -260,6 +266,7 @@ export function TranscriptView({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {showKeyTerms && <KeyTermChips recordingId={recordingId} query={query} onPick={setQuery} />}

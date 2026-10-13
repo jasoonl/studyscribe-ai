@@ -13,7 +13,9 @@ import { sendBrowserPush } from "./pushNotifications";
 import { runWebhookMaintenance } from "./outgoingWebhooks";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
+import { aiProcedure } from "./usage";
 import { SINGLE_RECORDING_BUDGET, condenseTranscript } from "./transcriptBudget";
+import { sendCalendarDigests } from "./calendar";
 
 /**
  * Follow-up suggestions after a recording (C7). The table arrives with
@@ -98,7 +100,7 @@ export const followUpsRouter = router({
    * Plans the days after the recording. Running it again replaces the open
    * suggestions; ticked-off ones are kept.
    */
-  generate: protectedProcedure
+  generate: aiProcedure
     .input(z.object({ recordingId: z.number().int().positive(), today: todaySchema }))
     .mutation(async ({ input, ctx }) => {
       if (!checkTrpcRateLimit(`follow-ups:${ctx.user.id}`, 10 * 60 * 1000, 20)) {
@@ -232,7 +234,13 @@ export function registerFollowUpCron(app: Express) {
         console.error("[webhooks] daily retry run failed:", error);
         return null;
       });
-      res.json({ ...result, webhooks });
+      // And the calendar digest (A5): Hobby crons run daily, so this is the
+      // only server-side reminder; open tabs deliver reminders at event start.
+      const calendar = await sendCalendarDigests().catch((error) => {
+        console.error("[calendar] daily digest failed:", error);
+        return null;
+      });
+      res.json({ ...result, webhooks, calendar });
     } catch (error) {
       console.error("[followUps] reminder run failed:", error);
       res.status(500).json({ error: "Reminder run failed" });

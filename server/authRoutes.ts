@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { loginWithEmailPassword, registerWithEmailPassword, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
+import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
 import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
@@ -8,8 +8,11 @@ import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleR
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 import { authLimiter, passwordResetLimiter } from "./_core/rateLimit";
 import { MIN_AGE } from "@shared/legal";
+import { countRecentSignups, decideSignupPath, isOpenSignupEnabled, openSignupDailyCap, registerEmailVerificationRoutes, sendVerificationLink, signupLimiter } from "./openSignup";
 
 export function registerAuthRoutes(app: Express) {
+  registerEmailVerificationRoutes(app);
+
   /**
    * POST /api/auth/login
    * Email/password login
@@ -63,12 +66,12 @@ export function registerAuthRoutes(app: Express) {
    * POST /api/auth/signup
    * Email/password signup with invite code
    */
-  app.post("/api/auth/signup", authLimiter, async (req: Request, res: Response) => {
+  app.post("/api/auth/signup", authLimiter, signupLimiter, async (req: Request, res: Response) => {
     try {
       const { email, password, name, inviteCode, acceptedTerms, confirmedAge } = req.body;
 
-      if (!email || !password || !name || !inviteCode) {
-        res.status(400).json({ error: "Email, password, name, and invite code are required" });
+      if (!email || !password || !name) {
+        res.status(400).json({ error: "Email, password and name are required" });
         return;
       }
 
@@ -77,7 +80,22 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const result = await registerWithEmailPassword(email, password, name, inviteCode, acceptedTerms === true);
+      // An invite always works; without one, only while open sign-up is on.
+      const hasInvite = typeof inviteCode === "string" && inviteCode.trim().length > 0;
+      const decision = decideSignupPath({
+        inviteCode: hasInvite ? inviteCode : null,
+        openSignup: hasInvite ? false : await isOpenSignupEnabled(),
+        recentSignups: hasInvite ? 0 : await countRecentSignups(),
+        dailyCap: openSignupDailyCap(),
+      });
+      if (decision.path === "closed") {
+        res.status(400).json({ error: decision.reason });
+        return;
+      }
+
+      const result = decision.path === "invite"
+        ? await registerWithEmailPassword(email, password, name, inviteCode, acceptedTerms === true)
+        : await registerOpenSignup(String(email), String(password), String(name), acceptedTerms === true);
 
       if (result.error) {
         res.status(400).json({ error: result.error });
@@ -98,8 +116,19 @@ export function registerAuthRoutes(app: Express) {
 
       setSessionCookie(res, token);
 
+      let confirmationSent = false;
+      if (decision.path === "open") {
+        try {
+          confirmationSent = (await sendVerificationLink(result.user, req.get("origin") ?? undefined)).sent;
+        } catch (error) {
+          // The account exists; the dashboard offers to send the link again.
+          console.error("[Auth] Verification email failed", error);
+        }
+      }
+
       res.json({
         success: true,
+        confirmationSent,
         user: {
           id: result.user.id,
           email: result.user.email,

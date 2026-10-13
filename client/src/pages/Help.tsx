@@ -160,6 +160,36 @@ const faqs: FAQItem[] = [
     question: "Can I use Google to sign in?",
     answer: "Yes! On the Login or Sign Up page, click 'Continue with Google' to authenticate with your Google account. Note: you must have an existing account to sign in with Google.",
   },
+  {
+    category: "Getting Started",
+    question: "What is on the Get set up list?",
+    answer: "The list on your library shows five first steps: record or upload a lecture, generate notes, try flashcards, create a course and ask a question. Each one ticks itself off when you do it. Choose Hide to put the list away; it also disappears once everything is done.",
+  },
+  {
+    category: "Getting Started",
+    question: "Can I sign up without an invite?",
+    answer: "When open sign-up is on, the home page says 'Sign up free' and anyone can create a Free account. If the site can send email, you then confirm your address from the link we send before transcribing; the dashboard can send it again. Otherwise sign-up needs an invite code, which you can ask for on the Request access page.",
+  },
+  {
+    category: "AI Features",
+    question: "How do I translate a transcript, study guide or notes?",
+    answer: "Use 'Translate' next to Export on the transcript, at the top of a study guide, or on a set of notes, and pick a language. Long transcripts are translated part by part and each part appears as soon as it is ready, keeping times and speakers. Translations are saved, so opening one again is instant. Translating one item into one language counts as a single AI generation.",
+  },
+  {
+    category: "Account",
+    question: "What do the plans include, and what counts against them?",
+    answer: "Every plan has every feature. Plans differ in how many minutes of audio you can transcribe and how many AI generations you can use each month. A generation is one set of notes, flashcards, a quiz, a guide, a draft, a translation, a key terms or chapters list, or one tutor or Ask answer. A recording counts once, by its length, when its transcript is ready; a retry does not count again. Usage resets on the 1st of each month (UTC). See Billing or Settings for what you have used.",
+  },
+  {
+    category: "Account",
+    question: "How do I upgrade, change plan or cancel?",
+    answer: "Open Billing from Settings. 'Choose' a plan to pay on Stripe's secure checkout, which shows the full price with any tax before you pay. Once you have a plan, 'Change plan or card' opens Stripe's billing portal, and 'Cancel plan' takes you straight to cancelling. After cancelling you keep the plan until the end of the period you paid for.",
+  },
+  {
+    category: "Organization",
+    question: "How do I see my classes from Google Calendar?",
+    answer: "Connect Google Calendar in Settings under Connected apps (read-only access). Your library then shows the next seven days. Choose 'Remind me' on a class to get a notification when it starts while StudyScribe is open in a tab, plus a once-a-day summary of the next 24 hours. A recording you start during a class, or up to ten minutes before, is named after it.",
+  },
 ];
 
 const categories = ["All", ...Array.from(new Set(faqs.map(f => f.category)))];

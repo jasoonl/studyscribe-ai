@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, ShieldAlert, Users, KeyRound, Clock, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { AdminBillingSection } from "@/components/AdminBillingSection";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -181,6 +182,8 @@ export default function Admin() {
             </Card>
           </section>
         )}
+
+        <AdminBillingSection />
 
         {/* File storage capacity */}
         {storageUsage?.configured && (

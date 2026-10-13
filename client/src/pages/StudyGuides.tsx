@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { BookOpen, ArrowLeft, Sparkles, Clock, ChevronRight, FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { SendToMenu } from "@/components/SendToMenu";
+import { TranslateMenu } from "@/components/TranslateDialog";
 
 /** Key points come back from the model with markdown emphasis (`**Term:** …`); show them as plain text. */
 const plainKeyPoint = (text: string) => text.replace(/[*_`#]+/g, "").trim();
@@ -177,6 +178,7 @@ export default function StudyGuides() {
                     </CardDescription>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {selectedGuide.status === "completed" && <TranslateMenu kind="guide" id={selectedGuide.id} />}
                     {selectedGuide.status === "completed" && <SendToMenu kind="guide" id={selectedGuide.id} />}
                     <Badge variant="outline" className="shrink-0 border-green-500/50 text-green-400">
                       {selectedGuide.status}
