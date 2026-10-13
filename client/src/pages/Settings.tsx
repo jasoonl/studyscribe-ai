@@ -15,6 +15,7 @@ import { VocabularySettings } from "@/components/VocabularySettings";
 import { ConnectedAppsSettings } from "@/components/ConnectedAppsSettings";
 import { WebhookSettings } from "@/components/WebhookSettings";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
+import { TeamSettingsCard } from "@/components/TeamSettingsCard";
 import { UsageMeters } from "@/components/UsageMeters";
 
 export default function Settings() {
@@ -116,6 +117,8 @@ export default function Settings() {
           </div>
         </Card>
 
+        <TeamSettingsCard />
+
         <VocabularySettings />
 
         <ConnectedAppsSettings />
@@ -135,7 +138,7 @@ export default function Settings() {
 
         <Card className="border-destructive/40 p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-destructive"><ShieldAlert className="h-5 w-5" />Delete your account</h2>
-          <p className="mt-2 text-sm text-muted-foreground">This permanently deletes your account, recordings and audio, transcripts, flashcards, quizzes, study guides, chats, shared links, comments, study groups you run, webhooks and connected apps. It cannot be undone, so export anything you want to keep first.</p>
+          <p className="mt-2 text-sm text-muted-foreground">This permanently deletes your account, recordings and audio, captured slides, transcripts, flashcards, quizzes, study guides, chats, shared links, comments, study groups and teams you run (cancelling a team plan), API keys, webhooks and connected apps. It cannot be undone, so export anything you want to keep first.</p>
           <Button className="mt-4" variant="destructive" onClick={() => setConfirmOpen(true)}>Delete my account</Button>
         </Card>
 

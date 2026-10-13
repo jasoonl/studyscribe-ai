@@ -59,6 +59,9 @@ const ExamPack = lazy(() => import("./pages/ExamPack"));
 const Groups = lazy(() => import("./pages/Groups"));
 const Developers = lazy(() => import("./pages/Developers"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const Team = lazy(() => import("./pages/Team"));
+const JoinTeam = lazy(() => import("./pages/JoinTeam"));
+const TeamCourse = lazy(() => import("./pages/TeamCourse"));
 const GroupPage = lazy(() => import("./pages/GroupPage"));
 const JoinGroup = lazy(() => import("./pages/JoinGroup"));
 
@@ -118,6 +121,7 @@ function Router() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/developers" component={Developers} />
         <Route path="/unsubscribe" component={Unsubscribe} />
+        <Route path="/team/join/:token" component={JoinTeam} />
         <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
         <Route path="/shared/:token" component={PublicSharedRecording} />
 
@@ -147,6 +151,8 @@ function Router() {
         <Route path="/groups/:id" component={() => <ProtectedRoute component={GroupPage} />} />
         <Route path="/help" component={() => <ProtectedRoute component={Help} />} />
         <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+        <Route path="/team" component={() => <ProtectedRoute component={Team} />} />
+        <Route path="/team/courses/:id" component={() => <ProtectedRoute component={TeamCourse} />} />
 
         {/* 404 fallback */}
         <Route path="/404" component={NotFound} />

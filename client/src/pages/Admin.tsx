@@ -22,6 +22,7 @@ import {
 import { ArrowLeft, ShieldAlert, Users, KeyRound, Clock, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AdminBillingSection } from "@/components/AdminBillingSection";
+import { AdminPlatformSection } from "@/components/AdminPlatformSection";
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -184,6 +185,8 @@ export default function Admin() {
         )}
 
         <AdminBillingSection />
+
+        <AdminPlatformSection />
 
         {/* File storage capacity */}
         {storageUsage?.configured && (
