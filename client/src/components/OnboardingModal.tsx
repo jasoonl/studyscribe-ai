@@ -29,7 +29,7 @@ const steps = [
     title: "Study from the Transcript",
     description:
       "Generate study guides, practice quizzes, email drafts, and flashcards from any recording. Use the AI Assistant to ask questions about your content.",
-    tip: "Tip: Try the Knowledge Base to search across all your transcripts at once.",
+    tip: "Tip: The Get set up list on your library ticks off these first steps as you go.",
     color: "bg-amber-50",
     dot: "bg-amber-500",
   },

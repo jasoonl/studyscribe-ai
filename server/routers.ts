@@ -48,6 +48,7 @@ import { indexRecordingQuietly, smartSearchRouter } from "./embeddings";
 import { integrationsRouter } from "./integrations";
 import { billingDiagnostics, billingRouter } from "./billing";
 import { signupRouter } from "./openSignup";
+import { onboardingRouter } from "./onboarding";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
@@ -832,6 +833,7 @@ export const appRouter = router({
   integrations: integrationsRouter,
   billing: billingRouter,
   signup: signupRouter,
+  onboarding: onboardingRouter,
 
   studyGuides: router({
     list: protectedProcedure

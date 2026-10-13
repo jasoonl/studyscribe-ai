@@ -14,6 +14,8 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { RecordingList } from "@/components/RecordingList";
 import { CourseStrip, TagFilter } from "@/components/CourseStrip";
 import { UpcomingTasks } from "@/components/UpcomingTasks";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { EmailConfirmationBanner } from "@/components/EmailConfirmationBanner";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -400,6 +402,8 @@ export default function Dashboard() {
 
           {/* My Library Tab */}
           <TabsContent value="library" className="space-y-6">
+            <EmailConfirmationBanner />
+            {user && <OnboardingChecklist userId={user.id} onOpenRecorder={() => setActiveTab("recorder")} />}
             <CourseStrip />
             <UpcomingTasks />
             <div className="space-y-4">
