@@ -18,15 +18,15 @@
     "dist:win": "npm run build && electron-builder --win nsis"
   },
   "dependencies": {
-    "electron-updater": "6.6.8"
+    "electron-updater": "6.8.9"
   },
   "devDependencies": {
     "@types/node": "22.19.1",
     "electron": "43.7.9",
-    "electron-builder": "26.0.20",
+    "electron-builder": "26.15.3",
     "esbuild": "0.28.2",
     "playwright-core": "1.56.1",
     "typescript": "5.9.3",
-    "vitest": "3.2.7"
+    "vitest": "5.0.4"
   }
 }
