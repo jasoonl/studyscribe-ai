@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>StudyScribe</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --background: oklch(0.985 0.004 250);
+        --foreground: oklch(0.2 0.045 262);
+        --muted: oklch(0.48 0.04 258);
+        --primary: oklch(0.5 0.21 264);
+        --primary-hover: oklch(0.45 0.2 264);
+        --on-primary: oklch(0.985 0.005 250);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: oklch(0.16 0.03 263);
+          --foreground: oklch(0.94 0.012 250);
+          --muted: oklch(0.72 0.03 255);
+          --primary: oklch(0.62 0.19 262);
+          --primary-hover: oklch(0.67 0.18 262);
+        }
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        display: grid;
+        place-content: center;
+        gap: 12px;
+        height: 100%;
+        padding: 24px;
+        max-width: 420px;
+        margin: 0 auto;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      button {
+        justify-self: center;
+        margin-top: 8px;
+        height: 38px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--primary);
+        color: var(--on-primary);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--primary-hover);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>StudyScribe is not reachable</h1>
+      <p>Check your internet connection. A recording you started is not affected by this page; the app reconnects when you try again.</p>
+      <button type="button" id="retry">Try again</button>
+    </main>
+    <script>
+      document.getElementById("retry").addEventListener("click", () => window.studyscribeDesktop && window.studyscribeDesktop.retry());
+    </script>
+  </body>
+</html>

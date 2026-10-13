@@ -1,0 +1,62 @@
+# Packaging for StudyScribe desktop. See desktop/README.md for signing and notarization.
+appId: ai.studyscribe.desktop
+productName: StudyScribe
+copyright: Copyright © 2026 StudyScribe AI
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - static/**/*
+  - build/icon.png
+  - package.json
+asar: true
+# Updates stay off until a feed exists: the app checks only when STUDYSCRIBE_UPDATE_URL is set
+# (see src/main.ts). Add a `publish` block (github or generic) when releases are hosted.
+publish: null
+protocols:
+  - name: StudyScribe
+    schemes:
+      - studyscribe
+
+mac:
+  category: public.app-category.education
+  target:
+    - target: dmg
+      arch:
+        - universal
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Set to true (with APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID in the environment) for a release.
+  notarize: false
+  extendInfo:
+    NSMicrophoneUsageDescription: StudyScribe records your microphone when you start a recording.
+    NSAudioCaptureUsageDescription: StudyScribe records your computer's audio when you add system audio to a recording.
+dmg:
+  title: StudyScribe
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: StudyScribe
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Education
+  executableName: studyscribe
+  synopsis: Lectures and meetings into transcripts and study tools
+  mimeTypes:
+    - x-scheme-handler/studyscribe
