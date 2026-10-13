@@ -1,23 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
-import { AlertCircle, BookOpen, Copy, Languages, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, BookOpen, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AIProgressBar } from "@/components/AIProgressBar";
 import { SendToMenu } from "@/components/SendToMenu";
+import { TranslateMenu } from "@/components/TranslateDialog";
 import { trpc } from "@/lib/trpc";
 import { claimAutoNotesAttempt, getAutoNotesEnabled } from "@/lib/preferences";
 import { NOTE_TEMPLATES, defaultNoteTemplate, getNoteTemplate, type NoteTemplateId } from "@shared/noteTemplates";
-import { TRANSCRIPTION_LANGUAGES } from "@shared/languages";
 
 type Note = { id: number; type: string; content: string; metadata?: Record<string, unknown> | null };
-
-const LANGUAGES = TRANSCRIPTION_LANGUAGES.map(language => ({ code: language.code, label: language.label.replace(/ \(.*\)/, "") }));
 
 function noteTitle(note: Note) {
   const template = getNoteTemplate(typeof note.metadata?.template === "string" ? note.metadata.template : null);
@@ -39,9 +35,7 @@ export function StudyNotesPanel({
 }) {
   const utils = trpc.useUtils();
   const [template, setTemplate] = useState<NoteTemplateId>(() => defaultNoteTemplate(audience).id);
-  const [translation, setTranslation] = useState<{ title: string; language: string; content: string } | null>(null);
   const generate = trpc.ai.generateStudyNotes.useMutation();
-  const translate = trpc.ai.translateNote.useMutation();
   const autoStarted = useRef(false);
 
   const run = async (chosen: NoteTemplateId, automatic = false) => {
@@ -61,15 +55,6 @@ export function StudyNotesPanel({
     autoStarted.current = true;
     void run(defaultNoteTemplate(audience).id, true);
   }, [transcriptReady, notes, recordingId, audience]);
-
-  const translateNote = async (note: Note, language: (typeof LANGUAGES)[number]) => {
-    try {
-      const result = await translate.mutateAsync({ noteId: note.id, language: language.code });
-      setTranslation({ title: noteTitle(note), language: language.label, content: result.content });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not translate this note");
-    }
-  };
 
   const picker = (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -121,21 +106,7 @@ export function StudyNotesPanel({
                 </h3>
                 <div className="flex shrink-0 items-center gap-1">
                 <SendToMenu kind="note" id={note.id} />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-2" disabled={translate.isPending}>
-                      {translate.isPending && translate.variables?.noteId === note.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
-                      Translate
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
-                    {LANGUAGES.map(language => (
-                      <DropdownMenuItem key={language.code} onSelect={() => translateNote(note, language)}>
-                        {language.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <TranslateMenu kind="note" id={note.id} />
                 </div>
               </div>
               <div className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert">
@@ -157,33 +128,6 @@ export function StudyNotesPanel({
         </Card>
       )}
 
-      <Dialog open={!!translation} onOpenChange={open => { if (!open) setTranslation(null); }}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{translation?.title} in {translation?.language}</DialogTitle>
-            <DialogDescription>Machine translation of your notes. It is not saved; copy it if you want to keep it.</DialogDescription>
-          </DialogHeader>
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <Streamdown>{translation?.content ?? ""}</Streamdown>
-          </div>
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(translation?.content ?? "");
-                  toast.success("Translation copied");
-                } catch {
-                  toast.error("Copy failed. Select the text and copy it instead.");
-                }
-              }}
-            >
-              <Copy className="h-4 w-4" /> Copy
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
