@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens ported from client/src/index.css (oklch converted to sRGB, see
+ * src/theme/tokens.ts for the same values in JS). Keep the two in step when
+ * the web palette changes.
+ */
+:root {
+  --background: 248 250 253;
+  --foreground: 10 21 42;
+  --card: 255 255 255;
+  --card-foreground: 10 21 42;
+  --primary: 33 84 216;
+  --primary-foreground: 248 250 253;
+  --secondary: 230 242 254;
+  --secondary-foreground: 18 39 80;
+  --muted: 234 241 248;
+  --muted-foreground: 80 95 116;
+  --accent: 0 119 178;
+  --accent-foreground: 250 252 254;
+  --destructive: 231 0 11;
+  --destructive-foreground: 250 250 250;
+  --border: 217 226 237;
+  --input: 217 226 237;
+  --ring: 0 137 208;
+  --brand-sky: 34 181 225;
+  --brand-deep: 17 44 111;
+  --brand-mist: 232 243 255;
+  --annotation: 180 231 252;
+  --course-blue: 54 107 211;
+  --course-teal: 29 153 153;
+  --course-green: 74 154 94;
+  --course-amber: 212 152 56;
+  --course-rose: 216 81 106;
+  --course-violet: 136 90 203;
+  --course-slate: 102 115 131;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 7 13 26;
+    --foreground: 229 236 243;
+    --card: 13 22 38;
+    --card-foreground: 229 236 243;
+    --primary: 66 127 247;
+    --primary-foreground: 248 250 253;
+    --secondary: 25 36 55;
+    --secondary-foreground: 212 223 235;
+    --muted: 27 36 53;
+    --muted-foreground: 152 166 184;
+    --accent: 26 46 76;
+    --accent-foreground: 231 240 248;
+    --destructive: 255 100 103;
+    --destructive-foreground: 250 250 250;
+    --border: 30 40 55;
+    --input: 35 46 62;
+    --ring: 60 143 244;
+    --brand-sky: 73 193 234;
+    --brand-deep: 9 24 59;
+    --brand-mist: 21 31 50;
+    --annotation: 12 73 96;
+    --course-blue: 100 150 244;
+    --course-teal: 73 184 184;
+    --course-green: 105 186 124;
+    --course-amber: 232 180 94;
+    --course-rose: 236 115 133;
+    --course-violet: 173 135 237;
+    --course-slate: 146 160 177;
+  }
+}

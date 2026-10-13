@@ -27,7 +27,7 @@ export function googleAudiences(env: NodeJS.ProcessEnv = process.env): string[] 
 }
 
 export function appleAudiences(env: NodeJS.ProcessEnv = process.env): string[] {
-  const configured = (env.APPLE_BUNDLE_IDS ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+  const configured = (env.APPLE_BUNDLE_IDS ?? "").split(",").map((value: string) => value.trim()).filter(Boolean);
   return configured.length ? configured : ["com.studyscribe.app"];
 }
 
