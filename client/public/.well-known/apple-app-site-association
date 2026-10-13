@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["APPLE_TEAM_ID.com.studyscribe.app"],
+        "components": [
+          { "/": "/recording/*", "comment": "A recording" },
+          { "/": "/shared/*", "comment": "A public share link" },
+          { "/": "/shared-with-me/*", "comment": "A recording shared with you" },
+          { "/": "/courses/*", "comment": "A course" },
+          { "/": "/exam-packs/*", "comment": "An exam pack" },
+          { "/": "/tasks", "comment": "Tasks" },
+          { "/": "/ask", "comment": "Ask StudyScribe" },
+          { "/": "/reset-password", "comment": "Password reset links" },
+          { "/": "/invite", "comment": "Invite links" },
+          { "/": "/signup", "comment": "Sign-up links with an invite code" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["APPLE_TEAM_ID.com.studyscribe.app"]
+  }
+}

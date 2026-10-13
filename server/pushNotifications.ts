@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { deletePushSubscription, getPushSubscriptionsByUserId } from "./db";
+import { sendNativePush } from "./nativePush";
 
 export type PushPayload = {
   title: string;
@@ -32,8 +33,14 @@ export function getBrowserPushConfiguration() {
   };
 }
 
+/**
+ * Sends to the user's browsers (Web Push) and to their phones running the
+ * mobile app (Expo push, server/nativePush.ts). The name predates the app;
+ * every caller wants both.
+ */
 export async function sendBrowserPush(userId: number, payload: PushPayload) {
-  if (!isVapidConfigured()) return { delivered: 0 };
+  const native = await sendNativePush(userId, payload);
+  if (!isVapidConfigured()) return { delivered: native.delivered };
   configureVapid();
 
   const subscriptions = await getPushSubscriptionsByUserId(userId);
@@ -60,5 +67,5 @@ export async function sendBrowserPush(userId: number, payload: PushPayload) {
       }
     }),
   );
-  return { delivered };
+  return { delivered: delivered + native.delivered };
 }

@@ -1,7 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
-import { getSessionFromCookie } from "../sessionManager";
+import { getSessionFromRequest } from "../sessionManager";
 import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -18,8 +18,8 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    // Try custom session first
-    const session = getSessionFromCookie(opts.req.headers.cookie);
+    // Bearer token (mobile app) first, then the session cookie (web).
+    const session = getSessionFromRequest(opts.req);
     if (session) {
       const db = await getDb();
       if (db) {

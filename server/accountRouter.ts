@@ -24,6 +24,8 @@ import { deleteIntegrationsForUser, exportIntegrationsForUser } from "./integrat
 import { deleteWebhooksForUser, exportWebhooksForUser } from "./outgoingWebhooks";
 import { listDirectSharesFor, selectShares } from "./recordingAccess";
 import { getDb } from "./db";
+import { deleteDeviceTokensForUser, exportDevicesForUser } from "./nativePush";
+import { deleteAppleIdentitiesForUser } from "./nativeSocialAuth";
 import { purgeRecordings } from "./purgeRecordings";
 import { cancelBillingForAccountDeletion, exportBillingForUser } from "./billing";
 import { deleteUsageForUser, exportUsageForUser } from "./usage";
@@ -110,6 +112,7 @@ export const accountRouter = router({
       ...(await exportGroupDataForUser(userId)),
       ...(await exportWebhooksForUser(userId)),
       connectedApps: await exportIntegrationsForUser(userId),
+      mobileDevices: await exportDevicesForUser(userId),
       smartSearchPassages: await exportChunksForUser(userId),
       billing: await exportBillingForUser(userId),
       usage: await exportUsageForUser(userId),
@@ -192,6 +195,8 @@ export const accountRouter = router({
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));
       await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+      await deleteDeviceTokensForUser(userId);
+      await deleteAppleIdentitiesForUser(userId);
       await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
       await db.delete(recordingShares).where(or(eq(recordingShares.ownerId, userId), eq(recordingShares.sharedWithUserId, userId)));
       await db.delete(inviteCodes).where(or(eq(inviteCodes.createdBy, userId), eq(inviteCodes.usedBy, userId), eq(inviteCodes.email, fresh.email)));

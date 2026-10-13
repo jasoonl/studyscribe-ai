@@ -851,3 +851,42 @@ export const calendarReminders = mysqlTable("calendarReminders", {
 ]);
 
 export type CalendarReminder = typeof calendarReminders.$inferSelect;
+
+/**
+ * Mobile app push targets (F1): one row per installed app, holding the Expo
+ * push token the device registered. Sent to alongside browser push
+ * (server/nativePush.ts). A token is unique: when a phone changes hands the
+ * row moves to whoever signed in last.
+ */
+export const deviceTokens = mysqlTable("deviceTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  platform: mysqlEnum("platform", ["ios", "android"]).notNull(),
+  token: varchar("token", { length: 255 }).notNull(),
+  appVersion: varchar("appVersion", { length: 32 }),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  lastSeenAt: timestamp("lastSeenAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("deviceTokens_token_unique").on(table.token),
+  index("deviceTokens_user_idx").on(table.userId),
+]);
+
+export type DeviceToken = typeof deviceTokens.$inferSelect;
+
+/**
+ * Sign in with Apple (F1). Apple identifies a person by a stable `sub` per
+ * developer team; it lives here rather than as a `users` column so the users
+ * table (selected by every request) never depends on this migration.
+ */
+export const appleIdentities = mysqlTable("appleIdentities", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  appleSub: varchar("appleSub", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("appleIdentities_sub_unique").on(table.appleSub),
+  index("appleIdentities_user_idx").on(table.userId),
+]);
+
+export type AppleIdentity = typeof appleIdentities.$inferSelect;

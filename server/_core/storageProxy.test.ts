@@ -13,8 +13,9 @@ vi.mock("../recordingAccess", () => ({
   getRecordingAccess: (...args: unknown[]) => getRecordingAccess(...args),
 }));
 
+// The proxy reads the session through getSessionFromRequest (bearer token, then cookie).
 vi.mock("../sessionManager", () => ({
-  getSessionFromCookie: (...args: unknown[]) => getSessionFromCookie(...args),
+  getSessionFromRequest: (...args: unknown[]) => getSessionFromCookie(...args),
 }));
 
 vi.mock("../storage", () => ({
