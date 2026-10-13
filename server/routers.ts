@@ -57,6 +57,9 @@ import { startTranscription } from "./transcriptionStart";
 import { slidesRouter } from "./slides";
 import { meetingBotsRouter } from "./meetingBots";
 import { describeRecallConfig } from "./recall";
+import { attendeeShareRouter, isAttendeeEmailConfigured, postalAddress } from "./attendeeEmail";
+import { findCalendarEvent } from "./calendar";
+import { linkRecordingEvent, normalizeAttendees } from "./recordingEvents";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -75,6 +78,7 @@ export const appRouter = router({
     storage: adminProcedure.query(() => getBlobUsage()),
     billing: billingDiagnostics,
     meetingBots: adminProcedure.query(() => describeRecallConfig()),
+    attendeeEmail: adminProcedure.query(() => ({ configured: isAttendeeEmailConfigured(), resend: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL), postalAddress: Boolean(postalAddress()) })),
     youtube: adminProcedure
       .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
       .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
@@ -192,6 +196,10 @@ export const appRouter = router({
         bookmarks: z.array(bookmarkInputSchema).max(MAX_BOOKMARKS_PER_RECORDING).optional(),
         /** Extra words to listen for in this recording only. */
         keyterms: keytermsInput,
+        /** The calendar event this recording was made during (A5), for offering its notes to the attendees (D4). */
+        calendarEventId: z.string().min(1).max(255).optional(),
+        /** When recording started (ms), to find that event. */
+        startedAt: z.number().int().positive().optional(),
       }).refine((value) => Boolean(value.audioBase64 || value.audioUpload), {
         message: "Audio data is required",
       }))
@@ -267,6 +275,17 @@ export const appRouter = router({
         }
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        if (input.calendarEventId) {
+          // Read from Google, not from the page; a failure only means no attendee list.
+          try {
+            const event = await findCalendarEvent(ctx.user.id, input.calendarEventId, new Date(input.startedAt ?? Date.now()));
+            if (event) {
+              await linkRecordingEvent({ recordingId: recording.id, userId: ctx.user.id, source: "calendar", eventId: event.id, title: event.title, startsAt: event.allDay ? null : new Date(event.start), attendees: normalizeAttendees(event.attendees, ctx.user.email) });
+            }
+          } catch (error) {
+            console.warn("[calendar] could not link recording to its event:", error instanceof Error ? error.message : error);
+          }
+        }
         await startTranscription(recording, actualFileKey, mimeType, input.language, input.keyterms);
 
         return recording;
@@ -847,6 +866,7 @@ export const appRouter = router({
   apiKeys: apiKeysRouter,
   slides: slidesRouter,
   meetingBots: meetingBotsRouter,
+  attendeeShare: attendeeShareRouter,
 
   studyGuides: router({
     list: protectedProcedure

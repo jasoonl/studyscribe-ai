@@ -14,6 +14,7 @@ import { registerStripeWebhook } from "../billing";
 import { registerPublicApi } from "../publicApi";
 import { registerSlideRoutes } from "../slides";
 import { registerRecallWebhook } from "../meetingBots";
+import { registerEmailOptOutRoutes } from "../attendeeEmail";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -48,6 +49,7 @@ export function createApp() {
   registerIntegrationRoutes(app);
   registerPublicApi(app);
   registerSlideRoutes(app);
+  registerEmailOptOutRoutes(app);
   app.use(
     "/api/trpc",
     createExpressMiddleware({

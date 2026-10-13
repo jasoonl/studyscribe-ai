@@ -190,6 +190,13 @@
       "when": 1791852878185,
       "tag": "0026_phase5_meeting_bots",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1791853282297,
+      "tag": "0027_phase5_attendee_email",
+      "breakpoints": true
     }
   ]
 }

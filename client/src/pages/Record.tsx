@@ -18,7 +18,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
 import { useSaveSlides } from "@/hooks/useSaveSlides";
-import { useCalendarTitle } from "@/components/CalendarReminderWatcher";
+import { useCalendarEventForRecording, useCalendarTitle } from "@/components/CalendarReminderWatcher";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
 import { formatClockTime } from "@/lib/recordingClock";
 import type { LiveTurn } from "@/lib/liveTurns";
@@ -50,6 +50,7 @@ export default function Record() {
   const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
   const calendarHint = useCalendarTitle(recorder, recordingTitle, setRecordingTitle);
+  const calendarLink = useCalendarEventForRecording(recorder);
   const [audience, setAudience] = useState<"student" | "professional">(
     "student"
   );
@@ -163,6 +164,7 @@ export default function Record() {
           : { audioBase64: base64String! }),
         duration: durationSeconds,
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
+        ...calendarLink,
       });
 
       setUploadProgress(100);

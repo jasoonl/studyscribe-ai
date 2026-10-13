@@ -13,6 +13,7 @@ import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
 import { RecordingChapters } from "@/components/RecordingChapters";
 import { RecordingSlides, useRecordingSlides } from "@/components/RecordingSlides";
+import { AttendeeShare } from "@/components/AttendeeShare";
 import { RecordingTasks } from "@/components/RecordingTasks";
 import { RecordingFollowUps } from "@/components/RecordingFollowUps";
 import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
@@ -312,6 +313,8 @@ export default function RecordingDetail() {
                     </div>
                   </div>
                 </div>
+
+                <AttendeeShare recordingId={recording.id} transcriptReady={transcriptReady} />
 
                 {/* Transcription failure + recovery. A "processing" recording with no
                     transcriptionProviderId was never actually submitted to a

@@ -58,6 +58,7 @@ const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
 const Groups = lazy(() => import("./pages/Groups"));
 const Developers = lazy(() => import("./pages/Developers"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const GroupPage = lazy(() => import("./pages/GroupPage"));
 const JoinGroup = lazy(() => import("./pages/JoinGroup"));
 
@@ -116,6 +117,7 @@ function Router() {
         <Route path="/credits" component={Credits} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/developers" component={Developers} />
+        <Route path="/unsubscribe" component={Unsubscribe} />
         <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
         <Route path="/shared/:token" component={PublicSharedRecording} />
 

@@ -34,6 +34,7 @@ import { deleteApiKeysForUser, exportApiKeysForUser } from "./apiKeys";
 import { deleteSlidesForUser, exportSlidesForUser } from "./slides";
 import { deleteMeetingBotsForUser, exportMeetingBotsForUser } from "./meetingBots";
 import { deleteRecordingEventsForUser, exportRecordingEventsForUser } from "./recordingEvents";
+import { deleteAttendeeEmailsForUser, exportAttendeeEmailsForUser } from "./attendeeEmail";
 
 type Confirmable = { email: string; passwordHash: string | null };
 
@@ -123,6 +124,7 @@ export const accountRouter = router({
       slides: await exportSlidesForUser(userId),
       meetingNoteTakers: await exportMeetingBotsForUser(userId),
       recordingEvents: await exportRecordingEventsForUser(userId),
+      notesEmailedToAttendees: await exportAttendeeEmailsForUser(userId),
     };
   }),
 
@@ -200,6 +202,7 @@ export const accountRouter = router({
       await deleteSlidesForUser(userId);
       await deleteMeetingBotsForUser(userId);
       await deleteRecordingEventsForUser(userId);
+      await deleteAttendeeEmailsForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

@@ -951,3 +951,30 @@ export const recordingEvents = mysqlTable("recordingEvents", {
 ]);
 
 export type RecordingEvent = typeof recordingEvents.$inferSelect;
+
+/**
+ * Addresses that asked not to get email from StudyScribe (D4). Only a
+ * SHA-256 hash of the normalised address is kept, so the list itself does
+ * not hold anyone's address; a send checks each recipient's hash.
+ */
+export const emailOptOuts = mysqlTable("emailOptOuts", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  emailHash: varchar("emailHash", { length: 64 }).notNull(),
+}, (table) => [uniqueIndex("emailOptOuts_hash_unique").on(table.emailHash)]);
+
+/** Notes a recording's owner emailed to an event's attendees (D4), one row per recipient. */
+export const attendeeEmails = mysqlTable("attendeeEmails", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  noteId: int("noteId"),
+  recipient: varchar("recipient", { length: 254 }).notNull(),
+  providerId: varchar("providerId", { length: 128 }),
+}, (table) => [
+  index("attendeeEmails_recording_idx").on(table.recordingId),
+  index("attendeeEmails_user_idx").on(table.userId, table.createdAt),
+]);
+
+export type AttendeeEmail = typeof attendeeEmails.$inferSelect;

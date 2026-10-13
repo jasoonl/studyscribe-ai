@@ -81,3 +81,18 @@ export function useCalendarTitle(recorder: ReturnType<typeof useRecorder>, title
 
   return event && title === event.title ? `Named after "${event.title}" in your calendar.` : null;
 }
+
+/** The calendar event a recording belongs to, and when it started, for linking it on save (D4). */
+export function useCalendarEventForRecording(recorder: ReturnType<typeof useRecorder>) {
+  const active = recorder.status !== "idle";
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setStartedAt(null);
+      return;
+    }
+    if (startedAt === null) setStartedAt(Date.now() - recorder.getElapsedSeconds() * 1000);
+  }, [active, startedAt, recorder]);
+  const { data: event } = trpc.calendar.eventAt.useQuery({ at: startedAt ?? 1 }, { enabled: startedAt !== null, staleTime: Infinity, retry: false, refetchOnWindowFocus: false });
+  return event && startedAt ? { calendarEventId: event.id, startedAt } : {};
+}
