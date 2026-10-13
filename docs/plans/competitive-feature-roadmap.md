@@ -180,6 +180,17 @@ Apps slice (no server or web changes, no migrations): E6 Chrome extension (`exte
 Done: F2 Stripe billing + usage limits · F4 open signup flag · F5 onboarding checklist · F7 translation · A5 calendar · E5 public API · A6 slide capture · A4 meeting bot · D4 email notes to attendees · F3 teams/SSO · E6 Chrome extension · E7 desktop app.
 Remaining: F1 mobile apps (parallel track, see mobile plan).
 
+### Phase 6 — Finish, harden, launch-ready · in progress
+
+Status: planned 2026-10-13.
+
+1. **Leftovers from earlier phases**: speaker labels in live transcription where the streaming API provides them; chapter marks on the `AudioPlayer` progress bar; @mentions in comments (notify the mentioned person, only people who can see the recording); per-course vocabulary lists; a smart search option on the Knowledge Base page when embeddings are configured; annual billing (Stripe yearly prices via env, a monthly/yearly toggle on Pricing and Billing, Terms and Refunds consistent); a templates gallery for notes and onboarding; an IndexedDB crash backup for Chrome extension recordings; returning to the group after signing in from a join link, and a safe `next` redirect after login and sign-up in general; native Slack and Discord delivery for outgoing webhooks (same SSRF and signing rules); an SSO-only option for teams.
+2. **Security review** of every route and procedure added in Phases 1 to 5 (auth, sharing roles, groups, comments, API keys, webhooks, uploads and the storage proxy, Stripe and Recall webhooks, teams and SSO, calendar and integration OAuth, unsubscribe): IDOR, role checks, SSRF, open redirects, CSRF on cookie-auth REST endpoints, rate limits, secrets in responses, logs or exports, timing-unsafe comparisons. Every real issue fixed with a test; summary in `docs/security/review-2026-10.md`.
+3. **Performance**: measure the client bundle, split heavy routes and components further, lazy-load rarely used panels, add indexes for the new tables' common queries (one migration), remove N+1 queries in list endpoints, and time the dashboard and recording page before and after.
+4. **Accessibility audit of the signed-in app**: axe-core on every main page at 1280 and 375, fix labels, roles, focus order, contrast, dialog focus traps and live regions for async status, and a keyboard-only walkthrough of record, transcript, notes, flashcards and quiz.
+5. **Reliability**: consistent error states and retry for failed uploads, provider outages (AssemblyAI, LLM, Stripe, Resend) and plan limits; an admin System health page that checks each configured service without exposing secrets.
+6. **Launch content**: landing sections, Pricing, Help and `/developers` updated for Phases 2 to 5; SEO basics (per-route meta tags through a small head manager, `sitemap.xml`, `robots.txt`, SoftwareApplication structured data, a canonical per route).
+
 ---
 
 ## 5. Detailed specs for the first items to build
