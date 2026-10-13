@@ -191,6 +191,21 @@ Status: planned 2026-10-13.
 5. **Reliability**: consistent error states and retry for failed uploads, provider outages (AssemblyAI, LLM, Stripe, Resend) and plan limits; an admin System health page that checks each configured service without exposing secrets.
 6. **Launch content**: landing sections, Pricing, Help and `/developers` updated for Phases 2 to 5; SEO basics (per-route meta tags through a small head manager, `sitemap.xml`, `robots.txt`, SoftwareApplication structured data, a canonical per route).
 
+### Phase 7 — Students and schools, deeper (planned, not started)
+
+Status: planned only. Nothing in this phase has been built.
+
+1. **School integrations**: LTI 1.3 for Canvas, Blackboard, Moodle and Google Classroom. Instructors post recordings and study packs to a class, and students launch from the course page. Each school must register StudyScribe as a tool, so this stays off until one is configured.
+2. **Instructor accounts**: a professor records once and the class gets the transcript, notes and flashcards, with each student's progress kept separate.
+3. **Personal study planner**: spaced-repetition review across courses, scheduled around exam dates from tasks and calendar, with a daily "what to study today".
+4. **Learning progress dashboard**: mastery by course and topic, weak spots, streaks and time spent.
+5. **Interface localisation**: translate the app UI itself, starting with Spanish, Chinese, French, Korean and Japanese. Today only content can be translated.
+6. **Offline and installable**: a PWA install, plus offline review of flashcards and transcripts.
+7. **AI quality evals**: a test suite that scores notes, flashcards, quizzes and Ask answers against the transcript, so prompt changes can't quietly make results worse.
+8. **Growth**: referral credits, and share pages that introduce StudyScribe to new visitors.
+
+Carried over from Phase 6: none yet (updated when Phase 6 closes).
+
 ---
 
 ## 5. Detailed specs for the first items to build
