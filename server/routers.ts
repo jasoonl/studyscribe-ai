@@ -46,6 +46,9 @@ import { groupsRouter } from "./groups";
 import { emitWebhookEvent, payloadText, recordingSummary, webhooksRouter } from "./outgoingWebhooks";
 import { indexRecordingQuietly, smartSearchRouter } from "./embeddings";
 import { integrationsRouter } from "./integrations";
+import { billingDiagnostics, billingRouter } from "./billing";
+import { signupRouter } from "./openSignup";
+import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -62,6 +65,7 @@ export const appRouter = router({
   diagnostics: router({
     transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
     storage: adminProcedure.query(() => getBlobUsage()),
+    billing: billingDiagnostics,
     youtube: adminProcedure
       .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
       .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
@@ -183,6 +187,7 @@ export const appRouter = router({
         message: "Audio data is required",
       }))
       .mutation(async ({ input, ctx }) => {
+        await assertCanTranscribe(ctx.user, input.duration ?? 0);
         // Map MIME types to file extensions
         const mimeToExt: Record<string, string> = {
           'audio/mpeg': 'mp3',
@@ -273,6 +278,8 @@ export const appRouter = router({
         keyterms: keytermsInput,
       }))
       .mutation(async ({ input, ctx }) => {
+        // Before downloading anything: is any transcription left this month?
+        await assertCanTranscribe(ctx.user, 0);
         const { body, mimeType: sourceMimeType, contentLength, finalUrl, title: sourceTitle, durationSec: sourceDuration } = await fetchAudioFromUrl(input.url);
         const limited = limitStreamSize(body, MAX_IMPORT_BYTES);
         // Tee so duration can be read from the audio's own headers without
@@ -284,6 +291,14 @@ export const appRouter = router({
           putAudioStream({ userId: ctx.user.id, mimeType: sourceMimeType, body: uploadStream }),
           probeAudioDuration(probeStream, sourceMimeType, contentLength),
         ]);
+
+        // Now the length is known, it must fit too; otherwise drop the stored copy.
+        try {
+          await assertCanTranscribe(ctx.user, duration ?? Math.round(sourceDuration ?? 0));
+        } catch (error) {
+          await deleteStoredAudio([stored.key]).catch(() => undefined);
+          throw error;
+        }
 
         const verified = await verifyUploadedAudio(stored.key);
         console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
@@ -328,6 +343,7 @@ export const appRouter = router({
         if (!recording.audioKey) {
           throw new Error("This recording has no stored audio to transcribe");
         }
+        await assertCanTranscribe(ctx.user, recording.duration ?? 0);
 
         await updateRecordingStatus(input.id, "processing");
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
@@ -452,7 +468,7 @@ export const appRouter = router({
 
   ai: router({
     /** "Study help" during a recording: one short answer about the last few minutes of live text. */
-    liveAssist: protectedProcedure
+    liveAssist: aiProcedure
       .input(liveAssistInputSchema)
       .mutation(({ ctx, input }) => runLiveAssist(ctx.user.id, input)),
 
@@ -466,7 +482,7 @@ export const appRouter = router({
         return getStudyNotesByRecordingId(input.recordingId);
       }),
 
-    generateStudyNotes: protectedProcedure
+    generateStudyNotes: aiProcedure
       .input(z.object({ recordingId: z.number(), template: z.enum(NOTE_TEMPLATE_IDS).optional() }))
       .mutation(async ({ input, ctx }) => {
         try {
@@ -534,7 +550,7 @@ export const appRouter = router({
      * translate inside one request; whole transcripts are not, given the 60s
      * function limit, so they are left out. The result is returned, not stored.
      */
-    translateNote: protectedProcedure
+    translateNote: aiProcedure
       .input(z.object({ noteId: z.number().int().positive(), language: z.string().min(2).max(10) }))
       .mutation(async ({ input, ctx }) => {
         const language = TRANSCRIPTION_LANGUAGES.find(candidate => candidate.code === input.language);
@@ -597,7 +613,7 @@ export const appRouter = router({
         return recordFlashcardReview({ ...input, userId: ctx.user.id });
       }),
 
-    generateFlashcards: protectedProcedure
+    generateFlashcards: aiProcedure
       .input(z.object({ recordingId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         try {
@@ -701,7 +717,7 @@ export const appRouter = router({
      * across every recording or just one course, and cites where each point
      * came from. Retrieval is keyword-based for now (see server/askRetrieval.ts).
      */
-    askAcrossRecordings: protectedProcedure
+    askAcrossRecordings: aiProcedure
       .input(z.object({
         question: z.string().trim().min(2, "Ask a question").max(1000),
         courseId: z.number().int().positive().optional(),
@@ -714,7 +730,7 @@ export const appRouter = router({
         return askAcrossRecordings({ userId: ctx.user.id, question: input.question, courseId: input.courseId, history: input.history });
       }),
 
-    assistantChat: protectedProcedure
+    assistantChat: aiProcedure
       .input(z.object({
         recordingId: z.number(),
         message: z.string().min(1),
@@ -814,6 +830,8 @@ export const appRouter = router({
   webhooks: webhooksRouter,
   smartSearch: smartSearchRouter,
   integrations: integrationsRouter,
+  billing: billingRouter,
+  signup: signupRouter,
 
   studyGuides: router({
     list: protectedProcedure
@@ -834,7 +852,7 @@ export const appRouter = router({
         return guide;
       }),
 
-    generate: protectedProcedure
+    generate: aiProcedure
       .input(z.object({ recordingId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const recording = await getRecordingByIdDb(input.recordingId);
@@ -896,7 +914,7 @@ export const appRouter = router({
         return quiz;
       }),
 
-    generate: protectedProcedure
+    generate: aiProcedure
       .input(z.object({ recordingId: z.number(), questionCount: z.number().min(3).max(20).default(10) }))
       .mutation(async ({ input, ctx }) => {
         const recording = await getRecordingByIdDb(input.recordingId);
@@ -1013,7 +1031,7 @@ export const appRouter = router({
         return draft;
       }),
 
-    generate: protectedProcedure
+    generate: aiProcedure
       .input(z.object({
         recordingId: z.number(),
         draftType: z.enum(["email-summary", "document", "report"]).default("email-summary"),
@@ -1366,6 +1384,10 @@ async function finalizeCompletedTranscription(
 
   // Only the first completion counts: the webhook and a poll can both land here.
   if (!existingTranscript) {
+    // Monthly usage, charged once per recording. When the length was not
+    // known at upload, the end of the last transcript line stands in for it.
+    const lastEnd = result.segments.reduce((max, segment) => Math.max(max, Number(segment.end) || 0), 0);
+    await recordTranscriptionUsage(recording.userId, recording.id, Math.max(recording.duration ?? 0, Math.round(lastEnd)));
     // Smart search index and outgoing webhooks, each bounded by its own short
     // timeout and never throwing, so neither can strand the recording.
     await indexRecordingQuietly(recording.id);

@@ -9,6 +9,7 @@ import { getDb, getRecordingById, getTranscriptByRecordingId } from "./db";
 import { completeJson } from "./llmJson";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
+import { aiProcedure } from "./usage";
 import {
   ACTION_ITEMS_RESPONSE_FORMAT,
   MAX_ACTION_ITEMS,
@@ -127,7 +128,7 @@ export const actionItemsRouter = router({
    * the open items it found last time; items already ticked off or added by
    * hand are kept, and a new item matching one of those is not added twice.
    */
-  extract: protectedProcedure.input(z.object({ recordingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+  extract: aiProcedure.input(z.object({ recordingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
     if (!checkTrpcRateLimit(`action-items:${ctx.user.id}`, 10 * 60 * 1000, 20)) {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "That is a lot of requests in a short time. Give it a few minutes." });
     }

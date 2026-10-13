@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { VocabularySettings } from "@/components/VocabularySettings";
 import { ConnectedAppsSettings } from "@/components/ConnectedAppsSettings";
 import { WebhookSettings } from "@/components/WebhookSettings";
+import { UsageMeters } from "@/components/UsageMeters";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export default function Settings() {
   const [password, setPassword] = useState("");
   const [autoNotes, setAutoNotes] = useState(getAutoNotesEnabled);
 
+  const billing = trpc.billing.status.useQuery();
   const exportMutation = trpc.account.exportData.useMutation();
   const deleteMutation = trpc.account.deleteAccount.useMutation();
 
@@ -75,6 +77,23 @@ export default function Settings() {
             <div><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{user?.name || "Not set"}</dd></div>
             <div><dt className="text-muted-foreground">Email</dt><dd className="font-medium">{user?.email}</dd></div>
           </dl>
+        </Card>
+
+        <Card className="gap-0 p-6" id="plan">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-lg font-semibold">Plan and usage</h2>
+            <Link href="/billing" className="text-sm font-medium text-primary underline-offset-4 hover:underline">Billing</Link>
+          </div>
+          {billing.data ? (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">You are on the {billing.data.plan.name} plan.</p>
+              <div className="mt-5">
+                <UsageMeters usage={billing.data.usage} isAdmin={user?.role === "admin"} />
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          )}
         </Card>
 
         <Card className="p-6">

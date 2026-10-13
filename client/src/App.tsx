@@ -108,7 +108,7 @@ function Router() {
         <Route path="/refunds" component={Refunds} />
         <Route path="/credits" component={Credits} />
         <Route path="/pricing" component={Pricing} />
-        <Route path="/billing" component={Billing} />
+        <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
         <Route path="/shared/:token" component={PublicSharedRecording} />
 
         {/* Protected routes */}

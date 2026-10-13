@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MIN_AGE } from "@shared/legal";
 import { Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 export default function Signup() {
   // Invite code comes from the URL — user arrives here from /invite page
@@ -26,12 +27,17 @@ export default function Signup() {
   const [inviteChecked, setInviteChecked] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
-  // If no invite code in URL, redirect to /invite
+  // Without an invite code the form is only for open sign-up; otherwise go to /invite.
+  const mode = trpc.signup.mode.useQuery(undefined, { enabled: !inviteCode, retry: false, refetchOnWindowFocus: false });
+  const openSignup = !inviteCode && mode.data?.openSignup === true;
   useEffect(() => {
-    if (!inviteCode) {
-      window.location.href = "/invite";
-      return;
-    }
+    if (inviteCode || mode.isLoading) return;
+    if (mode.data?.openSignup) setInviteChecked(true);
+    else window.location.href = "/invite";
+  }, [inviteCode, mode.isLoading, mode.data?.openSignup]);
+
+  useEffect(() => {
+    if (!inviteCode) return;
 
     // Silently validate the invite code
     const validateInvite = async () => {
@@ -101,7 +107,7 @@ export default function Signup() {
           email: formData.email,
           password: formData.password,
           name: formData.name,
-          inviteCode,
+          inviteCode: openSignup ? undefined : inviteCode,
           acceptedTerms,
           confirmedAge,
         }),
@@ -112,7 +118,8 @@ export default function Signup() {
         throw new Error(error.error || "Signup failed");
       }
 
-      toast.success("Account created! Welcome to StudyScribe AI.");
+      const created = await response.json().catch(() => ({}));
+      toast.success(created.confirmationSent ? "Account created. Check your inbox to confirm your email." : "Account created. Welcome to StudyScribe AI.");
       window.location.href = "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Signup failed";
@@ -188,8 +195,8 @@ export default function Signup() {
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Create Your Account</h1>
-          <p className="text-muted-foreground">Welcome! Your invite has been verified.</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{openSignup ? "Create your free account" : "Create your account"}</h1>
+          <p className="text-muted-foreground">{openSignup ? "No invite needed. You start on the Free plan." : "Your invite has been verified."}</p>
         </div>
 
         <fieldset className="mb-5 space-y-3 rounded-lg border border-border bg-secondary/50 p-3">

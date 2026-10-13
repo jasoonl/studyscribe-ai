@@ -146,6 +146,48 @@ export async function registerWithEmailPassword(
 }
 
 /**
+ * Open sign-up (F4): a Free account without an invite. Only reached when an
+ * admin has switched open sign-up on. The account is marked "email_open" and
+ * starts unconfirmed; see server/openSignup.ts for what that gates.
+ */
+export async function registerOpenSignup(
+  email: string,
+  password: string,
+  name: string,
+  acceptedTerms = false
+): Promise<{ user: User; error?: undefined } | { user?: undefined; error: string }> {
+  if (!acceptedTerms) {
+    return { error: 'You must accept the Terms of Service and Privacy Policy to create an account' };
+  }
+  if (password.length < 8) {
+    return { error: 'Password must be at least 8 characters' };
+  }
+  try {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return { error: 'Enter a valid email address' };
+    }
+    if (await dbGetUserByEmail(normalizedEmail)) {
+      return { error: 'Email already registered' };
+    }
+    await upsertUser({
+      email: normalizedEmail,
+      passwordHash: await hashPassword(password),
+      name: name || null,
+      loginMethod: 'email_open',
+      emailVerified: 0,
+      termsAcceptedAt: new Date(),
+      lastSignedIn: new Date(),
+    });
+    const user = await dbGetUserByEmail(normalizedEmail);
+    return user ? { user } : { error: 'Failed to create user' };
+  } catch (error) {
+    console.error('[Auth] Open sign-up error:', error);
+    return { error: 'Registration failed' };
+  }
+}
+
+/**
  * Login with email and password
  */
 export async function loginWithEmailPassword(

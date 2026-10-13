@@ -8,6 +8,7 @@ import { getDb } from "./db";
 import { completeJson, completeText } from "./llmJson";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
+import { aiProcedure } from "./usage";
 import {
   MAX_PACK_RECORDINGS,
   PACK_QUIZ_RESPONSE_FORMAT,
@@ -176,7 +177,7 @@ export const examPacksRouter = router({
    * Makes a pack from chosen recordings or a whole course and writes its study
    * guide. The quiz is a second request (`generateQuiz`).
    */
-  create: protectedProcedure
+  create: aiProcedure
     .input(z.object({
       recordingIds: z.array(z.number().int().positive()).max(MAX_PACK_RECORDINGS * 4).optional(),
       courseId: z.number().int().positive().optional(),
@@ -222,7 +223,7 @@ export const examPacksRouter = router({
       };
     }),
 
-  generateQuiz: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+  generateQuiz: aiProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     limit(ctx.user.id);
     const pack = await getOwnPack(input.id, ctx.user.id);
     const found = await loadSources(ctx.user.id, packIds(pack));

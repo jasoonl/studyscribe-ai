@@ -25,6 +25,8 @@ import { deleteWebhooksForUser, exportWebhooksForUser } from "./outgoingWebhooks
 import { listDirectSharesFor, selectShares } from "./recordingAccess";
 import { getDb } from "./db";
 import { purgeRecordings } from "./purgeRecordings";
+import { cancelBillingForAccountDeletion, exportBillingForUser } from "./billing";
+import { deleteUsageForUser, exportUsageForUser } from "./usage";
 import { deleteProviderTranscript } from "./speakerDiarization";
 
 type Confirmable = { email: string; passwordHash: string | null };
@@ -107,6 +109,8 @@ export const accountRouter = router({
       ...(await exportWebhooksForUser(userId)),
       connectedApps: await exportIntegrationsForUser(userId),
       smartSearchPassages: await exportChunksForUser(userId),
+      billing: await exportBillingForUser(userId),
+      usage: await exportUsageForUser(userId),
     };
   }),
 
@@ -138,6 +142,9 @@ export const accountRouter = router({
       }
 
       const userId = fresh.id;
+      // Stop future charges before anything is deleted; if Stripe cannot be
+      // reached this throws and the account stays as it was.
+      await cancelBillingForAccountDeletion(userId);
       const ownRecordings = await db.select().from(recordings).where(eq(recordings.userId, userId));
 
       const providerFailures: string[] = [];
@@ -174,6 +181,7 @@ export const accountRouter = router({
       await deleteGroupDataForUser(userId);
       await deleteWebhooksForUser(userId);
       await deleteIntegrationsForUser(userId);
+      await deleteUsageForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

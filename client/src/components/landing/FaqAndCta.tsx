@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useSignupMode } from "@/lib/signupMode";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const FAQ = [
@@ -8,7 +9,7 @@ const FAQ = [
   { q: "Can I record other people?", a: "Only with permission. Laws about recording conversations differ by place, and you are responsible for getting consent from the people you record and for following your school or employer's rules." },
   { q: "Can I import a YouTube link?", a: "Yes, for videos published under a Creative Commons licence, which allows reuse. Other videos cannot be imported by link, so upload an audio file you have the right to use instead." },
   { q: "Which languages are supported?", a: "Many. Language is detected automatically, or you can choose one. See the full list above." },
-  { q: "Is there a free plan?", a: "Yes. The Free plan lets you try every feature with a small recording allowance. Paid plans are coming soon." },
+  { q: "Is there a free plan?", a: "Yes. The Free plan lets you try every feature, with two hours of transcription and 60 AI generations a month. The Pricing page lists what each paid plan adds." },
 ];
 
 export function Faq() {
@@ -30,14 +31,15 @@ export function Faq() {
 }
 
 export function FinalCta() {
+  const signup = useSignupMode();
   return (
     <section className="px-4 pb-24 sm:px-6">
       <div className="mx-auto max-w-5xl rounded-xl bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
         <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Your next lecture deserves better notes</h2>
         <p className="mx-auto mt-4 max-w-lg text-primary-foreground/80">Try StudyScribe on one recording and see the difference.</p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/request-access" className="whitespace-nowrap rounded-md bg-background px-7 py-3.5 text-base font-semibold text-primary transition-[filter,transform] hover:brightness-95 active:scale-[0.98]">
-            Get started
+          <Link href={signup.href} className="whitespace-nowrap rounded-md bg-background px-7 py-3.5 text-base font-semibold text-primary transition-[filter,transform] hover:brightness-95 active:scale-[0.98]">
+            {signup.label}
           </Link>
           <Link href="/demo" className="whitespace-nowrap rounded-md border border-white/40 px-7 py-3.5 text-base font-semibold text-primary-foreground transition-colors hover:bg-white/10">
             Watch the demo

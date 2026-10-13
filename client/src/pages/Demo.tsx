@@ -1,9 +1,11 @@
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { useSignupMode } from "@/lib/signupMode";
 import PublicLayout from "@/components/landing/PublicLayout";
 import DemoWalkthrough, { DEMO_SLIDES } from "@/components/DemoWalkthrough";
 
 export default function Demo() {
+  const signup = useSignupMode();
   return (
     <PublicLayout>
       <section className="mx-auto max-w-5xl px-4 pb-16 pt-12 sm:px-6 sm:pt-16">
@@ -43,14 +45,16 @@ export default function Demo() {
       <section className="mx-auto flex max-w-5xl flex-col items-start gap-6 px-4 py-20 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
           <h2 className="text-balance text-3xl font-bold tracking-[-0.03em]">Try it on your own lecture</h2>
-          <p className="mt-2 text-muted-foreground">StudyScribe is invite-only for now. Ask for access and we will email you a code.</p>
+          <p className="mt-2 text-muted-foreground">
+            {signup.open ? "Create a free account and try every study tool on a lecture of your own." : "StudyScribe is invite-only for now. Ask for access and we will email you a code."}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-3">
           <Link
-            href="/request-access"
+            href={signup.href}
             className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-[filter,transform] hover:brightness-110 active:scale-[0.98]"
           >
-            Request access
+            {signup.label}
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link href="/login" className="inline-flex items-center whitespace-nowrap rounded-md border border-border px-6 py-3 text-sm font-semibold hover:bg-secondary">

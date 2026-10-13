@@ -1,14 +1,20 @@
 import { Link } from "wouter";
 import { CONTACT_EMAIL, OPERATOR_NAME } from "@shared/legal";
 import { openCookieSettings } from "@/lib/cookieConsent";
+import { useSignupMode } from "@/lib/signupMode";
 
 const COLUMNS = [
   { title: "Product", links: [["Features", "/#features"], ["How it works", "/#how"], ["Pricing", "/pricing"], ["Demo", "/demo"]] },
-  { title: "Account", links: [["Sign in", "/login"], ["Get started", "/request-access"], ["Settings", "/settings"]] },
+  { title: "Account", links: [["Sign in", "/login"], ["__signup__", "/request-access"], ["Settings", "/settings"]] },
   { title: "Legal", links: [["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Cookie Policy", "/cookies"], ["Refund Policy", "/refunds"], ["Credits and licences", "/credits"]] },
 ];
 
 export default function SiteFooter() {
+  const signup = useSignupMode();
+  const columns = COLUMNS.map((column) => ({
+    ...column,
+    links: column.links.map(([label, href]) => (label === "__signup__" ? [signup.label, signup.href] : [label, href])),
+  }));
   return (
     <footer className="border-t border-border bg-brand-mist/60">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
@@ -17,7 +23,7 @@ export default function SiteFooter() {
           <p className="text-sm text-muted-foreground">Record once. Study from the transcript, the flashcards and an AI tutor.</p>
           <p className="text-sm text-muted-foreground">You can export or delete all of your data at any time from Settings.</p>
         </div>
-        {COLUMNS.map((column) => (
+        {columns.map((column) => (
           <nav key={column.title} aria-label={column.title} className="space-y-3">
             <p className="text-sm font-semibold">{column.title}</p>
             <ul className="space-y-2 text-sm text-muted-foreground">

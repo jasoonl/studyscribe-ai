@@ -7,6 +7,7 @@ import { getDb, getRecordingById, getTranscriptByRecordingId } from "./db";
 import { completeJson } from "./llmJson";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
+import { aiProcedure } from "./usage";
 import {
   CHAPTERS_RESPONSE_FORMAT,
   KEY_TERMS_RESPONSE_FORMAT,
@@ -94,7 +95,7 @@ export const insightsRouter = router({
     return readInsights(await insightRows([input.recordingId]), transcript?.fullText ?? "");
   }),
 
-  generateKeyTerms: protectedProcedure.input(z.object({ recordingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+  generateKeyTerms: aiProcedure.input(z.object({ recordingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
     limit(ctx.user.id);
     const { recording, transcript } = await ownTranscript(input.recordingId, ctx.user.id);
     const condensed = condenseTranscript({ segments: transcript.segments, fullText: transcript.fullText }, SINGLE_RECORDING_BUDGET);
@@ -112,7 +113,7 @@ export const insightsRouter = router({
     return { terms, counts: countOccurrences(terms, transcript.fullText) };
   }),
 
-  generateChapters: protectedProcedure.input(z.object({ recordingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+  generateChapters: aiProcedure.input(z.object({ recordingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
     limit(ctx.user.id);
     const { recording, transcript } = await ownTranscript(input.recordingId, ctx.user.id);
     const condensed = condenseTranscript({ segments: transcript.segments, fullText: transcript.fullText }, SINGLE_RECORDING_BUDGET);

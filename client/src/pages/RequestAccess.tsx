@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { useSignupMode } from "@/lib/signupMode";
 
 export default function RequestAccess() {
   const [name, setName] = useState("");
@@ -13,6 +14,7 @@ export default function RequestAccess() {
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const signup = useSignupMode();
 
   const requestInvite = trpc.customAuth.requestInvite.useMutation({
     onSuccess: () => {
@@ -65,12 +67,33 @@ export default function RequestAccess() {
               </Button>
             </Link>
           </div>
+        ) : signup.open ? (
+          /* Open sign-up: no invite needed, so send people straight to the form. */
+          <div className="flex flex-col gap-4">
+            <h1 className="text-2xl font-bold text-foreground">Sign up free</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              StudyScribe is open to everyone. Create an account and you start on the Free plan, with every feature included. No invite or payment details needed.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/signup">Create a free account</Link>
+            </Button>
+            <div className="mt-2 flex flex-col gap-2 border-t border-border pt-5 text-center text-sm text-muted-foreground">
+              <p>
+                Have an invite code?{" "}
+                <Link href="/invite" className="font-medium text-primary hover:underline">Enter it here</Link>
+              </p>
+              <p>
+                Already have an account?{" "}
+                <Link href="/login" className="font-medium text-primary hover:underline">Sign in</Link>
+              </p>
+            </div>
+          </div>
         ) : (
           /* Form state */
           <>
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-bold text-foreground">Request Access</h1>
+                <h1 className="text-2xl font-bold text-foreground">Request access</h1>
               </div>
               <p className="text-muted-foreground text-sm">
                 StudyScribe AI is currently invite-only. Fill in the form below and we'll send you an invite code when a spot opens up.

@@ -13,6 +13,7 @@ import { sendBrowserPush } from "./pushNotifications";
 import { runWebhookMaintenance } from "./outgoingWebhooks";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
+import { aiProcedure } from "./usage";
 import { SINGLE_RECORDING_BUDGET, condenseTranscript } from "./transcriptBudget";
 
 /**
@@ -98,7 +99,7 @@ export const followUpsRouter = router({
    * Plans the days after the recording. Running it again replaces the open
    * suggestions; ticked-off ones are kept.
    */
-  generate: protectedProcedure
+  generate: aiProcedure
     .input(z.object({ recordingId: z.number().int().positive(), today: todaySchema }))
     .mutation(async ({ input, ctx }) => {
       if (!checkTrpcRateLimit(`follow-ups:${ctx.user.id}`, 10 * 60 * 1000, 20)) {
