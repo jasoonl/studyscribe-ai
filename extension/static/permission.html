@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Allow the microphone for StudyScribe</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="page.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <img src="icons/icon-48.png" width="32" height="32" alt="" />
+        <div>
+          <h1>Allow the microphone</h1>
+          <p class="muted">StudyScribe for Chrome</p>
+        </div>
+      </header>
+      <section class="card">
+        <p>To add your voice to a tab recording, Chrome needs your permission once. Recording only happens after you press "Record this tab", and stops when you press Stop.</p>
+        <div class="row">
+          <button class="button button-primary" id="allow" type="button">Allow microphone</button>
+        </div>
+        <p id="result" class="small muted" role="status"></p>
+      </section>
+    </main>
+    <script src="permission.js" type="module"></script>
+  </body>
+</html>

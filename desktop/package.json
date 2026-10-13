@@ -1,0 +1,32 @@
+{
+  "name": "studyscribe-desktop",
+  "productName": "StudyScribe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StudyScribe AI for Mac, Windows and Linux: the web app with system audio capture and an always-on-top Study help window.",
+  "author": "StudyScribe AI",
+  "homepage": "https://studyscribe-ai.vercel.app",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "node e2e/desktop.e2e.mjs",
+    "dist:linux": "npm run build && electron-builder --linux AppImage",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:win": "npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "electron-updater": "6.6.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "electron": "43.7.9",
+    "electron-builder": "26.0.20",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.56.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}

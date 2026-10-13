@@ -1,0 +1,8 @@
+node_modules/
+dist/
+release/
+out/
+*.AppImage
+*.dmg
+*.exe
+*.blockmap

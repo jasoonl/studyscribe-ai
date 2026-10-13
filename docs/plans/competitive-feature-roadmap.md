@@ -120,8 +120,8 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 | E3 | **Notion / Google Docs / Google Drive export** (shipped, Phase 4: Notion and Google Docs) | O | OAuth connect per service; "Send to Notion/Docs" on notes. | M each |
 | E4 | **Slack / Discord / Zapier webhooks** (shipped, Phase 4: generic signed webhooks) | O | Generic outgoing webhook per user ("on recording completed"), then native Slack later. | M |
 | E5 | **Public API** | O | Personal API keys + REST wrapper over existing procedures. Low priority for students. | L |
-| E6 | **Chrome extension** | O+C | "Record this tab" + quick capture of a lecture video page → `createFromUrl`. | L |
-| E7 | **Desktop app** (Mac/Windows) | C | Electron/Tauri wrapper around the SPA adding system-audio capture and an always-on-top Live Companion window (A2). Reuses the web build. | XL |
+| E6 | **Chrome extension** (shipped, Phase 5: `extension/`) | O+C | "Record this tab" + quick capture of a lecture video page → `createFromUrl`. | L |
+| E7 | **Desktop app** (Mac/Windows) (shipped, Phase 5: Electron in `desktop/`; macOS system audio still to be checked on a Mac) | C | Electron/Tauri wrapper around the SPA adding system-audio capture and an always-on-top Live Companion window (A2). Reuses the web build. | XL |
 
 ### F. Platform, account & business
 
@@ -175,8 +175,10 @@ Status (first slice, needs `npm run db:migrate` for migration 0023; until then b
 
 Status (part 2, built 2026-10-13, needs `npm run db:migrate` for migrations 0024 to 0028): Google sign-up now checks the invite (signed OAuth state, invite claimed atomically, open sign-up limits apply). E5 public API (personal hashed keys with read/write scopes, `/api/v1` over the existing procedures with per-key rate limits and plan usage, `/developers`). A6 slide capture (opt-in, perceptual diff on a 32x18 grid, steady-frame rule, JPEG 1280px, 40 per recording, inline in the transcript and a Slides strip). A4 meeting note-taker through Recall.ai (signed webhook, polling and daily-cron fallbacks, consent in the bot's name, chat and a required checkbox, Recall's copy deleted after import). D4 email notes to attendees (preview, per-person checkboxes, nothing automatic, opt-out link and postal address, opt-outs honoured for every sender). F3 teams (owner/admin/member, invitations, shared course library, admin console with usage, per-seat Stripe price, verified domain with Google Workspace auto-join, SAML through WorkOS). Verified in Chromium against local MariaDB with `scripts/dev/mock-phase5-platform.mjs`; not yet run against real Recall.ai, WorkOS or Stripe. Not done: SSO-only enforcement for a team (members can still use passwords), SCIM provisioning, the bot joining from a calendar automatically without a click, slides in public share links, and a crash backup for captured slides.
 
-Done: F2 Stripe billing + usage limits · F4 open signup flag · F5 onboarding checklist · F7 translation · A5 calendar · E5 public API · A6 slide capture · A4 meeting bot · D4 email notes to attendees · F3 teams/SSO.
-Remaining: E6 Chrome extension · E7 desktop app · F1 mobile apps (parallel track, see mobile plan).
+Apps slice (no server or web changes, no migrations): E6 Chrome extension (`extension/`, Manifest V3: popup with the site session, recent recordings, "Import this page" through `recordings.createFromUrl` and "Record this tab" with optional microphone in an offscreen document, badge timer, upload through the site's presigned endpoints; store listing and privacy text) and E7 desktop app (`desktop/`, Electron: system audio answering the record page's existing tab/screen audio option, an always-on-top compact Study help window that keeps the same page so a recording carries on, `studyscribe://` links, locked navigation and permissions, electron-builder for DMG, NSIS and AppImage). Verified in Chromium and Electron under Xvfb against local MariaDB with mocks; not yet published to the Chrome Web Store, signed, or run on a Mac or Windows machine.
+
+Done: F2 Stripe billing + usage limits · F4 open signup flag · F5 onboarding checklist · F7 translation · A5 calendar · E5 public API · A6 slide capture · A4 meeting bot · D4 email notes to attendees · F3 teams/SSO · E6 Chrome extension · E7 desktop app.
+Remaining: F1 mobile apps (parallel track, see mobile plan).
 
 ---
 
