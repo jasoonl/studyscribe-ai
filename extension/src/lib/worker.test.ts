@@ -141,3 +141,36 @@ describe("service worker: import", () => {
     expect(state.importJob.status).toBe("failed");
   });
 });
+
+describe("service worker: crash backups", () => {
+  const recover = { type: "backup:recover" as const, id: "1700000000000-abc", title: "Cells" };
+
+  it("asks the offscreen document to upload a backup and shows it saving", async () => {
+    const { worker, deps, sent } = setup();
+    await expect(worker.handle(recover)).resolves.toEqual({ ok: true });
+    expect(deps.ensureOffscreen).toHaveBeenCalled();
+    expect(sent.at(-1)).toEqual({ type: "offscreen:recover", id: "1700000000000-abc" });
+    expect(worker.state.recorder).toEqual({ status: "saving", title: "Cells", percent: 0 });
+    await worker.handle({ type: "recorder:saved", recording: { id: 9, title: "Cells" } });
+    expect(worker.state.recorder).toEqual({ status: "saved", recording: { id: 9, title: "Cells" } });
+  });
+
+  it("refuses while a recording is running", async () => {
+    const { worker } = setup();
+    await worker.handle(startMessage);
+    await expect(worker.handle(recover)).resolves.toEqual({ ok: false, error: "Finish the current recording first." });
+  });
+
+  it("reports a backup that cannot be read", async () => {
+    const { worker, deps } = setup({ sendToOffscreen: async () => ({ ok: false, error: "That saved copy is no longer in this browser." }) });
+    await expect(worker.handle(recover)).resolves.toEqual({ ok: false, error: "That saved copy is no longer in this browser." });
+    expect(worker.state.recorder).toEqual({ status: "failed", message: "That saved copy is no longer in this browser." });
+    expect(deps.closeOffscreen).toHaveBeenCalled();
+  });
+
+  it("passes the signed-in person on, so only they are offered the backup", async () => {
+    const { worker, sent } = setup();
+    await worker.handle({ ...startMessage, ownerId: 7 });
+    expect(sent[0]).toMatchObject({ type: "offscreen:start", save: { title: "Cells", language: "en", ownerId: 7 } });
+  });
+});

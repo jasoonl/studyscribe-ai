@@ -95,7 +95,7 @@ export function createWorker(deps: WorkerDeps) {
         streamId,
         withMic: message.withMic,
         origin,
-        save: { title: message.title, language: message.language },
+        save: { title: message.title, language: message.language, ownerId: message.ownerId },
       });
       if (!response?.ok) throw new Error(response && !response.ok ? response.error : "The recorder did not start.");
       await setRecorder({
@@ -135,6 +135,25 @@ export function createWorker(deps: WorkerDeps) {
     return { ok: true };
   }
 
+  /** Uploads a crash backup through the offscreen document, which owns the upload code. */
+  async function recoverBackup(message: Extract<PopupMessage, { type: "backup:recover" }>): Promise<CommandResponse> {
+    if (state.recorder.status === "recording" || state.recorder.status === "starting" || state.recorder.status === "saving") {
+      return { ok: false, error: "Finish the current recording first." };
+    }
+    await setRecorder({ status: "saving", title: message.title, percent: 0 });
+    try {
+      await deps.ensureOffscreen();
+      const response = await deps.sendToOffscreen({ type: "offscreen:recover", id: message.id });
+      if (!response?.ok) throw new Error(response && !response.ok ? response.error : "The saved copy could not be read.");
+      return { ok: true };
+    } catch (error) {
+      const text = describeError(error, "The saved copy could not be uploaded.");
+      await setRecorder({ status: "failed", message: text });
+      await deps.closeOffscreen().catch(() => {});
+      return { ok: false, error: text };
+    }
+  }
+
   async function handlePopup(message: PopupMessage): Promise<StateResponse | CommandResponse> {
     switch (message.type) {
       case "state":
@@ -165,6 +184,8 @@ export function createWorker(deps: WorkerDeps) {
       }
       case "import:start":
         return startImport(message);
+      case "backup:recover":
+        return recoverBackup(message);
       case "import:clear":
         if (state.importJob.status !== "importing") await setImport({ status: "idle" });
         return { ok: true };

@@ -1,5 +1,6 @@
 import { TRANSCRIPTION_LANGUAGES } from "../../shared/languages";
 import { ApiError, createApi, type RecordingSummary, type SessionUser, type StudyScribeApi } from "./lib/api";
+import { createIdbBackupStore, recoverableBackups, type BackupMeta } from "./lib/backup";
 import { h } from "./lib/dom";
 import { defaultTitle, formatDuration, formatElapsed, formatRecordedDate, statusLabel } from "./lib/format";
 import type { CommandResponse, ImportState, PopupMessage, RecorderState, StateResponse } from "./lib/messages";
@@ -13,6 +14,8 @@ let api: StudyScribeApi;
 let tab: chrome.tabs.Tab | undefined;
 let state: StateResponse = { recorder: { status: "idle" }, importJob: { status: "idle" } };
 let clock: ReturnType<typeof setInterval> | undefined;
+let currentUser: SessionUser | null = null;
+const backupStore = createIdbBackupStore();
 
 function send<T extends StateResponse | CommandResponse>(message: PopupMessage): Promise<T> {
   return chrome.runtime.sendMessage(message);
@@ -74,7 +77,7 @@ function renderUnreachable(message: string) {
 
 /* ---------- Signed in ---------- */
 
-type Regions = { capture: HTMLElement; form: HTMLElement; recorder: HTMLElement; importStatus: HTMLElement; recent: HTMLElement };
+type Regions = { capture: HTMLElement; form: HTMLElement; recorder: HTMLElement; backups: HTMLElement; importStatus: HTMLElement; recent: HTMLElement };
 let regions: Regions | null = null;
 
 function buildForm(prefs: { withMic: boolean; language: string }) {
@@ -113,6 +116,7 @@ function buildForm(prefs: { withMic: boolean; language: string }) {
       title: title.value.trim() || defaultTitle(tab.title),
       withMic: mic.checked,
       language: language.value || undefined,
+      ownerId: currentUser?.id,
     });
     recordButton.disabled = !recordable;
     if (!response.ok) message.textContent = response.error;
@@ -236,6 +240,60 @@ function renderRecorder(recorder: RecorderState) {
   regions.recorder.replaceChildren();
 }
 
+/* ---------- Crash backups ---------- */
+
+function backupItem(meta: BackupMeta) {
+  const details = [formatRecordedDate(new Date(meta.startedAt)), formatDuration(meta.durationSeconds)].filter(Boolean).join(" · ");
+  const save = h("button", { className: "button button-primary", type: "button" }, "Save to StudyScribe");
+  const discard = h("button", { className: "button button-ghost", type: "button" }, "Discard");
+  save.addEventListener("click", async () => {
+    save.disabled = true;
+    const response = await send<CommandResponse>({ type: "backup:recover", id: meta.id, title: meta.title });
+    if (!response.ok) save.disabled = false;
+  });
+  discard.addEventListener("click", async () => {
+    if (discard.dataset.confirm !== "yes") {
+      discard.dataset.confirm = "yes";
+      discard.textContent = "Delete this copy?";
+      return;
+    }
+    await backupStore.remove(meta.id).catch(() => {});
+    void renderBackups();
+  });
+  return h("li", { className: "stack" },
+    h("p", {}, h("span", { className: "strong clamp" }, meta.title)),
+    h("p", { className: "muted small" }, details, meta.failedAt ? ". Saving it did not finish." : ". The recording stopped before it was saved."),
+    h("div", { className: "actions" }, save, discard),
+  );
+}
+
+/** Recordings that never reached StudyScribe (a crash, a closed browser, a failed upload). */
+async function renderBackups() {
+  if (!regions || !currentUser) return;
+  const busy = state.recorder.status === "recording" || state.recorder.status === "starting" || state.recorder.status === "saving";
+  if (busy) {
+    regions.backups.replaceChildren();
+    return;
+  }
+  let offer: BackupMeta[] = [];
+  try {
+    offer = recoverableBackups(await backupStore.list(), { userId: currentUser.id });
+  } catch {
+    offer = [];
+  }
+  if (offer.length === 0) {
+    regions.backups.replaceChildren();
+    return;
+  }
+  regions.backups.replaceChildren(
+    h("section", { className: "panel stack", "aria-labelledby": "backup-heading", id: "backups" },
+      h("h2", { className: "strong", id: "backup-heading" }, offer.length === 1 ? "Unsaved recording" : `${offer.length} unsaved recordings`),
+      h("p", { className: "muted small" }, "Kept in this browser so nothing is lost. Save it to your library, or delete the copy."),
+      h("ul", { className: "stack backup-list" }, ...offer.map(backupItem)),
+    ),
+  );
+}
+
 function renderImport(job: ImportState) {
   if (!regions) return;
   const dismiss = () => h("button", { className: "link-button", type: "button", onclick: (() => void send({ type: "import:clear" })) as EventListener }, "Dismiss");
@@ -312,10 +370,11 @@ async function renderSignedIn(user: SessionUser) {
     capture: h("div", { className: "stack" }),
     form: buildForm(prefs),
     recorder: h("div", { className: "region" }),
+    backups: h("div", { className: "region" }),
     importStatus: h("div", { className: "region" }),
     recent: h("section", { className: "recent", "aria-label": "Recent recordings" }),
   };
-  regions.capture.append(regions.recorder, regions.form, regions.importStatus);
+  regions.capture.append(regions.recorder, regions.backups, regions.form, regions.importStatus);
   app.replaceChildren(
     regions.capture,
     regions.recent,
@@ -323,6 +382,7 @@ async function renderSignedIn(user: SessionUser) {
   );
   renderRecorder(state.recorder);
   renderImport(state.importJob);
+  void renderBackups();
   void loadRecent();
 }
 
@@ -337,7 +397,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
   state = next;
   // Ticks only move the clock, which the popup keeps itself; avoid rebuilding the panel every second.
   const onlyTicked = next.recorder.status === "recording" && lastRecorderStatus === "recording";
-  if (recorderChanged && !onlyTicked) renderRecorder(next.recorder);
+  if (recorderChanged && !onlyTicked) {
+    renderRecorder(next.recorder);
+    if (next.recorder.status !== lastRecorderStatus) void renderBackups();
+  }
   if (importChanged) renderImport(next.importJob);
   if ((next.recorder.status === "saved" && lastRecorderStatus !== "saved") || (next.importJob.status === "imported" && lastImportStatus !== "imported")) {
     void loadRecent();
@@ -369,6 +432,7 @@ async function boot() {
     renderSignedOut();
     return;
   }
+  currentUser = user;
   await renderSignedIn(user);
 }
 

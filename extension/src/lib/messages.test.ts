@@ -52,6 +52,16 @@ describe("parseMessage", () => {
   });
 });
 
+describe("backup messages", () => {
+  it("accepts well-formed recover messages and rejects odd ids", () => {
+    expect(parseMessage({ type: "backup:recover", id: "1700000000000-a1b2", title: "Cells" })).toEqual({ type: "backup:recover", id: "1700000000000-a1b2", title: "Cells" });
+    expect(parseMessage({ type: "offscreen:recover", id: "1700000000000-a1b2" })).toEqual({ type: "offscreen:recover", id: "1700000000000-a1b2" });
+    expect(parseMessage({ type: "backup:recover", id: "../etc", title: "x" })).toBeNull();
+    expect(parseMessage({ type: "offscreen:recover", id: 5 })).toBeNull();
+    expect(parseMessage({ type: "record:start", tabId: 1, tabTitle: "t", title: "t", withMic: false, ownerId: -3 })).toBeNull();
+  });
+});
+
 describe("isFromThisExtension", () => {
   it("accepts only this extension's own pages", () => {
     expect(isFromThisExtension({ id: "abc", url: "chrome-extension://abc/popup.html" }, "abc")).toBe(true);

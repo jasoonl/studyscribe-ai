@@ -23,7 +23,7 @@ The extension sends nothing to anyone else. It has no analytics, no advertising 
 
 ## What it stores
 
-In Chrome's extension storage on your computer: the site address, your last language and microphone choice, and the state of a recording or import in progress (cleared when Chrome closes). It stores no password, token or recording. The audio of a recording in progress is held in memory until it is uploaded or discarded.
+In Chrome's extension storage on your computer: the site address, your last language and microphone choice, and the state of a recording or import in progress (cleared when Chrome closes). It stores no password or token. While a recording runs, its audio is also written, second by second, to the extension's own storage on your computer (IndexedDB) as a crash backup, so a recording is not lost if Chrome closes or the upload fails. The copy is deleted as soon as the recording is saved to StudyScribe or you discard it, and any copy left behind is offered back only to the account that made it and deleted after seven days. It never leaves your computer except when you choose "Save to StudyScribe".
 
 ## Recording other people
 

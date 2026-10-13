@@ -2,8 +2,9 @@
  * Messages between the popup, the service worker and the offscreen recorder.
  *
  * popup -> worker: "state", "record:start", "record:stop", "record:discard",
- *                  "import:start", "import:clear"
- * worker -> offscreen: "offscreen:start", "offscreen:stop", "offscreen:discard"
+ *                  "import:start", "import:clear", "backup:recover"
+ * worker -> offscreen: "offscreen:start", "offscreen:stop", "offscreen:discard",
+ *                      "offscreen:recover"
  * offscreen -> worker: "recorder:started", "recorder:tick", "recorder:progress",
  *                      "recorder:saved", "recorder:failed"
  *
@@ -27,15 +28,18 @@ export type ImportState =
   | { status: "imported"; recording: SavedRecording }
   | { status: "failed"; message: string };
 
-export type SaveOptions = { title: string; language?: string };
+/** `ownerId` is who was signed in when recording started, so a crash backup is only offered back to them. */
+export type SaveOptions = { title: string; language?: string; ownerId?: number };
 
 export type PopupMessage =
   | { type: "state" }
-  | { type: "record:start"; tabId: number; tabTitle: string; title: string; withMic: boolean; language?: string }
+  | { type: "record:start"; tabId: number; tabTitle: string; title: string; withMic: boolean; language?: string; ownerId?: number }
   | { type: "record:stop" }
   | { type: "record:discard" }
   | { type: "import:start"; url: string; title?: string; language?: string }
-  | { type: "import:clear" };
+  | { type: "import:clear" }
+  /** Upload a crash backup (an earlier recording that never reached StudyScribe). */
+  | { type: "backup:recover"; id: string; title: string };
 
 /**
  * The offscreen recorder is told where to save when it starts, so a recording
@@ -44,7 +48,8 @@ export type PopupMessage =
 export type OffscreenCommand =
   | { type: "offscreen:start"; streamId: string; withMic: boolean; origin: string; save: SaveOptions }
   | { type: "offscreen:stop" }
-  | { type: "offscreen:discard" };
+  | { type: "offscreen:discard" }
+  | { type: "offscreen:recover"; id: string };
 
 export type RecorderEvent =
   | { type: "recorder:started"; micIncluded: boolean }
@@ -63,6 +68,8 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 const isString = (value: unknown, max = 4096): value is string => typeof value === "string" && value.length <= max;
 const isOptionalString = (value: unknown, max = 4096) => value === undefined || isString(value, max);
 const isCount = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0;
+const isBackupId = (value: unknown): value is string => typeof value === "string" && /^[0-9]{1,16}-[A-Za-z0-9-]{1,64}$/.test(value);
+const isOwner = (value: unknown) => value === undefined || (Number.isInteger(value) && (value as number) > 0);
 const isLanguage = (value: unknown) => value === undefined || (typeof value === "string" && /^[a-z]{2,3}(_[a-z]{2})?$/i.test(value));
 const isSaved = (value: unknown): value is SavedRecording =>
   isObject(value) && Number.isInteger(value.id) && (value.id as number) > 0 && isString(value.title, 255);
@@ -79,21 +86,27 @@ export function parseMessage(value: unknown): ExtensionMessage | null {
     case "offscreen:discard":
       return { type: m.type } as ExtensionMessage;
     case "record:start":
-      if (!Number.isInteger(m.tabId) || !isString(m.tabTitle, 1000) || !isString(m.title, 255) || typeof m.withMic !== "boolean" || !isLanguage(m.language)) return null;
-      return { type: m.type, tabId: m.tabId as number, tabTitle: m.tabTitle, title: m.title, withMic: m.withMic, language: m.language as string | undefined };
+      if (!Number.isInteger(m.tabId) || !isString(m.tabTitle, 1000) || !isString(m.title, 255) || typeof m.withMic !== "boolean" || !isLanguage(m.language) || !isOwner(m.ownerId)) return null;
+      return { type: m.type, tabId: m.tabId as number, tabTitle: m.tabTitle, title: m.title, withMic: m.withMic, language: m.language as string | undefined, ownerId: m.ownerId as number | undefined };
+    case "backup:recover":
+      if (!isBackupId(m.id) || !isString(m.title, 255)) return null;
+      return { type: m.type, id: m.id, title: m.title };
+    case "offscreen:recover":
+      if (!isBackupId(m.id)) return null;
+      return { type: m.type, id: m.id };
     case "import:start":
       if (!isString(m.url, 2048) || !isOptionalString(m.title, 255) || !isLanguage(m.language)) return null;
       return { type: m.type, url: m.url, title: m.title as string | undefined, language: m.language as string | undefined };
     case "offscreen:start": {
       const save = m.save;
       if (!isString(m.streamId, 512) || typeof m.withMic !== "boolean" || !isString(m.origin, 512)) return null;
-      if (!isObject(save) || !isString(save.title, 255) || !isLanguage(save.language)) return null;
+      if (!isObject(save) || !isString(save.title, 255) || !isLanguage(save.language) || !isOwner(save.ownerId)) return null;
       return {
         type: m.type,
         streamId: m.streamId,
         withMic: m.withMic,
         origin: m.origin,
-        save: { title: save.title, language: save.language as string | undefined },
+        save: { title: save.title, language: save.language as string | undefined, ownerId: save.ownerId as number | undefined },
       };
     }
     case "offscreen:stop":
