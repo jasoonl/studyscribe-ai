@@ -1,0 +1,265 @@
+html {
+  overflow-x: hidden;
+}
+
+body {
+  width: 360px;
+  min-height: 200px;
+}
+
+.region:empty {
+  display: none;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.brand:hover {
+  text-decoration: none;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.icon-button:hover {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+main {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.loading {
+  padding: 18px 2px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.title {
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.tab-summary {
+  display: grid;
+  gap: 2px;
+}
+
+.clamp {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  cursor: pointer;
+}
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+.check > span {
+  display: grid;
+  gap: 1px;
+}
+.check-label {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.recording {
+  text-align: center;
+  justify-items: center;
+}
+.recording .actions {
+  width: 100%;
+}
+.recording-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--recording);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--recording);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}
+.timer {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 200ms ease;
+}
+
+.notice {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--brand-mist);
+  font-size: 13px;
+}
+.notice-success {
+  border-color: color-mix(in oklch, var(--success) 35%, var(--border));
+}
+.notice-error {
+  border-color: color-mix(in oklch, var(--destructive) 30%, var(--border));
+  background: color-mix(in oklch, var(--destructive) 6%, var(--card));
+}
+.notice-error p {
+  color: var(--destructive);
+}
+.notice > .link-button {
+  justify-self: start;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.link-button:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.section-heading h2 {
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.recent-list {
+  list-style: none;
+  margin: 0 -8px;
+  padding: 0;
+}
+.recent-item {
+  display: grid;
+  gap: 1px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  color: var(--foreground);
+  font-weight: 400;
+}
+.recent-item:hover {
+  background: var(--secondary);
+  text-decoration: none;
+}
+.recent-title {
+  font-weight: 500;
+  font-size: 13.5px;
+}
+
+.account {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+#form-message:empty {
+  display: none;
+}

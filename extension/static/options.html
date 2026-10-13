@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StudyScribe extension settings</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="page.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <img src="icons/icon-48.png" width="32" height="32" alt="" />
+        <div>
+          <h1>StudyScribe for Chrome</h1>
+          <p class="muted">Settings</p>
+        </div>
+      </header>
+
+      <section class="card" aria-labelledby="site-heading">
+        <h2 id="site-heading">StudyScribe site</h2>
+        <p class="muted">The extension signs in with your session on this site and sends recordings there. Leave it as is unless you run your own copy of StudyScribe.</p>
+        <form id="origin-form" class="form" novalidate>
+          <div class="field">
+            <label class="label" for="origin">Site address</label>
+            <input class="input" id="origin" name="origin" type="url" inputmode="url" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="row">
+            <button class="button button-primary" type="submit">Save</button>
+            <button class="button button-ghost" id="reset-origin" type="button">Use the default</button>
+          </div>
+          <p id="origin-status" class="small" role="status"></p>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="mic-heading">
+        <h2 id="mic-heading">Microphone</h2>
+        <p class="muted">Needed only for "Include my microphone", which adds your voice to a tab recording. Chrome asks once.</p>
+        <div class="row">
+          <button class="button button-secondary" id="allow-mic" type="button">Allow microphone</button>
+          <span id="mic-status" class="small muted" role="status"></span>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading">Privacy</h2>
+        <ul class="plain-list">
+          <li>The extension reads the address and title of a tab only when you open it on that tab.</li>
+          <li>"Import this page" sends that address to your StudyScribe account. "Record this tab" records the tab's sound, and your microphone if you ask, until you press Stop, then uploads it to your account.</li>
+          <li>Nothing is sent anywhere else. There are no analytics, and the extension stores no password or token: it uses your existing StudyScribe sign-in.</li>
+          <li>Recordings are processed under StudyScribe's <a id="privacy-link" href="#" target="_blank" rel="noopener">Privacy Policy</a>. Only record people who know they are being recorded.</li>
+        </ul>
+      </section>
+    </main>
+    <script src="options.js" type="module"></script>
+  </body>
+</html>

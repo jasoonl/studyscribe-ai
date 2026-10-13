@@ -1,0 +1,27 @@
+{
+  "name": "studyscribe-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StudyScribe AI for Chrome: record a tab's audio or import the page you are on.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --dev-origin=http://localhost:3107",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "icons": "python3 scripts/make-icons.py",
+    "e2e": "node e2e/extension.e2e.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.8.0",
+    "superjson": "1.13.3"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.3.5",
+    "esbuild": "0.28.2",
+    "fflate": "0.8.2",
+    "playwright-core": "1.56.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
