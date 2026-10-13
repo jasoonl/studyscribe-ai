@@ -93,6 +93,50 @@ export function stateAfterPaymentFailed(current: StoredSubscription | null, even
   return { ...current, status: "past_due", lastEventAt: eventCreated };
 }
 
+// ------------------------------------------------------------------ teams
+
+export type TeamSubscriptionState = {
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: string;
+  seats: number;
+  currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
+  lastEventAt: number;
+};
+
+/**
+ * The team's next stored state for a subscription event (F3), or null when
+ * it is older than what is stored. The seat count is the quantity of the
+ * team price's line item; a deleted subscription leaves no paid seats.
+ */
+export function nextTeamState(
+  current: Pick<TeamSubscriptionState, "lastEventAt" | "stripeSubscriptionId" | "subscriptionStatus"> | null,
+  event: { type: string; created: number; subscription: any },
+  teamPriceId: string,
+): TeamSubscriptionState | null {
+  if (current && isStale(current.lastEventAt, event.created)) return null;
+  const subscription = event.subscription ?? {};
+  const items: any[] = Array.isArray(subscription?.items?.data) ? subscription.items.data : [];
+  const item = items.find((candidate) => candidate?.price?.id === teamPriceId) ?? items[0];
+  const status: string = typeof subscription.status === "string" ? subscription.status : "incomplete";
+  const id = typeof subscription.id === "string" ? subscription.id : null;
+  // An older subscription being cancelled must not end a newer live one.
+  if (current?.stripeSubscriptionId && id && current.stripeSubscriptionId !== id && ENTITLED_STATUSES.has(current.subscriptionStatus) && !ENTITLED_STATUSES.has(status)) return null;
+  const deleted = event.type === "customer.subscription.deleted";
+  return {
+    stripeSubscriptionId: id,
+    subscriptionStatus: deleted ? "canceled" : status,
+    seats: deleted ? 0 : Math.max(0, Number(item?.quantity ?? subscription.quantity ?? 0) || 0),
+    currentPeriodEnd: toDate(subscription.current_period_end ?? item?.current_period_end),
+    cancelAtPeriodEnd: !deleted && (Boolean(subscription.cancel_at_period_end) || (typeof subscription.cancel_at === "number" && status !== "canceled")),
+    lastEventAt: event.created,
+  };
+}
+
+export function teamIsEntitled(row: { subscriptionStatus: string } | null | undefined) {
+  return !!row && ENTITLED_STATUSES.has(row.subscriptionStatus);
+}
+
 /** Plain-language status for the Billing page. */
 export function describeStatus(row: Pick<StoredSubscription, "status" | "cancelAtPeriodEnd" | "currentPeriodEnd"> | null) {
   if (!row || row.status === "none") return null;

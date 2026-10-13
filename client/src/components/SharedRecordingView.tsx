@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AudioPlayer, type AudioPlayerHandle } from "@/components/AudioPlayer";
 import { TranscriptView } from "@/components/TranscriptView";
+import { useRecordingSlides } from "@/components/RecordingSlides";
 import { FileText, BookOpen, Layers3, ClipboardCheck, NotebookPen, Loader2, Pencil } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
@@ -104,6 +105,8 @@ function FlashcardItem({ question, answer }: { question: string; answer: string 
 export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; role?: AccessRole }) {
   const { recording, transcript, studyNotes, flashcards, studyGuides, quizzes } = bundle;
   const playerRef = useRef<AudioPlayerHandle>(null);
+  // Slides need a signed-in viewer; public links leave them out.
+  const slides = useRecordingSlides(bundle.recording.id, !!role);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [editing, setEditing] = useState(false);
   const segments = (transcript?.segments ?? []) as TranscriptSegment[];
@@ -169,6 +172,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
                 annotations={roleAllows(role, "comment")}
                 canRenameSpeakers={roleAllows(role, "edit")}
                 showKeyTerms={false}
+                slides={slides}
               />
             ) : transcript?.segments?.length ? (
               <div className="space-y-3">

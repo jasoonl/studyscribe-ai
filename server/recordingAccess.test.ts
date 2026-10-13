@@ -102,6 +102,35 @@ describe("getRecordingAccess", () => {
   });
 });
 
+describe("team library access (F3)", () => {
+  it("lets a teammate view a recording in a course shared to the team", async () => {
+    tables.organizationMembers = [{ orgId: 3, userId: 2 }, { orgId: 3, userId: 1 }];
+    tables.recordingCourses = [{ courseId: 7 }];
+    tables.organizationCourses = [{ id: 1 }];
+    expect((await getRecordingAccess(10, 2))?.role).toBe("view");
+    await expect(requireRecordingAccess(10, 2, "comment")).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("gives nothing when the course is not in the library", async () => {
+    tables.organizationMembers = [{ orgId: 3, userId: 2 }, { orgId: 3, userId: 1 }];
+    tables.recordingCourses = [{ courseId: 7 }];
+    tables.organizationCourses = [];
+    expect(await getRecordingAccess(10, 2)).toBeNull();
+  });
+
+  it("gives nothing once the owner is no longer in the same team", async () => {
+    tables.organizationMembers = [{ orgId: 3, userId: 2 }, { orgId: 4, userId: 1 }];
+    tables.recordingCourses = [{ courseId: 7 }];
+    tables.organizationCourses = [{ id: 1 }];
+    expect(await getRecordingAccess(10, 2)).toBeNull();
+  });
+
+  it("ignores team tables that do not exist yet", async () => {
+    tables.organizationMembers = Object.assign(new Error("Table 'x.organizationMembers' doesn't exist"), { errno: 1146 });
+    expect(await getRecordingAccess(10, 2)).toBeNull();
+  });
+});
+
 describe("requireRecordingAccess", () => {
   it("reads as not found to someone with no access, so ids cannot be probed", async () => {
     await expect(requireRecordingAccess(10, 3, "view")).rejects.toMatchObject({ code: "NOT_FOUND" });

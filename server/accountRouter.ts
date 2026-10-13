@@ -10,7 +10,7 @@ import { deleteBookmarksForUser, listBookmarksForUser } from "./bookmarks";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router, sessionProcedure } from "./_core/trpc";
 import { deleteCoursesForUser, exportCoursesForUser } from "./courses";
 import { deleteActionItemsForUser, listActionItemsForUser } from "./actionItems";
 import { deleteExamPacksForUser, exportExamPacksForUser } from "./examPacks";
@@ -32,6 +32,12 @@ import { deleteUsageForUser, exportUsageForUser } from "./usage";
 import { deleteTranslationsForUser, exportTranslationsForUser } from "./translations";
 import { deleteCalendarDataForUser, exportCalendarDataForUser } from "./calendar";
 import { deleteProviderTranscript } from "./speakerDiarization";
+import { deleteApiKeysForUser, exportApiKeysForUser } from "./apiKeys";
+import { deleteSlidesForUser, exportSlidesForUser } from "./slides";
+import { deleteMeetingBotsForUser, exportMeetingBotsForUser } from "./meetingBots";
+import { deleteRecordingEventsForUser, exportRecordingEventsForUser } from "./recordingEvents";
+import { deleteAttendeeEmailsForUser, exportAttendeeEmailsForUser } from "./attendeeEmail";
+import { deleteOrgDataForUser, exportOrgDataForUser } from "./organizations";
 
 type Confirmable = { email: string; passwordHash: string | null };
 
@@ -59,7 +65,7 @@ async function requireDb() {
 
 export const accountRouter = router({
   /** Everything we hold about the signed-in person, as one JSON document (never includes credentials). */
-  exportData: protectedProcedure.mutation(async ({ ctx }) => {
+  exportData: sessionProcedure.mutation(async ({ ctx }) => {
     if (!checkTrpcRateLimit(`export:${ctx.user.id}`, 60 * 60 * 1000, 5)) {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "You can export your data 5 times an hour. Try again later." });
     }
@@ -118,6 +124,12 @@ export const accountRouter = router({
       usage: await exportUsageForUser(userId),
       translations: await exportTranslationsForUser(userId),
       calendarReminders: await exportCalendarDataForUser(userId),
+      apiKeys: await exportApiKeysForUser(userId),
+      slides: await exportSlidesForUser(userId),
+      meetingNoteTakers: await exportMeetingBotsForUser(userId),
+      recordingEvents: await exportRecordingEventsForUser(userId),
+      notesEmailedToAttendees: await exportAttendeeEmailsForUser(userId),
+      ...(await exportOrgDataForUser(userId)),
     };
   }),
 
@@ -126,7 +138,7 @@ export const accountRouter = router({
    * stops the whole thing so no file is orphaned), the transcription provider's copies, every
    * row in every table, then the user. The session cookie is cleared on success.
    */
-  deleteAccount: protectedProcedure
+  deleteAccount: sessionProcedure
     .input(z.object({ confirmEmail: z.string().max(320), password: z.string().max(200).optional() }))
     .mutation(async ({ ctx, input }) => {
       const user = ctx.user;
@@ -152,6 +164,8 @@ export const accountRouter = router({
       // Stop future charges before anything is deleted; if Stripe cannot be
       // reached this throws and the account stays as it was.
       await cancelBillingForAccountDeletion(userId);
+      // An owner's team goes with them; its subscription is cancelled first and a Stripe failure stops here.
+      await deleteOrgDataForUser(userId, fresh.email);
       const ownRecordings = await db.select().from(recordings).where(eq(recordings.userId, userId));
 
       const providerFailures: string[] = [];
@@ -191,6 +205,11 @@ export const accountRouter = router({
       await deleteUsageForUser(userId);
       await deleteTranslationsForUser(userId);
       await deleteCalendarDataForUser(userId);
+      await deleteApiKeysForUser(userId);
+      await deleteSlidesForUser(userId);
+      await deleteMeetingBotsForUser(userId);
+      await deleteRecordingEventsForUser(userId);
+      await deleteAttendeeEmailsForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

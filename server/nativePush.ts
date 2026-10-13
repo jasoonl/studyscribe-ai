@@ -12,7 +12,7 @@ import { isSchemaMissingError } from "./schemaTolerance";
  *
  * EXPO_ACCESS_TOKEN is optional: Expo accepts unauthenticated sends unless
  * "enhanced push security" is switched on for the project, in which case the
- * token is required. Until migration 0024 is applied the deviceTokens table
+ * token is required. Until migration 0029 is applied the deviceTokens table
  * does not exist and every function here quietly does nothing.
  */
 

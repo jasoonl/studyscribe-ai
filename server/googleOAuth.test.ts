@@ -4,6 +4,7 @@ import {
   getGoogleAuthUrl,
   getGoogleRedirectUri,
 } from "./googleOAuthHandler";
+import { readOAuthState } from "./googleSignup";
 
 describe("Google OAuth configuration", () => {
   it("should have GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET configured", () => {
@@ -31,8 +32,6 @@ describe("Google OAuth configuration", () => {
   it("should generate a valid Google consent URL containing the client id and redirect uri", () => {
     const origin = "https://example.manus.space";
     const redirectUri = getGoogleRedirectUri(origin);
-    const state = Buffer.from(JSON.stringify({ origin, mode: "login" })).toString("base64");
-
     const url = getGoogleAuthUrl(origin, "login", redirectUri);
     const parsed = new URL(url);
 
@@ -41,16 +40,18 @@ describe("Google OAuth configuration", () => {
       process.env.GOOGLE_CLIENT_ID
     );
     expect(parsed.searchParams.get("redirect_uri")).toBe(redirectUri);
-    expect(parsed.searchParams.get("state")).toBe(state);
+    expect(readOAuthState(parsed.searchParams.get("state") ?? "")).toMatchObject({ origin, mode: "login" });
     expect(parsed.searchParams.get("scope")).toContain("email");
     expect(parsed.searchParams.get("response_type")).toBe("code");
   });
 
   it("records sign-up consent in the OAuth state only when it was given", () => {
     const origin = "https://example.com";
-    const stateOf = (url: string) => JSON.parse(Buffer.from(new URL(url).searchParams.get("state") ?? "", "base64").toString());
+    const stateOf = (url: string) => readOAuthState(new URL(url).searchParams.get("state") ?? "");
 
-    expect(stateOf(getGoogleAuthUrl(origin, "signup", undefined, true))).toEqual({ origin, mode: "signup", consented: true });
-    expect(stateOf(getGoogleAuthUrl(origin, "signup"))).toEqual({ origin, mode: "signup" });
+    expect(stateOf(getGoogleAuthUrl(origin, "signup", undefined, true, "invite1"))).toMatchObject({ origin, mode: "signup", consented: true, invite: "invite1" });
+    expect(stateOf(getGoogleAuthUrl(origin, "signup"))).toMatchObject({ origin, mode: "signup", consented: false });
+    // A login never carries an invite.
+    expect(stateOf(getGoogleAuthUrl(origin, "login", undefined, false, "invite1"))?.invite).toBeUndefined();
   });
 });

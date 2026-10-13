@@ -190,6 +190,31 @@ const faqs: FAQItem[] = [
     question: "How do I see my classes from Google Calendar?",
     answer: "Connect Google Calendar in Settings under Connected apps (read-only access). Your library then shows the next seven days. Choose 'Remind me' on a class to get a notification when it starts while StudyScribe is open in a tab, plus a once-a-day summary of the next 24 hours. A recording you start during a class, or up to ten minutes before, is named after it.",
   },
+  {
+    category: "Recording",
+    question: "Can StudyScribe record a Zoom, Google Meet or Teams call for me?",
+    answer: "Yes, where the site has it set up. Choose 'Send a note-taker' under Online meetings on your library, or 'Note-taker' next to a calendar event that has a meeting link. A note-taker named 'StudyScribe note-taker (recording for you)' joins, posts a message in the meeting chat saying it is recording, and leaves when the call ends; the recording then appears in your library and is transcribed. Before sending it you confirm you will tell everyone in the meeting, and get their consent where your law, school or workplace requires it. Let it in if the meeting has a waiting room. 'Stop recording' makes it leave; what it recorded so far is still saved.",
+  },
+  {
+    category: "Recording",
+    question: "How do I capture slides from an online class?",
+    answer: "On the Record page, tick 'Record a tab or screen audio too' and then 'Capture slides', and share the tab or screen with the slides. Each time the picture changes and settles, StudyScribe keeps a picture of it, at most one every 8 seconds and 40 per recording; a moving cursor or a playing video does not add slides. They are saved after the recording, appear between the transcript lines at the moment they were shown and in a Slides strip under the player. Slides stay in the browser until you save, so they are not recovered after a crash. Works in Chrome and Edge on a computer.",
+  },
+  {
+    category: "Sharing",
+    question: "Can I email the notes to the people at a meeting?",
+    answer: "For a recording made during a Google Calendar event or by the note-taker, the recording page shows 'Email notes to attendees'. Choose the notes, add a message if you like and tick the people to send to; nobody is ticked for you and nothing is sent until you press Send. Each person gets their own email from 'Your name via StudyScribe', with replies coming to you, and a link to stop all StudyScribe email. People who used that link are shown and skipped.",
+  },
+  {
+    category: "Account",
+    question: "How do teams work?",
+    answer: "Start a team from Settings. Members share courses into the team's library, and everyone in the team can open those recordings, transcripts and notes (read only). Owners and admins invite people by email and see each member's usage this month. The owner buys seats on the Team plan (each member then gets the Team allowance), can verify the school's or company's domain so Google Workspace accounts from it join on their own, and can set up SAML single sign-on, after which members use 'Sign in with SSO' on the login page. Leaving a team takes your courses out of its library; your recordings stay yours.",
+  },
+  {
+    category: "Account",
+    question: "Is there an API?",
+    answer: "Yes. Create a personal API key in Settings under API keys, read only or read and write, and see the API page (/developers) for the endpoints and examples. Keys act as you and count toward your plan; they can never change billing, manage keys or delete your account. Revoke a key in Settings if it leaks.",
+  },
 ];
 
 const categories = ["All", ...Array.from(new Set(faqs.map(f => f.category)))];

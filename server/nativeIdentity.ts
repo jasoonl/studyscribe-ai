@@ -54,6 +54,7 @@ export async function verifyGoogleIdToken(idToken: string, verify: GoogleVerifie
     email: typeof payload.email === "string" ? payload.email : null,
     emailVerified: payload.email_verified === true || payload.email_verified === "true",
     name: typeof payload.name === "string" ? payload.name : null,
+    ...(typeof payload.hd === "string" ? { hostedDomain: payload.hd } : {}),
   };
 }
 

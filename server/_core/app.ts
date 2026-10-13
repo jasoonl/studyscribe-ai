@@ -12,6 +12,10 @@ import { registerFollowUpCron } from "../followUps";
 import { registerIntegrationRoutes } from "../integrations";
 import { registerStripeWebhook } from "../billing";
 import { registerMobileRoutes } from "../mobileAuth";
+import { registerPublicApi } from "../publicApi";
+import { registerSlideRoutes } from "../slides";
+import { registerRecallWebhook } from "../meetingBots";
+import { registerEmailOptOutRoutes } from "../attendeeEmail";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -29,6 +33,7 @@ export function createApp() {
   registerYouTubeRelayRoutes(app);
   // Before the JSON parser: Stripe signs the raw bytes.
   registerStripeWebhook(app);
+  registerRecallWebhook(app);
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -45,6 +50,9 @@ export function createApp() {
   registerAuthRoutes(app);
   registerOAuthRoutes(app);
   registerIntegrationRoutes(app);
+  registerPublicApi(app);
+  registerSlideRoutes(app);
+  registerEmailOptOutRoutes(app);
   app.use(
     "/api/trpc",
     createExpressMiddleware({

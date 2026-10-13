@@ -17,7 +17,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
-import { useCalendarTitle } from "@/components/CalendarReminderWatcher";
+import { useSaveSlides } from "@/hooks/useSaveSlides";
+import { useCalendarEventForRecording, useCalendarTitle } from "@/components/CalendarReminderWatcher";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
 import { formatClockTime } from "@/lib/recordingClock";
 import type { LiveTurn } from "@/lib/liveTurns";
@@ -49,6 +50,7 @@ export default function Record() {
   const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
   const calendarHint = useCalendarTitle(recorder, recordingTitle, setRecordingTitle);
+  const calendarLink = useCalendarEventForRecording(recorder);
   const [audience, setAudience] = useState<"student" | "professional">(
     "student"
   );
@@ -61,6 +63,7 @@ export default function Record() {
   // Live text kept on screen after upload, until the real transcript replaces it.
   const [liveSnapshot, setLiveSnapshot] = useState<LiveTurn[] | null>(null);
   const createRecordingMutation = trpc.recordings.create.useMutation();
+  const saveSlides = useSaveSlides();
   const layout = useLiveLayout(liveSnapshot);
 
   // Poll for transcription status using lightweight getStatus endpoint
@@ -161,6 +164,7 @@ export default function Record() {
           : { audioBase64: base64String! }),
         duration: durationSeconds,
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
+        ...calendarLink,
       });
 
       setUploadProgress(100);
@@ -168,6 +172,7 @@ export default function Record() {
       setUploadComplete(true);
       if (live.turns.length > 0) setLiveSnapshot(live.turns);
       recorder.discard();
+      saveSlides(recording.id, finished.slides);
       toast.success("Recording uploaded! Waiting for transcription...");
 
       // Fallback redirect after 90s

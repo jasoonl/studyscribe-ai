@@ -10,6 +10,12 @@ export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  /**
+   * Set only when the public REST API (/api/v1, server/publicApi.ts) calls a
+   * procedure on behalf of a personal API key. Session-only procedures (key
+   * management, billing, account deletion) refuse such calls.
+   */
+  apiKey?: { id: number; scope: "read" | "write" } | null;
 };
 
 export async function createContext(

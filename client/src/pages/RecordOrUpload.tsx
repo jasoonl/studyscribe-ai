@@ -12,6 +12,7 @@ import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { probeAudioDuration } from "@/lib/probeAudioDuration";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
+import { useSaveSlides } from "@/hooks/useSaveSlides";
 import { MarkMoment } from "@/components/MarkMoment";
 import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
@@ -20,7 +21,7 @@ import type { LiveTurn } from "@/lib/liveTurns";
 import { LiveTextToggle, TabAudioControl, TabAudioOption } from "@/components/live/RecordingOptions";
 import { LiveTranscriptSection, useLiveLayout } from "@/components/live/LiveTranscriptSection";
 import { StudyHelpPanel } from "@/components/live/StudyHelpPanel";
-import { useCalendarTitle } from "@/components/CalendarReminderWatcher";
+import { useCalendarEventForRecording, useCalendarTitle } from "@/components/CalendarReminderWatcher";
 
 type Mode = "choose" | "record" | "upload" | "link";
 
@@ -39,6 +40,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const duration = recorder.elapsedSeconds;
   const [recordingTitle, setRecordingTitle] = useState("");
   const calendarHint = useCalendarTitle(recorder, recordingTitle, setRecordingTitle);
+  const calendarLink = useCalendarEventForRecording(recorder);
   const [audience, setAudience] = useState<"student" | "professional">("student");
   const [withTabAudio, setWithTabAudio] = useState(false);
   // Live text kept on screen after upload, until the real transcript replaces it.
@@ -68,6 +70,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [createdRecordingId, setCreatedRecordingId] = useState<number | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const createRecordingMutation = trpc.recordings.create.useMutation();
+  const saveSlides = useSaveSlides();
   const createFromUrlMutation = trpc.recordings.createFromUrl.useMutation();
   const liveLayout = useLiveLayout(liveSnapshot);
 
@@ -151,10 +154,12 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
+        ...calendarLink,
       });
       setUploadComplete(true);
       if (live.turns.length > 0) setLiveSnapshot(live.turns);
       recorder.discard();
+      saveSlides(recording.id, finished.slides);
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
       toast.success("Recording uploaded! Waiting for transcription...");

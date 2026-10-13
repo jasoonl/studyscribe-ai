@@ -7,11 +7,13 @@ import { MIN_AGE } from "@shared/legal";
 import { Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { safeNext } from "@/lib/safeNext";
 
 export default function Signup() {
   // Invite code comes from the URL — user arrives here from /invite page
   const params = new URLSearchParams(window.location.search);
   const inviteCode = params.get("code") || "";
+  const next = safeNext(params.get("next"));
 
   const [formData, setFormData] = useState({
     email: "",
@@ -26,6 +28,7 @@ export default function Signup() {
   const [confirmedAge, setConfirmedAge] = useState(false);
   const [inviteChecked, setInviteChecked] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
 
   // Without an invite code the form is only for open sign-up; otherwise go to /invite.
   const mode = trpc.signup.mode.useQuery(undefined, { enabled: !inviteCode, retry: false, refetchOnWindowFocus: false });
@@ -52,6 +55,7 @@ export default function Signup() {
         if (data.valid) {
           setInviteChecked(true);
           if (data.email) {
+            setInviteEmail(data.email);
             setFormData((prev) => ({ ...prev, email: data.email }));
           }
         } else {
@@ -120,7 +124,7 @@ export default function Signup() {
 
       const created = await response.json().catch(() => ({}));
       toast.success(created.confirmationSent ? "Account created. Check your inbox to confirm your email." : "Account created. Welcome to StudyScribe AI.");
-      window.location.href = "/dashboard";
+      window.location.href = next ?? "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Signup failed";
       toast.error(message);
@@ -146,6 +150,9 @@ export default function Signup() {
         acceptedTerms: "1",
         confirmedAge: "1",
       });
+      // The server checks the invite again after Google answers; it works for the invited address only.
+      if (!openSignup && inviteCode) params.set("inviteCode", inviteCode);
+      if (next) params.set("next", next);
       const response = await fetch(`/api/auth/google?${params}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -236,6 +243,9 @@ export default function Signup() {
           )}
           Continue with Google
         </Button>
+        {!openSignup && inviteEmail ? (
+          <p className="-mt-2 mb-4 text-center text-xs text-muted-foreground">Choose the Google account for {inviteEmail}. The invite works for that address only.</p>
+        ) : null}
 
         {/* Divider */}
         <div className="relative mb-6">
