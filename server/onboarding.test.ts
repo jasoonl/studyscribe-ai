@@ -8,7 +8,7 @@ describe("onboarding checklist", () => {
     const list = buildChecklist(empty);
     expect(list).toMatchObject({ done: 0, total: 5 });
     expect(list.steps.map((step) => step.id)).toEqual(["record", "notes", "flashcards", "course", "ask"]);
-    expect(list.steps.find((step) => step.id === "notes")?.action).toEqual({ kind: "recorder", label: "Record first" });
+    expect(list.steps.find((step) => step.id === "notes")?.action).toEqual({ kind: "link", href: "/templates", label: "See templates" });
   });
 
   it("ticks steps off from real data and links to the latest finished recording", () => {

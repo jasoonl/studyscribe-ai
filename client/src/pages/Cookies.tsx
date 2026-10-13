@@ -47,6 +47,7 @@ const BROWSER_STORAGE: Row[] = [
   { name: "studyscribe_live_transcript", purpose: "Remembers whether you turned on live transcript while recording.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_caption_size", purpose: "Remembers the text size you chose for live captions.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_skip_silence", purpose: "Remembers whether the player skips silent stretches.", lasts: "Until you change it or clear site data" },
+  { name: "studyscribe_note_template_student, studyscribe_note_template_professional", purpose: "Remember the default notes template you picked for classes and for meetings.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_kb_mode", purpose: "Remembers whether the Knowledge Base uses keyword or smart search.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_capture_slides", purpose: "Remembers whether you chose Capture slides when recording a shared tab or screen.", lasts: "Until you change it or clear site data" },
   { name: "sidebar-width", purpose: "Remembers how wide you made the app sidebar.", lasts: "Until you clear site data" },

@@ -41,9 +41,9 @@ export function buildChecklist(facts: OnboardingFacts): { steps: OnboardingStep[
     {
       id: "notes",
       title: "Generate study notes",
-      detail: recordingHref ? "Open a transcribed recording and pick a note template." : "Notes can be written once a transcript is ready.",
+      detail: recordingHref ? "Open a transcribed recording and pick a note template." : "Notes are written once a transcript is ready. Meanwhile, choose how they look.",
       done: facts.notes > 0,
-      action: recordingHref ? { kind: "link", href: recordingHref, label: "Open recording" } : { kind: "recorder", label: "Record first" },
+      action: recordingHref ? { kind: "link", href: recordingHref, label: "Open recording" } : { kind: "link", href: "/templates", label: "See templates" },
     },
     {
       id: "flashcards",

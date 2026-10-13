@@ -32,6 +32,25 @@ export function claimAutoNotesAttempt(recordingId: number): boolean {
   }
 }
 
+const NOTE_TEMPLATE_KEY = "studyscribe_note_template";
+
+/** The template picked as default in the gallery, per audience ("student" for classes, "professional" for meetings). */
+export function getPreferredNoteTemplate(audience: "student" | "professional"): string | null {
+  try {
+    return localStorage.getItem(`${NOTE_TEMPLATE_KEY}_${audience}`);
+  } catch {
+    return null;
+  }
+}
+
+export function setPreferredNoteTemplate(audience: "student" | "professional", templateId: string) {
+  try {
+    localStorage.setItem(`${NOTE_TEMPLATE_KEY}_${audience}`, templateId);
+  } catch {
+    // Preference just won't persist.
+  }
+}
+
 const LIVE_TRANSCRIPT_KEY = "studyscribe_live_transcript";
 
 /** Live text while recording is opt-in: the streaming service bills every minute it runs. */

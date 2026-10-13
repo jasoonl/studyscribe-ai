@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
+import { NOTE_TEMPLATES } from "@shared/noteTemplates";
 import { Check, Copy } from "lucide-react";
 import PublicLayout from "@/components/landing/PublicLayout";
 import { Button } from "@/components/ui/button";
@@ -146,7 +147,7 @@ const SECTIONS: Array<{ id: string; heading: string; body: ReactNode }> = [
         </Endpoint>
         <Endpoint method="POST" path="/v1/recordings/:id/notes" scope="write">
           <p>
-            Writes a new set of notes for a finished recording and returns it. Optional body: <C>template</C>, one of <C>lecture</C>, <C>lab</C>, <C>seminar</C>, <C>meeting</C> or <C>interview</C>; without it the template follows the recording's audience. Counts as one AI generation.
+            Writes a new set of notes for a finished recording and returns it. Optional body: <C>template</C>, one of {NOTE_TEMPLATES.map((template, index) => (<span key={template.id}>{index > 0 && (index === NOTE_TEMPLATES.length - 1 ? " or " : ", ")}<C>{template.id}</C></span>))}; without it the template follows the recording's audience. Counts as one AI generation.
           </p>
           <CodeBlock label="request" code={`curl -X POST ${BASE}/recordings/128/notes \\\n  -H "Authorization: Bearer $STUDYSCRIBE_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"template": "lecture"}'`} />
         </Endpoint>
