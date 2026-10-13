@@ -123,7 +123,7 @@ export async function createGoogleUser(googleUser: GoogleUser) {
 /**
  * Generate Google OAuth URL
  */
-export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string, consented = false, invite?: string): string {
+export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "login", redirectUri?: string, consented = false, invite?: string, next?: string): string {
   const scopes = ["openid", "email", "profile"];
 
   // Signed, so the callback can trust the mode, the confirmations and the invite.
@@ -132,6 +132,7 @@ export function getGoogleAuthUrl(origin: string, mode: "login" | "signup" = "log
     mode,
     ...(consented ? { consented: true } : {}),
     ...(mode === "signup" && invite ? { invite } : {}),
+    ...(next ? { next } : {}),
   });
 
   const finalRedirectUri = redirectUri || getGoogleRedirectUri(origin);

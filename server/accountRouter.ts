@@ -35,6 +35,7 @@ import { deleteSlidesForUser, exportSlidesForUser } from "./slides";
 import { deleteMeetingBotsForUser, exportMeetingBotsForUser } from "./meetingBots";
 import { deleteRecordingEventsForUser, exportRecordingEventsForUser } from "./recordingEvents";
 import { deleteAttendeeEmailsForUser, exportAttendeeEmailsForUser } from "./attendeeEmail";
+import { deleteOrgDataForUser, exportOrgDataForUser } from "./organizations";
 
 type Confirmable = { email: string; passwordHash: string | null };
 
@@ -125,6 +126,7 @@ export const accountRouter = router({
       meetingNoteTakers: await exportMeetingBotsForUser(userId),
       recordingEvents: await exportRecordingEventsForUser(userId),
       notesEmailedToAttendees: await exportAttendeeEmailsForUser(userId),
+      ...(await exportOrgDataForUser(userId)),
     };
   }),
 
@@ -159,6 +161,8 @@ export const accountRouter = router({
       // Stop future charges before anything is deleted; if Stripe cannot be
       // reached this throws and the account stays as it was.
       await cancelBillingForAccountDeletion(userId);
+      // An owner's team goes with them; its subscription is cancelled first and a Stripe failure stops here.
+      await deleteOrgDataForUser(userId, fresh.email);
       const ownRecordings = await db.select().from(recordings).where(eq(recordings.userId, userId));
 
       const providerFailures: string[] = [];

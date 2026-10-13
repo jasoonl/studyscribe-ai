@@ -13,6 +13,7 @@ import { describeBillingConfig, getStripeConfig, isBillingConfigured, StripeApiE
 import { getSubscriptionRow, getUsageSummary, limitsEnforced } from "./usage";
 import { formatResetDate } from "./usageRules";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
+import { applyTeamStripeEvent } from "./organizations";
 import { adminProcedure, protectedProcedure, publicProcedure, router, sessionProcedure } from "./_core/trpc";
 
 /**
@@ -152,6 +153,9 @@ const HANDLED_EVENTS = new Set([
 ]);
 
 export async function applyStripeEvent(event: StripeEvent, config: StripeConfig): Promise<{ applied: boolean; reason?: string }> {
+  // Team subscriptions (F3) are on the team's own customer; everything else is a personal plan.
+  const team = await applyTeamStripeEvent(event, config);
+  if (team) return team;
   const object = event.data?.object ?? {};
   switch (event.type) {
     case "checkout.session.completed": {

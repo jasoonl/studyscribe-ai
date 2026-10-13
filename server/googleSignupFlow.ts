@@ -4,6 +4,7 @@ import { createGoogleUser, findGoogleAccount, type GoogleUser } from "./googleOA
 import { claimInviteCode, decideGoogleSignup, recordInviteUser, releaseInviteCode } from "./googleSignup";
 import { countRecentSignups, isOpenSignupEnabled, openSignupDailyCap } from "./openSignup";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
+import { domainJoinFor, joinOrganizationByDomain } from "./organizations";
 
 export type GoogleSignupDeps = {
   findAccount: (googleUser: GoogleUser) => Promise<User | null>;
@@ -30,9 +31,8 @@ const defaultDeps: GoogleSignupDeps = {
   openSignup: isOpenSignupEnabled,
   recentSignups: () => countRecentSignups(),
   dailyCap: () => openSignupDailyCap(),
-  // Teams with a verified domain (F3) plug in here.
-  domainOrg: async () => null,
-  joinOrg: async () => undefined,
+  domainOrg: domainJoinFor,
+  joinOrg: joinOrganizationByDomain,
   // Same brake as email sign-up's signupLimiter: five new accounts per network per hour.
   allowFromNetwork: (ip) => checkTrpcRateLimit(`google-signup:${ip}`, 60 * 60 * 1000, 5),
 };

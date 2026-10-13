@@ -1,4 +1,4 @@
-export type PlanId = "free" | "basic" | "pro" | "max";
+export type PlanId = "free" | "basic" | "pro" | "max" | "team";
 
 export const PLAN_IDS = ["free", "basic", "pro", "max"] as const satisfies readonly PlanId[];
 export const PAID_PLAN_IDS = ["basic", "pro", "max"] as const satisfies readonly PlanId[];
@@ -50,8 +50,32 @@ export const PLAN_FEATURES = [
   "Export to Quizlet, Anki and Notion",
 ];
 
+/**
+ * Team plan (F3): paid per seat by a team's owner, and gives every member
+ * this allowance (each member has their own monthly allowance). PROPOSED,
+ * like the others: the per-seat price is set by the Stripe price in
+ * STRIPE_PRICE_TEAM, and `priceMonthlyUsd` here is only what the pages say.
+ * Not in PLANS, because it is bought for a team, not by one person.
+ */
+export const TEAM_PLAN: Plan = {
+  id: "team",
+  name: "Team",
+  priceMonthlyUsd: 12,
+  tagline: "For study groups, labs, classes and teams, paid per seat.",
+  transcriptionMinutesPerMonth: 1800,
+  aiGenerationsPerMonth: 1500,
+  purchasable: false,
+};
+
 export function getPlan(id: string | null | undefined): Plan {
+  if (id === "team") return TEAM_PLAN;
   return PLANS.find((plan) => plan.id === id) ?? PLANS[0];
+}
+
+/** The plan with the larger allowance: a member's own plan, or the one their team pays for. */
+export function betterPlan(a: Plan, b: Plan): Plan {
+  const score = (plan: Plan) => plan.transcriptionMinutesPerMonth * 10_000 + plan.aiGenerationsPerMonth;
+  return score(b) > score(a) ? b : a;
 }
 
 export function isPaidPlanId(id: string): id is PaidPlanId {

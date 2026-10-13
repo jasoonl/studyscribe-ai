@@ -978,3 +978,86 @@ export const attendeeEmails = mysqlTable("attendeeEmails", {
 ]);
 
 export type AttendeeEmail = typeof attendeeEmails.$inferSelect;
+
+/**
+ * Teams and schools (F3). One organisation per person (unique userId in
+ * organizationMembers). Billing is a Stripe subscription on the team's own
+ * customer with a per-seat price; `seats` is its quantity. A verified domain
+ * lets Google Workspace accounts from it join on their own (when autoJoin),
+ * and SAML sign-in goes through WorkOS when the app's admin links a WorkOS
+ * organisation.
+ */
+export const organizations = mysqlTable("organizations", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  ownerId: int("ownerId").notNull(),
+  verifiedDomain: varchar("verifiedDomain", { length: 253 }),
+  pendingDomain: varchar("pendingDomain", { length: 253 }),
+  domainToken: varchar("domainToken", { length: 64 }),
+  domainVerifiedAt: timestamp("domainVerifiedAt"),
+  autoJoin: boolean("autoJoin").default(false).notNull(),
+  restrictToDomain: boolean("restrictToDomain").default(false).notNull(),
+  workosOrganizationId: varchar("workosOrganizationId", { length: 64 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 32 }).default("none").notNull(),
+  seats: int("seats").default(0).notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  lastEventAt: int("lastEventAt").default(0).notNull(),
+}, (table) => [
+  uniqueIndex("organizations_domain_unique").on(table.verifiedDomain),
+  uniqueIndex("organizations_workos_unique").on(table.workosOrganizationId),
+  uniqueIndex("organizations_customer_unique").on(table.stripeCustomerId),
+  index("organizations_owner_idx").on(table.ownerId),
+]);
+
+export type Organization = typeof organizations.$inferSelect;
+
+export const organizationMembers = mysqlTable("organizationMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  orgId: int("orgId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "admin", "member"]).default("member").notNull(),
+}, (table) => [
+  uniqueIndex("organizationMembers_user_unique").on(table.userId),
+  index("organizationMembers_org_idx").on(table.orgId),
+]);
+
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+
+/** Invitations by email; only a hash of the link's token is stored. A pending invite holds a seat. */
+export const organizationInvites = mysqlTable("organizationInvites", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  expiresAt: timestamp("expiresAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  orgId: int("orgId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: mysqlEnum("role", ["admin", "member"]).default("member").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+  invitedBy: int("invitedBy").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+}, (table) => [
+  uniqueIndex("organizationInvites_token_unique").on(table.tokenHash),
+  index("organizationInvites_org_idx").on(table.orgId),
+  index("organizationInvites_email_idx").on(table.email),
+]);
+
+export type OrganizationInvite = typeof organizationInvites.$inferSelect;
+
+/** Courses a member put in the team's shared library; every member can open their recordings (view only). */
+export const organizationCourses = mysqlTable("organizationCourses", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  orgId: int("orgId").notNull(),
+  courseId: int("courseId").notNull(),
+  sharedBy: int("sharedBy").notNull(),
+}, (table) => [
+  uniqueIndex("organizationCourses_org_course_unique").on(table.orgId, table.courseId),
+  index("organizationCourses_course_idx").on(table.courseId),
+]);
+
+export type OrganizationCourse = typeof organizationCourses.$inferSelect;

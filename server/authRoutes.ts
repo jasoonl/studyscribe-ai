@@ -5,7 +5,9 @@ import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from ".
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleCode, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
-import { readOAuthState } from "./googleSignup";
+import { readOAuthState, safeNextPath } from "./googleSignup";
+import { autoJoinByDomain } from "./organizations";
+import { registerSsoRoutes } from "./ssoRoutes";
 import { completeGoogleSignup } from "./googleSignupFlow";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 import { authLimiter, passwordResetLimiter } from "./_core/rateLimit";
@@ -14,6 +16,7 @@ import { countRecentSignups, decideSignupPath, isOpenSignupEnabled, openSignupDa
 
 export function registerAuthRoutes(app: Express) {
   registerEmailVerificationRoutes(app);
+  registerSsoRoutes(app);
 
   /**
    * POST /api/auth/login
@@ -253,7 +256,8 @@ export function registerAuthRoutes(app: Express) {
       // Sign-up must carry the age and Terms confirmations ticked on the sign-up page.
       const consented = req.query.acceptedTerms === "1" && req.query.confirmedAge === "1";
       const invite = typeof req.query.inviteCode === "string" ? req.query.inviteCode.trim().slice(0, 64) : "";
-      const authUrl = getGoogleAuthUrl(origin, mode === "signup" ? "signup" : "login", undefined, mode === "signup" && consented, invite || undefined);
+      const next = safeNextPath(req.query.next) ?? undefined;
+      const authUrl = getGoogleAuthUrl(origin, mode === "signup" ? "signup" : "login", undefined, mode === "signup" && consented, invite || undefined, next);
 
       res.json({ authUrl });
     } catch (error) {
@@ -338,8 +342,10 @@ export function registerAuthRoutes(app: Express) {
 
       setSessionCookie(res, token);
 
-      // Redirect to dashboard
-      res.redirect(302, `${origin}/dashboard`);
+      // A Google Workspace account from a team's verified domain joins that team (F3).
+      await autoJoinByDomain(user, result.user.hostedDomain);
+
+      res.redirect(302, `${origin}${stateData.next ?? "/dashboard"}`);
     } catch (error) {
       console.error("[Auth] Google callback failed", error);
       res.status(500).json({ error: "Google callback failed" });

@@ -27,6 +27,8 @@ export type GoogleOAuthState = {
   consented?: boolean;
   /** Invite code typed into (or linked to) the sign-up page. */
   invite?: string;
+  /** Where to land after signing in: a path on this site only. */
+  next?: string;
   /** Unix seconds after which the state is refused. */
   exp: number;
   /** Random, so two states are never equal. */
@@ -70,9 +72,17 @@ export function readOAuthState(state: string, secret = stateSecret(), nowSeconds
     mode: data.mode,
     consented: data.consented === true,
     invite: typeof data.invite === "string" && data.invite.trim() ? data.invite.trim().slice(0, 64) : undefined,
+    next: safeNextPath(data.next) ?? undefined,
     exp: data.exp,
     n: String(data.n ?? ""),
   };
+}
+
+/** A same-site path to return to after sign-in ("/team/join/abc"), never another site. */
+export function safeNextPath(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 300) return null;
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\") || /[\r\n]/.test(value)) return null;
+  return value;
 }
 
 type InviteRow = { email: string; isUsed: number; expiresAt: Date };

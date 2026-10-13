@@ -57,6 +57,7 @@ import { startTranscription } from "./transcriptionStart";
 import { slidesRouter } from "./slides";
 import { meetingBotsRouter } from "./meetingBots";
 import { describeRecallConfig } from "./recall";
+import { teamsRouter } from "./organizations";
 import { attendeeShareRouter, isAttendeeEmailConfigured, postalAddress } from "./attendeeEmail";
 import { findCalendarEvent } from "./calendar";
 import { linkRecordingEvent, normalizeAttendees } from "./recordingEvents";
@@ -867,6 +868,7 @@ export const appRouter = router({
   slides: slidesRouter,
   meetingBots: meetingBotsRouter,
   attendeeShare: attendeeShareRouter,
+  teams: teamsRouter,
 
   studyGuides: router({
     list: protectedProcedure
