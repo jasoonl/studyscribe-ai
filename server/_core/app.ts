@@ -12,6 +12,7 @@ import { registerFollowUpCron } from "../followUps";
 import { registerIntegrationRoutes } from "../integrations";
 import { registerStripeWebhook } from "../billing";
 import { registerPublicApi } from "../publicApi";
+import { registerSlideRoutes } from "../slides";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -44,6 +45,7 @@ export function createApp() {
   registerOAuthRoutes(app);
   registerIntegrationRoutes(app);
   registerPublicApi(app);
+  registerSlideRoutes(app);
   app.use(
     "/api/trpc",
     createExpressMiddleware({

@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
+import { useSaveSlides } from "@/hooks/useSaveSlides";
 import { useCalendarTitle } from "@/components/CalendarReminderWatcher";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
 import { formatClockTime } from "@/lib/recordingClock";
@@ -61,6 +62,7 @@ export default function Record() {
   // Live text kept on screen after upload, until the real transcript replaces it.
   const [liveSnapshot, setLiveSnapshot] = useState<LiveTurn[] | null>(null);
   const createRecordingMutation = trpc.recordings.create.useMutation();
+  const saveSlides = useSaveSlides();
   const layout = useLiveLayout(liveSnapshot);
 
   // Poll for transcription status using lightweight getStatus endpoint
@@ -168,6 +170,7 @@ export default function Record() {
       setUploadComplete(true);
       if (live.turns.length > 0) setLiveSnapshot(live.turns);
       recorder.discard();
+      saveSlides(recording.id, finished.slides);
       toast.success("Recording uploaded! Waiting for transcription...");
 
       // Fallback redirect after 90s

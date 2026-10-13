@@ -15,6 +15,7 @@ import { deleteGroupSharesForRecordings } from "./groups";
 import { deleteTranslationsForRecordings } from "./translations";
 import { getDb } from "./db";
 import { deleteStoredAudio } from "./storage";
+import { deleteSlidesForRecordings } from "./slides";
 
 /**
  * Permanently removes recordings: the stored audio first, then every row that
@@ -28,6 +29,8 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
 
   const ids = rows.map((row) => row.id);
   await deleteStoredAudio(rows.map((row) => row.audioKey ?? ""));
+  // Captured slides are stored files too; the same rule applies.
+  await deleteSlidesForRecordings(ids);
 
   for (let i = 0; i < ids.length; i += 500) {
     const batch = ids.slice(i, i + 500);

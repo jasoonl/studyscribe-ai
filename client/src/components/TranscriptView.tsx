@@ -12,6 +12,8 @@ import { downloadTranscriptExport, type TranscriptExportFormat } from "@/lib/tra
 import { formatTranscriptTimestamp, getActiveTranscriptSegmentIndex, type TranscriptSegment } from "@/lib/transcriptSegments";
 import { CommentsPanel, SelectionToolbar, anchorIsCurrent, readSelection, useTranscriptAnnotations, type AnnotationThread, type PendingSelection } from "@/components/TranscriptAnnotations";
 import { splitIntoRuns } from "@shared/annotations";
+import { Fragment } from "react";
+import { SlideViewer, slidesBeforeSegments, type SlideItem } from "@/components/RecordingSlides";
 
 /** Manual scrolling pauses follow-along for this long, so reading back isn't fought. */
 const FOLLOW_PAUSE_MS = 5000;
@@ -81,6 +83,7 @@ export function TranscriptView({
   canRenameSpeakers = true,
   showKeyTerms = true,
   translatable = false,
+  slides = [],
 }: {
   recordingId: number;
   title: string;
@@ -97,7 +100,30 @@ export function TranscriptView({
   showKeyTerms?: boolean;
   /** "Translate" next to Export; translations are stored per owner. */
   translatable?: boolean;
+  /** Slides captured while recording (A6), shown between the lines at their times. */
+  slides?: SlideItem[];
 }) {
+  const [openSlide, setOpenSlide] = useState<number | null>(null);
+  const slidePlacement = useMemo(() => slidesBeforeSegments(slides, segments.map(segment => segment.start)), [slides, segments]);
+  const slideNumber = (slide: SlideItem) => slides.findIndex(item => item.id === slide.id);
+  const renderSlide = (slide: SlideItem) => {
+    const number = slideNumber(slide);
+    return (
+      <figure key={`slide-${slide.id}`} className="px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setOpenSlide(number)}
+          aria-label={`Open slide ${number + 1}, captured at ${formatTranscriptTimestamp(slide.atSeconds)}`}
+          className="block w-full max-w-sm overflow-hidden rounded-lg border border-border bg-muted transition-colors hover:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <img src={slide.url} alt="" loading="lazy" width={slide.width} height={slide.height} className="h-auto w-full" />
+        </button>
+        <figcaption className="mt-1 text-xs text-muted-foreground">
+          Slide {number + 1} <span className="font-mono tabular-nums">{formatTranscriptTimestamp(slide.atSeconds)}</span>
+        </figcaption>
+      </figure>
+    );
+  };
   const [query, setQuery] = useState("");
   const [matchCursor, setMatchCursor] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -314,8 +340,9 @@ export function TranscriptView({
           const isCurrentMatch = index === currentMatchRow;
           const showSpeaker = !!segment.speaker && segment.speaker !== segments[index - 1]?.speaker;
           return (
+            <Fragment key={`${segment.id}-${index}`}>
+            {slidePlacement.before.get(index)?.map(renderSlide)}
             <div
-              key={`${segment.id}-${index}`}
               ref={element => { rowRefs.current[index] = element; }}
               onClick={() => {
                 // Selecting words to comment on must not also jump the audio.
@@ -370,9 +397,12 @@ export function TranscriptView({
                 </button>
               )}
             </div>
+            </Fragment>
           );
         })}
+        {slidePlacement.after.map(renderSlide)}
       </div>
+      <SlideViewer slides={slides} index={openSlide} onIndexChange={setOpenSlide} onClose={() => setOpenSlide(null)} onSeek={hasAudio ? onSeek : undefined} />
 
       {showAnnotations && permissions && (
         <CommentsPanel

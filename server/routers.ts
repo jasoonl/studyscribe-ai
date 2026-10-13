@@ -53,6 +53,7 @@ import { translationsRouter } from "./translations";
 import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 import { apiKeysRouter } from "./apiKeys";
+import { slidesRouter } from "./slides";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -840,6 +841,7 @@ export const appRouter = router({
   translations: translationsRouter,
   calendar: calendarRouter,
   apiKeys: apiKeysRouter,
+  slides: slidesRouter,
 
   studyGuides: router({
     list: protectedProcedure

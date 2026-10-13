@@ -875,3 +875,24 @@ export const apiKeys = mysqlTable("apiKeys", {
 ]);
 
 export type ApiKey = typeof apiKeys.$inferSelect;
+
+/**
+ * Slides captured from a shared tab or screen while recording (A6): one JPEG
+ * in storage per row, shown in the transcript at `atSeconds`.
+ */
+export const recordingSlides = mysqlTable("recordingSlides", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  atSeconds: int("atSeconds").notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  width: int("width").notNull(),
+  height: int("height").notNull(),
+  bytes: int("bytes").notNull(),
+}, (table) => [
+  index("recordingSlides_recording_idx").on(table.recordingId, table.atSeconds),
+  index("recordingSlides_user_idx").on(table.userId),
+]);
+
+export type RecordingSlide = typeof recordingSlides.$inferSelect;

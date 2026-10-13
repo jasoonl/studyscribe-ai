@@ -31,6 +31,7 @@ import { deleteTranslationsForUser, exportTranslationsForUser } from "./translat
 import { deleteCalendarDataForUser, exportCalendarDataForUser } from "./calendar";
 import { deleteProviderTranscript } from "./speakerDiarization";
 import { deleteApiKeysForUser, exportApiKeysForUser } from "./apiKeys";
+import { deleteSlidesForUser, exportSlidesForUser } from "./slides";
 
 type Confirmable = { email: string; passwordHash: string | null };
 
@@ -117,6 +118,7 @@ export const accountRouter = router({
       translations: await exportTranslationsForUser(userId),
       calendarReminders: await exportCalendarDataForUser(userId),
       apiKeys: await exportApiKeysForUser(userId),
+      slides: await exportSlidesForUser(userId),
     };
   }),
 
@@ -191,6 +193,7 @@ export const accountRouter = router({
       await deleteTranslationsForUser(userId);
       await deleteCalendarDataForUser(userId);
       await deleteApiKeysForUser(userId);
+      await deleteSlidesForUser(userId);
       await db.delete(quizzes).where(eq(quizzes.userId, userId));
       await db.delete(emailDrafts).where(eq(emailDrafts.userId, userId));
       await db.delete(userNotifications).where(eq(userNotifications.userId, userId));

@@ -12,6 +12,7 @@ import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { probeAudioDuration } from "@/lib/probeAudioDuration";
 import { useRecorder, useShowsRecorder } from "@/contexts/RecorderContext";
+import { useSaveSlides } from "@/hooks/useSaveSlides";
 import { MarkMoment } from "@/components/MarkMoment";
 import { MAX_LINK_IMPORT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
@@ -68,6 +69,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [createdRecordingId, setCreatedRecordingId] = useState<number | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const createRecordingMutation = trpc.recordings.create.useMutation();
+  const saveSlides = useSaveSlides();
   const createFromUrlMutation = trpc.recordings.createFromUrl.useMutation();
   const liveLayout = useLiveLayout(liveSnapshot);
 
@@ -155,6 +157,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
       setUploadComplete(true);
       if (live.turns.length > 0) setLiveSnapshot(live.turns);
       recorder.discard();
+      saveSlides(recording.id, finished.slides);
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
       toast.success("Recording uploaded! Waiting for transcription...");
