@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { chapterMarkPositions } from "@/lib/chapterMarks";
 import { getSkipSilenceEnabled, setSkipSilenceEnabled } from "@/lib/preferences";
 import { computeSilentGaps, skipTargetAt, totalSilence, type TimedSegment } from "@shared/silence";
 
@@ -17,6 +18,8 @@ interface AudioPlayerProps {
   startAt?: number;
   /** Timed transcript segments; when given, the player offers "Skip silence" over the gaps between them. */
   segments?: TimedSegment[];
+  /** Chapters (B8); each after the first gets a mark on the progress bar. */
+  chapters?: Array<{ start: number; title: string }> | null;
 }
 
 function formatSkipped(seconds: number) {
@@ -59,7 +62,7 @@ function describeMediaError(error: MediaError | null): string | null {
   }
 }
 
-export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration, startAt, segments }: AudioPlayerProps, ref) {
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration, startAt, segments, chapters }: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -218,6 +221,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
 
   // Until the browser reports the file's own length, show the length recorded with the recording.
   const shownDuration = duration || (fallbackDuration && fallbackDuration > 0 ? fallbackDuration : 0);
+  const chapterMarks = useMemo(() => chapterMarkPositions(chapters, shownDuration), [chapters, shownDuration]);
 
   const formatTime = (time: number) => {
     if (!time || isNaN(time)) return "0:00";
@@ -271,15 +275,31 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
         </span>
       </div>
 
-      {/* Progress Slider */}
-      <Slider
-        value={[currentTime]}
-        min={0}
-        max={shownDuration || 100}
-        step={0.1}
-        onValueChange={handleSeek}
-        className="w-full"
-      />
+      {/* Progress Slider, with a mark where each chapter starts */}
+      <div className="relative">
+        <Slider
+          value={[currentTime]}
+          min={0}
+          max={shownDuration || 100}
+          step={0.1}
+          onValueChange={handleSeek}
+          className="w-full"
+          thumbLabel={`Seek in ${title}`}
+          thumbValueText={`${formatTime(currentTime)} of ${formatTime(shownDuration)}`}
+        />
+        {chapterMarks.length > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 h-3 -translate-y-1/2" aria-hidden="true">
+            {chapterMarks.map(mark => (
+              <span
+                key={mark.start}
+                title={mark.label}
+                className="absolute top-0 h-3 w-0.5 -translate-x-1/2 rounded-full bg-foreground/45"
+                style={{ left: `${mark.percent}%` }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {segments && segments.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border pt-3">

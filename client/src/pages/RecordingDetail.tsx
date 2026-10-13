@@ -130,6 +130,8 @@ export default function RecordingDetail() {
   const [retryLanguage, setRetryLanguage] = useState("auto");
   const [retryVocabulary, setRetryVocabulary] = useState<string | null>(null);
   const needsRetry = recording?.status === "failed" || (recording?.status === "processing" && !recording?.transcriptionProviderId);
+  // Same query (and cache entry) as RecordingChapters; feeds the player's chapter marks.
+  const { data: insights } = trpc.insights.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && recording?.status === "completed" });
   const { data: storedVocabulary } = trpc.vocabulary.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && needsRetry });
   const retryTranscription = trpc.recordings.retryTranscription.useMutation({
     onSuccess: () => {
@@ -364,7 +366,7 @@ export default function RecordingDetail() {
                     <h3 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
                     </h3>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} chapters={insights?.chapters} />
                     <RecordingBookmarks
                       recordingId={recordingId || 0}
                       playbackTime={playbackTime}

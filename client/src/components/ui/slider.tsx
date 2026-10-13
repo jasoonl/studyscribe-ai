@@ -9,8 +9,15 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  thumbLabel,
+  thumbValueText,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** Accessible name for the thumb(s); Radix puts the slider role on the thumb, not the root. */
+  thumbLabel?: string;
+  /** Human-readable value for screen readers, e.g. "1:05 of 12:30". */
+  thumbValueText?: string;
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -51,6 +58,8 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
+          aria-label={thumbLabel}
+          aria-valuetext={thumbValueText}
           className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}

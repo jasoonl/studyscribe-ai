@@ -174,6 +174,7 @@ export default function Admin() {
                   </Badge>
                   <Badge variant="outline">Model: {transcriptionConfig.live.model}</Badge>
                   <Badge variant="outline">Session cap: {Math.round(transcriptionConfig.live.maxSessionSeconds / 60)} min</Badge>
+                  <Badge variant="outline">Speaker labels: {transcriptionConfig.live.speakerLabels ? "on" : "off"}</Badge>
                 </div>
                 <p className="text-xs text-gray-500 break-all">
                   {transcriptionConfig.live.message ??
