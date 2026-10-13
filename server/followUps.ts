@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "crypto";
+import { sweepMeetingBots } from "./meetingBots";
 import type { Express, Request, Response } from "express";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray, isNull, lte } from "drizzle-orm";
@@ -240,7 +241,12 @@ export function registerFollowUpCron(app: Express) {
         console.error("[calendar] daily digest failed:", error);
         return null;
       });
-      res.json({ ...result, webhooks, calendar });
+      // Meeting note-takers (A4): retry imports that did not finish and check bots nobody looked at.
+      const meetingBots = await sweepMeetingBots().catch((error) => {
+        console.error("[meetingBots] daily sweep failed:", error);
+        return null;
+      });
+      res.json({ ...result, webhooks, calendar, meetingBots });
     } catch (error) {
       console.error("[followUps] reminder run failed:", error);
       res.status(500).json({ error: "Reminder run failed" });

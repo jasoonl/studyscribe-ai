@@ -1,15 +1,16 @@
 import { TRPCError } from "@trpc/server";
 import { type SQL, and, eq, inArray, or, sql } from "drizzle-orm";
-import { groupShares, recordingCourses, recordingShares, recordings, studyGroupMembers, studyGroups } from "../drizzle/schema";
+import { groupShares, organizationCourses, organizationMembers, recordingCourses, recordingShares, recordings, studyGroupMembers, studyGroups } from "../drizzle/schema";
 import { type AccessRole, type ShareRole, roleAllows, strongestRole } from "@shared/sharing";
 import { getDb, getRecordingById } from "./db";
 import { isSchemaMissingError, isUnknownColumnError, tolerateMissingSchema } from "./schemaTolerance";
 
 /**
- * Who may do what with a recording (D3, D2). Access comes from three places:
- * owning it, a direct share (recordingShares.role), or membership of a study
- * group the recording, or the course it is filed under, was shared to. The
- * strongest grant wins. Every procedure that serves shared content goes
+ * Who may do what with a recording (D3, D2, F3). Access comes from four
+ * places: owning it, a direct share (recordingShares.role), membership of a
+ * study group the recording, or the course it is filed under, was shared to,
+ * or membership of a team whose shared library holds that course (view
+ * only). The strongest grant wins. Every procedure that serves shared content goes
  * through `requireRecordingAccess` so the role is checked on the server.
  */
 
@@ -140,6 +141,30 @@ export async function getGroupRole(recordingId: number, userId: number): Promise
   return strongestRole(rows.map(row => row.role));
 }
 
+/**
+ * "view" when the recording's course is in the shared library of the team the
+ * person belongs to, and the course's owner is still in that team.
+ */
+export async function getOrgRole(recordingId: number, ownerId: number, userId: number): Promise<ShareRole | null> {
+  const db = await requireDb();
+  const memberships = await tolerateMissingSchema(
+    "teams",
+    () => db.select({ orgId: organizationMembers.orgId, userId: organizationMembers.userId }).from(organizationMembers).where(inArray(organizationMembers.userId, [userId, ownerId])),
+    [] as Array<{ orgId: number; userId: number }>,
+  );
+  const mine = memberships.find(row => row.userId === userId)?.orgId;
+  const owners = memberships.find(row => row.userId === ownerId)?.orgId;
+  if (!mine || mine !== owners) return null;
+  const courseId = await courseIdForRecording(recordingId);
+  if (courseId === null) return null;
+  const rows = await tolerateMissingSchema(
+    "teams",
+    () => db.select({ id: organizationCourses.id }).from(organizationCourses).where(and(eq(organizationCourses.orgId, mine), eq(organizationCourses.courseId, courseId))).limit(1),
+    [] as Array<{ id: number }>,
+  );
+  return rows.length ? "view" : null;
+}
+
 export type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingById>>>;
 
 /** The person's role on a recording, or null when they have no access (or it is in the trash). */
@@ -147,8 +172,8 @@ export async function getRecordingAccess(recordingId: number, userId: number): P
   const recording = await getRecordingById(recordingId);
   if (!recording || recording.isDeleted) return null;
   if (recording.userId === userId) return { recording, role: "owner" };
-  const [direct, viaGroup] = await Promise.all([getDirectShare(recordingId, userId), getGroupRole(recordingId, userId)]);
-  const role = strongestRole<ShareRole>([direct?.role, viaGroup]);
+  const [direct, viaGroup, viaTeam] = await Promise.all([getDirectShare(recordingId, userId), getGroupRole(recordingId, userId), getOrgRole(recordingId, recording.userId, userId)]);
+  const role = strongestRole<ShareRole>([direct?.role, viaGroup, viaTeam]);
   return role ? { recording, role } : null;
 }
 

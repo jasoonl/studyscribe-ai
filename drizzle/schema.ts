@@ -851,3 +851,213 @@ export const calendarReminders = mysqlTable("calendarReminders", {
 ]);
 
 export type CalendarReminder = typeof calendarReminders.$inferSelect;
+
+/**
+ * Personal API keys (E5). Only a SHA-256 hash of the key is stored; the key
+ * itself is shown once when it is made. `prefix` is the first characters, so
+ * people can tell their keys apart. `scope` is "read" or "write" (write also
+ * reads). Revoked keys keep their row for the record and stop working.
+ */
+export const apiKeys = mysqlTable("apiKeys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  prefix: varchar("prefix", { length: 16 }).notNull(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  scope: mysqlEnum("scope", ["read", "write"]).default("read").notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  requestCount: int("requestCount").default(0).notNull(),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("apiKeys_hash_unique").on(table.keyHash),
+  index("apiKeys_user_idx").on(table.userId),
+]);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+
+/**
+ * Slides captured from a shared tab or screen while recording (A6): one JPEG
+ * in storage per row, shown in the transcript at `atSeconds`.
+ */
+export const recordingSlides = mysqlTable("recordingSlides", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  atSeconds: int("atSeconds").notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  width: int("width").notNull(),
+  height: int("height").notNull(),
+  bytes: int("bytes").notNull(),
+}, (table) => [
+  index("recordingSlides_recording_idx").on(table.recordingId, table.atSeconds),
+  index("recordingSlides_user_idx").on(table.userId),
+]);
+
+export type RecordingSlide = typeof recordingSlides.$inferSelect;
+
+/**
+ * Meeting note-takers (A4): a Recall.ai bot sent to a Zoom, Google Meet or
+ * Teams call. Its status follows Recall's webhooks (and polling while a page
+ * is open); when the bot is done, its audio is copied into storage as a
+ * normal recording (`recordingId`) and Recall's copy is deleted.
+ */
+export const meetingBots = mysqlTable("meetingBots", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+  userId: int("userId").notNull(),
+  recallBotId: varchar("recallBotId", { length: 128 }),
+  meetingUrl: varchar("meetingUrl", { length: 1024 }).notNull(),
+  platform: varchar("platform", { length: 32 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  botName: varchar("botName", { length: 100 }).notNull(),
+  /** scheduled, joining, waiting_room, in_call, recording, ended, done, importing, imported, failed, cancelled */
+  status: varchar("status", { length: 32 }).default("scheduled").notNull(),
+  statusDetail: varchar("statusDetail", { length: 255 }),
+  joinAt: timestamp("joinAt"),
+  calendarEventId: varchar("calendarEventId", { length: 255 }),
+  /** Attendees copied from the calendar event (JSON text), for sharing notes afterwards (D4). */
+  attendees: text("attendees"),
+  recordingId: int("recordingId"),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  lastEventAt: int("lastEventAt").default(0).notNull(),
+}, (table) => [
+  uniqueIndex("meetingBots_recall_unique").on(table.recallBotId),
+  index("meetingBots_user_idx").on(table.userId, table.status),
+]);
+
+export type MeetingBot = typeof meetingBots.$inferSelect;
+
+/**
+ * The calendar event (or bot meeting) a recording was made from, with the
+ * attendees at the time, so the owner can offer them the notes (D4).
+ * `attendees` is JSON text: [{ email, name }].
+ */
+export const recordingEvents = mysqlTable("recordingEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  source: mysqlEnum("source", ["calendar", "meeting_bot"]).notNull(),
+  eventId: varchar("eventId", { length: 255 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  startsAt: timestamp("startsAt"),
+  attendees: text("attendees"),
+}, (table) => [
+  uniqueIndex("recordingEvents_recording_unique").on(table.recordingId),
+  index("recordingEvents_user_idx").on(table.userId),
+]);
+
+export type RecordingEvent = typeof recordingEvents.$inferSelect;
+
+/**
+ * Addresses that asked not to get email from StudyScribe (D4). Only a
+ * SHA-256 hash of the normalised address is kept, so the list itself does
+ * not hold anyone's address; a send checks each recipient's hash.
+ */
+export const emailOptOuts = mysqlTable("emailOptOuts", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  emailHash: varchar("emailHash", { length: 64 }).notNull(),
+}, (table) => [uniqueIndex("emailOptOuts_hash_unique").on(table.emailHash)]);
+
+/** Notes a recording's owner emailed to an event's attendees (D4), one row per recipient. */
+export const attendeeEmails = mysqlTable("attendeeEmails", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  recordingId: int("recordingId").notNull(),
+  userId: int("userId").notNull(),
+  noteId: int("noteId"),
+  recipient: varchar("recipient", { length: 254 }).notNull(),
+  providerId: varchar("providerId", { length: 128 }),
+}, (table) => [
+  index("attendeeEmails_recording_idx").on(table.recordingId),
+  index("attendeeEmails_user_idx").on(table.userId, table.createdAt),
+]);
+
+export type AttendeeEmail = typeof attendeeEmails.$inferSelect;
+
+/**
+ * Teams and schools (F3). One organisation per person (unique userId in
+ * organizationMembers). Billing is a Stripe subscription on the team's own
+ * customer with a per-seat price; `seats` is its quantity. A verified domain
+ * lets Google Workspace accounts from it join on their own (when autoJoin),
+ * and SAML sign-in goes through WorkOS when the app's admin links a WorkOS
+ * organisation.
+ */
+export const organizations = mysqlTable("organizations", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  ownerId: int("ownerId").notNull(),
+  verifiedDomain: varchar("verifiedDomain", { length: 253 }),
+  pendingDomain: varchar("pendingDomain", { length: 253 }),
+  domainToken: varchar("domainToken", { length: 64 }),
+  domainVerifiedAt: timestamp("domainVerifiedAt"),
+  autoJoin: boolean("autoJoin").default(false).notNull(),
+  restrictToDomain: boolean("restrictToDomain").default(false).notNull(),
+  workosOrganizationId: varchar("workosOrganizationId", { length: 64 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 32 }).default("none").notNull(),
+  seats: int("seats").default(0).notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  lastEventAt: int("lastEventAt").default(0).notNull(),
+}, (table) => [
+  uniqueIndex("organizations_domain_unique").on(table.verifiedDomain),
+  uniqueIndex("organizations_workos_unique").on(table.workosOrganizationId),
+  uniqueIndex("organizations_customer_unique").on(table.stripeCustomerId),
+  index("organizations_owner_idx").on(table.ownerId),
+]);
+
+export type Organization = typeof organizations.$inferSelect;
+
+export const organizationMembers = mysqlTable("organizationMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  orgId: int("orgId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "admin", "member"]).default("member").notNull(),
+}, (table) => [
+  uniqueIndex("organizationMembers_user_unique").on(table.userId),
+  index("organizationMembers_org_idx").on(table.orgId),
+]);
+
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+
+/** Invitations by email; only a hash of the link's token is stored. A pending invite holds a seat. */
+export const organizationInvites = mysqlTable("organizationInvites", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  expiresAt: timestamp("expiresAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  orgId: int("orgId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: mysqlEnum("role", ["admin", "member"]).default("member").notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+  invitedBy: int("invitedBy").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+}, (table) => [
+  uniqueIndex("organizationInvites_token_unique").on(table.tokenHash),
+  index("organizationInvites_org_idx").on(table.orgId),
+  index("organizationInvites_email_idx").on(table.email),
+]);
+
+export type OrganizationInvite = typeof organizationInvites.$inferSelect;
+
+/** Courses a member put in the team's shared library; every member can open their recordings (view only). */
+export const organizationCourses = mysqlTable("organizationCourses", {
+  id: int("id").autoincrement().primaryKey(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  orgId: int("orgId").notNull(),
+  courseId: int("courseId").notNull(),
+  sharedBy: int("sharedBy").notNull(),
+}, (table) => [
+  uniqueIndex("organizationCourses_org_course_unique").on(table.orgId, table.courseId),
+  index("organizationCourses_course_idx").on(table.courseId),
+]);
+
+export type OrganizationCourse = typeof organizationCourses.$inferSelect;

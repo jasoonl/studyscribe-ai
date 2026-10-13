@@ -44,6 +44,8 @@ export type CalendarEvent = {
   allDay: boolean;
   location: string | null;
   meetingUrl: string | null;
+  /** Other people invited (not the calendar's owner, not rooms), for sharing notes afterwards (D4). */
+  attendees: Array<{ email: string; name: string | null }>;
 };
 
 /**
@@ -72,6 +74,12 @@ export function parseCalendarEvents(items: unknown): CalendarEvent[] {
       allDay,
       location: typeof item.location === "string" && item.location.trim() ? item.location.trim() : null,
       meetingUrl: meetingUrl && /^https:\/\//.test(meetingUrl) ? meetingUrl : null,
+      attendees: Array.isArray(item.attendees)
+        ? item.attendees
+            .filter((attendee: any) => attendee && !attendee.self && !attendee.resource && typeof attendee.email === "string")
+            .map((attendee: any) => ({ email: String(attendee.email).toLowerCase(), name: typeof attendee.displayName === "string" && attendee.displayName.trim() ? attendee.displayName.trim() : null }))
+            .slice(0, 100)
+        : [],
     });
   }
   return events.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
@@ -147,7 +155,7 @@ async function fetchEvents(userId: number, timeMin: Date, timeMax: Date): Promis
   url.searchParams.set("singleEvents", "true");
   url.searchParams.set("orderBy", "startTime");
   url.searchParams.set("maxResults", "50");
-  url.searchParams.set("fields", "items(id,status,summary,location,start,end,hangoutLink,conferenceData(entryPoints(entryPointType,uri)),attendees(self,responseStatus))");
+  url.searchParams.set("fields", "items(id,status,summary,location,start,end,hangoutLink,conferenceData(entryPoints(entryPointType,uri)),attendees(email,displayName,self,resource,responseStatus))");
   const response = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(HTTP_TIMEOUT_MS) });
   if (response.status === 401 || response.status === 403) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Google Calendar no longer accepts this connection. Reconnect it in Settings." });
@@ -240,6 +248,21 @@ export async function sendCalendarDigests(now = new Date()) {
   return { users: byUser.size, reminders: upcoming.length };
 }
 
+/**
+ * One event from the person's calendar, read from Google (not from the
+ * page), for linking a recording or a note-taker to it. Null when the
+ * calendar is not connected or the event is not within a day of `around`.
+ */
+export async function findCalendarEvent(userId: number, eventId: string, around = new Date()): Promise<CalendarEvent | null> {
+  if (!isProviderConfigured("google_calendar") || !(await isConnected(userId))) return null;
+  try {
+    const events = await fetchEvents(userId, new Date(around.getTime() - 24 * 60 * 60_000), new Date(around.getTime() + UPCOMING_DAYS * 24 * 60 * 60_000));
+    return events.find((event) => event.id === eventId) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteCalendarDataForUser(userId: number) {
   const db = await requireDb();
   await tolerateMissingSchema("calendar", () => db.delete(calendarReminders).where(eq(calendarReminders.userId, userId)), undefined);
@@ -265,7 +288,14 @@ export const calendarRouter = router({
       const events = await fetchEvents(ctx.user.id, new Date(now.getTime() - 60 * 60_000), new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60_000));
       const live = events.filter((event) => event.allDay || !event.end || Date.parse(event.end) > now.getTime());
       const reminded = await remindersFor(ctx.user.id, live.map((event) => event.id));
-      return { configured, connected: true as const, accountLabel: connection.accountLabel, events: live.map((event) => ({ ...event, reminder: reminded.has(event.id) })), error: null };
+      // Attendee addresses stay on the server; the list only needs how many there are.
+      return {
+        configured,
+        connected: true as const,
+        accountLabel: connection.accountLabel,
+        events: live.map(({ attendees, ...event }) => ({ ...event, attendeeCount: attendees.length, reminder: reminded.has(event.id) })),
+        error: null,
+      };
     } catch (error) {
       return { configured, connected: true as const, accountLabel: connection.accountLabel, events: [], error: error instanceof Error ? error.message : "Could not read your calendar right now." };
     }

@@ -1,7 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { subscriptions, usageEvents } from "../drizzle/schema";
-import { getPlan, type Plan } from "@shared/plans";
+import { betterPlan, getPlan, type Plan } from "@shared/plans";
+import { teamPlanFor } from "./organizations";
 import { effectivePlanId } from "./billingState";
 import { getDb } from "./db";
 import { isMissingTableError } from "./bookmarks";
@@ -41,7 +42,10 @@ export async function getSubscriptionRow(userId: number) {
 }
 
 export async function getPlanForUser(userId: number): Promise<Plan> {
-  return getPlan(effectivePlanId(await getSubscriptionRow(userId)));
+  const own = getPlan(effectivePlanId(await getSubscriptionRow(userId)));
+  // A member of a team with a live Team plan gets its allowance when it is larger.
+  const team = await teamPlanFor(userId).catch(() => null);
+  return team ? betterPlan(own, team) : own;
 }
 
 export async function getUsageTotals(userId: number, period = usagePeriod()): Promise<UsageTotals> {

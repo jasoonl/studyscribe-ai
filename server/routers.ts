@@ -52,6 +52,15 @@ import { onboardingRouter } from "./onboarding";
 import { translationsRouter } from "./translations";
 import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
+import { apiKeysRouter } from "./apiKeys";
+import { startTranscription } from "./transcriptionStart";
+import { slidesRouter } from "./slides";
+import { meetingBotsRouter } from "./meetingBots";
+import { describeRecallConfig } from "./recall";
+import { teamsRouter } from "./organizations";
+import { attendeeShareRouter, isAttendeeEmailConfigured, postalAddress } from "./attendeeEmail";
+import { findCalendarEvent } from "./calendar";
+import { linkRecordingEvent, normalizeAttendees } from "./recordingEvents";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
 
@@ -69,6 +78,8 @@ export const appRouter = router({
     transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
     storage: adminProcedure.query(() => getBlobUsage()),
     billing: billingDiagnostics,
+    meetingBots: adminProcedure.query(() => describeRecallConfig()),
+    attendeeEmail: adminProcedure.query(() => ({ configured: isAttendeeEmailConfigured(), resend: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL), postalAddress: Boolean(postalAddress()) })),
     youtube: adminProcedure
       .input(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }))
       .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
@@ -186,6 +197,10 @@ export const appRouter = router({
         bookmarks: z.array(bookmarkInputSchema).max(MAX_BOOKMARKS_PER_RECORDING).optional(),
         /** Extra words to listen for in this recording only. */
         keyterms: keytermsInput,
+        /** The calendar event this recording was made during (A5), for offering its notes to the attendees (D4). */
+        calendarEventId: z.string().min(1).max(255).optional(),
+        /** When recording started (ms), to find that event. */
+        startedAt: z.number().int().positive().optional(),
       }).refine((value) => Boolean(value.audioBase64 || value.audioUpload), {
         message: "Audio data is required",
       }))
@@ -261,6 +276,17 @@ export const appRouter = router({
         }
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        if (input.calendarEventId) {
+          // Read from Google, not from the page; a failure only means no attendee list.
+          try {
+            const event = await findCalendarEvent(ctx.user.id, input.calendarEventId, new Date(input.startedAt ?? Date.now()));
+            if (event) {
+              await linkRecordingEvent({ recordingId: recording.id, userId: ctx.user.id, source: "calendar", eventId: event.id, title: event.title, startsAt: event.allDay ? null : new Date(event.start), attendees: normalizeAttendees(event.attendees, ctx.user.email) });
+            }
+          } catch (error) {
+            console.warn("[calendar] could not link recording to its event:", error instanceof Error ? error.message : error);
+          }
+        }
         await startTranscription(recording, actualFileKey, mimeType, input.language, input.keyterms);
 
         return recording;
@@ -838,6 +864,11 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   translations: translationsRouter,
   calendar: calendarRouter,
+  apiKeys: apiKeysRouter,
+  slides: slidesRouter,
+  meetingBots: meetingBotsRouter,
+  attendeeShare: attendeeShareRouter,
+  teams: teamsRouter,
 
   studyGuides: router({
     list: protectedProcedure
@@ -1285,50 +1316,6 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 type RecordingRow = NonNullable<Awaited<ReturnType<typeof getRecordingByIdDb>>>;
-
-/**
- * Submits a stored recording's audio to the transcription provider and
- * records the returned job id. Deliberately does only this and returns --
- * it does not itself wait for the result. In webhook mode AssemblyAI calls
- * /api/webhooks/assemblyai back when done; otherwise recordings.getStatus
- * (already polled by the client every 3s) drives completion via
- * advancePollingTranscription below. A submission alone takes a fraction
- * of a second, so unlike the old approach -- submitting AND polling for up
- * to several minutes inside one fire-and-forget call from this mutation --
- * it reliably finishes within the request's own lifecycle regardless of
- * how long transcription ends up taking. That mattered because Vercel does
- * not guarantee unawaited work continues once the HTTP response has been
- * sent, and this function has a 60s maxDuration budget; a poll that
- * outlived it left the recording silently stuck in "processing" forever,
- * with no error and no way to know why.
- */
-async function startTranscription(
-  recording: { id: number; userId: number },
-  audioKey: string,
-  mimeType: string,
-  language?: string,
-  /** Extra vocabulary given with this request; otherwise the recording's stored terms are used. */
-  keyterms?: string[],
-): Promise<void> {
-  try {
-    // Hand the provider a link served by this app rather than the raw
-    // storage URL: it ends in a real audio extension and serves the real
-    // content type, where the stored object is a generic `.bin`, and it
-    // outlives storage's short-lived signed URLs for queued jobs.
-    const providerAudioUrl = process.env.PUBLIC_APP_URL
-      ? buildTranscriptionAudioUrl(audioKey, mimeType, process.env.PUBLIC_APP_URL)
-      : await storageGetSignedUrl(audioKey);
-    await assertSignedAudioUrlIsFetchable(providerAudioUrl);
-
-    const webhookUrl = isAssemblyAiWebhookConfigured() ? buildAssemblyAiWebhookUrl() : undefined;
-    const vocabulary = await resolveKeyterms(recording.userId, recording.id, keyterms);
-    const { providerId } = await submitTranscriptionJob({ audioUrl: providerAudioUrl, webhookUrl, language, keyterms: vocabulary });
-    await setRecordingTranscriptionProviderId(recording.id, providerId);
-  } catch (error) {
-    await updateRecordingStatus(recording.id, "failed");
-    throw error;
-  }
-}
 
 /** Recovers recordings that never got as far as a provider submission, e.g. if the process restarted mid-request. */
 export async function resumeProcessingRecordings(): Promise<void> {

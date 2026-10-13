@@ -49,5 +49,5 @@ const warned = new Set<string>();
 function warnOnce(feature: string) {
   if (warned.has(feature)) return;
   warned.add(feature);
-  console.warn(`[${feature}] tables missing; run \`npm run db:migrate\` (migrations 0022 and 0023) to enable it`);
+  console.warn(`[${feature}] tables missing; run \`npm run db:migrate\` (migrations 0022 onwards) to enable it`);
 }

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, UsersRound, Sparkles, ListChecks, GraduationCap } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, UsersRound, Sparkles, ListChecks, GraduationCap, Building2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -17,6 +17,7 @@ import { UpcomingTasks } from "@/components/UpcomingTasks";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { EmailConfirmationBanner } from "@/components/EmailConfirmationBanner";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
+import { MeetingNoteTakers, SendNoteTakerDialog, type NoteTakerPrefill } from "@/components/MeetingNoteTakers";
 
 function TrashTabContent() {
   const { data: deletedRecordings, isLoading } = trpc.recordings.listDeleted.useQuery();
@@ -130,6 +131,8 @@ export default function Dashboard() {
   const { user, logout, loading: authLoading, isAdmin } = useAuth();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("library");
+  const [noteTaker, setNoteTaker] = useState<NoteTakerPrefill | null>(null);
+  const teamName = trpc.teams.mine.useQuery(undefined, { staleTime: 5 * 60_000, retry: false }).data?.org?.name ?? null;
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "student" | "professional">("all");
   const [sortBy, setSortBy] = useState<"recent" | "oldest" | "name">("recent");
@@ -357,6 +360,14 @@ export default function Dashboard() {
               <span>Groups</span>
             </button>
           </Link>
+          {teamName && (
+            <Link href="/team">
+              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
+                <Building2 className="w-4 h-4" />
+                <span className="max-w-[10rem] truncate">{teamName}</span>
+              </button>
+            </Link>
+          )}
           <Link href="/shared-with-me">
             <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
               <Users2 className="w-4 h-4" />
@@ -405,7 +416,12 @@ export default function Dashboard() {
           <TabsContent value="library" className="space-y-6">
             <EmailConfirmationBanner />
             {user && <OnboardingChecklist userId={user.id} onOpenRecorder={() => setActiveTab("recorder")} />}
-            <UpcomingEvents onRecord={() => setActiveTab("recorder")} />
+            <UpcomingEvents
+              onRecord={() => setActiveTab("recorder")}
+              onSendNoteTaker={event => setNoteTaker({ meetingUrl: event.meetingUrl, title: event.title, calendarEventId: event.id, start: event.start })}
+            />
+            <MeetingNoteTakers onSend={() => setNoteTaker({})} />
+            <SendNoteTakerDialog prefill={noteTaker} onClose={() => setNoteTaker(null)} />
             <CourseStrip />
             <UpcomingTasks />
             <div className="space-y-4">

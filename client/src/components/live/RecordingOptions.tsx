@@ -1,4 +1,5 @@
-import { MonitorSpeaker } from "lucide-react";
+import { Presentation, MonitorSpeaker } from "lucide-react";
+import { MAX_SLIDES_PER_RECORDING } from "@shared/slides";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -43,48 +44,89 @@ export function LiveTextToggle() {
   );
 }
 
-/**
- * "Record a tab or screen audio" (A3). Before recording: a checkbox, used by
- * the page when it calls `start`. While recording: add or stop the share.
- * Hidden where the browser can't capture tab audio.
- */
-export function TabAudioOption({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
-  const { tabAudioSupported } = useRecorder();
-  if (!tabAudioSupported) return null;
+/** "Capture slides" (A6): keep a picture of the shared tab or screen whenever it changes. */
+function CaptureSlidesOption({ idSuffix }: { idSuffix: string }) {
+  const { captureSlides, setCaptureSlides } = useRecorder();
+  const id = `capture-slides-${idSuffix}`;
   return (
     <div className="flex items-start gap-3">
-      <Checkbox id="tab-audio-option" checked={checked} onCheckedChange={value => onCheckedChange(value === true)} className="mt-0.5" aria-describedby="tab-audio-help" />
+      <Checkbox id={id} checked={captureSlides} onCheckedChange={value => setCaptureSlides(value === true)} className="mt-0.5" aria-describedby={`${id}-help`} />
       <div className="min-w-0">
-        <label htmlFor="tab-audio-option" className="text-sm font-medium">Record a tab or screen audio too</label>
-        <p id="tab-audio-help" className="mt-0.5 text-sm text-muted-foreground">
-          For an online class or video. Choose the tab and turn on "Also share tab audio". Your microphone is recorded as well.
+        <label htmlFor={id} className="text-sm font-medium">Capture slides</label>
+        <p id={`${id}-help`} className="mt-0.5 text-sm text-muted-foreground">
+          Saves a picture of the shared screen each time it changes, up to {MAX_SLIDES_PER_RECORDING} per recording, and shows them in the transcript.
         </p>
       </div>
     </div>
   );
 }
 
+/**
+ * "Record a tab or screen audio" (A3). Before recording: a checkbox, used by
+ * the page when it calls `start`, and under it "Capture slides" (A6). While
+ * recording: add or stop the share. Hidden where the browser can't capture
+ * tab audio.
+ */
+export function TabAudioOption({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+  const { tabAudioSupported } = useRecorder();
+  if (!tabAudioSupported) return null;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        <Checkbox id="tab-audio-option" checked={checked} onCheckedChange={value => onCheckedChange(value === true)} className="mt-0.5" aria-describedby="tab-audio-help" />
+        <div className="min-w-0">
+          <label htmlFor="tab-audio-option" className="text-sm font-medium">Record a tab or screen audio too</label>
+          <p id="tab-audio-help" className="mt-0.5 text-sm text-muted-foreground">
+            For an online class or video. Choose the tab and turn on "Also share tab audio". Your microphone is recorded as well.
+          </p>
+        </div>
+      </div>
+      {checked && (
+        <div className="pl-7">
+          <CaptureSlidesOption idSuffix="start" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TabAudioControl() {
-  const { tabAudioSupported, tabAudioActive, addTabAudio, stopTabAudio, status } = useRecorder();
+  const { tabAudioSupported, tabAudioActive, slidesActive, slideCount, addTabAudio, stopTabAudio, status } = useRecorder();
   const live = status === "recording" || status === "paused";
   if (!tabAudioSupported || !live) return null;
+  const sharing = tabAudioActive || slidesActive;
+  const slideLabel = `${slideCount} ${slideCount === 1 ? "slide" : "slides"} kept`;
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
-      {tabAudioActive ? (
-        <>
-          <span className="inline-flex items-center gap-2 text-muted-foreground">
-            <MonitorSpeaker className="h-4 w-4 text-primary" aria-hidden="true" />
-            Recording tab audio and your microphone
-          </span>
-          <Button type="button" variant="ghost" size="sm" onClick={stopTabAudio}>
-            Stop tab audio
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
+        {sharing ? (
+          <>
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              {slidesActive ? <Presentation className="h-4 w-4 text-primary" aria-hidden="true" /> : <MonitorSpeaker className="h-4 w-4 text-primary" aria-hidden="true" />}
+              {tabAudioActive && slidesActive
+                ? "Recording tab audio and capturing slides"
+                : slidesActive
+                  ? "Capturing slides from the shared screen"
+                  : "Recording tab audio and your microphone"}
+            </span>
+            <Button type="button" variant="ghost" size="sm" onClick={stopTabAudio}>
+              Stop sharing
+            </Button>
+          </>
+        ) : (
+          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void addTabAudio()}>
+            <MonitorSpeaker className="h-4 w-4" aria-hidden="true" />
+            Add tab or screen audio
           </Button>
-        </>
-      ) : (
-        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void addTabAudio()}>
-          <MonitorSpeaker className="h-4 w-4" aria-hidden="true" />
-          Add tab or screen audio
-        </Button>
+        )}
+      </div>
+      {(slidesActive || slideCount > 0) && (
+        <p className="text-center text-xs text-muted-foreground tabular-nums" aria-live="polite">{slideLabel}</p>
+      )}
+      {!sharing && (
+        <div className="mx-auto max-w-md">
+          <CaptureSlidesOption idSuffix="live" />
+        </div>
       )}
     </div>
   );

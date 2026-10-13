@@ -15,6 +15,10 @@ import { deleteGroupSharesForRecordings } from "./groups";
 import { deleteTranslationsForRecordings } from "./translations";
 import { getDb } from "./db";
 import { deleteStoredAudio } from "./storage";
+import { deleteSlidesForRecordings } from "./slides";
+import { deleteRecordingEventsForRecordings } from "./recordingEvents";
+import { detachBotsFromRecordings } from "./meetingBots";
+import { deleteAttendeeEmailsForRecordings } from "./attendeeEmail";
 
 /**
  * Permanently removes recordings: the stored audio first, then every row that
@@ -28,6 +32,8 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
 
   const ids = rows.map((row) => row.id);
   await deleteStoredAudio(rows.map((row) => row.audioKey ?? ""));
+  // Captured slides are stored files too; the same rule applies.
+  await deleteSlidesForRecordings(ids);
 
   for (let i = 0; i < ids.length; i += 500) {
     const batch = ids.slice(i, i + 500);
@@ -50,6 +56,9 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
     await deleteChunksForRecordings(batch);
     await deleteGroupSharesForRecordings(batch);
     await deleteTranslationsForRecordings(batch);
+    await deleteRecordingEventsForRecordings(batch);
+    await detachBotsFromRecordings(batch);
+    await deleteAttendeeEmailsForRecordings(batch);
     // Before the recordings rows go: it looks up whose packs to check.
     await deleteExamPacksForRecordings(batch);
     await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));

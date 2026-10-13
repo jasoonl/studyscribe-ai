@@ -33,6 +33,18 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
+/**
+ * Signed-in in the browser, not through a personal API key: for managing API
+ * keys, billing, team billing and deleting the account. A leaked key must
+ * never be able to do any of these.
+ */
+export const sessionProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  if (ctx.apiKey) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "API keys cannot do this. Sign in to StudyScribe instead." });
+  }
+  return next();
+});
+
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

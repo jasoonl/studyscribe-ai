@@ -12,6 +12,8 @@ import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
 import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
 import { RecordingChapters } from "@/components/RecordingChapters";
+import { RecordingSlides, useRecordingSlides } from "@/components/RecordingSlides";
+import { AttendeeShare } from "@/components/AttendeeShare";
 import { RecordingTasks } from "@/components/RecordingTasks";
 import { RecordingFollowUps } from "@/components/RecordingFollowUps";
 import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
@@ -63,6 +65,7 @@ export default function RecordingDetail() {
   const [playbackTime, setPlaybackTime] = useState(0);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const audioPlayerRef = useRef<AudioPlayerHandle>(null);
+  const slides = useRecordingSlides(recordingId || 0, !!recordingId);
 
   const { data: recording, isLoading: recordingLoading } = trpc.recordings.get.useQuery(
     { id: recordingId || 0 },
@@ -311,6 +314,8 @@ export default function RecordingDetail() {
                   </div>
                 </div>
 
+                <AttendeeShare recordingId={recording.id} transcriptReady={transcriptReady} />
+
                 {/* Transcription failure + recovery. A "processing" recording with no
                     transcriptionProviderId was never actually submitted to a
                     provider -- there is no in-flight job anything could still be
@@ -374,6 +379,12 @@ export default function RecordingDetail() {
                   hasAudio={!!recording.audioUrl}
                   playbackTime={playbackTime}
                   onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
+                />
+
+                <RecordingSlides
+                  slides={slides}
+                  playbackTime={playbackTime}
+                  onSeek={recording.audioUrl ? seconds => audioPlayerRef.current?.seekTo(seconds, { play: true }) : undefined}
                 />
               </div>
             </Card>
@@ -512,6 +523,7 @@ export default function RecordingDetail() {
                               onSeek={seconds => audioPlayerRef.current?.seekTo(seconds, { play: true })}
                               annotations
                               translatable
+                              slides={slides}
                             />
                           ) : (
                             <>

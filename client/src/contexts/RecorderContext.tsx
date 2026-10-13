@@ -15,6 +15,8 @@ import {
   startClock,
   type RecordingClock,
 } from "@/lib/recordingClock";
+import { SlideCapturer, type CapturedSlide } from "@/lib/slideCapture";
+import { MAX_SLIDES_PER_RECORDING } from "@shared/slides";
 
 /**
  * One microphone recorder for the whole app, mounted above the router.
@@ -38,10 +40,15 @@ import {
  * - Tab or screen audio (`getDisplayMedia`, Chromium only) can be added at the
  *   start or mid-recording; when the person stops sharing, only that source
  *   leaves the mix and the microphone recording carries on.
+ * - Slides (A6): when the person opted in to "Capture slides", the shared
+ *   video track is kept (otherwise it is stopped at once) and `SlideCapturer`
+ *   keeps a frame whenever the picture changes. Frames stay in memory until
+ *   the record page uploads them after saving; they are not in the crash
+ *   backup.
  */
 export type RecorderStatus = "idle" | "recording" | "paused" | "stopped";
 
-export type FinishedRecording = { blob: Blob; mimeType: string; durationSeconds: number; bookmarks: number[] };
+export type FinishedRecording = { blob: Blob; mimeType: string; durationSeconds: number; bookmarks: number[]; slides: CapturedSlide[] };
 
 /** The recorder's mixed audio, for listeners such as live transcription. */
 export type AudioTap = { context: AudioContext; node: AudioNode };
@@ -82,6 +89,13 @@ type RecorderContextValue = {
   /** Asks to share a tab or screen and mixes its audio in. Call from a click. */
   addTabAudio: () => Promise<boolean>;
   stopTabAudio: () => void;
+  /** The person's choice to keep slides from a shared tab or screen (saved in this browser). */
+  captureSlides: boolean;
+  setCaptureSlides: (value: boolean) => void;
+  /** Slides are being captured from the current share. */
+  slidesActive: boolean;
+  /** Slides kept so far in this recording. */
+  slideCount: number;
 };
 
 const RecorderContext = createContext<RecorderContextValue | null>(null);
@@ -89,6 +103,16 @@ const RecorderContext = createContext<RecorderContextValue | null>(null);
 const CHUNK_INTERVAL_MS = 1000;
 const RECONNECT_RETRY_MS = 3000;
 const LOCK_PREFIX = "studyscribe-recording-";
+
+const CAPTURE_SLIDES_KEY = "studyscribe_capture_slides";
+
+function readCaptureSlides() {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(CAPTURE_SLIDES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 const MIC_CONSTRAINTS: MediaStreamConstraints = {
   audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -114,7 +138,8 @@ export function canCaptureTabAudio(): boolean {
 }
 
 const DISPLAY_CONSTRAINTS = {
-  // Chrome needs video to show the picker; the video track is stopped at once.
+  // Chrome needs video to show the picker; the video track is stopped at once
+  // unless the person asked to capture slides.
   video: true,
   audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   // Chrome-only hints: offer the screen's system audio, and don't offer this tab.
@@ -172,6 +197,12 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
   const displaySourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const [tabAudioActive, setTabAudioActive] = useState(false);
   const [tabAudioSupported] = useState(canCaptureTabAudio);
+  const [captureSlides, setCaptureSlidesState] = useState(readCaptureSlides);
+  const captureSlidesRef = useRef(captureSlides);
+  const [slidesActive, setSlidesActive] = useState(false);
+  const [slideCount, setSlideCount] = useState(0);
+  const slideCapturerRef = useRef<SlideCapturer | null>(null);
+  const slidesRef = useRef<CapturedSlide[]>([]);
   const chunksRef = useRef<Blob[]>([]);
   const mimeTypeRef = useRef("");
   const sessionIdRef = useRef<string | null>(null);
@@ -230,7 +261,19 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     micSourceRef.current = null;
   }, []);
 
+  /** Stops capturing and keeps what was captured. */
+  const collectSlides = useCallback(() => {
+    const capturer = slideCapturerRef.current;
+    if (!capturer) return;
+    capturer.stop();
+    slidesRef.current = [...slidesRef.current, ...capturer.takeSlides()];
+    slideCapturerRef.current = null;
+    setSlideCount(slidesRef.current.length);
+    setSlidesActive(false);
+  }, []);
+
   const releaseTabAudio = useCallback(() => {
+    collectSlides();
     displayStreamRef.current?.getTracks().forEach(track => {
       track.onended = null;
       track.stop();
@@ -243,7 +286,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     }
     displaySourceRef.current = null;
     setTabAudioActive(false);
-  }, []);
+  }, [collectSlides]);
 
   const releaseAudioGraph = useCallback(() => {
     releaseMicrophone();
@@ -284,30 +327,53 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /** Mixes a shared tab's or screen's audio in; returns false when the share has no audio. */
-  const attachTabAudio = useCallback((stream: MediaStream): boolean => {
+  /**
+   * Mixes a shared tab's or screen's audio in and, when the person opted in,
+   * starts capturing slides from its video. Returns what was kept; a share
+   * with neither is stopped.
+   */
+  const attachTabAudio = useCallback((stream: MediaStream): { audio: boolean; slides: boolean } => {
     const context = audioContextRef.current;
     const mix = mixRef.current;
     const audioTracks = stream.getAudioTracks();
-    stream.getVideoTracks().forEach(track => track.stop());
-    if (!context || !mix || audioTracks.length === 0) {
+    const room = MAX_SLIDES_PER_RECORDING - slidesRef.current.length;
+    const videoTrack = captureSlidesRef.current && room > 0 ? stream.getVideoTracks()[0] ?? null : null;
+    stream.getVideoTracks().forEach(track => {
+      if (track !== videoTrack) track.stop();
+    });
+    if (!context || !mix || (audioTracks.length === 0 && !videoTrack)) {
       stream.getTracks().forEach(track => track.stop());
-      return false;
+      return { audio: false, slides: false };
     }
     releaseTabAudio();
-    const source = context.createMediaStreamSource(new MediaStream(audioTracks));
-    source.connect(mix);
     displayStreamRef.current = stream;
-    displaySourceRef.current = source;
+    if (audioTracks.length > 0) {
+      const source = context.createMediaStreamSource(new MediaStream(audioTracks));
+      source.connect(mix);
+      displaySourceRef.current = source;
+      setTabAudioActive(true);
+    }
+    const onShareEnded = () => {
+      if (displayStreamRef.current !== stream) return;
+      releaseTabAudio();
+      if (isLive()) toast.info("Sharing stopped. The microphone recording continues.");
+    };
     audioTracks.forEach(track => {
-      track.onended = () => {
-        if (displayStreamRef.current !== stream) return;
-        releaseTabAudio();
-        if (isLive()) toast.info("Tab audio stopped. The microphone recording continues.");
-      };
+      track.onended = onShareEnded;
     });
-    setTabAudioActive(true);
-    return true;
+    if (videoTrack) {
+      const capturer = new SlideCapturer(videoTrack, {
+        elapsedSeconds: () => readElapsedSeconds(clockRef.current, Date.now()),
+        isPaused: () => statusRef.current !== "recording",
+        maxSlides: room,
+        onSlide: count => setSlideCount(slidesRef.current.length + count),
+      });
+      slideCapturerRef.current = capturer;
+      capturer.start();
+      setSlidesActive(true);
+      videoTrack.onended = onShareEnded;
+    }
+    return { audio: audioTracks.length > 0, slides: Boolean(videoTrack) };
   }, [releaseTabAudio]);
 
   const tryReconnect = useCallback(async () => {
@@ -457,8 +523,15 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       micStreamRef.current = micStream;
     }
 
-    if (displayStream && !attachTabAudio(displayStream)) {
-      toast.warning("That share has no audio, so only the microphone is recorded. To include a tab's sound, pick a Chrome tab and turn on \"Also share tab audio\".");
+    slidesRef.current = [];
+    setSlideCount(0);
+    if (displayStream) {
+      const kept = attachTabAudio(displayStream);
+      if (!kept.audio && kept.slides) {
+        toast.info("That share has no audio, so slides are captured and only the microphone is recorded.");
+      } else if (!kept.audio) {
+        toast.warning("That share has no audio, so only the microphone is recorded. To include a tab's sound, pick a Chrome tab and turn on \"Also share tab audio\".");
+      }
     }
 
     const mimeType = pickMimeType();
@@ -530,19 +603,34 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       stream.getTracks().forEach(track => track.stop());
       return false;
     }
-    if (!attachTabAudio(stream)) {
+    const kept = attachTabAudio(stream);
+    if (!kept.audio && !kept.slides) {
       toast.warning("That share has no audio. Pick a Chrome tab and turn on \"Also share tab audio\", or share the entire screen with system audio.");
       return false;
     }
-    toast.success("Tab audio added. Recording the tab and your microphone together.");
+    if (!kept.audio) {
+      toast.info("That share has no audio. Capturing its slides; the microphone recording continues.");
+      return true;
+    }
+    toast.success(kept.slides ? "Tab audio added, and capturing slides." : "Tab audio added. Recording the tab and your microphone together.");
     return true;
   }, [attachTabAudio, tabAudioSupported]);
 
   const stopTabAudio = useCallback(() => {
     if (!displayStreamRef.current) return;
     releaseTabAudio();
-    toast.info("Tab audio stopped. The microphone recording continues.");
+    toast.info("Sharing stopped. The microphone recording continues.");
   }, [releaseTabAudio]);
+
+  const setCaptureSlides = useCallback((value: boolean) => {
+    captureSlidesRef.current = value;
+    setCaptureSlidesState(value);
+    try {
+      localStorage.setItem(CAPTURE_SLIDES_KEY, value ? "1" : "0");
+    } catch {
+      // Private mode: the choice lasts for this page only.
+    }
+  }, []);
 
   const getElapsedSeconds = useCallback(() => readElapsedSeconds(clockRef.current, Date.now()), []);
 
@@ -604,6 +692,8 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     sessionMetaRef.current = null;
     bookmarksRef.current = [];
     setBookmarks([]);
+    slidesRef.current = [];
+    setSlideCount(0);
     chunksRef.current = [];
     clockRef.current = idleClock;
     setElapsedSeconds(0);
@@ -623,6 +713,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       mimeType,
       durationSeconds: readElapsedSeconds(clockRef.current, Date.now()),
       bookmarks: bookmarksRef.current,
+      slides: [...slidesRef.current, ...(slideCapturerRef.current?.takeSlides() ?? [])],
     };
   }, []);
 
@@ -738,7 +829,11 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     tabAudioActive,
     addTabAudio,
     stopTabAudio,
-  }), [status, elapsedSeconds, micReconnecting, recovered, returnPath, onScreenCount, registerOnScreen, start, pause, resume, stop, discard, getRecording, bookmarks, addBookmark, restoreUnsaved, audioTap, getElapsedSeconds, tabAudioSupported, tabAudioActive, addTabAudio, stopTabAudio]);
+    captureSlides,
+    setCaptureSlides,
+    slidesActive,
+    slideCount,
+  }), [status, elapsedSeconds, micReconnecting, recovered, returnPath, onScreenCount, registerOnScreen, start, pause, resume, stop, discard, getRecording, bookmarks, addBookmark, restoreUnsaved, audioTap, getElapsedSeconds, tabAudioSupported, tabAudioActive, addTabAudio, stopTabAudio, captureSlides, setCaptureSlides, slidesActive, slideCount]);
 
   return <RecorderContext.Provider value={value}>{children}</RecorderContext.Provider>;
 }

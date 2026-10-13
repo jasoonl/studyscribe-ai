@@ -1,10 +1,14 @@
 import type { Express, Request, Response } from "express";
-import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogle, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
+import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
 import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { exchangeGoogleCode, getOrCreateGoogleUser, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
+import { exchangeGoogleCode, getGoogleAuthUrl, getGoogleRedirectUri, isGoogleOAuthConfigured } from "./googleOAuthHandler";
+import { readOAuthState, safeNextPath } from "./googleSignup";
+import { autoJoinByDomain } from "./organizations";
+import { registerSsoRoutes } from "./ssoRoutes";
+import { completeGoogleSignup } from "./googleSignupFlow";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 import { authLimiter, passwordResetLimiter } from "./_core/rateLimit";
 import { MIN_AGE } from "@shared/legal";
@@ -12,6 +16,7 @@ import { countRecentSignups, decideSignupPath, isOpenSignupEnabled, openSignupDa
 
 export function registerAuthRoutes(app: Express) {
   registerEmailVerificationRoutes(app);
+  registerSsoRoutes(app);
 
   /**
    * POST /api/auth/login
@@ -250,7 +255,9 @@ export function registerAuthRoutes(app: Express) {
 
       // Sign-up must carry the age and Terms confirmations ticked on the sign-up page.
       const consented = req.query.acceptedTerms === "1" && req.query.confirmedAge === "1";
-      const authUrl = getGoogleAuthUrl(origin, mode, undefined, mode === "signup" && consented);
+      const invite = typeof req.query.inviteCode === "string" ? req.query.inviteCode.trim().slice(0, 64) : "";
+      const next = safeNextPath(req.query.next) ?? undefined;
+      const authUrl = getGoogleAuthUrl(origin, mode === "signup" ? "signup" : "login", undefined, mode === "signup" && consented, invite || undefined, next);
 
       res.json({ authUrl });
     } catch (error) {
@@ -273,17 +280,16 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      // Decode state to get the origin and mode
-      let stateData: { origin?: string; mode?: "login" | "signup"; consented?: boolean };
-      try {
-        stateData = JSON.parse(Buffer.from(state, "base64").toString());
-      } catch {
-        res.status(400).json({ error: "Invalid state parameter" });
+      // The state is signed (server/googleSignup.ts): an edited or expired one is refused.
+      const stateData = readOAuthState(state);
+      if (!stateData) {
+        const fallback = getSafeApplicationOrigin(undefined);
+        res.redirect(302, `${fallback}/login?error=${encodeURIComponent("That sign-in link expired or was changed. Please try again.")}`);
         return;
       }
 
       const origin = getSafeApplicationOrigin(stateData.origin);
-      const mode = stateData.mode || "login";
+      const mode = stateData.mode;
       const redirectUri = getGoogleRedirectUri(origin);
 
       // Exchange Google code for tokens
@@ -301,8 +307,12 @@ export function registerAuthRoutes(app: Express) {
           res.redirect(302, `${origin}/login?error=${encodeURIComponent(`To sign up, confirm you are at least ${MIN_AGE} and accept the Terms on the sign-up page.`)}`);
           return;
         }
-        // Signup: allow auto-creating new users
-        user = await getOrCreateGoogleUser(result.user);
+        const outcome = await completeGoogleSignup(result.user, stateData.invite, req.ip ?? "unknown");
+        if ("error" in outcome) {
+          res.redirect(302, `${origin}/login?error=${encodeURIComponent(outcome.error)}`);
+          return;
+        }
+        user = outcome.user;
       } else {
         // Login: existing users only
         const authResult = await loginWithGoogleExistingOnly(
@@ -332,8 +342,10 @@ export function registerAuthRoutes(app: Express) {
 
       setSessionCookie(res, token);
 
-      // Redirect to dashboard
-      res.redirect(302, `${origin}/dashboard`);
+      // A Google Workspace account from a team's verified domain joins that team (F3).
+      await autoJoinByDomain(user, result.user.hostedDomain);
+
+      res.redirect(302, `${origin}${stateData.next ?? "/dashboard"}`);
     } catch (error) {
       console.error("[Auth] Google callback failed", error);
       res.status(500).json({ error: "Google callback failed" });

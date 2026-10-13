@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Mail, Lock, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MIN_AGE } from "@shared/legal";
+import { safeNext } from "@/lib/safeNext";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
@@ -15,7 +18,25 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const oauthError = new URLSearchParams(search).get("error");
+  const query = new URLSearchParams(search);
+  const oauthError = query.get("error");
+  // Where to go after signing in, such as a team invitation. Same-site paths only.
+  const next = safeNext(query.get("next"));
+  const [ssoOpen, setSsoOpen] = useState(query.get("sso") === "1");
+  const [ssoEmail, setSsoEmail] = useState("");
+  const [ssoAge, setSsoAge] = useState(false);
+  const [ssoTerms, setSsoTerms] = useState(false);
+
+  const startSso = (event: React.FormEvent) => {
+    event.preventDefault();
+    const params = new URLSearchParams({ email: ssoEmail.trim(), origin: window.location.origin });
+    if (next) params.set("next", next);
+    if (ssoAge && ssoTerms) {
+      params.set("acceptedTerms", "1");
+      params.set("confirmedAge", "1");
+    }
+    window.location.href = `/api/auth/sso/start?${params}`;
+  };
 
   const handleEmailPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +59,7 @@ export default function Login() {
       toast.success("Login successful!");
       // Hard reload to /dashboard so auth state is freshly read from the
       // session cookie (avoids stale client-side auth state).
-      window.location.href = "/dashboard";
+      window.location.href = next ?? "/dashboard";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed";
       setFormError(message);
@@ -57,6 +78,7 @@ export default function Login() {
         origin: window.location.origin,
         mode: "login",
       });
+      if (next) params.set("next", next);
       const response = await fetch(`/api/auth/google?${params}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -184,6 +206,38 @@ export default function Login() {
             )}
           </Button>
         </form>
+
+        {/* SAML single sign-on for teams (F3) */}
+        <div className="mt-4 rounded-lg border border-border">
+          <button
+            type="button"
+            aria-expanded={ssoOpen}
+            onClick={() => setSsoOpen(open => !open)}
+            className="w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Sign in with SSO
+          </button>
+          {ssoOpen && (
+            <form onSubmit={startSso} className="space-y-3 border-t border-border px-4 py-4">
+              <label htmlFor="sso-email" className="block text-sm text-muted-foreground">Your school or work email, if your team uses single sign-on</label>
+              <Input id="sso-email" type="email" value={ssoEmail} onChange={event => setSsoEmail(event.target.value)} placeholder="name@school.edu" required />
+              <fieldset className="space-y-2">
+                <legend className="text-xs text-muted-foreground">Needed the first time you sign in</legend>
+                <div className="flex items-start gap-2.5">
+                  <Checkbox id="sso-age" checked={ssoAge} onCheckedChange={value => setSsoAge(value === true)} className="mt-0.5" />
+                  <label htmlFor="sso-age" className="text-xs">I am at least {MIN_AGE} years old.</label>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Checkbox id="sso-terms" checked={ssoTerms} onCheckedChange={value => setSsoTerms(value === true)} className="mt-0.5" />
+                  <label htmlFor="sso-terms" className="text-xs">
+                    I agree to the <a href="/terms" target="_blank" rel="noopener" className="text-primary underline">Terms</a> and have read the <a href="/privacy" target="_blank" rel="noopener" className="text-primary underline">Privacy Policy</a>.
+                  </label>
+                </div>
+              </fieldset>
+              <Button type="submit" variant="outline" className="w-full" disabled={!ssoEmail.trim()}>Continue</Button>
+            </form>
+          )}
+        </div>
 
         {/* Forgot Password Link */}
         <div className="text-center mt-4">
