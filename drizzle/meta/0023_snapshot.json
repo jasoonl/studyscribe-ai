@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "4ad6e92f-cd80-414e-a0d4-27f02c258a91",
+  "id": "1e6076bf-afdf-43ed-9712-525e475ad7b7",
   "prevId": "433f0bc1-83af-4675-9939-121214909255",
   "tables": {
     "actionItems": {
@@ -212,6 +212,13 @@
         "endsAt": {
           "name": "endsAt",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "timeZone": {
+          "name": "timeZone",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

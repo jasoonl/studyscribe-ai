@@ -28,16 +28,24 @@ import { protectedProcedure, router } from "./_core/trpc";
  * Tokens are encrypted at rest (server/tokenCrypto.ts) and removed on
  * disconnect (Google's is also revoked). When a provider is not configured the
  * buttons say so instead of failing.
+ *
+ * Google Calendar (A5, server/calendar.ts) is a third connection on the same
+ * framework: the same Google OAuth client (or GOOGLE_CALENDAR_CLIENT_ID /
+ * _SECRET) with only the `calendar.readonly` scope, stored as its own row so
+ * each permission can be granted and revoked separately.
  */
 
-export type IntegrationProvider = "notion" | "google_drive";
-const PROVIDERS = ["notion", "google_drive"] as const;
-const PATH_FOR: Record<IntegrationProvider, string> = { notion: "notion", google_drive: "google" };
+export type IntegrationProvider = "notion" | "google_drive" | "google_calendar";
+const PROVIDERS = ["notion", "google_drive", "google_calendar"] as const;
+const PATH_FOR: Record<IntegrationProvider, string> = { notion: "notion", google_drive: "google", google_calendar: "google-calendar" };
+const isGoogle = (provider: IntegrationProvider) => provider === "google_drive" || provider === "google_calendar";
 const STATE_COOKIE = "studyscribe_integration_state";
 const STATE_TTL_SECONDS = 10 * 60;
 const HTTP_TIMEOUT_MS = 15_000;
 const NOTION_VERSION = "2022-06-28";
 export const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+export const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+const GOOGLE_SCOPE: Record<"google_drive" | "google_calendar", string> = { google_drive: GOOGLE_DRIVE_SCOPE, google_calendar: GOOGLE_CALENDAR_SCOPE };
 
 const DEFAULT_ENDPOINTS = {
   "notion-authorize": "https://api.notion.com/v1/oauth/authorize",
@@ -47,6 +55,7 @@ const DEFAULT_ENDPOINTS = {
   "google-revoke": "https://oauth2.googleapis.com/revoke",
   "google-upload": "https://www.googleapis.com/upload/drive/v3/files",
   "google-drive": "https://www.googleapis.com/drive/v3",
+  "google-calendar": "https://www.googleapis.com/calendar/v3",
 } as const;
 type EndpointName = keyof typeof DEFAULT_ENDPOINTS;
 
@@ -72,8 +81,19 @@ export function googleDriveCredentials(env: NodeJS.ProcessEnv = process.env) {
   return clientId && clientSecret ? { clientId, clientSecret } : null;
 }
 
+export function googleCalendarCredentials(env: NodeJS.ProcessEnv = process.env) {
+  const clientId = (env.GOOGLE_CALENDAR_CLIENT_ID || env.GOOGLE_CLIENT_ID)?.trim();
+  const clientSecret = (env.GOOGLE_CALENDAR_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET)?.trim();
+  return clientId && clientSecret ? { clientId, clientSecret } : null;
+}
+
 function credentials(provider: IntegrationProvider) {
-  return provider === "notion" ? notionCredentials() : googleDriveCredentials();
+  if (provider === "notion") return notionCredentials();
+  return provider === "google_calendar" ? googleCalendarCredentials() : googleDriveCredentials();
+}
+
+export function isProviderConfigured(provider: IntegrationProvider) {
+  return !!credentials(provider) && isEncryptionConfigured();
 }
 
 export function redirectUri(provider: IntegrationProvider, origin: string) {
@@ -112,7 +132,7 @@ export function buildAuthorizeUrl(provider: IntegrationProvider, clientId: strin
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri(provider, origin));
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", GOOGLE_DRIVE_SCOPE);
+  url.searchParams.set("scope", GOOGLE_SCOPE[provider]);
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
   url.searchParams.set("include_granted_scopes", "true");
@@ -169,12 +189,18 @@ async function exchangeCode(provider: IntegrationProvider, code: string, origin:
     body: new URLSearchParams({ code, client_id: creds.clientId, client_secret: creds.clientSecret, redirect_uri: redirectUri(provider, origin), grant_type: "authorization_code" }).toString(),
   });
   if (!result.ok || !result.body?.access_token) throw new Error(`Google did not accept the sign-in (${result.status}).`);
-  if (typeof result.body.scope === "string" && !result.body.scope.split(" ").includes(GOOGLE_DRIVE_SCOPE)) {
-    throw new Error("Google Drive access was not granted.");
+  if (typeof result.body.scope === "string" && !result.body.scope.split(" ").includes(GOOGLE_SCOPE[provider])) {
+    throw new Error(provider === "google_calendar" ? "Google Calendar access was not granted." : "Google Drive access was not granted.");
   }
   let accountLabel: string | null = null;
-  const about = await http(`${endpoint("google-drive")}/about?fields=user(emailAddress,displayName)`, { headers: { authorization: `Bearer ${result.body.access_token}` } }).catch(() => null);
-  if (about?.ok) accountLabel = about.body?.user?.emailAddress ?? about.body?.user?.displayName ?? null;
+  if (provider === "google_calendar") {
+    // The primary calendar's id is the account's email address.
+    const primary = await http(`${endpoint("google-calendar")}/calendars/primary`, { headers: { authorization: `Bearer ${result.body.access_token}` } }).catch(() => null);
+    if (primary?.ok) accountLabel = primary.body?.id ?? primary.body?.summary ?? null;
+  } else {
+    const about = await http(`${endpoint("google-drive")}/about?fields=user(emailAddress,displayName)`, { headers: { authorization: `Bearer ${result.body.access_token}` } }).catch(() => null);
+    if (about?.ok) accountLabel = about.body?.user?.emailAddress ?? about.body?.user?.displayName ?? null;
+  }
   return {
     accessToken: result.body.access_token,
     refreshToken: result.body.refresh_token ?? null,
@@ -212,15 +238,15 @@ async function loadConnection(userId: number, provider: IntegrationProvider) {
   return row ?? null;
 }
 
-const NOT_CONNECTED = { notion: "Connect Notion in Settings first.", google_drive: "Connect Google Docs in Settings first." } as const;
+const NOT_CONNECTED = { notion: "Connect Notion in Settings first.", google_drive: "Connect Google Docs in Settings first.", google_calendar: "Connect Google Calendar in Settings first." } as const;
 
 /** A usable access token, refreshing Google's when it is about to expire. */
-async function accessTokenFor(userId: number, provider: IntegrationProvider): Promise<string> {
+export async function accessTokenFor(userId: number, provider: IntegrationProvider): Promise<string> {
   const row = await loadConnection(userId, provider);
   if (!row) throw new TRPCError({ code: "PRECONDITION_FAILED", message: NOT_CONNECTED[provider] });
   const accessToken = decryptSecret(row.accessToken, "integration-token");
-  if (provider !== "google_drive" || !row.expiresAt || row.expiresAt.getTime() > Date.now() + 60_000) return accessToken;
-  const creds = googleDriveCredentials();
+  if (!isGoogle(provider) || !row.expiresAt || row.expiresAt.getTime() > Date.now() + 60_000) return accessToken;
+  const creds = credentials(provider);
   if (!row.refreshToken || !creds) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Your Google connection expired. Reconnect it in Settings." });
   const result = await http(endpoint("google-token"), {
     method: "POST",
@@ -250,6 +276,7 @@ function settingsRedirect(origin: string, provider: IntegrationProvider, status:
 function providerFromPath(value: string): IntegrationProvider | null {
   if (value === "notion") return "notion";
   if (value === "google") return "google_drive";
+  if (value === "google-calendar") return "google_calendar";
   return null;
 }
 
@@ -408,13 +435,13 @@ export const integrationsRouter = router({
         connectedAt: row?.createdAt ?? null,
       };
     };
-    return { available: rows !== null, notion: describe("notion"), google: describe("google_drive") };
+    return { available: rows !== null, notion: describe("notion"), google: describe("google_drive"), calendar: describe("google_calendar") };
   }),
 
   disconnect: protectedProcedure.input(z.object({ provider: providerInput })).mutation(async ({ input, ctx }) => {
     const row = await loadConnection(ctx.user.id, input.provider);
     if (!row) return { disconnected: true };
-    if (input.provider === "google_drive") {
+    if (isGoogle(input.provider)) {
       // Best effort: the row goes either way, and Google expires unused tokens.
       try {
         const token = row.refreshToken ? decryptSecret(row.refreshToken, "integration-token") : decryptSecret(row.accessToken, "integration-token");
@@ -449,7 +476,7 @@ export const integrationsRouter = router({
   }),
 
   send: protectedProcedure
-    .input(z.object({ provider: providerInput, kind: z.enum(["note", "guide"]), id: z.number().int().positive(), notionParentId: z.string().min(8).max(64).optional() }))
+    .input(z.object({ provider: z.enum(["notion", "google_drive"]), kind: z.enum(["note", "guide"]), id: z.number().int().positive(), notionParentId: z.string().min(8).max(64).optional() }))
     .mutation(async ({ input, ctx }) => {
       if (!checkTrpcRateLimit(`integration-send:${ctx.user.id}`, 60_000, 10)) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Wait a moment before sending more." });
       if (!credentials(input.provider)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: `${input.provider === "notion" ? "Notion" : "Google Docs"} export is not set up on this server.` });

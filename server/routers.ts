@@ -50,6 +50,7 @@ import { billingDiagnostics, billingRouter } from "./billing";
 import { signupRouter } from "./openSignup";
 import { onboardingRouter } from "./onboarding";
 import { translationsRouter } from "./translations";
+import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 
 const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTemplateId, ...NoteTemplateId[]];
@@ -836,6 +837,7 @@ export const appRouter = router({
   signup: signupRouter,
   onboarding: onboardingRouter,
   translations: translationsRouter,
+  calendar: calendarRouter,
 
   studyGuides: router({
     list: protectedProcedure

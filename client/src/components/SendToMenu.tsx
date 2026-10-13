@@ -11,8 +11,8 @@ import { trpc } from "@/lib/trpc";
 type Kind = "note" | "guide";
 type Provider = "notion" | "google_drive";
 
-export function connectIntegrationUrl(provider: Provider) {
-  const path = provider === "notion" ? "notion" : "google";
+export function connectIntegrationUrl(provider: Provider | "google_calendar") {
+  const path = provider === "notion" ? "notion" : provider === "google_calendar" ? "google-calendar" : "google";
   return `/api/integrations/${path}/connect?origin=${encodeURIComponent(window.location.origin)}`;
 }
 

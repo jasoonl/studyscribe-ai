@@ -5,6 +5,7 @@ CREATE TABLE `calendarReminders` (
 	`title` varchar(255) NOT NULL,
 	`startsAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`endsAt` timestamp,
+	`timeZone` varchar(64),
 	`notifiedAt` timestamp,
 	`digestedAt` timestamp,
 	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -840,6 +840,8 @@ export const calendarReminders = mysqlTable("calendarReminders", {
   // from adding ON UPDATE CURRENT_TIMESTAMP to the first NOT NULL timestamp.
   startsAt: timestamp("startsAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   endsAt: timestamp("endsAt"),
+  /** The person's IANA time zone when they set the reminder, for the daily digest's wording. */
+  timeZone: varchar("timeZone", { length: 64 }),
   notifiedAt: timestamp("notifiedAt"),
   digestedAt: timestamp("digestedAt"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
