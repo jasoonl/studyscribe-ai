@@ -126,8 +126,8 @@ export function UpcomingEvents({ onRecord }: { onRecord: () => void }) {
                   const canRemind = start !== null && start > now;
                   const pending = setReminder.isPending && setReminder.variables?.eventId === event.id;
                   return (
-                    <li key={event.id} className="flex items-center gap-3 px-4 py-3">
-                      <span className="w-20 shrink-0 text-sm tabular-nums text-muted-foreground">{event.allDay ? "All day" : time(event.start)}</span>
+                    <li key={event.id} className="flex items-center gap-2 px-4 py-3 sm:gap-3">
+                      <span className="w-16 shrink-0 text-sm tabular-nums text-muted-foreground sm:w-20">{event.allDay ? "All day" : time(event.start)}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{event.title}</span>
                         {(onNow || event.location) && (
@@ -139,7 +139,8 @@ export function UpcomingEvents({ onRecord }: { onRecord: () => void }) {
                       {onNow ? (
                         <Button size="sm" className="shrink-0 gap-1.5" onClick={onRecord}>
                           <Mic className="h-3.5 w-3.5" />
-                          Record
+                          <span className="hidden sm:inline">Record</span>
+                          <span className="sr-only sm:hidden">Record {event.title}</span>
                         </Button>
                       ) : canRemind ? (
                         <Button

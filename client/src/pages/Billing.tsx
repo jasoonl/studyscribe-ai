@@ -93,7 +93,7 @@ export default function Billing() {
               <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                 <h2 className="text-lg font-semibold">{data.plan.name} plan</h2>
                 <p className="text-sm text-muted-foreground">
-                  {data.plan.priceMonthlyUsd === 0 ? "Free" : `${formatPlanPrice(data.plan)} a month, plus any tax`}
+                  {data.plan.priceMonthlyUsd === 0 ? "$0, no payment details needed" : `${formatPlanPrice(data.plan)} a month, plus any tax`}
                 </p>
               </div>
               {data.subscription?.description && (
