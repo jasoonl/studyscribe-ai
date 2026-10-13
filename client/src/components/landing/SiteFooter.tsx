@@ -4,7 +4,7 @@ import { openCookieSettings } from "@/lib/cookieConsent";
 import { useSignupMode } from "@/lib/signupMode";
 
 const COLUMNS = [
-  { title: "Product", links: [["Features", "/#features"], ["How it works", "/#how"], ["Pricing", "/pricing"], ["Demo", "/demo"]] },
+  { title: "Product", links: [["Features", "/#features"], ["How it works", "/#how"], ["Pricing", "/pricing"], ["Demo", "/demo"], ["API", "/developers"]] },
   { title: "Account", links: [["Sign in", "/login"], ["__signup__", "/request-access"], ["Settings", "/settings"]] },
   { title: "Legal", links: [["Terms of Service", "/terms"], ["Privacy Policy", "/privacy"], ["Cookie Policy", "/cookies"], ["Refund Policy", "/refunds"], ["Credits and licences", "/credits"]] },
 ];

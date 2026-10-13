@@ -13,7 +13,7 @@ import { describeBillingConfig, getStripeConfig, isBillingConfigured, StripeApiE
 import { getSubscriptionRow, getUsageSummary, limitsEnforced } from "./usage";
 import { formatResetDate } from "./usageRules";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router, sessionProcedure } from "./_core/trpc";
 
 /**
  * Paid plans (F2): Stripe Checkout to subscribe, Stripe's customer portal to
@@ -350,7 +350,7 @@ export const billingRouter = router({
     };
   }),
 
-  checkout: protectedProcedure.input(z.object({ plan: paidPlanInput })).mutation(async ({ ctx, input }) => {
+  checkout: sessionProcedure.input(z.object({ plan: paidPlanInput })).mutation(async ({ ctx, input }) => {
     const config = requireConfig();
     if (!checkTrpcRateLimit(`billing-checkout:${ctx.user.id}`, 10 * 60 * 1000, 10)) {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many checkout attempts. Try again in a few minutes." });
@@ -378,7 +378,7 @@ export const billingRouter = router({
   }),
 
   /** Stripe's hosted portal: change plan, update the card, see invoices, or go straight to cancelling. */
-  portal: protectedProcedure.input(z.object({ intent: z.enum(["manage", "cancel"]).default("manage") })).mutation(async ({ ctx, input }) => {
+  portal: sessionProcedure.input(z.object({ intent: z.enum(["manage", "cancel"]).default("manage") })).mutation(async ({ ctx, input }) => {
     const config = requireConfig();
     const row = await getSubscriptionRow(ctx.user.id);
     if (!row) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You do not have a paid plan yet." });

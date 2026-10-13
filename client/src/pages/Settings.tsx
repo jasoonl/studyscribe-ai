@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { VocabularySettings } from "@/components/VocabularySettings";
 import { ConnectedAppsSettings } from "@/components/ConnectedAppsSettings";
 import { WebhookSettings } from "@/components/WebhookSettings";
+import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { UsageMeters } from "@/components/UsageMeters";
 
 export default function Settings() {
@@ -120,6 +121,8 @@ export default function Settings() {
         <ConnectedAppsSettings />
 
         <WebhookSettings />
+
+        <ApiKeySettings />
 
         <Card className="p-6">
           <h2 className="text-lg font-semibold">Download your data</h2>

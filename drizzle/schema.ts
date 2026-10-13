@@ -851,3 +851,27 @@ export const calendarReminders = mysqlTable("calendarReminders", {
 ]);
 
 export type CalendarReminder = typeof calendarReminders.$inferSelect;
+
+/**
+ * Personal API keys (E5). Only a SHA-256 hash of the key is stored; the key
+ * itself is shown once when it is made. `prefix` is the first characters, so
+ * people can tell their keys apart. `scope` is "read" or "write" (write also
+ * reads). Revoked keys keep their row for the record and stop working.
+ */
+export const apiKeys = mysqlTable("apiKeys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  prefix: varchar("prefix", { length: 16 }).notNull(),
+  keyHash: varchar("keyHash", { length: 64 }).notNull(),
+  scope: mysqlEnum("scope", ["read", "write"]).default("read").notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  requestCount: int("requestCount").default(0).notNull(),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("apiKeys_hash_unique").on(table.keyHash),
+  index("apiKeys_user_idx").on(table.userId),
+]);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
