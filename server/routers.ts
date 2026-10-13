@@ -67,6 +67,16 @@ const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTe
 // "auto" (or omitted) lets the provider detect the language.
 const languageInput = z.enum(TRANSCRIPTION_LANGUAGE_CODES).optional();
 
+/** Files a new recording under a course; a failure (archived, missing table) never loses the recording. */
+async function fileUnderCourseQuietly(userId: number, recordingId: number, courseId: number | undefined) {
+  if (!courseId) return;
+  try {
+    await assignRecordingToCourse(userId, recordingId, courseId);
+  } catch (error) {
+    console.warn("[courses] could not file new recording", recordingId, error instanceof Error ? error.message : error);
+  }
+}
+
 export const appRouter = router({
   system: systemRouter,
   /**
@@ -197,6 +207,8 @@ export const appRouter = router({
         bookmarks: z.array(bookmarkInputSchema).max(MAX_BOOKMARKS_PER_RECORDING).optional(),
         /** Extra words to listen for in this recording only. */
         keyterms: keytermsInput,
+        /** File it under one of the person's courses before transcription, so the course's vocabulary applies. */
+        courseId: z.number().int().positive().optional(),
         /** The calendar event this recording was made during (A5), for offering its notes to the attendees (D4). */
         calendarEventId: z.string().min(1).max(255).optional(),
         /** When recording started (ms), to find that event. */
@@ -276,6 +288,7 @@ export const appRouter = router({
         }
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await fileUnderCourseQuietly(ctx.user.id, recording.id, input.courseId);
         if (input.calendarEventId) {
           // Read from Google, not from the page; a failure only means no attendee list.
           try {
@@ -305,6 +318,7 @@ export const appRouter = router({
         audience: z.enum(["student", "professional"]).default("student"),
         language: languageInput,
         keyterms: keytermsInput,
+        courseId: z.number().int().positive().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         // Before downloading anything: is any transcription left this month?
@@ -352,6 +366,7 @@ export const appRouter = router({
         if (!recording) throw new Error("Failed to create recording");
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await fileUnderCourseQuietly(ctx.user.id, recording.id, input.courseId);
         await startTranscription(recording, stored.key, stored.mimeType, input.language, input.keyterms);
 
         return recording;

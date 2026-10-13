@@ -529,6 +529,24 @@ export const vocabularyLists = mysqlTable("vocabularyLists", {
 export type VocabularyList = typeof vocabularyLists.$inferSelect;
 
 /**
+ * A course's own vocabulary (Phase 6): names and terms that recordings filed
+ * under the course are transcribed with, between the recording's own terms
+ * and the person's standing list. A separate table rather than a
+ * `vocabularyLists.courseId` column so an unmigrated database keeps reading
+ * the existing lists (migration 0029).
+ */
+export const courseVocabularies = mysqlTable("courseVocabularies", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("courseId").notNull(),
+  userId: int("userId").notNull(),
+  terms: text("terms").notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("courseVocabularies_course_unique").on(table.courseId),
+  index("courseVocabularies_user_idx").on(table.userId),
+]);
+
+/**
  * A combined study guide and practice quiz made from several recordings (often
  * a whole course) for exam revision. The guide and the quiz are generated in
  * separate requests so neither request has to fit two model calls; either is

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
-import { ArchiveRestore, ArrowLeft, Archive, GraduationCap, Loader2, Pencil, Sparkles } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, Archive, GraduationCap, Loader2, Mic, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CourseDialog } from "@/components/CourseDialog";
+import { CourseVocabulary } from "@/components/CourseVocabulary";
 import { CourseDot } from "@/components/CourseDot";
 import { TagFilter } from "@/components/CourseStrip";
 import { RecordingList } from "@/components/RecordingList";
@@ -75,6 +76,14 @@ export default function CoursePage() {
           </Link>
           {course && (
             <div className="flex items-center gap-2">
+              {!course.archived && (
+                <Link href={`/record-or-upload?course=${course.id}`}>
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <Mic className="h-4 w-4" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">Record</span>
+                  </Button>
+                </Link>
+              )}
               <Link href={`/ask?course=${course.id}`}>
                 <Button size="sm" className="gap-2">
                   <Sparkles className="h-4 w-4" />
@@ -89,8 +98,8 @@ export default function CoursePage() {
                 </Button>
               </Link>
               <Button size="sm" variant="outline" className="gap-2" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" />
-                <span className="hidden sm:inline">Edit</span>
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only">Edit</span>
               </Button>
               <Button
                 size="sm"
@@ -100,7 +109,7 @@ export default function CoursePage() {
                 onClick={() => void setArchived(!course.archived)}
               >
                 {course.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                <span className="hidden sm:inline">{course.archived ? "Restore" : "Archive"}</span>
+                <span className="sr-only sm:not-sr-only">{course.archived ? "Restore" : "Archive"}</span>
               </Button>
             </div>
           )}
@@ -161,6 +170,8 @@ export default function CoursePage() {
             ) : (
               <RecordingList recordings={sorted} courses={courses} tags={tags} onDelete={handleDelete} showCourse={false} />
             )}
+
+            <CourseVocabulary courseId={course.id} />
           </>
         )}
       </main>

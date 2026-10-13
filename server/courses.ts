@@ -153,7 +153,7 @@ export async function recordingIdsInCourse(userId: number, courseId: number): Pr
   }, [] as number[]);
 }
 
-async function getOwnCourse(courseId: number, userId: number) {
+export async function getOwnCourse(courseId: number, userId: number) {
   const db = await requireDb();
   const [course] = await tolerateMissingTable(
     () => db.select().from(courses).where(and(eq(courses.id, courseId), eq(courses.userId, userId))).limit(1),

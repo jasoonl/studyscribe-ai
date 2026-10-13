@@ -1,5 +1,6 @@
 import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
 import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
+import { CourseSelect, NO_COURSE, courseForRequest } from "@/components/CourseSelect";
 import RecordingConsentNotice from "@/components/RecordingConsentNotice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -64,6 +65,14 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [linkAudience, setLinkAudience] = useState<"student" | "professional">("student");
   const [language, setLanguage] = useState<string>("auto");
   const [vocabulary, setVocabulary] = useState("");
+  // `?course=<id>` (from a course page's "Record" button) preselects the course.
+  const [courseChoice, setCourseChoice] = useState<string>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("course") ?? NO_COURSE;
+    } catch {
+      return NO_COURSE;
+    }
+  });
   const [isImporting, setIsImporting] = useState(false);
   const [linkComplete, setLinkComplete] = useState(false);
 
@@ -153,6 +162,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         duration: durationSeconds,
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
+        courseId: courseForRequest(courseChoice),
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
         ...calendarLink,
       });
@@ -237,6 +247,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         duration,
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
+        courseId: courseForRequest(courseChoice),
       });
       setUploadFileComplete(true);
       setCreatedRecordingId(recording.id);
@@ -267,6 +278,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         audience: linkAudience,
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
+        courseId: courseForRequest(courseChoice),
       });
       setLinkComplete(true);
       setCreatedRecordingId(recording.id);
@@ -596,6 +608,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <LanguageSelect value={language} onChange={setLanguage} id="record-language" />
+                      <CourseSelect value={courseChoice} onChange={setCourseChoice} id="record-course" />
                       <VocabularyField value={vocabulary} onChange={setVocabulary} id="record-vocabulary" />
 
                       <div className="flex gap-4">
@@ -725,6 +738,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   </div>
 
                   <LanguageSelect value={language} onChange={setLanguage} id="link-language" />
+                  <CourseSelect value={courseChoice} onChange={setCourseChoice} id="link-course" />
                   <VocabularyField value={vocabulary} onChange={setVocabulary} id="link-vocabulary" />
 
                   <Button
@@ -859,6 +873,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <LanguageSelect value={language} onChange={setLanguage} id="upload-language" />
+                      <CourseSelect value={courseChoice} onChange={setCourseChoice} id="upload-course" />
                       <VocabularyField value={vocabulary} onChange={setVocabulary} id="upload-vocabulary" />
 
                       <div className="flex gap-4">
