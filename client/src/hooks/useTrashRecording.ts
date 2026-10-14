@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { t } from "@/i18n";
 
 /**
  * Moves a recording to the trash and offers Undo in the toast. Trash is
@@ -17,22 +18,22 @@ export function useTrashRecording() {
     try {
       await remove.mutateAsync({ id });
       await refresh();
-      toast.success("Moved to trash", {
+      toast.success(t("trash.moved"), {
         action: {
-          label: "Undo",
+          label: t("trash.undo"),
           onClick: async () => {
             try {
               await restore.mutateAsync({ id });
               await refresh();
-              toast.success("Recording restored");
+              toast.success(t("trash.restored"));
             } catch {
-              toast.error("Could not restore it. It is still in Trash.");
+              toast.error(t("trash.undoFailed"));
             }
           },
         },
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not move the recording to trash");
+      toast.error(error instanceof Error ? error.message : t("trash.moveFailed"));
     }
   };
 }
