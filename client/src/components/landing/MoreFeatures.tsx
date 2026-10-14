@@ -55,7 +55,7 @@ export default function MoreFeatures() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="max-w-2xl">
           <h2 id="more-features-heading" className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-5xl">More than a transcript</h2>
-          <p className="mt-4 text-lg text-muted-foreground">What StudyScribe does before, during and after a class or meeting.</p>
+          <p className="mt-4 text-lg text-muted-foreground">What StudyScribe does during a class or meeting, and after it.</p>
         </div>
         <div className="mt-16 grid gap-x-12 gap-y-14 md:grid-cols-2">
           {GROUPS.map(group => (

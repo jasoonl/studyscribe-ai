@@ -70,12 +70,12 @@ export default function CoursePage() {
         <div className="container flex h-16 items-center justify-between gap-3">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Library
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Library</span>
             </Button>
           </Link>
           {course && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {!course.archived && (
                 <Link href={`/record-or-upload?course=${course.id}`}>
                   <Button size="sm" variant="outline" className="gap-2">
