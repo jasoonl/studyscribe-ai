@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { getJwtSecret } from "./_core/secrets";
 import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import { organizations, users, type Organization } from "../drizzle/schema";
@@ -20,7 +21,7 @@ import { checkTrpcRateLimit } from "./_core/rateLimit";
  */
 
 const PURPOSE = "sso";
-const secret = () => process.env.JWT_SECRET || "default-dev-secret-change-in-production";
+const secret = () => getJwtSecret();
 
 async function teamForEmail(email: string): Promise<Organization | null> {
   const domain = emailDomain(email);
@@ -96,7 +97,7 @@ export function registerSsoRoutes(app: Express) {
         if (membership && membership.org.id !== team.id) return fail("Your account is in a different team. Leave it first, or sign in another way.");
       }
       await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
-      setSessionCookie(res, createSessionToken({ userId: user.id, email: user.email, role: user.role }));
+      setSessionCookie(res, createSessionToken({ userId: user.id, email: user.email, role: user.role, passwordHash: user.passwordHash }));
       res.redirect(302, `${origin}${state.next ?? "/dashboard"}`);
     } catch (error) {
       console.error("[sso] callback failed:", error instanceof Error ? error.message : error);

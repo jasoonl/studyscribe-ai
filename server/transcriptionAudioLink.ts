@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getJwtSecret } from "./_core/secrets";
 
 /**
  * Signed, time-limited links that let the transcription provider fetch a
@@ -16,7 +17,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 
 function getSigningSecret(): string {
-  return process.env.JWT_SECRET || "default-dev-secret-change-in-production";
+  return getJwtSecret();
 }
 
 function sign(payload: string): string {

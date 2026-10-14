@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { SSO_REQUIRED_MESSAGE, ssoRequiredForEmail } from "./ssoEnforcement";
 import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
-import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
+import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie, sessionMatchesUser } from "./sessionManager";
 import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -55,6 +55,7 @@ export function registerAuthRoutes(app: Express) {
         userId: result.user.id,
         email: result.user.email,
         role: result.user.role,
+        passwordHash: result.user.passwordHash,
       });
 
       setSessionCookie(res, token);
@@ -129,6 +130,7 @@ export function registerAuthRoutes(app: Express) {
         userId: result.user.id,
         email: result.user.email,
         role: result.user.role,
+        passwordHash: result.user.passwordHash,
       });
 
       setSessionCookie(res, token);
@@ -200,8 +202,8 @@ export function registerAuthRoutes(app: Express) {
       
       const user = userResults[0];
 
-      if (!user) {
-        res.status(401).json({ error: "User not found" });
+      if (!user || !sessionMatchesUser(session, user)) {
+        res.status(401).json({ error: "Not authenticated" });
         return;
       }
 
@@ -360,6 +362,7 @@ export function registerAuthRoutes(app: Express) {
         userId: user.id,
         email: user.email,
         role: user.role,
+        passwordHash: user.passwordHash,
       });
 
       setSessionCookie(res, token);

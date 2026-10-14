@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { getJwtSecret } from "./_core/secrets";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import { TRPCError } from "@trpc/server";
@@ -7,7 +8,7 @@ import { z } from "zod";
 import { users } from "../drizzle/schema";
 import { getAppSetting, getDb, setAppSetting } from "./db";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendEmailVerificationEmail } from "./email";
-import { getSessionFromCookie } from "./sessionManager";
+import { getVerifiedSession } from "./sessionUser";
 import { limitsEnforced } from "./usage";
 import { needsEmailConfirmation } from "./emailConfirmation";
 
@@ -77,7 +78,7 @@ export async function countRecentSignups(now = new Date()) {
 }
 
 function verifySecret() {
-  return process.env.JWT_SECRET || "default-dev-secret-change-in-production";
+  return getJwtSecret();
 }
 
 export function createEmailVerificationToken(userId: number, email: string) {
@@ -144,7 +145,7 @@ export function registerEmailVerificationRoutes(app: Express) {
   });
 
   app.post("/api/auth/resend-verification", resendLimiter, async (req: Request, res: Response) => {
-    const session = getSessionFromCookie(req);
+    const session = await getVerifiedSession(req);
     if (!session) {
       res.status(401).json({ error: "Not signed in" });
       return;

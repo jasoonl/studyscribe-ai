@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { getJwtSecret } from "./_core/secrets";
 import { and, eq, gt } from "drizzle-orm";
 import { inviteCodes } from "../drizzle/schema";
 import { getDb, normalizeAuthEmail } from "./db";
@@ -37,7 +38,7 @@ export type GoogleOAuthState = {
 };
 
 function stateSecret(env: NodeJS.ProcessEnv = process.env) {
-  return env.JWT_SECRET || "default-dev-secret-change-in-production";
+  return getJwtSecret(env);
 }
 
 const b64url = (input: Buffer | string) => Buffer.from(input).toString("base64url");

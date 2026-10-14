@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { getJwtSecret } from "./_core/secrets";
 import type { Express, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { TRPCError } from "@trpc/server";
@@ -10,7 +11,7 @@ import { getDb, getRecordingById, getStudyGuideById, getStudyNoteById } from "./
 import { getSafeApplicationOrigin } from "./email";
 import { markdownToHtml, markdownToNotionBlocks } from "./markdownExport";
 import { explainMissingSchema, tolerateMissingSchema } from "./schemaTolerance";
-import { getSessionFromCookie } from "./sessionManager";
+import { getVerifiedSession } from "./sessionUser";
 import { decryptSecret, encryptSecret, isEncryptionConfigured } from "./tokenCrypto";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -101,7 +102,7 @@ export function redirectUri(provider: IntegrationProvider, origin: string) {
 }
 
 function stateSecret() {
-  return process.env.JWT_SECRET || "default-dev-secret-change-in-production";
+  return getJwtSecret();
 }
 
 export function createOAuthState(data: { userId: number; provider: IntegrationProvider; origin: string; nonce: string }) {
@@ -281,14 +282,14 @@ function providerFromPath(value: string): IntegrationProvider | null {
 }
 
 export function registerIntegrationRoutes(app: Express) {
-  app.get("/api/integrations/:provider/connect", (req: Request, res: Response) => {
+  app.get("/api/integrations/:provider/connect", async (req: Request, res: Response) => {
     const provider = providerFromPath(req.params.provider);
     const origin = getSafeApplicationOrigin(typeof req.query.origin === "string" ? req.query.origin : undefined);
     if (!provider) {
       res.status(404).send("Unknown integration");
       return;
     }
-    const session = getSessionFromCookie(req);
+    const session = await getVerifiedSession(req);
     if (!session) {
       res.redirect(`${origin}/login`);
       return;
@@ -320,7 +321,7 @@ export function registerIntegrationRoutes(app: Express) {
     const origin = getSafeApplicationOrigin(state?.origin);
     const cookieNonce = req.headers.cookie?.split(";").map(part => part.trim()).find(part => part.startsWith(`${STATE_COOKIE}=`))?.slice(STATE_COOKIE.length + 1);
     res.clearCookie(STATE_COOKIE, { path: "/api/integrations" });
-    const session = getSessionFromCookie(req);
+    const session = await getVerifiedSession(req);
     if (!state || state.provider !== provider || !cookieNonce || cookieNonce !== state.nonce || !session || session.userId !== state.userId) {
       res.redirect(settingsRedirect(origin, provider, "error", "state"));
       return;

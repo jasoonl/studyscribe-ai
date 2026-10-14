@@ -1,6 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
+import { sessionMatchesUser } from "../sessionManager";
 import { getSessionFromCookie } from "../sessionManager";
 import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
@@ -34,7 +35,7 @@ export async function createContext(
           .from(users)
           .where(eq(users.id, session.userId))
           .limit(1);
-        if (dbUser.length > 0) {
+        if (dbUser.length > 0 && sessionMatchesUser(session, dbUser[0])) {
           user = dbUser[0];
         }
       }

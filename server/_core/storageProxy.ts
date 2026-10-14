@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 import { Readable } from "node:stream";
-import { getSessionFromCookie } from "../sessionManager";
+import { getVerifiedSession } from "../sessionUser";
+import { safeEqual } from "./secrets";
 import { getRecordingByAudioKey } from "../db";
 import { getRecordingAccess } from "../recordingAccess";
 import { handleUploadPresigned } from "@vercel/blob/client";
@@ -113,9 +114,23 @@ async function streamStoredAudio(req: import("express").Request, res: import("ex
   Readable.fromWeb(upstream.body as never).pipe(res);
 }
 
+type StoredRecording = { id: number; userId: number; isDeleted?: number | boolean | null; publicShareToken?: string | null };
+
+/**
+ * Who may read a recording's audio: its owner, anyone it is shared with
+ * (direct or group, any role, through `getRecordingAccess`), or a visitor with
+ * the public link's token (compared in constant time, and never for a recording
+ * in the trash).
+ */
+export async function mayReadRecordingAudio(recording: StoredRecording, session: { userId: number } | null, shareToken: string): Promise<boolean> {
+  if (session && recording.userId === session.userId) return true;
+  if (shareToken && !recording.isDeleted && safeEqual(shareToken, recording.publicShareToken)) return true;
+  return Boolean(session && (await getRecordingAccess(recording.id, session.userId)));
+}
+
 export function registerStorageProxy(app: Express) {
   app.post("/api/storage/upload-url", async (req, res) => {
-    const session = getSessionFromCookie(req);
+    const session = await getVerifiedSession(req);
     if (!session) {
       res.status(401).json({ error: "Sign in to upload recordings" });
       return;
@@ -141,7 +156,7 @@ export function registerStorageProxy(app: Express) {
 
   // Token endpoint for the browser's multipart uploader (files too large for a single PUT).
   app.post("/api/storage/upload-presigned", async (req, res) => {
-    const session = getSessionFromCookie(req);
+    const session = await getVerifiedSession(req);
     if (!session) {
       res.status(401).json({ error: "Sign in to upload recordings" });
       return;
@@ -168,7 +183,7 @@ export function registerStorageProxy(app: Express) {
     }
     const key = typeof req.query.key === "string" ? req.query.key : "";
     const shareToken = typeof req.query.token === "string" ? req.query.token : "";
-    const session = getSessionFromCookie(req);
+    const session = await getVerifiedSession(req);
     if (!key) {
       res.status(400).send("Missing storage key");
       return;
@@ -185,15 +200,7 @@ export function registerStorageProxy(app: Express) {
       // shared with, not just its owner: a public share link carries a token
       // and has no session at all, and a direct recipient has a session but
       // does not own the row (a direct share or a study group share, at any role).
-      const isOwner = Boolean(session && recording.userId === session.userId);
-      const hasValidPublicToken = Boolean(
-        shareToken && recording.publicShareToken && recording.publicShareToken === shareToken,
-      );
-      const isSharedRecipient = Boolean(
-        session && !isOwner && (await getRecordingAccess(recording.id, session.userId)),
-      );
-
-      if (!isOwner && !hasValidPublicToken && !isSharedRecipient) {
+      if (!(await mayReadRecordingAudio(recording, session, shareToken))) {
         res.status(session ? 403 : 401).send("You do not have access to this recording");
         return;
       }
@@ -239,6 +246,20 @@ export function registerStorageProxy(app: Express) {
     }
 
     try {
+      // Same rule as /api/storage: keys are guessable (user id and a timestamp),
+      // so the key alone must never be enough to read someone's audio.
+      const recording = await getRecordingByAudioKey(key);
+      if (!recording) {
+        res.status(404).send("Not found");
+        return;
+      }
+      const session = await getVerifiedSession(req);
+      const shareToken = typeof req.query.token === "string" ? req.query.token : "";
+      if (!(await mayReadRecordingAudio(recording, session, shareToken))) {
+        res.status(session ? 403 : 401).send("You do not have access to this recording");
+        return;
+      }
+
       const forgeUrl = new URL(
         "v1/storage/presign/get",
         ENV.forgeApiUrl.replace(/\/+$/, "") + "/",

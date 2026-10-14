@@ -8,7 +8,8 @@ import { MAX_SLIDE_BYTES, MAX_SLIDES_PER_RECORDING, SLIDE_MAX_EDGE } from "@shar
 import { getDb, getRecordingById } from "./db";
 import { getRecordingAccess, requireRecordingAccess } from "./recordingAccess";
 import { explainMissingSchema, tolerateMissingSchema } from "./schemaTolerance";
-import { getSessionFromCookie } from "./sessionManager";
+import { getVerifiedSession } from "./sessionUser";
+import { safeEqual } from "./_core/secrets";
 import { deleteStoredAudio, getBlobUsage, isVercelBlobStorageConfigured, storageGetSignedUrl, storagePut } from "./storage";
 import { protectedProcedure, router } from "./_core/trpc";
 
@@ -183,13 +184,13 @@ export function registerSlideRoutes(app: Express) {
         res.status(404).send("Not found");
         return;
       }
-      const session = getSessionFromCookie(req);
+      const session = await getVerifiedSession(req);
       const token = typeof req.query.token === "string" ? req.query.token : "";
       let allowed = false;
       if (session) allowed = Boolean(await getRecordingAccess(slide.recordingId, session.userId));
       if (!allowed && token) {
         const [recording] = await db.select({ token: recordings.publicShareToken, isDeleted: recordings.isDeleted }).from(recordings).where(eq(recordings.id, slide.recordingId)).limit(1);
-        allowed = Boolean(recording && !recording.isDeleted && recording.token && recording.token === token);
+        allowed = Boolean(recording && !recording.isDeleted && safeEqual(token, recording.token));
       }
       if (!allowed) {
         res.status(session ? 403 : 401).send("You do not have access to this slide");

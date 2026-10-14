@@ -13,8 +13,8 @@ vi.mock("../recordingAccess", () => ({
   getRecordingAccess: (...args: unknown[]) => getRecordingAccess(...args),
 }));
 
-vi.mock("../sessionManager", () => ({
-  getSessionFromCookie: (...args: unknown[]) => getSessionFromCookie(...args),
+vi.mock("../sessionUser", () => ({
+  getVerifiedSession: async (...args: unknown[]) => getSessionFromCookie(...args),
 }));
 
 vi.mock("../storage", () => ({
@@ -166,5 +166,36 @@ describe("audio playback proxy", () => {
     const response = await request(url, { Range: "bytes=50-60" });
     expect(response.status).toBe(416);
     expect(response.headers.get("content-range")).toBe("bytes */10");
+  });
+});
+
+describe("audio access rules (Phase 6 review)", () => {
+  it("accepts the public link's token without a session", async () => {
+    getSessionFromCookie.mockReturnValue(null);
+    const response = await request(`${url}&token=tok_public`);
+    expect(response.status).toBe(200);
+  });
+
+  it("refuses a wrong token and a trashed recording's token", async () => {
+    getSessionFromCookie.mockReturnValue(null);
+    expect((await request(`${url}&token=tok_wrong`)).status).toBe(401);
+    getRecordingByAudioKey.mockResolvedValue({ id: 1, userId: 7, publicShareToken: "tok_public", isDeleted: 1 });
+    expect((await request(`${url}&token=tok_public`)).status).toBe(401);
+  });
+
+  it("no longer serves legacy storage keys to anyone who knows the key", async () => {
+    const { ENV } = await import("./env");
+    const saved = { url: ENV.forgeApiUrl, key: ENV.forgeApiKey };
+    Object.assign(ENV, { forgeApiUrl: "https://forge.example", forgeApiKey: "forge-key" });
+    try {
+      getSessionFromCookie.mockReturnValue(null);
+      expect((await request(`/manus-storage/${KEY}`)).status).toBe(401);
+      getSessionFromCookie.mockReturnValue({ userId: 99 });
+      expect((await request(`/manus-storage/${KEY}`)).status).toBe(403);
+      getRecordingByAudioKey.mockResolvedValue(null);
+      expect((await request(`/manus-storage/9/recordings/unknown.webm`)).status).toBe(404);
+    } finally {
+      Object.assign(ENV, { forgeApiUrl: saved.url, forgeApiKey: saved.key });
+    }
   });
 });
