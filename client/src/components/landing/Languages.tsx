@@ -1,8 +1,16 @@
+import { useState } from "react";
+import { Pause, Play } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { TRANSCRIPTION_LANGUAGES } from "@shared/languages";
 
 const NAMES = TRANSCRIPTION_LANGUAGES.map((language) => language.label.replace(/ \(.*\)/, ""));
 
+const CHIP = "whitespace-nowrap rounded-md border border-border bg-card px-5 py-2.5 text-sm font-medium";
+
 export default function Languages() {
+  const reduce = useReducedMotion();
+  // Moving content needs a way to stop it (WCAG 2.2.2): hover pauses for mice, this button for everyone else.
+  const [paused, setPaused] = useState(false);
   const loop = [...NAMES, ...NAMES];
   return (
     <section id="languages" className="scroll-mt-24 overflow-hidden py-32">
@@ -10,17 +18,40 @@ export default function Languages() {
         <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Transcribe in {NAMES.length} languages</h2>
         <p className="mt-4 text-muted-foreground">Leave it on automatic and the language is detected for you, or pick one when a short clip needs a nudge.</p>
       </div>
-      <div className="marquee relative mt-12" aria-label={`Supported languages: ${NAMES.join(", ")}`}>
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
-        <ul className="marquee-track flex w-max gap-3" aria-hidden="true">
-          {loop.map((name, i) => (
-            <li key={`${name}-${i}`} className="whitespace-nowrap rounded-md border border-border bg-card px-5 py-2.5 text-sm font-medium">
-              {name}
-            </li>
+      {reduce ? (
+        <ul className="mx-auto mt-12 flex max-w-4xl flex-wrap justify-center gap-3 px-4">
+          {NAMES.map((name) => (
+            <li key={name} className={CHIP}>{name}</li>
           ))}
         </ul>
-      </div>
+      ) : (
+        <>
+          <ul className="sr-only">
+            {NAMES.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+          <div className={`marquee relative mt-12 ${paused ? "is-paused" : ""}`} aria-hidden="true">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" />
+            <ul className="marquee-track flex w-max gap-3">
+              {loop.map((name, i) => (
+                <li key={`${name}-${i}`} className={CHIP}>{name}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setPaused((value) => !value)}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {paused ? <Play className="h-3.5 w-3.5" aria-hidden="true" /> : <Pause className="h-3.5 w-3.5" aria-hidden="true" />}
+              {paused ? "Resume scrolling" : "Pause scrolling"}
+            </button>
+          </div>
+        </>
+      )}
       <p className="mx-auto mt-6 max-w-xl px-4 text-center text-sm text-muted-foreground">Cantonese is transcribed as Chinese, because our transcription provider does not offer it separately.</p>
     </section>
   );

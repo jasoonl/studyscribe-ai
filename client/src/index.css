@@ -306,7 +306,7 @@
   to { transform: translateX(-50%); }
 }
 .marquee-track { animation: marquee-scroll 55s linear infinite; }
-.marquee:hover .marquee-track { animation-play-state: paused; }
+.marquee:hover .marquee-track, .marquee.is-paused .marquee-track { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
 }
