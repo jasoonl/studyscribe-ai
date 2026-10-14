@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { buildOfflinePack, OFFLINE_OWNER_KEY } from "@/lib/offlinePack";
 import { getPack, offlineStorageAvailable, removePack, savePack } from "@/lib/offlineStore";
+import { t, useI18n } from "@/i18n";
 
 type Props = {
   userId: number | undefined;
@@ -21,6 +22,7 @@ export function KeepOffline({ userId, recording, transcript, flashcards, notes }
   const [kept, setKept] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const refreshed = useRef(false);
+  useI18n();
 
   const pack = () =>
     buildOfflinePack({
@@ -53,15 +55,15 @@ export function KeepOffline({ userId, recording, transcript, flashcards, notes }
       if (kept) {
         await removePack(recording.id);
         setKept(false);
-        toast.success("Removed from this device");
+        toast.success(t("recording.offlineRemoved"));
       } else {
         await savePack(pack());
         localStorage.setItem(OFFLINE_OWNER_KEY, String(userId));
         setKept(true);
-        toast.success("Kept offline", { description: "Open it from Offline recordings when you have no connection." });
+        toast.success(t("recording.offlineKept"), { description: t("recording.offlineKeptText") });
       }
     } catch {
-      toast.error("This browser would not save it. Private windows often block offline storage.");
+      toast.error(t("recording.offlineFailed"));
     } finally {
       setBusy(false);
     }
@@ -70,8 +72,8 @@ export function KeepOffline({ userId, recording, transcript, flashcards, notes }
   return (
     <Button variant="outline" size="sm" className="gap-2" onClick={toggle} disabled={busy} aria-pressed={kept}>
       <CloudDownload className="h-4 w-4" aria-hidden="true" />
-      <span className="hidden sm:inline">{kept ? "Kept offline" : "Keep offline"}</span>
-      <span className="sr-only sm:hidden">{kept ? "Kept offline" : "Keep offline"}</span>
+      <span className="hidden sm:inline">{kept ? t("recording.offlineKept") : t("recording.keepOffline")}</span>
+      <span className="sr-only sm:hidden">{kept ? t("recording.offlineKept") : t("recording.keepOffline")}</span>
     </Button>
   );
 }

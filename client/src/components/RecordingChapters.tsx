@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { formatTranscriptTimestamp } from "@/lib/transcriptSegments";
 import { cn } from "@/lib/utils";
+import { t, useI18n } from "@/i18n";
 
 const COLLAPSED_COUNT = 5;
 
@@ -32,12 +33,13 @@ export function RecordingChapters({
   playbackTime: number;
   onSeek: (seconds: number) => void;
 }) {
+  useI18n();
   const utils = trpc.useUtils();
   const [expanded, setExpanded] = useState(false);
   const { data, isLoading } = trpc.insights.get.useQuery({ recordingId }, { enabled: recordingId > 0 && transcriptReady });
   const generate = trpc.insights.generateChapters.useMutation({
     onSuccess: () => utils.insights.get.invalidate({ recordingId }),
-    onError: error => toast.error(error.message || "Could not make chapters"),
+    onError: error => toast.error(error.message || t("recording.chaptersFailed")),
   });
 
   if (!transcriptReady || isLoading) return null;
@@ -49,7 +51,7 @@ export function RecordingChapters({
     <section aria-labelledby={`chapters-${recordingId}`} className="mt-5 border-t border-border pt-4">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h3 id={`chapters-${recordingId}`} className="text-sm font-semibold text-muted-foreground">
-          Chapters{chapters.length > 0 && <span className="ml-1.5 font-normal tabular-nums">{chapters.length}</span>}
+          {t("recording.chapters")}{chapters.length > 0 && <span className="ml-1.5 font-normal tabular-nums">{chapters.length}</span>}
         </h3>
         {chapters.length > 0 && (
           <Button
@@ -61,17 +63,17 @@ export function RecordingChapters({
             onClick={() => generate.mutate({ recordingId })}
           >
             {generate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
-            Redo
+            {t("recording.chaptersRedo")}
           </Button>
         )}
       </div>
 
       {chapters.length === 0 ? (
         <div className="flex flex-col items-start gap-3 rounded-xl bg-muted/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">Split the recording into sections by topic, each one a place to jump to.</p>
+          <p className="text-sm text-muted-foreground">{t("recording.chaptersIntro")}</p>
           <Button type="button" size="sm" variant="outline" className="shrink-0 gap-1.5" disabled={generate.isPending} onClick={() => generate.mutate({ recordingId })}>
             {generate.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {generate.isPending ? "Making chapters" : "Make chapters"}
+            {generate.isPending ? t("recording.makingChapters") : t("recording.makeChapters")}
           </Button>
         </div>
       ) : (
@@ -108,7 +110,7 @@ export function RecordingChapters({
               aria-expanded={expanded}
               className="mt-1 text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {expanded ? "Show fewer" : `Show all ${chapters.length}`}
+              {expanded ? t("recording.showFewer") : t("recording.showAll", { count: chapters.length })}
             </button>
           )}
         </>
