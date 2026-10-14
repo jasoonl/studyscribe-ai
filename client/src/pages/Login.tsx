@@ -8,9 +8,12 @@ import { MIN_AGE } from "@shared/legal";
 import { safeNext } from "@/lib/safeNext";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
+import { Trans, useI18n } from "@/i18n";
+import { LanguagePicker } from "@/components/LanguagePicker";
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const { t } = useI18n();
   const search = useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,15 +61,15 @@ export default function Login() {
           setSsoOpen(true);
           setSsoEmail(email);
         }
-        throw new Error(error.error || "Login failed");
+        throw new Error(error.error || t("login.failed"));
       }
 
-      toast.success("Login successful!");
+      toast.success(t("login.success"));
       // Hard reload to /dashboard so auth state is freshly read from the
       // session cookie (avoids stale client-side auth state).
       window.location.href = next ?? "/dashboard";
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Login failed";
+      const message = error instanceof Error ? error.message : t("login.failed");
       setFormError(message);
       toast.error(message);
     } finally {
@@ -91,14 +94,14 @@ export default function Login() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to initiate Google login");
+        throw new Error(data.error || t("login.googleFailed"));
       }
 
       const { authUrl } = await response.json();
       window.location.href = authUrl;
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Google login failed";
+        error instanceof Error ? error.message : t("login.googleFailed");
       setFormError(message);
       toast.error(message);
       setIsLoading(false);
@@ -111,7 +114,7 @@ export default function Login() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">StudyScribe AI</h1>
-          <p className="text-muted-foreground">Sign in to your account</p>
+          <p className="text-muted-foreground">{t("login.subtitle")}</p>
         </div>
 
         {(oauthError || formError) && (
@@ -149,7 +152,7 @@ export default function Login() {
               />
             </svg>
           )}
-          Continue with Google
+          {t("common.continueWithGoogle")}
         </Button>
 
         {/* Divider */}
@@ -158,7 +161,7 @@ export default function Login() {
             <div className="w-full border-t border-border"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-card text-muted-foreground">Or continue with email</span>
+            <span className="px-2 bg-card text-muted-foreground">{t("login.orEmail")}</span>
           </div>
         </div>
 
@@ -169,7 +172,8 @@ export default function Login() {
             <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
               type="email"
-              placeholder="Email address"
+              placeholder={t("common.emailAddress")}
+              aria-label={t("common.emailAddress")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-10"
@@ -183,7 +187,8 @@ export default function Login() {
             <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
               type={showPassword ? "text" : "password"}
-              placeholder="Password"
+              placeholder={t("common.password")}
+              aria-label={t("common.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10"
@@ -195,7 +200,7 @@ export default function Login() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-3 text-muted-foreground hover:text-foreground text-sm"
             >
-              {showPassword ? "Hide" : "Show"}
+              {showPassword ? t("common.hide") : t("common.show")}
             </button>
           </div>
 
@@ -204,10 +209,10 @@ export default function Login() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Signing in...
+                {t("login.signingIn")}
               </>
             ) : (
-              "Sign In"
+              t("common.signIn")
             )}
           </Button>
         </form>
@@ -220,26 +225,32 @@ export default function Login() {
             onClick={() => setSsoOpen(open => !open)}
             className="w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Sign in with SSO
+            {t("login.sso")}
           </button>
           {ssoOpen && (
             <form onSubmit={startSso} className="space-y-3 border-t border-border px-4 py-4">
-              <label htmlFor="sso-email" className="block text-sm text-muted-foreground">Your school or work email, if your team uses single sign-on</label>
+              <label htmlFor="sso-email" className="block text-sm text-muted-foreground">{t("login.ssoEmail")}</label>
               <Input id="sso-email" type="email" value={ssoEmail} onChange={event => setSsoEmail(event.target.value)} placeholder="name@school.edu" required />
               <fieldset className="space-y-2">
-                <legend className="text-xs text-muted-foreground">Needed the first time you sign in</legend>
+                <legend className="text-xs text-muted-foreground">{t("login.ssoFirstTime")}</legend>
                 <div className="flex items-start gap-2.5">
                   <Checkbox id="sso-age" checked={ssoAge} onCheckedChange={value => setSsoAge(value === true)} className="mt-0.5" />
-                  <label htmlFor="sso-age" className="text-xs">I am at least {MIN_AGE} years old.</label>
+                  <label htmlFor="sso-age" className="text-xs">{t("login.ssoAge", { age: MIN_AGE })}</label>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Checkbox id="sso-terms" checked={ssoTerms} onCheckedChange={value => setSsoTerms(value === true)} className="mt-0.5" />
                   <label htmlFor="sso-terms" className="text-xs">
-                    I agree to the <a href="/terms" target="_blank" rel="noopener" className="text-primary underline">Terms</a> and have read the <a href="/privacy" target="_blank" rel="noopener" className="text-primary underline">Privacy Policy</a>.
+                    <Trans
+                      k="login.ssoTerms"
+                      parts={{
+                        terms: text => <a href="/terms" target="_blank" rel="noopener" className="text-primary underline">{text}</a>,
+                        privacy: text => <a href="/privacy" target="_blank" rel="noopener" className="text-primary underline">{text}</a>,
+                      }}
+                    />
                   </label>
                 </div>
               </fieldset>
-              <Button type="submit" variant="outline" className="w-full" disabled={!ssoEmail.trim()}>Continue</Button>
+              <Button type="submit" variant="outline" className="w-full" disabled={!ssoEmail.trim()}>{t("common.continue")}</Button>
             </form>
           )}
         </div>
@@ -247,18 +258,21 @@ export default function Login() {
         {/* Forgot Password Link */}
         <div className="text-center mt-4">
           <a href="/forgot-password" className="text-sm text-accent hover:underline">
-            Forgot password?
+            {t("login.forgot")}
           </a>
         </div>
 
         {/* Sign Up Link */}
         <div className="text-center mt-6 pt-6 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            {t("login.noAccount")}{" "}
             <a href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="text-accent font-medium hover:underline">
-              Sign up
+              {t("common.signUp")}
             </a>
           </p>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <LanguagePicker id="login-language" />
         </div>
       </Card>
     </main>

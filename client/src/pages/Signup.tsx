@@ -8,12 +8,15 @@ import { Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { safeNext } from "@/lib/safeNext";
+import { Trans, useI18n } from "@/i18n";
+import { LanguagePicker } from "@/components/LanguagePicker";
 
 export default function Signup() {
   // Invite code comes from the URL — user arrives here from /invite page
   const params = new URLSearchParams(window.location.search);
   const inviteCode = params.get("code") || "";
   const next = safeNext(params.get("next"));
+  const { t } = useI18n();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -59,10 +62,10 @@ export default function Signup() {
             setFormData((prev) => ({ ...prev, email: data.email }));
           }
         } else {
-          setInviteError(data.error || "Invalid invite code");
+          setInviteError(data.error || t("signup.invalidCode"));
         }
       } catch {
-        setInviteError("Failed to validate invite code. Please try again.");
+        setInviteError(t("signup.checkFailed"));
       }
     };
 
@@ -74,30 +77,30 @@ export default function Signup() {
     setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(t("signup.mismatch"));
       setIsLoading(false);
       return;
     }
 
     if (formData.password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error(t("signup.tooShort"));
       setIsLoading(false);
       return;
     }
 
     if (!confirmedAge) {
-      toast.error(`Please confirm you are at least ${MIN_AGE} years old to continue`);
+      toast.error(t("signup.needAge", { age: MIN_AGE }));
       setIsLoading(false);
       return;
     }
     if (!acceptedTerms) {
-      toast.error("Please accept the Terms of Service and Privacy Policy to continue");
+      toast.error(t("signup.needTerms"));
       setIsLoading(false);
       return;
     }
 
     if (!formData.name.trim()) {
-      toast.error("Name is required");
+      toast.error(t("signup.needName"));
       setIsLoading(false);
       return;
     }
@@ -119,14 +122,14 @@ export default function Signup() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Signup failed");
+        throw new Error(error.error || t("signup.failed"));
       }
 
       const created = await response.json().catch(() => ({}));
-      toast.success(created.confirmationSent ? "Account created. Check your inbox to confirm your email." : "Account created. Welcome to StudyScribe AI.");
+      toast.success(created.confirmationSent ? t("signup.createdConfirm") : t("signup.created"));
       window.location.href = next ?? "/dashboard";
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Signup failed";
+      const message = error instanceof Error ? error.message : t("signup.failed");
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -135,11 +138,11 @@ export default function Signup() {
 
   const handleGoogleSignup = async () => {
     if (!confirmedAge) {
-      toast.error(`Please confirm you are at least ${MIN_AGE} years old to continue`);
+      toast.error(t("signup.needAge", { age: MIN_AGE }));
       return;
     }
     if (!acceptedTerms) {
-      toast.error("Please accept the Terms of Service and Privacy Policy to continue");
+      toast.error(t("signup.needTerms"));
       return;
     }
     setIsLoading(true);
@@ -160,13 +163,13 @@ export default function Signup() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to initiate Google sign-up");
+        throw new Error(data.error || t("signup.googleFailed"));
       }
 
       const { authUrl } = await response.json();
       window.location.href = authUrl;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Google sign-up failed";
+      const message = error instanceof Error ? error.message : t("signup.googleFailed");
       toast.error(message);
       setIsLoading(false);
     }
@@ -178,10 +181,10 @@ export default function Signup() {
       <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-background p-4 focus:outline-none">
         <Card className="w-full max-w-md p-8 shadow-lg text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-foreground mb-2">Invalid Invite Code</h2>
+          <h2 className="text-xl font-bold text-foreground mb-2">{t("signup.invalidTitle")}</h2>
           <p className="text-muted-foreground mb-6">{inviteError}</p>
           <Button onClick={() => (window.location.href = "/invite")} className="w-full">
-            Try a Different Code
+            {t("signup.tryAnother")}
           </Button>
         </Card>
       </main>
@@ -202,24 +205,28 @@ export default function Signup() {
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">{openSignup ? "Create your free account" : "Create your account"}</h1>
-          <p className="text-muted-foreground">{openSignup ? "No invite needed. You start on the Free plan." : "Your invite has been verified."}</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{openSignup ? t("signup.titleOpen") : t("signup.title")}</h1>
+          <p className="text-muted-foreground">{openSignup ? t("signup.subtitleOpen") : t("signup.subtitle")}</p>
         </div>
 
         <fieldset className="mb-5 space-y-3 rounded-lg border border-border bg-secondary/50 p-3">
-          <legend className="sr-only">Before you sign up</legend>
+          <legend className="sr-only">{t("signup.before")}</legend>
           <div className="flex items-start gap-3">
             <Checkbox id="confirm-age" checked={confirmedAge} onCheckedChange={(v) => setConfirmedAge(v === true)} className="mt-0.5" />
             <label htmlFor="confirm-age" className="text-sm text-foreground">
-              I am at least {MIN_AGE} years old. If I am under 18, a parent or guardian has agreed to the Terms for me.
+              {t("signup.age", { age: MIN_AGE })}
             </label>
           </div>
           <div className="flex items-start gap-3">
             <Checkbox id="accept-terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
             <label htmlFor="accept-terms" className="text-sm text-foreground">
-              I agree to the{" "}
-              <a href="/terms" target="_blank" rel="noopener" className="font-medium text-primary underline">Terms of Service</a> and have read the{" "}
-              <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-primary underline">Privacy Policy</a>.
+              <Trans
+                k="signup.terms"
+                parts={{
+                  terms: text => <a href="/terms" target="_blank" rel="noopener" className="font-medium text-primary underline">{text}</a>,
+                  privacy: text => <a href="/privacy" target="_blank" rel="noopener" className="font-medium text-primary underline">{text}</a>,
+                }}
+              />
             </label>
           </div>
         </fieldset>
@@ -241,10 +248,10 @@ export default function Signup() {
               <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
           )}
-          Continue with Google
+          {t("common.continueWithGoogle")}
         </Button>
         {!openSignup && inviteEmail ? (
-          <p className="-mt-2 mb-4 text-center text-xs text-muted-foreground">Choose the Google account for {inviteEmail}. The invite works for that address only.</p>
+          <p className="-mt-2 mb-4 text-center text-xs text-muted-foreground">{t("signup.inviteGoogle", { email: inviteEmail })}</p>
         ) : null}
 
         {/* Divider */}
@@ -253,7 +260,7 @@ export default function Signup() {
             <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-card text-muted-foreground">Or sign up with email</span>
+            <span className="px-2 bg-card text-muted-foreground">{t("signup.orEmail")}</span>
           </div>
         </div>
 
@@ -263,7 +270,8 @@ export default function Signup() {
             <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Full name"
+              placeholder={t("signup.fullName")}
+              aria-label={t("signup.fullName")}
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="pl-10"
@@ -276,7 +284,8 @@ export default function Signup() {
             <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
               type="email"
-              placeholder="Email address"
+              placeholder={t("common.emailAddress")}
+              aria-label={t("common.emailAddress")}
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="pl-10"
@@ -289,7 +298,8 @@ export default function Signup() {
             <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
               type={showPassword ? "text" : "password"}
-              placeholder="Password (min 8 characters)"
+              placeholder={t("signup.passwordHint")}
+              aria-label={t("signup.passwordHint")}
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="pl-10"
@@ -302,7 +312,8 @@ export default function Signup() {
             <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
               type={showPassword ? "text" : "password"}
-              placeholder="Confirm password"
+              placeholder={t("signup.confirmPassword")}
+              aria-label={t("signup.confirmPassword")}
               value={formData.confirmPassword}
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               className="pl-10"
@@ -314,7 +325,7 @@ export default function Signup() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-3 text-muted-foreground hover:text-foreground text-sm"
             >
-              {showPassword ? "Hide" : "Show"}
+              {showPassword ? t("common.hide") : t("common.show")}
             </button>
           </div>
 
@@ -322,10 +333,10 @@ export default function Signup() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Creating account...
+                {t("signup.creating")}
               </>
             ) : (
-              "Create Account"
+              t("signup.create")
             )}
           </Button>
         </form>
@@ -333,11 +344,14 @@ export default function Signup() {
         {/* Login link */}
         <div className="text-center mt-6 pt-6 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
+            {t("signup.haveAccount")}{" "}
             <a href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-accent font-medium hover:underline">
-              Sign in
+              {t("common.signIn")}
             </a>
           </p>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <LanguagePicker id="signup-language" />
         </div>
       </Card>
     </main>

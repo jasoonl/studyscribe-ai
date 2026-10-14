@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { connectIntegrationUrl } from "@/components/SendToMenu";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { htmlLangFor } from "@shared/i18n";
+import { formatDate, getUiLanguage, t, useI18n } from "@/i18n";
 
 const PROMPT_KEY = "studyscribe_calendar_prompt_hidden";
 const SHOWN = 5;
@@ -26,13 +28,13 @@ function dayKey(event: Event) {
 }
 
 function dayLabel(key: string, today: string, tomorrow: string) {
-  if (key === today) return "Today";
-  if (key === tomorrow) return "Tomorrow";
+  if (key === today) return t("calendar.today");
+  if (key === tomorrow) return t("calendar.tomorrow");
   const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  return formatDate(new Date(y, m - 1, d), { weekday: "long", month: "short", day: "numeric" });
 }
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+const time = (iso: string) => new Date(iso).toLocaleTimeString(htmlLangFor(getUiLanguage()), { hour: "numeric", minute: "2-digit" });
 
 function readHidden() {
   try {
@@ -45,10 +47,11 @@ function readHidden() {
 /** Dashboard "Upcoming" (A5): the next seven days from Google Calendar, with "Remind me to record". */
 export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => void; onSendNoteTaker?: (event: { id: string; title: string; start: string; meetingUrl: string }) => void }) {
   const utils = trpc.useUtils();
+  useI18n();
   const { data, isLoading } = trpc.calendar.upcoming.useQuery(undefined, { staleTime: 60_000, refetchInterval: 5 * 60_000 });
   const setReminder = trpc.calendar.setReminder.useMutation({
     onSuccess: (result) => {
-      toast.success(result.reminder ? "We'll remind you when it starts, if StudyScribe is open, and in the morning digest." : "Reminder removed");
+      toast.success(result.reminder ? t("calendar.reminderSet") : t("calendar.reminderRemoved"));
       void utils.calendar.upcoming.invalidate();
     },
     onError: (error) => toast.error(error.message),
@@ -70,10 +73,10 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
   if (!data.connected) {
     if (promptHidden) return null;
     return (
-      <section aria-label="Calendar" className="flex flex-col gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <section aria-label={t("calendar.region")} className="flex flex-col gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm">
-          <span className="font-medium">See this week's classes here.</span>{" "}
-          <span className="text-muted-foreground">Connect Google Calendar to get a reminder to record and recordings named after the class. Read only.</span>
+          <span className="font-medium">{t("calendar.promptTitle")}</span>{" "}
+          <span className="text-muted-foreground">{t("calendar.promptText")}</span>
         </p>
         <div className="flex shrink-0 gap-2">
           <Button
@@ -88,10 +91,10 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
               setPromptHidden(true);
             }}
           >
-            Not now
+            {t("calendar.notNow")}
           </Button>
           <Button size="sm" asChild>
-            <a href={connectIntegrationUrl("google_calendar")}>Connect</a>
+            <a href={connectIntegrationUrl("google_calendar")}>{t("calendar.connect")}</a>
           </Button>
         </div>
       </section>
@@ -105,7 +108,7 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
   return (
     <section aria-labelledby="calendar-heading">
       <div className="mb-2.5 flex items-baseline justify-between gap-3">
-        <h2 id="calendar-heading" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Upcoming</h2>
+        <h2 id="calendar-heading" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("calendar.upcoming")}</h2>
         <Link href="/settings#connected-apps" className="text-xs font-medium text-primary underline-offset-4 hover:underline">
           {data.accountLabel ?? "Google Calendar"}
         </Link>
@@ -113,7 +116,7 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
       {data.error ? (
         <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground shadow-sm">{data.error}</p>
       ) : total === 0 ? (
-        <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground shadow-sm">Nothing on your calendar in the next 7 days.</p>
+        <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground shadow-sm">{t("calendar.empty")}</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           {groups.map(([key, events]) => (
@@ -129,12 +132,12 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
                   const canSendNoteTaker = Boolean(onSendNoteTaker && event.meetingUrl && !event.allDay && (end === null || now < end));
                   return (
                     <li key={event.id} className="flex items-center gap-2 px-4 py-3 sm:gap-3">
-                      <span className="w-16 shrink-0 text-sm tabular-nums text-muted-foreground sm:w-20">{event.allDay ? "All day" : time(event.start)}</span>
+                      <span className="w-16 shrink-0 text-sm tabular-nums text-muted-foreground sm:w-20">{event.allDay ? t("calendar.allDay") : time(event.start)}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{event.title}</span>
                         {(onNow || event.location) && (
                           <span className={cn("block truncate text-xs", onNow ? "font-medium text-primary" : "text-muted-foreground")}>
-                            {onNow ? (start! <= now ? "On now" : "Starting soon") : event.location}
+                            {onNow ? (start! <= now ? t("calendar.onNow") : t("calendar.startingSoon")) : event.location}
                           </span>
                         )}
                       </span>
@@ -146,15 +149,15 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
                           onClick={() => onSendNoteTaker?.({ id: event.id, title: event.title, start: event.start, meetingUrl: event.meetingUrl! })}
                         >
                           <Bot className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Note-taker</span>
-                          <span className="sr-only sm:hidden">Send a note-taker to {event.title}</span>
+                          <span className="hidden sm:inline">{t("calendar.noteTaker")}</span>
+                          <span className="sr-only sm:hidden">{t("calendar.sendNoteTakerTo", { title: event.title })}</span>
                         </Button>
                       )}
                       {onNow ? (
                         <Button size="sm" className="shrink-0 gap-1.5" onClick={onRecord}>
                           <Mic className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Record</span>
-                          <span className="sr-only sm:hidden">Record {event.title}</span>
+                          <span className="hidden sm:inline">{t("calendar.record")}</span>
+                          <span className="sr-only sm:hidden">{t("calendar.recordEvent", { title: event.title })}</span>
                         </Button>
                       ) : canRemind ? (
                         <Button
@@ -166,8 +169,8 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
                           onClick={() => setReminder.mutate({ eventId: event.id, on: !event.reminder, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
                         >
                           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : event.reminder ? <BellRing className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
-                          <span className="hidden sm:inline">{event.reminder ? "Reminder on" : "Remind me"}</span>
-                          <span className="sr-only sm:hidden">{event.reminder ? "Reminder on" : "Remind me to record"}</span>
+                          <span className="hidden sm:inline">{event.reminder ? t("calendar.reminderOn") : t("calendar.remindMe")}</span>
+                          <span className="sr-only sm:hidden">{event.reminder ? t("calendar.reminderOn") : t("calendar.remindMeRecord")}</span>
                         </Button>
                       ) : null}
                     </li>
@@ -178,7 +181,7 @@ export function UpcomingEvents({ onRecord, onSendNoteTaker }: { onRecord: () => 
           ))}
           {total > SHOWN && (
             <button type="button" onClick={() => setExpanded((value) => !value)} className="w-full border-t border-border px-4 py-2.5 text-left text-xs font-medium text-primary hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
-              {expanded ? "Show fewer" : `Show all ${total} events`}
+              {expanded ? t("calendar.showFewer") : t("calendar.showAll", { count: total })}
             </button>
           )}
         </div>

@@ -9,6 +9,7 @@ import superjson from "superjson";
 import App from "./App";
 import { startAnalyticsIfConsented } from "@/lib/cookieConsent";
 import { offerUpgradeOnUsageLimit } from "@/lib/usageLimit";
+import { initUiLanguage } from "@/i18n";
 
 import "./index.css";
 
@@ -62,13 +63,16 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </trpc.Provider>
-);
+// The interface language loads first (a small chunk unless it is English) so no English flashes.
+void initUiLanguage().finally(() => {
+  createRoot(document.getElementById("root")!).render(
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </trpc.Provider>
+  );
+});
 
 captureReferralFromUrl();
 registerServiceWorkerForOffline();

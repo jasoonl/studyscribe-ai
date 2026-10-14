@@ -12,6 +12,7 @@ import { CourseDot } from "@/components/CourseDot";
 import { RecordingOrganizer } from "@/components/RecordingOrganizer";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete02Icon, MoreHorizontalIcon } from "@hugeicons/core-free-icons";
+import { formatDate, useI18n } from "@/i18n";
 
 export type LibraryRecording = {
   id: number;
@@ -36,6 +37,7 @@ type Props = {
 
 /** The library rows, shared by the dashboard and the course page. */
 export function RecordingList({ recordings, courses, tags, onDelete, showCourse = true }: Props) {
+  const { t } = useI18n();
   const courseById = new Map((courses ?? []).map(course => [course.id, course]));
   const tagById = new Map((tags ?? []).map(tag => [tag.id, tag]));
 
@@ -47,14 +49,14 @@ export function RecordingList({ recordings, courses, tags, onDelete, showCourse 
         return (
           <SwipeRow
             key={recording.id}
-            label={`Recording ${recording.title}`}
+            label={t("list.rowLabel", { title: recording.title })}
             height={88}
             radius={16}
             rowColor="var(--card)"
             textColor="var(--foreground)"
             drawerColor="var(--destructive)"
             actionColor="var(--destructive)"
-            actions={[{ id: "trash", label: "Trash" }]}
+            actions={[{ id: "trash", label: t("list.trash") }]}
             onCommit={() => onDelete(recording.id)}
             className="rounded-2xl ring-1 ring-border/60"
             style={{ marginBottom: 12 }}
@@ -64,8 +66,8 @@ export function RecordingList({ recordings, courses, tags, onDelete, showCourse 
                 <h3 className="cursor-pointer truncate font-semibold hover:text-primary">{recording.title}</h3>
               </Link>
               <p className="truncate text-sm text-muted-foreground">
-                {new Date(recording.createdAt).toLocaleDateString()}
-                <span className="capitalize"> · {recording.audience}</span>
+                {formatDate(recording.createdAt)}
+                {recording.audience && <span> · {t(recording.audience === "student" ? "library.student" : "library.professional")}</span>}
               </p>
               <div className="mt-0.5 flex min-w-0 items-center gap-x-3 overflow-hidden whitespace-nowrap text-xs text-muted-foreground [mask-image:linear-gradient(to_right,black_88%,transparent)]">
                 {showCourse && course && (
@@ -86,22 +88,22 @@ export function RecordingList({ recordings, courses, tags, onDelete, showCourse 
             <div className="flex shrink-0 items-center gap-2">
               <RecordingOrganizer recordingId={recording.id} courseId={recording.courseId} tagIds={recording.tagIds} />
               <Link href={`/recording/${recording.id}`} className="hidden sm:block">
-                <Button size="sm" variant="outline">View</Button>
+                <Button size="sm" variant="outline">{t("common.view")}</Button>
               </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost" className="size-8 shrink-0 text-muted-foreground" aria-label={`More actions for ${recording.title}`}>
+                  <Button size="icon" variant="ghost" className="size-8 shrink-0 text-muted-foreground" aria-label={t("list.more", { title: recording.title })}>
                     <HugeiconsIcon icon={MoreHorizontalIcon} size={18} strokeWidth={1.8} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/recording/${recording.id}`}>Open</Link>
+                    <Link href={`/recording/${recording.id}`}>{t("common.open")}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={() => onDelete(recording.id)}>
                     <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.8} />
-                    Move to trash
+                    {t("list.moveToTrash")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
