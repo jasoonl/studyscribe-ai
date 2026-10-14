@@ -15,7 +15,8 @@ import {
   startClock,
   type RecordingClock,
 } from "@/lib/recordingClock";
-import { SlideCapturer, type CapturedSlide } from "@/lib/slideCapture";
+// Type only: the capturer loads when slide capture starts, so it stays out of the app shell.
+import type { CapturedSlide, SlideCapturer } from "@/lib/slideCapture";
 import { MAX_SLIDES_PER_RECORDING } from "@shared/slides";
 
 /**
@@ -362,16 +363,25 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       track.onended = onShareEnded;
     });
     if (videoTrack) {
-      const capturer = new SlideCapturer(videoTrack, {
-        elapsedSeconds: () => readElapsedSeconds(clockRef.current, Date.now()),
-        isPaused: () => statusRef.current !== "recording",
-        maxSlides: room,
-        onSlide: count => setSlideCount(slidesRef.current.length + count),
-      });
-      slideCapturerRef.current = capturer;
-      capturer.start();
       setSlidesActive(true);
       videoTrack.onended = onShareEnded;
+      void import("@/lib/slideCapture")
+        .then(({ SlideCapturer: Capturer }) => {
+          // Sharing may have stopped while the code loaded.
+          if (displayStreamRef.current !== stream || videoTrack.readyState === "ended") return;
+          const capturer = new Capturer(videoTrack, {
+            elapsedSeconds: () => readElapsedSeconds(clockRef.current, Date.now()),
+            isPaused: () => statusRef.current !== "recording",
+            maxSlides: room,
+            onSlide: count => setSlideCount(slidesRef.current.length + count),
+          });
+          slideCapturerRef.current = capturer;
+          capturer.start();
+        })
+        .catch(error => {
+          console.warn("[slides] capture could not start:", error);
+          setSlidesActive(false);
+        });
     }
     return { audio: audioTracks.length > 0, slides: Boolean(videoTrack) };
   }, [releaseTabAudio]);

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TRPCClientError } from "@trpc/client";
 import workletUrl from "@/lib/liveAudioWorklet.ts?worker&url";
-import { LiveTranscriber, LiveUnavailableError, type LiveStatus } from "@/lib/liveTranscription";
+// Type only: the transcriber loads the first time live text starts, so it stays out of the app shell.
+import type { LiveStatus, LiveTranscriber } from "@/lib/liveTranscription";
 import type { LiveTurn } from "@/lib/liveTurns";
 import { getLiveTranscriptEnabled, setLiveTranscriptEnabled } from "@/lib/preferences";
 import { trpc } from "@/lib/trpc";
@@ -59,8 +60,10 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
   elapsedRef.current = getElapsedSeconds;
 
   const transcriberRef = useRef<LiveTranscriber | null>(null);
-  if (!transcriberRef.current) {
-    transcriberRef.current = new LiveTranscriber({
+  const ensureTranscriber = useCallback(async () => {
+    if (transcriberRef.current) return transcriberRef.current;
+    const { LiveTranscriber: Transcriber, LiveUnavailableError } = await import("@/lib/liveTranscription");
+    transcriberRef.current ??= new Transcriber({
       getToken: async () => {
         try {
           return await mintToken.current();
@@ -78,8 +81,8 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
         setMessage(detail);
       },
     });
-  }
-  const transcriber = transcriberRef.current;
+    return transcriberRef.current;
+  }, []);
 
   const nodeRef = useRef<{ tap: AudioTap; node: AudioWorkletNode } | null>(null);
   const attachingRef = useRef<Promise<void> | null>(null);
@@ -124,7 +127,8 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
     const live = recorderStatus === "recording" || recorderStatus === "paused";
     if (!enabled || !live) {
       detachNode();
-      if (transcriber.currentStatus !== "idle") void transcriber.stop();
+      const current = transcriberRef.current;
+      if (current && current.currentStatus !== "idle") void current.stop();
       else setStatus("idle");
       return;
     }
@@ -134,13 +138,14 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (recorderStatus === "paused") {
-      transcriber.pause();
+      transcriberRef.current?.pause();
       return;
     }
     const attaching = attachNode(audioTap);
     attachingRef.current = attaching;
     attaching
-      .then(() => {
+      .then(() => ensureTranscriber())
+      .then(transcriber => {
         if (!cancelled) transcriber.start();
       })
       .catch(error => {
@@ -153,14 +158,14 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, recorderStatus, audioTap, attachNode, detachNode, transcriber]);
+  }, [enabled, recorderStatus, audioTap, attachNode, detachNode, ensureTranscriber]);
 
   // Back online: reconnect now instead of waiting out the backoff.
   useEffect(() => {
-    const onOnline = () => transcriber.retryNow();
+    const onOnline = () => transcriberRef.current?.retryNow();
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [transcriber]);
+  }, []);
 
   useEffect(() => () => {
     void transcriberRef.current?.stop();
