@@ -25,6 +25,7 @@ import { purgeRecordings } from "./purgeRecordings";
 import { sharingRouter } from "./sharingRouter";
 import { MAX_BOOKMARKS_PER_RECORDING, bookmarkInputSchema, bookmarksRouter, saveBookmarks } from "./bookmarks";
 import { plannerRouter, recordCardStudy, recordQuizStudy } from "./planner";
+import { referralsRouter, rewardReferralForFirstTranscript } from "./referrals";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { renameSpeakerInSegments, speakerRenameInputSchema, transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and, sql } from "drizzle-orm";
@@ -898,6 +899,7 @@ export const appRouter = router({
   sharing: sharingRouter,
   bookmarks: bookmarksRouter,
   planner: plannerRouter,
+  referrals: referralsRouter,
   courses: coursesRouter,
   tags: tagsRouter,
   actionItems: actionItemsRouter,
@@ -1435,6 +1437,8 @@ async function finalizeCompletedTranscription(
     // known at upload, the end of the last transcript line stands in for it.
     const lastEnd = result.segments.reduce((max, segment) => Math.max(max, Number(segment.end) || 0), 0);
     await recordTranscriptionUsage(recording.userId, recording.id, Math.max(recording.duration ?? 0, Math.round(lastEnd)));
+    // An account that joined through someone's link: its first transcript rewards both (Phase 7).
+    await rewardReferralForFirstTranscript(recording.userId);
     // Smart search index and outgoing webhooks, each bounded by its own short
     // timeout and never throwing, so neither can strand the recording.
     await indexRecordingQuietly(recording.id);

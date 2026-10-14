@@ -1194,3 +1194,30 @@ export const studyEvents = mysqlTable("studyEvents", {
 ]);
 
 export type StudyEvent = typeof studyEvents.$inferSelect;
+
+/** Each person's referral code (Phase 7), made on first use. */
+export const referralCodes = mysqlTable("referralCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  code: varchar("code", { length: 16 }).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("referralCodes_user_unique").on(table.userId),
+  uniqueIndex("referralCodes_code_unique").on(table.code),
+]);
+
+/**
+ * Who joined through whose link. Both are rewarded for the month (`rewardPeriod`,
+ * YYYY-MM) in which the new account's first transcription finished.
+ */
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(),
+  referredUserId: int("referredUserId").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  rewardedAt: timestamp("rewardedAt"),
+  rewardPeriod: varchar("rewardPeriod", { length: 7 }),
+}, (table) => [
+  uniqueIndex("referrals_referred_unique").on(table.referredUserId),
+  index("referrals_referrer_idx").on(table.referrerId),
+]);

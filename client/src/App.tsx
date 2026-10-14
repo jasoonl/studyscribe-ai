@@ -16,6 +16,7 @@ import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
 import { CalendarReminderWatcher } from "@/components/CalendarReminderWatcher";
 import { OfflineStatus } from "./components/OfflineStatus";
+import { ReferralClaimer } from "./components/ReferralClaimer";
 
 // Route components are code-split per page: eagerly importing every page
 // (including heavy per-page deps like mermaid/streamdown/recharts) bundled
@@ -69,6 +70,7 @@ const Tasks = lazy(() => import("./pages/Tasks"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Offline = lazy(() => import("./pages/Offline"));
+const InviteFriends = lazy(() => import("./pages/InviteFriends"));
 const Templates = lazy(() => import("./pages/Templates"));
 const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
@@ -116,6 +118,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     <>
       <Component />
       <CalendarReminderWatcher />
+      <ReferralClaimer />
     </>
   );
 }
@@ -168,6 +171,7 @@ function Router() {
         <Route path="/plan" component={() => <ProtectedRoute component={StudyPlan} />} />
         <Route path="/progress" component={() => <ProtectedRoute component={Progress} />} />
         <Route path="/offline" component={Offline} />
+        <Route path="/invite-friends" component={() => <ProtectedRoute component={InviteFriends} />} />
         <Route path="/templates" component={() => <ProtectedRoute component={Templates} />} />
         <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
         <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />

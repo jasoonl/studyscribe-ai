@@ -1,3 +1,4 @@
+import { deleteReferralsForUser, exportReferralsForUser } from "./referrals";
 import { deletePlannerDataForUser, exportPlannerDataForUser } from "./planner";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, or } from "drizzle-orm";
@@ -97,6 +98,7 @@ export const accountRouter = router({
       quizAttempts: await db.select().from(quizAttempts).where(eq(quizAttempts.userId, userId)),
       bookmarks: await listBookmarksForUser(userId),
       ...(await exportPlannerDataForUser(userId)),
+      ...(await exportReferralsForUser(userId)),
       ...(await exportCoursesForUser(userId)),
       actionItems: await listActionItemsForUser(userId),
       vocabulary: await exportVocabularyForUser(userId),
@@ -191,6 +193,7 @@ export const accountRouter = router({
       await db.delete(flashcards).where(eq(flashcards.userId, userId));
       await db.delete(flashcardReviews).where(eq(flashcardReviews.userId, userId));
       await deletePlannerDataForUser(userId);
+      await deleteReferralsForUser(userId);
       await db.delete(chatHistory).where(eq(chatHistory.userId, userId));
       await db.delete(studyGuides).where(eq(studyGuides.userId, userId));
       await db.delete(quizAttempts).where(eq(quizAttempts.userId, userId));

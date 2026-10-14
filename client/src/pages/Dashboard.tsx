@@ -257,6 +257,7 @@ export default function Dashboard() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/billing">Plan and billing</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/invite-friends">Invite friends</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/help">Help</Link></DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem asChild><Link href="/admin">Admin</Link></DropdownMenuItem>}
                 <DropdownMenuSeparator />
