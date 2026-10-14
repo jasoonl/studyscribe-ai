@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "crypto";
+import { recordCronRun } from "./systemHealth";
 import { sweepMeetingBots } from "./meetingBots";
 import type { Express, Request, Response } from "express";
 import { TRPCError } from "@trpc/server";
@@ -228,6 +229,8 @@ export function registerFollowUpCron(app: Express) {
       return;
     }
     try {
+      // Recorded first, so System health can tell whether the daily run still happens.
+      await recordCronRun();
       const result = await sendDueFollowUpReminders(new Date().toISOString().slice(0, 10));
       // The same daily run retries outgoing webhooks that are due, so they do
       // not need a cron of their own (Hobby plans allow very few).

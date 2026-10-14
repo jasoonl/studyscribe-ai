@@ -47,6 +47,7 @@ const Invite = lazy(() => import("./pages/Invite"));
 const RequestAccess = lazy(() => import("./pages/RequestAccess"));
 const AdminInviteRequests = lazy(() => import("./pages/AdminInviteRequests"));
 const AdminInviteCodes = lazy(() => import("./pages/AdminInviteCodes"));
+const AdminHealth = lazy(() => import("./pages/AdminHealth"));
 const Admin = lazy(() => import("./pages/Admin"));
 const PublicSharedRecording = lazy(() => import("./pages/PublicSharedRecording"));
 const SharedWithMe = lazy(() => import("./pages/SharedWithMe"));
@@ -145,6 +146,7 @@ function Router() {
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
         <Route path="/admin/invite-requests" component={() => <ProtectedRoute component={AdminInviteRequests} />} />
         <Route path="/admin/invite-codes" component={() => <ProtectedRoute component={AdminInviteCodes} />} />
+        <Route path="/admin/health" component={() => <ProtectedRoute component={AdminHealth} />} />
         <Route path="/record-or-upload" component={() => <ProtectedRoute component={RecordOrUpload} />} />
         <Route path="/knowledge-base" component={() => <ProtectedRoute component={KnowledgeBase} />} />
         <Route path="/shared-with-me" component={() => <ProtectedRoute component={SharedWithMe} />} />

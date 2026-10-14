@@ -95,7 +95,7 @@ export default function Admin() {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Stat cards / quick links */}
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/admin/invite-requests">
             <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
               <div className="flex items-center justify-between">
@@ -106,6 +106,13 @@ export default function Admin() {
                 </div>
                 <Clock className="w-6 h-6 text-primary/70" />
               </div>
+            </Card>
+          </Link>
+          <Link href="/admin/health">
+            <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
+              <p className="text-sm text-gray-500">System health</p>
+              <p className="text-2xl font-bold mt-1">Check</p>
+              <p className="text-xs text-gray-500 mt-1">every configured service</p>
             </Card>
           </Link>
           <Link href="/admin/invite-codes">

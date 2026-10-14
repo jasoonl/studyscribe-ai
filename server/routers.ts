@@ -35,6 +35,7 @@ import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { actionItemsRouter } from "./actionItems";
 import { insightsRouter } from "./recordingInsights";
 import { examPacksRouter } from "./examPacks";
+import { runHealthChecks } from "./systemHealth";
 import { rememberRecordingVocabulary, resolveKeyterms, vocabularyRouter } from "./vocabulary";
 import { keytermsInput } from "./vocabularyInput";
 import { LiveTokenError, getLiveAvailability, getLiveTranscriptionStatus, mintLiveToken } from "./liveTranscription";
@@ -102,6 +103,8 @@ export const appRouter = router({
    * scheme) silently failed every transcript with no way to see why.
    */
   diagnostics: router({
+    /** System health (Phase 6): a live check of each configured service; statuses and sentences only, no secrets. */
+    health: adminProcedure.query(async () => ({ checkedAt: new Date(), checks: await runHealthChecks() })),
     transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
     storage: adminProcedure.query(() => getBlobUsage()),
     billing: billingDiagnostics,
