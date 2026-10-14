@@ -204,6 +204,13 @@
       "when": 1791853640485,
       "tag": "0028_phase5_teams",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1791953612190,
+      "tag": "0029_phase6_course_vocabulary_and_indexes",
+      "breakpoints": true
     }
   ]
 }
