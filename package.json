@@ -16,7 +16,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "db:migrate": "drizzle-kit migrate",
     "relay": "node scripts/youtube-relay/relay.mjs",
-    "relay:init": "node scripts/youtube-relay/relay.mjs init"
+    "relay:init": "node scripts/youtube-relay/relay.mjs init",
+    "evals": "tsx scripts/evals/run.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
