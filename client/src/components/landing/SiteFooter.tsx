@@ -26,19 +26,19 @@ export default function SiteFooter() {
         {columns.map((column) => (
           <nav key={column.title} aria-label={column.title} className="space-y-3">
             <p className="text-sm font-semibold">{column.title}</p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-1 text-sm text-muted-foreground">
               {column.links.map(([label, href]) => (
                 <li key={label}>
                   {href.includes("#") ? (
-                    <a href={href} className="transition-colors hover:text-primary">{label}</a>
+                    <a href={href} className="inline-block py-1 transition-colors hover:text-primary">{label}</a>
                   ) : (
-                    <Link href={href} className="transition-colors hover:text-primary">{label}</Link>
+                    <Link href={href} className="inline-block py-1 transition-colors hover:text-primary">{label}</Link>
                   )}
                 </li>
               ))}
               {column.title === "Legal" && (
                 <li>
-                  <button type="button" onClick={openCookieSettings} className="transition-colors hover:text-primary">Cookie settings</button>
+                  <button type="button" onClick={openCookieSettings} className="py-1 transition-colors hover:text-primary">Cookie settings</button>
                 </li>
               )}
             </ul>
