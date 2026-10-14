@@ -8,6 +8,7 @@ import { LiveTranscriptProvider } from "./contexts/LiveTranscriptContext";
 import RecordingIndicator from "./components/RecordingIndicator";
 import CookieBanner from "./components/CookieBanner";
 import SkipLink from "./components/SkipLink";
+import RouteMeta from "./components/RouteMeta";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./components/NotificationContainer";
@@ -199,6 +200,7 @@ function App() {
             <RecorderProvider>
               <LiveTranscriptProvider>
                 <SkipLink />
+                <RouteMeta />
                 <Toaster />
                 <Router />
                 <RecordingIndicator />
