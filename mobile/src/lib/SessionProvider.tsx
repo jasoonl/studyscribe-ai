@@ -41,11 +41,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const trpcClient = useMemo(() => createTrpcClient(() => controller.getToken()), [controller]);
 
-  // A different account must never see the previous one's cached data.
-  const userId = state.status === "signedIn" ? state.user.id : null;
+  // A different account must never see the previous one's cached data: the
+  // cache is dropped on sign-out, so the next account starts empty. (Clearing
+  // on sign-in instead would cancel the first screen's queries mid-flight.)
+  const signedOut = state.status === "signedOut";
   useEffect(() => {
-    queryClient.clear();
-  }, [userId, queryClient]);
+    if (signedOut) queryClient.clear();
+  }, [signedOut, queryClient]);
 
   return (
     <SessionContext.Provider value={{ state, controller }}>

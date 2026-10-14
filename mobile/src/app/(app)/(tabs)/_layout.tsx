@@ -15,7 +15,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.mutedForeground,
         tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.border },
-        tabBarLabelStyle: { fontFamily: "Geist_500Medium", fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: "Geist_500Medium", fontSize: 11, lineHeight: 14 },
         sceneStyle: { backgroundColor: theme.background },
       }}
     >
