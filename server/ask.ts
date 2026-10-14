@@ -152,7 +152,7 @@ export async function askAcrossRecordings(input: {
     answer = (await complete(messages)).trim();
   } catch (error) {
     console.error("[ask] model call failed:", error instanceof Error ? error.message : error);
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The assistant could not answer right now. Try again in a moment." });
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The assistant could not answer right now. Try again in a moment.", cause: error });
   }
   if (!answer) {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The assistant returned an empty answer. Try rephrasing the question." });

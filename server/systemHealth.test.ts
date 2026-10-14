@@ -6,7 +6,7 @@ vi.mock("./db", () => ({
   setAppSetting: async () => undefined,
 }));
 
-const { cronStatus, describeFailure, runHealthChecks, statusFromResponse, storageStatus } = await import("./systemHealth");
+const { cronStatus, describeFailure, resendStatus, runHealthChecks, statusFromResponse, storageStatus } = await import("./systemHealth");
 
 describe("system health rules", () => {
   afterEach(() => vi.unstubAllEnvs());
@@ -54,5 +54,37 @@ describe("system health rules", () => {
     expect(checks.find(check => check.id === "llm")?.status).toBe("error");
     expect(checks.find(check => check.id === "database")?.status).toBe("ok");
     expect(checks.map(check => check.id)).toEqual(["database", "storage", "assemblyai", "llm", "embeddings", "stripe", "resend", "recall", "workos", "push", "cron"]);
+  });
+});
+
+describe("resendStatus", () => {
+  const reply = (status: number, body: unknown) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
+  const withEnv = async (from: string, run: () => Promise<void>) => {
+    const before = { key: process.env.RESEND_API_KEY, from: process.env.RESEND_FROM_EMAIL };
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.RESEND_FROM_EMAIL = from;
+    try {
+      await run();
+    } finally {
+      process.env.RESEND_API_KEY = before.key;
+      process.env.RESEND_FROM_EMAIL = before.from;
+      if (before.key === undefined) delete process.env.RESEND_API_KEY;
+      if (before.from === undefined) delete process.env.RESEND_FROM_EMAIL;
+    }
+  };
+
+  it("checks that the sending domain is verified", async () => {
+    await withEnv("StudyScribe <notes@mail.example.com>", async () => {
+      expect((await resendStatus(reply(200, { data: [{ name: "mail.example.com", status: "verified" }] }))).status).toBe("ok");
+      expect((await resendStatus(reply(200, { data: [{ name: "mail.example.com", status: "pending" }] }))).detail).toMatch(/pending/);
+      expect((await resendStatus(reply(200, { data: [] }))).status).toBe("error");
+    });
+  });
+
+  it("accepts a key limited to sending and reports a refused one", async () => {
+    await withEnv("notes@example.com", async () => {
+      expect((await resendStatus(reply(401, { name: "restricted_api_key" }))).status).toBe("ok");
+      expect((await resendStatus(reply(401, { name: "validation_error" }))).status).toBe("error");
+    });
   });
 });
