@@ -2,10 +2,10 @@ import { sql } from "drizzle-orm";
 import { getAppSetting, getDb, setAppSetting } from "./db";
 import { getEmbeddingConfig } from "./embeddings";
 import { getBrowserPushConfiguration } from "./pushNotifications";
-import { describeRecallConfig } from "./recall";
+import { describeRecallConfig, getRecallConfig } from "./recall";
 import { getBlobUsage, isVercelBlobStorageConfigured } from "./storage";
 import { getStripeConfig, stripeRequest } from "./stripe";
-import { describeWorkosConfig } from "./workos";
+import { describeWorkosConfig, getWorkosConfig } from "./workos";
 
 /**
  * Admin "System health" (Phase 6): one live check per configured service, run
@@ -77,6 +77,27 @@ export async function recordCronRun(at = new Date()) {
 
 const off = (detail: string) => async (): Promise<Omit<HealthCheck, "id" | "label">> => ({ status: "off", detail, latencyMs: null });
 
+/**
+ * Resend: lists domains to check the key and that the sending domain is verified. A key
+ * limited to sending can't list domains (401 restricted_api_key), which still means it works.
+ */
+export async function resendStatus(fetcher: typeof fetch): Promise<Omit<HealthCheck, "id" | "label" | "latencyMs">> {
+  const from = process.env.RESEND_FROM_EMAIL ?? "";
+  const domain = from.includes("@") ? from.split("@").pop()!.replace(/>$/, "").toLowerCase() : "";
+  if (!domain) return { status: "warn", detail: "RESEND_FROM_EMAIL is not set." };
+  const response = await fetcher("https://api.resend.com/domains", { headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}` } });
+  if (response.status === 401) {
+    const body = (await response.json().catch(() => null)) as { name?: string } | null;
+    if (body?.name === "restricted_api_key") return { status: "ok", detail: "The key works (it is limited to sending, so the domain was not checked)." };
+  }
+  if (!response.ok) return statusFromResponse(response.status, "Resend");
+  const list = (await response.json().catch(() => null)) as { data?: Array<{ name?: string; status?: string }> } | null;
+  const match = list?.data?.find((d) => d.name?.toLowerCase() === domain);
+  if (!match) return { status: "error", detail: `The sending domain ${domain} is not in this Resend account.` };
+  if (match.status !== "verified") return { status: "warn", detail: `The sending domain ${domain} is ${match.status ?? "not verified"} in Resend.` };
+  return { status: "ok", detail: `Resend answered; ${domain} is verified.` };
+}
+
 export async function runHealthChecks(fetcher: typeof fetch = fetch): Promise<HealthCheck[]> {
   const llmBase = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
   const embedding = getEmbeddingConfig();
@@ -111,9 +132,18 @@ export async function runHealthChecks(fetcher: typeof fetch = fetch): Promise<He
       await stripeRequest("GET", "/balance", {}, { config: stripe });
       return { status: "ok", detail: `Stripe answered (${stripe.secretKey.startsWith("sk_live_") || stripe.secretKey.startsWith("rk_live_") ? "live" : "test"} mode${stripe.yearlyPrices ? ", yearly prices set" : ""}).` };
     }) : off("Stripe is not fully configured; paid plans show Coming soon.")],
-    ["resend", "Email (Resend)", process.env.RESEND_API_KEY ? async () => ({ status: process.env.RESEND_FROM_EMAIL ? "ok" : "warn", detail: process.env.RESEND_FROM_EMAIL ? `Configured, sending from ${process.env.RESEND_FROM_EMAIL.replace(/^[^@]*@/, "…@")}. Not sent a test message.` : "RESEND_FROM_EMAIL is not set.", latencyMs: null }) : off("RESEND_API_KEY is not set, so password resets and confirmations are not emailed.")],
-    ["recall", "Meeting note-taker (Recall.ai)", recall.configured ? async () => ({ status: recall.regionValid ? "ok" : "warn", detail: recall.regionValid ? `Configured for ${recall.region}.` : "RECALL_REGION does not look like a region.", latencyMs: null }) : off("Recall.ai is not configured; the note-taker is off.")],
-    ["workos", "Single sign-on (WorkOS)", workos.configured ? async () => ({ status: "ok", detail: "Configured.", latencyMs: null }) : off("WorkOS is not configured; SAML sign-in is off.")],
+    ["resend", "Email (Resend)", process.env.RESEND_API_KEY ? () => timed(async () => resendStatus(fetcher)) : off("RESEND_API_KEY is not set, so password resets and confirmations are not emailed.")],
+    ["recall", "Meeting note-taker (Recall.ai)", recall.configured ? () => timed(async () => {
+      const config = getRecallConfig()!;
+      const response = await fetcher(`${config.apiBase}/bot/?page_size=1`, { headers: { authorization: `Token ${config.apiKey}`, accept: "application/json" } });
+      const result = statusFromResponse(response.status, "Recall.ai");
+      return result.status === "ok" ? { ...result, detail: `${result.detail} Region ${config.region}.` } : result;
+    }) : off("Recall.ai is not configured; the note-taker is off.")],
+    ["workos", "Single sign-on (WorkOS)", workos.configured ? () => timed(async () => {
+      const config = getWorkosConfig()!;
+      const response = await fetcher(`${config.apiBase}/organizations?limit=1`, { headers: { authorization: `Bearer ${config.apiKey}` } });
+      return statusFromResponse(response.status, "WorkOS");
+    }) : off("WorkOS is not configured; SAML sign-in is off.")],
     ["push", "Browser push", push.supported ? async () => ({ status: "ok", detail: "VAPID keys are set.", latencyMs: null }) : off("VAPID keys are not set; reminders stay in the app.")],
     ["cron", "Daily run (cron)", () => timed(async () => {
       const setting = await getAppSetting(CRON_LAST_RUN_KEY).catch(() => null);

@@ -1,3 +1,4 @@
+import { describeAiFailure } from "./aiErrors";
 import { TRPCError } from "@trpc/server";
 import { and, eq, sql } from "drizzle-orm";
 import { subscriptions, usageEvents } from "../drizzle/schema";
@@ -153,8 +154,15 @@ export const aiProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   }
   await assertCanGenerate(ctx.user);
   const result = await next();
-  if (result.ok) await recordAiGeneration(ctx.user.id);
-  return result;
+  if (result.ok) {
+    await recordAiGeneration(ctx.user.id);
+    return result;
+  }
+  // Provider trouble reads the same everywhere, and the provider's raw response never reaches the person.
+  const failure = describeAiFailure(result.error);
+  if (!failure) return result;
+  console.error("[ai] provider failure:", result.error.cause ?? result.error.message);
+  throw new TRPCError({ code: failure.code, message: failure.message, cause: result.error });
 });
 
 export async function deleteUsageForUser(userId: number) {
