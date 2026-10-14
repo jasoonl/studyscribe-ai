@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "67830f77-10b2-4009-89e1-b98a89362e57",
+  "id": "48674cc5-0e10-45bd-8808-6db1b7d34060",
   "prevId": "f8038a33-ce90-4fb2-928a-871aa64b663f",
   "tables": {
     "actionItems": {
@@ -275,6 +275,74 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "appleIdentities": {
+      "name": "appleIdentities",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "appleSub": {
+          "name": "appleSub",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "appleIdentities_sub_unique": {
+          "name": "appleIdentities_sub_unique",
+          "columns": [
+            "appleSub"
+          ],
+          "isUnique": true
+        },
+        "appleIdentities_user_idx": {
+          "name": "appleIdentities_user_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "appleIdentities_id": {
+          "name": "appleIdentities_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "attendeeEmails": {
       "name": "attendeeEmails",
       "columns": {
@@ -510,89 +578,11 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "chatHistory_user_recording_idx": {
-          "name": "chatHistory_user_recording_idx",
-          "columns": [
-            "userId",
-            "recordingId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "chatHistory_id": {
           "name": "chatHistory_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "courseVocabularies": {
-      "name": "courseVocabularies",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "courseId": {
-          "name": "courseId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "userId": {
-          "name": "userId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "terms": {
-          "name": "terms",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "CURRENT_TIMESTAMP"
-        }
-      },
-      "indexes": {
-        "courseVocabularies_course_unique": {
-          "name": "courseVocabularies_course_unique",
-          "columns": [
-            "courseId"
-          ],
-          "isUnique": true
-        },
-        "courseVocabularies_user_idx": {
-          "name": "courseVocabularies_user_idx",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "courseVocabularies_id": {
-          "name": "courseVocabularies_id",
           "columns": [
             "id"
           ]
@@ -670,6 +660,89 @@
       "compositePrimaryKeys": {
         "courses_id": {
           "name": "courses_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "deviceTokens": {
+      "name": "deviceTokens",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "platform": {
+          "name": "platform",
+          "type": "enum('ios','android')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "appVersion": {
+          "name": "appVersion",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "lastSeenAt": {
+          "name": "lastSeenAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "deviceTokens_token_unique": {
+          "name": "deviceTokens_token_unique",
+          "columns": [
+            "token"
+          ],
+          "isUnique": true
+        },
+        "deviceTokens_user_idx": {
+          "name": "deviceTokens_user_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "deviceTokens_id": {
+          "name": "deviceTokens_id",
           "columns": [
             "id"
           ]
@@ -779,15 +852,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "emailDrafts_recording_idx": {
-          "name": "emailDrafts_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "emailDrafts_id": {
@@ -1116,22 +1181,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "flashcards_recording_idx": {
-          "name": "flashcards_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        },
-        "flashcards_user_idx": {
-          "name": "flashcards_user_idx",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "flashcards_id": {
@@ -2458,15 +2508,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "quizAttempts_quiz_idx": {
-          "name": "quizAttempts_quiz_idx",
-          "columns": [
-            "quizId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "quizAttempts_id": {
@@ -2557,15 +2599,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "quizzes_recording_idx": {
-          "name": "quizzes_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "quizzes_id": {
@@ -2873,13 +2907,6 @@
             "sharedWithUserId"
           ],
           "isUnique": true
-        },
-        "recordingShares_shared_with_idx": {
-          "name": "recordingShares_shared_with_idx",
-          "columns": [
-            "sharedWithUserId"
-          ],
-          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -3024,15 +3051,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "recordingTags_recording_idx": {
-          "name": "recordingTags_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "recordingTags_id": {
@@ -3160,23 +3179,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "recordings_user_created_idx": {
-          "name": "recordings_user_created_idx",
-          "columns": [
-            "userId",
-            "createdAt"
-          ],
-          "isUnique": false
-        },
-        "recordings_audio_key_idx": {
-          "name": "recordings_audio_key_idx",
-          "columns": [
-            "audioKey"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "recordings_id": {
@@ -3464,15 +3467,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "studyGuides_recording_idx": {
-          "name": "studyGuides_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "studyGuides_id": {
@@ -3548,22 +3543,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "studyNotes_recording_idx": {
-          "name": "studyNotes_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        },
-        "studyNotes_user_idx": {
-          "name": "studyNotes_user_idx",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "studyNotes_id": {
@@ -3754,15 +3734,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "tags_user_idx": {
-          "name": "tags_user_idx",
-          "columns": [
-            "userId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "tags_id": {
@@ -4013,14 +3985,6 @@
             "userId"
           ],
           "isUnique": false
-        },
-        "transcriptChunks_user_model_idx": {
-          "name": "transcriptChunks_user_model_idx",
-          "columns": [
-            "userId",
-            "model"
-          ],
-          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -4107,15 +4071,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "transcripts_recording_idx": {
-          "name": "transcripts_recording_idx",
-          "columns": [
-            "recordingId"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "transcripts_id": {
@@ -4410,16 +4366,7 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {
-        "userNotifications_user_read_idx": {
-          "name": "userNotifications_user_read_idx",
-          "columns": [
-            "userId",
-            "isRead"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "userNotifications_id": {

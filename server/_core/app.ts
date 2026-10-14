@@ -11,6 +11,7 @@ import { registerSchemaInitRoute } from "../schemaInit";
 import { registerFollowUpCron } from "../followUps";
 import { registerIntegrationRoutes } from "../integrations";
 import { registerStripeWebhook } from "../billing";
+import { registerMobileRoutes } from "../mobileAuth";
 import { registerPublicApi } from "../publicApi";
 import { registerSlideRoutes } from "../slides";
 import { registerRecallWebhook } from "../meetingBots";
@@ -44,6 +45,8 @@ export function createApp() {
   // Login CSRF: auth endpoints set or act without the session cookie, so refuse POSTs another site started.
   app.use("/api/auth", rejectCrossSitePosts);
   app.post("/api/webhooks/assemblyai", handleAssemblyAiWebhook);
+  // Mobile app (F1): before the auth routes, whose login/signup it wraps.
+  registerMobileRoutes(app);
   registerSchemaInitRoute(app);
   registerFollowUpCron(app);
   registerStorageProxy(app);

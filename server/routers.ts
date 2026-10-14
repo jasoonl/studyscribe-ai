@@ -52,6 +52,7 @@ import { onboardingRouter } from "./onboarding";
 import { translationsRouter } from "./translations";
 import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
+import { mobileRouter } from "./mobileRouter";
 import { apiKeysRouter } from "./apiKeys";
 import { startTranscription } from "./transcriptionStart";
 import { slidesRouter } from "./slides";
@@ -894,6 +895,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   translations: translationsRouter,
   calendar: calendarRouter,
+  mobile: mobileRouter,
   apiKeys: apiKeysRouter,
   slides: slidesRouter,
   meetingBots: meetingBotsRouter,

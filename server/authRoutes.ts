@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { SSO_REQUIRED_MESSAGE, ssoRequiredForEmail } from "./ssoEnforcement";
 import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
-import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie, sessionMatchesUser } from "./sessionManager";
+import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromRequest, sessionMatchesUser } from "./sessionManager";
 import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -181,7 +181,7 @@ export function registerAuthRoutes(app: Express) {
    */
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
-      const session = getSessionFromCookie(req);
+      const session = getSessionFromRequest(req);
 
       if (!session) {
         res.status(401).json({ error: "Not authenticated" });

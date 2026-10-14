@@ -17,6 +17,7 @@
     { "src": "/api/(.*)", "dest": "/api/index.mjs" },
     { "src": "/manus-storage/(.*)", "dest": "/api/index.mjs" },
     { "src": "/healthz", "dest": "/api/index.mjs" },
+    { "src": "/.well-known/apple-app-site-association", "headers": { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }, "continue": true },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

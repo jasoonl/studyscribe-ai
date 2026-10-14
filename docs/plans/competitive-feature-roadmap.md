@@ -127,7 +127,7 @@ Legend: **Src** = O (Otter), C (Cluely), O+C (both). **Effort**: S (≤2 days), 
 
 | # | Gap | Src | Adaptation | Effort |
 |---|---|---|---|---|
-| F1 | **Native mobile apps** | O | See `docs/plans/mobile-app-plan.md`. | XL |
+| F1 | **Native mobile apps** | O | See `docs/plans/mobile-app-plan.md`. Built 2026-10-14 (`mobile/`, Expo); store submission is the owner's. | XL |
 | F2 | **Paid plans & usage minutes** | O+C | Stripe Checkout + customer portal; `subscriptions` + monthly `usage` (transcription minutes, AI generations). Pricing page already exists; `/billing` currently redirects there. | L |
 | F3 | **Teams / education plan, admin console, SSO** | O | Org accounts, seat management, SAML/Google Workspace SSO. Later. | XL |
 | F4 | **Open signup with free tier** (vs. invite-only) | O+C | Feature flag in `appSettings` to switch invite-gating off once billing/abuse limits exist. Invite flow stays available. | S |
@@ -178,7 +178,8 @@ Status (part 2, built 2026-10-13, needs `npm run db:migrate` for migrations 0024
 Apps slice (no server or web changes, no migrations): E6 Chrome extension (`extension/`, Manifest V3: popup with the site session, recent recordings, "Import this page" through `recordings.createFromUrl` and "Record this tab" with optional microphone in an offscreen document, badge timer, upload through the site's presigned endpoints; store listing and privacy text) and E7 desktop app (`desktop/`, Electron: system audio answering the record page's existing tab/screen audio option, an always-on-top compact Study help window that keeps the same page so a recording carries on, `studyscribe://` links, locked navigation and permissions, electron-builder for DMG, NSIS and AppImage). Verified in Chromium and Electron under Xvfb against local MariaDB with mocks; not yet published to the Chrome Web Store, signed, or run on a Mac or Windows machine.
 
 Done: F2 Stripe billing + usage limits · F4 open signup flag · F5 onboarding checklist · F7 translation · A5 calendar · E5 public API · A6 slide capture · A4 meeting bot · D4 email notes to attendees · F3 teams/SSO · E6 Chrome extension · E7 desktop app.
-Remaining: F1 mobile apps (parallel track, see mobile plan).
+F1 mobile app (built 2026-10-14, branch `claude/mobile-app`, needs `npm run db:migrate` for migration 0029): Expo app in `mobile/` with every web study feature, background recording with crash recovery, multipart uploads, push, Sign in with Apple and Google, deep links, a read-only plan screen (no in-app purchase, guideline 3.1.3(f)), privacy manifest and store notes. Verified with unit tests, iOS/Android bundle exports, expo-doctor and a Playwright walk of every screen on the web target against local MariaDB; not yet run on a phone or submitted to the stores (owner steps in `mobile/README.md`).
+Remaining: none from the roadmap; F1 store release is the owner's (accounts, signing, review).
 
 ### Phase 6 — Finish, harden, launch-ready · in progress
 

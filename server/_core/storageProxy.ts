@@ -76,7 +76,7 @@ async function serveRangeFromFullBody(
  * ranges also keeps each response under the serverless response size limit
  * for long recordings.
  */
-async function streamStoredAudio(req: import("express").Request, res: import("express").Response, key: string) {
+export async function streamStoredAudio(req: import("express").Request, res: import("express").Response, key: string) {
   const signedUrl = await storageGetSignedUrl(key);
   const rangeHeader = req.headers.range;
   const upstream = await fetch(signedUrl, rangeHeader ? { headers: { Range: rangeHeader } } : undefined);

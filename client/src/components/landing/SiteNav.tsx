@@ -125,7 +125,7 @@ export default function SiteNav() {
             </Link>
             <Link
               href={signup.href}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-[0.98]"
+              className="whitespace-nowrap rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm sm:px-4 transition-transform hover:brightness-110 active:scale-[0.98]"
             >
               {signup.label}
             </Link>

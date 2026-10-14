@@ -89,6 +89,34 @@ export function clearSessionCookie(res: Response): void {
 }
 
 /**
+ * The session token from an `Authorization: Bearer <token>` header, used by the
+ * mobile app (it keeps the token in the device keychain instead of a cookie).
+ * Browsers never attach this header on their own, so accepting it does not
+ * weaken the cookie session's CSRF protections.
+ */
+export function getBearerToken(req: Request | { headers?: Record<string, unknown> } | undefined): string | null {
+  const header = req?.headers?.authorization;
+  const value = Array.isArray(header) ? header[0] : header;
+  if (typeof value !== "string") return null;
+  const match = /^Bearer\s+([A-Za-z0-9._~+/=-]+)\s*$/i.exec(value);
+  return match ? match[1] : null;
+}
+
+/**
+ * The session for a request: a bearer token first (the mobile app), then the
+ * session cookie (the web app). Same JWT, same secret, same expiry either way.
+ * A bearer token that fails verification does not fall back to the cookie, so
+ * an expired app token is reported as signed out rather than mixed with a
+ * browser session.
+ */
+export function getSessionFromRequest(req: Request | { headers?: Record<string, unknown> } | undefined): SessionData | null {
+  const bearer = getBearerToken(req);
+  if (bearer) return verifySessionToken(bearer);
+  const cookieHeader = req?.headers?.cookie;
+  return getSessionFromCookie(typeof cookieHeader === "string" ? cookieHeader : undefined);
+}
+
+/**
  * Get session from cookie
  */
 export function getSessionFromCookie(req: Request | string | undefined): SessionData | null {

@@ -16,7 +16,7 @@ export default function HowItWorks() {
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
         <div>
           <h2 className="max-w-md text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">From a recording to a study plan in minutes</h2>
-          <ol className="mt-10 space-y-3">
+          <ol className="mt-10 space-y-8 lg:space-y-3">
             {STEPS.map((step, i) => (
               <motion.li
                 key={step.title}
@@ -27,20 +27,24 @@ export default function HowItWorks() {
                 <button
                   type="button"
                   onClick={() => setActive(i)}
-                  className={`w-full rounded-xl border p-6 text-left transition-[opacity,border-color,background-color] duration-300 ${
-                    active === i ? "border-primary/40 bg-card" : "border-transparent opacity-60 hover:opacity-100"
+                  className={`w-full rounded-xl border p-6 text-left transition-[border-color,background-color] duration-300 ${
+                    active === i ? "border-primary/40 bg-card" : "border-transparent hover:bg-card/60"
                   }`}
-                  aria-current={active === i}
+                  aria-pressed={active === i}
                 >
                   <span className="text-xl font-semibold">{step.title}</span>
                   <span className="mt-2 block text-muted-foreground">{step.text}</span>
                 </button>
+                {/* Phones have no room for the sticky picture beside the steps, so each step shows its own. */}
+                <div className="shadow-apple mt-4 overflow-hidden rounded-xl border border-border bg-card lg:hidden">
+                  <img src={step.image} alt={step.alt} width={1600} height={896} loading="lazy" className="block w-full" />
+                </div>
               </motion.li>
             ))}
           </ol>
         </div>
 
-        <div className="lg:sticky lg:top-28 lg:self-start">
+        <div className="hidden lg:sticky lg:top-28 lg:block lg:self-start">
           <div className="shadow-apple relative overflow-hidden rounded-xl border border-border bg-card">
             <AnimatePresence mode="wait">
               <motion.img
