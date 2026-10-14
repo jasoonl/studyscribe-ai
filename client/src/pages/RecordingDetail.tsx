@@ -242,7 +242,7 @@ export default function RecordingDetail() {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Recording not found</h1>
           <Link href="/dashboard">
-            <Button>Back to Dashboard</Button>
+            <Button>Back to library</Button>
           </Link>
         </div>
       </div>

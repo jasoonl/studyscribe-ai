@@ -308,7 +308,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                Back to Dashboard
+                Back to library
               </Button>
             </Link>
             <h1 className="text-xl font-bold">Add Recording or Lecture</h1>

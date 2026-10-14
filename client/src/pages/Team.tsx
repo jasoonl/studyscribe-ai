@@ -499,7 +499,7 @@ export default function Team() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-16 max-w-4xl items-center gap-3 px-4">
           <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />Dashboard</Button>
+            <Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />Library</Button>
           </Link>
           <h1 className="min-w-0 truncate text-lg font-semibold">{org ? org.name : "Team"}</h1>
           {org && <span className="ml-auto shrink-0 text-sm text-muted-foreground">{ORG_ROLE_LABELS[org.role]}</span>}

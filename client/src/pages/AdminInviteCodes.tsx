@@ -157,7 +157,7 @@ export default function AdminInviteCodes() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-gray-500">
         <ShieldAlert className="w-12 h-12 text-red-400" />
         <p className="text-lg font-medium">Admin access required</p>
-        <Link href="/dashboard"><Button variant="outline">Go to Dashboard</Button></Link>
+        <Link href="/dashboard"><Button variant="outline">Go to your library</Button></Link>
       </div>
     );
   }

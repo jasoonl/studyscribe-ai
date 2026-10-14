@@ -69,7 +69,7 @@ export default function Admin() {
         <ShieldAlert className="w-12 h-12 text-red-400" />
         <p className="text-lg font-medium">Admin access required</p>
         <Link href="/dashboard">
-          <Button variant="outline">Go to Dashboard</Button>
+          <Button variant="outline">Go to your library</Button>
         </Link>
       </main>
     );
@@ -84,7 +84,7 @@ export default function Admin() {
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500">
             <ArrowLeft className="w-4 h-4" />
-            Dashboard
+            Library
           </Button>
         </Link>
         <div className="flex items-center gap-2">
