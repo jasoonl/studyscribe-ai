@@ -17,6 +17,7 @@ import { WebhookSettings } from "@/components/WebhookSettings";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { TeamSettingsCard } from "@/components/TeamSettingsCard";
 import { UsageMeters } from "@/components/UsageMeters";
+import { SignOutEverywhere } from "@/components/SignOutEverywhere";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -126,6 +127,8 @@ export default function Settings() {
         <WebhookSettings />
 
         <ApiKeySettings />
+
+        <SignOutEverywhere />
 
         <Card className="p-6">
           <h2 className="text-lg font-semibold">Download your data</h2>

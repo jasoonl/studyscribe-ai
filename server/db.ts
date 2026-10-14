@@ -1,9 +1,9 @@
-import { eq, and, like, or, desc, sql } from "drizzle-orm";
+import { eq, and, like, or, desc, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2";
 import { InsertUser, users, recordings, transcripts, studyNotes, flashcards, flashcardReviews, chatHistory, tags, recordingTags, noteTags, inviteCodes, passwordResetTokens, inviteRequests, InsertInviteRequest, pushSubscriptions, recordingShares, appSettings, type Transcript } from "../drizzle/schema";
 import { isInsightNote } from "./studyExtraction";
-import crypto from "crypto";
+import crypto, { createHash } from "crypto";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -300,14 +300,24 @@ export async function createPasswordResetToken(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.insert(passwordResetTokens).values(data);
+  // Stored as a SHA-256 hash, so a copy of the database can't be used to reset passwords (Phase 7).
+  return db.insert(passwordResetTokens).values({ ...data, token: hashResetToken(data.token) });
+}
+
+export function hashResetToken(token: string) {
+  return createHash("sha256").update(`reset:${token}`).digest("hex");
 }
 
 export async function getPasswordResetTokenByToken(token: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token)).limit(1);
+  // The hash, or the token itself for links sent before tokens were hashed (they expire within the hour).
+  const result = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(inArray(passwordResetTokens.token, [hashResetToken(token), token]))
+    .limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
@@ -315,7 +325,8 @@ export async function deletePasswordResetToken(token: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+  // Accepts the token from the link or the stored (hashed) value.
+  return db.delete(passwordResetTokens).where(inArray(passwordResetTokens.token, [hashResetToken(token), token]));
 }
 
 // Browser push subscription helpers

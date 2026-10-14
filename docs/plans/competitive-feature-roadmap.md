@@ -206,11 +206,11 @@ Status: in progress. Items 1 and 2 are deferred (set aside for now); Phase 7 wor
 8. **Growth**: referral credits, and share pages that introduce StudyScribe to new visitors.
 
 Carried over from Phase 6:
-- A server-side session store, so "sign out everywhere" and logout revoke a copied token (today only a password change does).
-- Hashing password reset tokens at rest (needs a migration).
+- ~~A server-side session store, so "sign out everywhere" and logout revoke a copied token.~~ Done (migration 0033).
+- ~~Hashing password reset tokens at rest.~~ Done (no migration needed).
 - Consistent outage messages for every AI procedure (each maps provider errors itself today), and live probes for Resend, Recall.ai and WorkOS on the System health page (they report configuration only).
 - Loading the live transcription and slide capture code only when a recording starts (about 10 KB gzipped still in the app shell).
-- Refreshed landing screenshots for the newer features (the copy is updated; the images are from the Phase 1 library).
+- ~~Refreshed landing screenshots.~~ Done (`scripts/landing/capture.mjs`).
 - Live text inside the floating recording pill, and Study help on pages other than the record pages (Phase 3 leftovers).
 
 ---

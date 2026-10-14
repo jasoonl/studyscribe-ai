@@ -1,3 +1,4 @@
+import { revokeSession, sessionIsValid } from "./sessionRevocation";
 import type { Express, Request, Response } from "express";
 import { SSO_REQUIRED_MESSAGE, ssoRequiredForEmail } from "./ssoEnforcement";
 import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
@@ -167,6 +168,8 @@ export function registerAuthRoutes(app: Express) {
    */
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
     try {
+      // Revoked as well as cleared, so a copy of the cookie stops working too (Phase 7).
+      await revokeSession(getSessionFromRequest(req));
       clearSessionCookie(res);
       res.json({ success: true });
     } catch (error) {
@@ -202,7 +205,7 @@ export function registerAuthRoutes(app: Express) {
       
       const user = userResults[0];
 
-      if (!user || !sessionMatchesUser(session, user)) {
+      if (!user || !(await sessionIsValid(session, user))) {
         res.status(401).json({ error: "Not authenticated" });
         return;
       }
