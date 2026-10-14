@@ -10,6 +10,8 @@ import { getFlashcardShortcutAction } from "@/lib/flashcardShortcuts";
 import { localIsoDate } from "@shared/actionItems";
 
 const SECONDS_PER_CARD = 30;
+/** One sitting at most; a backlog bigger than this is finished in the next session. */
+const SESSION_LIMIT = 200;
 
 function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
@@ -53,7 +55,7 @@ export default function StudyPlan() {
           <ReviewSession ids={session} today={today} onExit={() => setSession(null)} />
         ) : (
           <>
-            <Summary plan={plan} onStart={() => setSession(plan.queue)} />
+            <Summary plan={plan} onStart={() => setSession(plan.queue.slice(0, SESSION_LIMIT))} />
 
             {plan.exams.length > 0 && (
               <section aria-labelledby="exams-heading" className="mt-10">
@@ -154,6 +156,9 @@ function Summary({ plan, onStart }: { plan: { totalDue: number; totalFresh: numb
         {plural(minutes, "minute")}.
       </p>
       <Button className="mt-5 w-fit" size="lg" onClick={onStart}>Start review</Button>
+      {total > SESSION_LIMIT && (
+        <p className="mt-3 text-sm text-muted-foreground">A session takes the first {SESSION_LIMIT}; start another for the rest.</p>
+      )}
     </Card>
   );
 }
