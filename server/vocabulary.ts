@@ -1,7 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { vocabularyLists } from "../drizzle/schema";
+import { courseVocabularies, recordingCourses, vocabularyLists } from "../drizzle/schema";
+import { getOwnCourse } from "./courses";
 import { isMissingTableError } from "./bookmarks";
 import { getDb, getRecordingById } from "./db";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -55,6 +56,37 @@ async function writeList(userId: number, recordingId: number | null, terms: stri
   }, false);
 }
 
+/** A course's list (migration 0029); empty when the table is missing. */
+export async function getCourseVocabulary(userId: number, courseId: number): Promise<string[]> {
+  const db = await requireDb();
+  return tolerateMissingTable(async () => {
+    const rows = await db
+      .select({ terms: courseVocabularies.terms })
+      .from(courseVocabularies)
+      .where(and(eq(courseVocabularies.courseId, courseId), eq(courseVocabularies.userId, userId)))
+      .limit(1);
+    return parseVocabulary(rows[0]?.terms ?? "");
+  }, []);
+}
+
+async function writeCourseList(userId: number, courseId: number, terms: string[]): Promise<boolean> {
+  const db = await requireDb();
+  return tolerateMissingTable(async () => {
+    await db.delete(courseVocabularies).where(and(eq(courseVocabularies.courseId, courseId), eq(courseVocabularies.userId, userId)));
+    if (terms.length) await db.insert(courseVocabularies).values({ courseId, userId, terms: serializeVocabulary(terms) });
+    return true;
+  }, false);
+}
+
+/** The course a recording is filed under, if any (null before migration 0019). */
+async function courseOfRecording(recordingId: number): Promise<number | null> {
+  const db = await requireDb();
+  return tolerateMissingTable(async () => {
+    const rows = await db.select({ courseId: recordingCourses.courseId }).from(recordingCourses).where(eq(recordingCourses.recordingId, recordingId)).limit(1);
+    return rows[0]?.courseId ?? null;
+  }, null);
+}
+
 export const getUserVocabulary = (userId: number) => readList(userId, null);
 export const getRecordingVocabulary = (userId: number, recordingId: number) => readList(userId, recordingId);
 
@@ -70,15 +102,17 @@ export async function rememberRecordingVocabulary(userId: number, recordingId: n
 
 /**
  * What to send with a transcription job: the recording's own terms (those
- * just given, or the ones stored for it) followed by the person's list.
+ * just given, or the ones stored for it), then its course's list, then the
+ * person's standing list. Earlier lists win when the cap is reached.
  */
 export async function resolveKeyterms(userId: number, recordingId: number, given?: string[]): Promise<string[]> {
   try {
-    const [recordingTerms, userTerms] = await Promise.all([
+    const [recordingTerms, userTerms, courseTerms] = await Promise.all([
       given !== undefined ? Promise.resolve(parseVocabulary(given)) : readList(userId, recordingId),
       readList(userId, null),
+      courseOfRecording(recordingId).then(courseId => (courseId === null ? [] : getCourseVocabulary(userId, courseId))),
     ]);
-    return mergeKeyterms(recordingTerms, userTerms);
+    return mergeKeyterms([...recordingTerms, ...courseTerms], userTerms);
   } catch (error) {
     console.warn("[vocabulary] could not read custom vocabulary", error instanceof Error ? error.message : error);
     return given ? mergeKeyterms(parseVocabulary(given), []) : [];
@@ -94,12 +128,17 @@ export async function deleteVocabularyForRecordings(recordingIds: number[]) {
 export async function deleteVocabularyForUser(userId: number) {
   const db = await requireDb();
   await tolerateMissingTable(() => db.delete(vocabularyLists).where(eq(vocabularyLists.userId, userId)), undefined);
+  await tolerateMissingTable(() => db.delete(courseVocabularies).where(eq(courseVocabularies.userId, userId)), undefined);
 }
 
 export async function exportVocabularyForUser(userId: number) {
   const db = await requireDb();
   const rows = await tolerateMissingTable(() => db.select().from(vocabularyLists).where(eq(vocabularyLists.userId, userId)), []);
-  return rows.map(row => ({ recordingId: row.recordingId, terms: parseVocabulary(row.terms), updatedAt: row.updatedAt }));
+  const courseRows = await tolerateMissingTable(() => db.select().from(courseVocabularies).where(eq(courseVocabularies.userId, userId)), []);
+  return [
+    ...rows.map(row => ({ recordingId: row.recordingId, courseId: null as number | null, terms: parseVocabulary(row.terms), updatedAt: row.updatedAt })),
+    ...courseRows.map(row => ({ recordingId: null as number | null, courseId: row.courseId, terms: parseVocabulary(row.terms), updatedAt: row.updatedAt })),
+  ];
 }
 
 const termsInput = z.string().max(20_000);
@@ -115,6 +154,27 @@ export const vocabularyRouter = router({
       recordingTerms = await getRecordingVocabulary(ctx.user.id, input.recordingId);
     }
     return { terms, recordingTerms, max: MAX_TERMS_PER_LIST };
+  }),
+
+  /** A course's list (owner only). `available` is false until migration 0029 runs. */
+  getCourse: protectedProcedure.input(z.object({ courseId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const course = await getOwnCourse(input.courseId, ctx.user.id);
+    if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+    const db = await requireDb();
+    const available = await tolerateMissingTable(async () => {
+      await db.select({ id: courseVocabularies.id }).from(courseVocabularies).limit(1);
+      return true;
+    }, false);
+    return { terms: available ? await getCourseVocabulary(ctx.user.id, input.courseId) : [], available, max: MAX_TERMS_PER_LIST };
+  }),
+
+  saveCourse: protectedProcedure.input(z.object({ courseId: z.number().int().positive(), terms: termsInput })).mutation(async ({ ctx, input }) => {
+    const course = await getOwnCourse(input.courseId, ctx.user.id);
+    if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+    const terms = parseVocabulary(input.terms);
+    const saved = await writeCourseList(ctx.user.id, input.courseId, terms);
+    if (!saved) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Course vocabulary is not set up on this server yet." });
+    return { terms };
   }),
 
   save: protectedProcedure.input(z.object({ terms: termsInput })).mutation(async ({ ctx, input }) => {

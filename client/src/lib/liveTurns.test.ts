@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTurnMessage, groupParagraphs, liveTranscriptText, liveWindowText, settleSession, splitLiveText, type LiveTurn, type StreamingTurnMessage } from "./liveTurns";
+import { applyTurnMessage, groupParagraphs, hasSeveralSpeakers, liveTranscriptText, liveWindowText, settleSession, speakerFromLabel, splitLiveText, type LiveTurn, type StreamingTurnMessage } from "./liveTurns";
 
 const session0 = { index: 0, offsetSeconds: 0 };
 
@@ -78,9 +78,9 @@ describe("splitLiveText", () => {
 
 describe("liveWindowText", () => {
   const turns: LiveTurn[] = [
-    { key: "0:0", session: 0, order: 0, text: "Old part.", final: true, startAt: 0, endAt: 10 },
-    { key: "0:1", session: 0, order: 1, text: "Middle part.", final: true, startAt: 200, endAt: 230 },
-    { key: "0:2", session: 0, order: 2, text: "Latest words", final: false, startAt: 290, endAt: 300 },
+    { key: "0:0", session: 0, order: 0, text: "Old part.", final: true, startAt: 0, endAt: 10, speaker: null },
+    { key: "0:1", session: 0, order: 1, text: "Middle part.", final: true, startAt: 200, endAt: 230, speaker: null },
+    { key: "0:2", session: 0, order: 2, text: "Latest words", final: false, startAt: 290, endAt: 300, speaker: null },
   ];
 
   it("keeps the last N seconds measured from the latest words", () => {
@@ -102,7 +102,7 @@ describe("liveWindowText", () => {
 });
 
 describe("groupParagraphs", () => {
-  const at = (key: string, startAt: number, endAt: number): LiveTurn => ({ key, session: 0, order: 0, text: key, final: true, startAt, endAt });
+  const at = (key: string, startAt: number, endAt: number, speaker: string | null = null): LiveTurn => ({ key, session: 0, order: 0, text: key, final: true, startAt, endAt, speaker });
 
   it("breaks on pauses and long runs", () => {
     const turns = [at("a", 0, 2), at("b", 3, 5), at("c", 12, 14), at("d", 14, 15), at("e", 15, 16)];
@@ -110,7 +110,49 @@ describe("groupParagraphs", () => {
     expect(groupParagraphs(turns, 4, 2)[1].startAt).toBe(12);
   });
 
+  it("starts a new paragraph when the speaker changes", () => {
+    const turns = [at("a", 0, 1, "A"), at("b", 1, 2, null), at("c", 2, 3, "B"), at("d", 3, 4, "B")];
+    const paragraphs = groupParagraphs(turns);
+    expect(paragraphs.map(p => p.turns.map(t => t.key))).toEqual([["a", "b"], ["c", "d"]]);
+    expect(paragraphs.map(p => p.speaker)).toEqual(["A", "B"]);
+  });
+
+  it("takes the first label a paragraph gets", () => {
+    expect(groupParagraphs([at("a", 0, 1, null), at("b", 1, 2, "A")])[0].speaker).toBe("A");
+  });
+
   it("skips empty turns", () => {
     expect(groupParagraphs([{ ...at("x", 0, 1), text: "" }])).toEqual([]);
+  });
+});
+
+describe("speaker labels", () => {
+  it("reads labels and ignores UNKNOWN", () => {
+    expect(speakerFromLabel("A")).toBe("A");
+    expect(speakerFromLabel("UNKNOWN")).toBeNull();
+    expect(speakerFromLabel("")).toBeNull();
+    expect(speakerFromLabel(3)).toBeNull();
+    expect(speakerFromLabel("x".repeat(40))).toBeNull();
+  });
+
+  it("keeps a turn's earlier label when a later message is UNKNOWN", () => {
+    let turns = applyTurnMessage([], turn(0, "hello there", { speaker_label: "B" }), session0, 0);
+    turns = applyTurnMessage(turns, turn(0, "hello there friend", { speaker_label: "UNKNOWN" }), session0, 0);
+    expect(turns[0].speaker).toBe("B");
+  });
+
+  it("updates a turn whose label arrives late", () => {
+    let turns = applyTurnMessage([], turn(0, "hi"), session0, 0);
+    const before = turns;
+    turns = applyTurnMessage(turns, turn(0, "hi", { speaker_label: "A" }), session0, 0);
+    expect(turns).not.toBe(before);
+    expect(turns[0].speaker).toBe("A");
+  });
+
+  it("shows labels only once two speakers are heard", () => {
+    const one = applyTurnMessage([], turn(0, "a", { speaker_label: "A" }), session0, 0);
+    expect(hasSeveralSpeakers(one)).toBe(false);
+    const two = applyTurnMessage(one, turn(1, "b", { speaker_label: "B" }), session0, 0);
+    expect(hasSeveralSpeakers(two)).toBe(true);
   });
 });

@@ -211,6 +211,13 @@
       "when": 1791934432191,
       "tag": "0029_mobile_devices",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1791954402972,
+      "tag": "0030_phase6_course_vocabulary_and_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { BookOpen, ArrowLeft, Sparkles, Clock, ChevronRight, FileText } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { SendToMenu } from "@/components/SendToMenu";
 import { TranslateMenu } from "@/components/TranslateDialog";
 
@@ -45,7 +45,7 @@ export default function StudyGuides() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
       {/* Header */}
       <div className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -197,13 +197,13 @@ export default function StudyGuides() {
               </CardHeader>
               <CardContent className="pt-5">
                 <div className="prose prose-sm prose-invert max-w-none">
-                  <Streamdown>{selectedGuide.content}</Streamdown>
+                  <Markdown>{selectedGuide.content}</Markdown>
                 </div>
               </CardContent>
             </Card>
           ) : null}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

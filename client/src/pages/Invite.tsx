@@ -51,7 +51,7 @@ export default function Invite() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-background p-4 focus:outline-none">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center">
@@ -133,6 +133,6 @@ export default function Invite() {
           </a>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

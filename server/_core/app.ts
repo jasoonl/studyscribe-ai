@@ -16,6 +16,7 @@ import { registerPublicApi } from "../publicApi";
 import { registerSlideRoutes } from "../slides";
 import { registerRecallWebhook } from "../meetingBots";
 import { registerEmailOptOutRoutes } from "../attendeeEmail";
+import { rejectCrossSitePosts } from "./csrf";
 
 /**
  * Builds the API-only Express application. This module must remain independent
@@ -41,6 +42,8 @@ export function createApp() {
     res.status(200).json({ status: "ok" });
   });
 
+  // Login CSRF: auth endpoints set or act without the session cookie, so refuse POSTs another site started.
+  app.use("/api/auth", rejectCrossSitePosts);
   app.post("/api/webhooks/assemblyai", handleAssemblyAiWebhook);
   // Mobile app (F1): before the auth routes, whose login/signup it wraps.
   registerMobileRoutes(app);

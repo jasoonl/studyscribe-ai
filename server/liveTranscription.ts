@@ -107,13 +107,23 @@ export function getLiveTranscriptionStatus() {
     message: availability.available ? null : availability.message,
     switchedOff: liveSwitchedOff(),
     model: resolveStreamingModel(),
+    speakerLabels: liveSpeakerLabelsEnabled(),
     host: "error" in endpoint ? null : endpoint.wsOrigin,
     hostError: "error" in endpoint ? endpoint.error : null,
     maxSessionSeconds: LIVE_SESSION_SECONDS,
   };
 }
 
-export function buildStreamingSocketUrl(wsOrigin: string, model: StreamingModel): string {
+/**
+ * Streaming diarization (`speaker_labels`) labels each turn with its dominant
+ * speaker ("A", "B", or "UNKNOWN" for turns under about a second). It is on by
+ * default; `LIVE_SPEAKER_LABELS=off` leaves it out of the connection.
+ */
+export function liveSpeakerLabelsEnabled(raw = process.env.LIVE_SPEAKER_LABELS): boolean {
+  return (raw ?? "").trim().toLowerCase() !== "off";
+}
+
+export function buildStreamingSocketUrl(wsOrigin: string, model: StreamingModel, speakerLabels = liveSpeakerLabelsEnabled()): string {
   const url = new URL("/v3/ws", wsOrigin);
   url.searchParams.set("sample_rate", String(LIVE_SAMPLE_RATE));
   url.searchParams.set("encoding", "pcm_s16le");
@@ -121,6 +131,7 @@ export function buildStreamingSocketUrl(wsOrigin: string, model: StreamingModel)
   // Universal-Streaming sends an unformatted final then a formatted one; the
   // client keeps only the formatted text. Universal-3 Pro formats anyway.
   url.searchParams.set("format_turns", "true");
+  if (speakerLabels) url.searchParams.set("speaker_labels", "true");
   return url.toString();
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchSessionUser, forgetSessionUser, peekSessionUser } from "./sessionUser";
 
 export interface AuthUser {
   id: number;
@@ -22,23 +23,15 @@ export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = "/login" } =
     options ?? {};
 
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const known = peekSessionUser();
+  const [user, setUser] = useState<AuthUser | null>(known?.user ?? null);
+  const [loading, setLoading] = useState(!known);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchUser = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data?.user ?? data ?? null);
-        setError(null);
-      } else {
-        setUser(null);
-      }
+      setUser(await fetchSessionUser());
+      setError(null);
     } catch (err) {
       console.error("Auth check failed:", err);
       setUser(null);
@@ -61,6 +54,7 @@ export function useAuth(options?: UseAuthOptions) {
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
+      forgetSessionUser();
       setUser(null);
       if (typeof window !== "undefined") {
         window.location.href = "/login";

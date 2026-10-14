@@ -57,21 +57,21 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center focus:outline-none">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
+      </main>
     );
   }
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-gray-500">
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex flex-col items-center justify-center gap-4 text-gray-500 focus:outline-none">
         <ShieldAlert className="w-12 h-12 text-red-400" />
         <p className="text-lg font-medium">Admin access required</p>
         <Link href="/dashboard">
           <Button variant="outline">Go to Dashboard</Button>
         </Link>
-      </div>
+      </main>
     );
   }
 
@@ -79,7 +79,7 @@ export default function Admin() {
   const adminCount = users?.filter((u) => u.role === "admin").length ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-gray-50 focus:outline-none">
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500">
@@ -95,7 +95,7 @@ export default function Admin() {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Stat cards / quick links */}
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/admin/invite-requests">
             <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
               <div className="flex items-center justify-between">
@@ -106,6 +106,13 @@ export default function Admin() {
                 </div>
                 <Clock className="w-6 h-6 text-primary/70" />
               </div>
+            </Card>
+          </Link>
+          <Link href="/admin/health">
+            <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
+              <p className="text-sm text-gray-500">System health</p>
+              <p className="text-2xl font-bold mt-1">Check</p>
+              <p className="text-xs text-gray-500 mt-1">every configured service</p>
             </Card>
           </Link>
           <Link href="/admin/invite-codes">
@@ -174,6 +181,7 @@ export default function Admin() {
                   </Badge>
                   <Badge variant="outline">Model: {transcriptionConfig.live.model}</Badge>
                   <Badge variant="outline">Session cap: {Math.round(transcriptionConfig.live.maxSessionSeconds / 60)} min</Badge>
+                  <Badge variant="outline">Speaker labels: {transcriptionConfig.live.speakerLabels ? "on" : "off"}</Badge>
                 </div>
                 <p className="text-xs text-gray-500 break-all">
                   {transcriptionConfig.live.message ??
@@ -309,7 +317,7 @@ export default function Admin() {
                             updateRoleMutation.mutate({ userId: u.id, role: role as "user" | "admin" })
                           }
                         >
-                          <SelectTrigger className="w-28 h-8">
+                          <SelectTrigger className="w-28 h-8" aria-label={`Role for ${u.email}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -329,6 +337,6 @@ export default function Admin() {
           </Card>
         </section>
       </div>
-    </div>
+    </main>
   );
 }

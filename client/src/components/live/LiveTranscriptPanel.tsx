@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Captions } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { groupParagraphs, splitLiveText, type LiveTurn } from "@/lib/liveTurns";
+import { groupParagraphs, hasSeveralSpeakers, splitLiveText, type LiveTurn } from "@/lib/liveTurns";
 import { formatClockTime } from "@/lib/recordingClock";
 import { cn } from "@/lib/utils";
 import { LiveStatusLabel } from "./LiveStatusLabel";
@@ -31,6 +31,7 @@ export function LiveTranscriptPanel({
 }) {
   const { finals, partial } = useMemo(() => splitLiveText(turns), [turns]);
   const paragraphs = useMemo(() => groupParagraphs(finals), [finals]);
+  const showSpeakers = useMemo(() => hasSeveralSpeakers(finals), [finals]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const userScrolledAt = useRef(0);
   const programmatic = useRef(false);
@@ -90,7 +91,12 @@ export function LiveTranscriptPanel({
               {paragraphs.map(paragraph => (
                 <p key={paragraph.key} className="grid grid-cols-[2.75rem_1fr] gap-2 sm:grid-cols-[3.25rem_1fr] sm:gap-3">
                   <span className="pt-1.5 font-mono text-xs tabular-nums text-muted-foreground">{formatClockTime(Math.floor(paragraph.startAt))}</span>
-                  <span>{paragraph.turns.map(turn => turn.text).join(" ")}</span>
+                  <span>
+                    {showSpeakers && paragraph.speaker && (
+                      <span className="mr-2 text-sm font-medium text-muted-foreground">Speaker {paragraph.speaker}</span>
+                    )}
+                    {paragraph.turns.map(turn => turn.text).join(" ")}
+                  </span>
                 </p>
               ))}
             </div>

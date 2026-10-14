@@ -39,7 +39,7 @@ export function getSafeApplicationOrigin(candidate: string | undefined) {
   try {
     const parsed = new URL(candidate);
     const isPreview = /^https:\/\/3000-[a-z0-9-]+\.us\d+\.manus\.computer$/i.test(parsed.origin);
-    const isLocal = /^http:\/\/localhost:\d+$/i.test(parsed.origin);
+    const isLocal = process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/i.test(parsed.origin);
     if (knownManusOrigins.has(parsed.origin) || knownVercelOrigins.has(parsed.origin) || parsed.origin === configuredOrigin || isPreview || isLocal) return parsed.origin;
   } catch {
     // Use the configured origin below when an untrusted string cannot be parsed.

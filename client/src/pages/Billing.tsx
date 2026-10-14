@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UsageMeters } from "@/components/UsageMeters";
+import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatMinutes, formatPlanPrice, isPaidPlanId, type PaidPlanId } from "@shared/plans";
+import { formatMinutes, formatPlanPrice, intervalSuffix, isPaidPlanId, type BillingInterval, type PaidPlanId } from "@shared/plans";
 
 export default function Billing() {
   const { user } = useAuth();
@@ -18,6 +19,13 @@ export default function Billing() {
   const checkout = trpc.billing.checkout.useMutation();
   const portal = trpc.billing.portal.useMutation();
   const [pendingPlan, setPendingPlan] = useState<PaidPlanId | null>(null);
+  const [chosenInterval, setChosenInterval] = useState<BillingInterval>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("interval") === "year" ? "year" : "month";
+    } catch {
+      return "month";
+    }
+  });
   const handledParams = useRef(false);
 
   // Back from Stripe: say what happened, and refresh until the webhook has landed.
@@ -48,7 +56,7 @@ export default function Billing() {
   const startCheckout = async (plan: PaidPlanId) => {
     setPendingPlan(plan);
     try {
-      const { url } = await checkout.mutateAsync({ plan });
+      const { url } = await checkout.mutateAsync({ plan, interval });
       window.location.assign(url);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not start checkout");
@@ -70,6 +78,8 @@ export default function Billing() {
   const billingEnabled = plansQuery.data?.billingEnabled ?? false;
   const live = data?.subscription?.live ?? false;
   const currentPlanId = data?.plan.id ?? "free";
+  const yearlyEnabled = billingEnabled && Boolean(plansQuery.data?.yearlyEnabled);
+  const interval: BillingInterval = yearlyEnabled ? chosenInterval : "month";
 
   return (
     <div className="min-h-[100dvh] bg-background">
@@ -82,7 +92,7 @@ export default function Billing() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-3xl space-y-6 px-4 py-10 focus:outline-none">
         {status.isLoading || plansQuery.isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : !data ? (
@@ -93,7 +103,11 @@ export default function Billing() {
               <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                 <h2 className="text-lg font-semibold">{data.plan.name} plan</h2>
                 <p className="text-sm text-muted-foreground">
-                  {data.plan.priceMonthlyUsd === 0 ? "$0, no payment details needed" : `${formatPlanPrice(data.plan)} a month, plus any tax`}
+                  {data.plan.priceMonthlyUsd === 0
+                    ? "$0, no payment details needed"
+                    : data.subscription?.interval === "year"
+                      ? `${formatPlanPrice(data.plan, "year")} a year, plus any tax`
+                      : `${formatPlanPrice(data.plan)} a month, plus any tax`}
                 </p>
               </div>
               {data.subscription?.description && (
@@ -126,7 +140,10 @@ export default function Billing() {
             </Card>
 
             <section aria-labelledby="plans-heading">
-              <h2 id="plans-heading" className="mb-3 text-sm font-semibold">Plans</h2>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <h2 id="plans-heading" className="text-sm font-semibold">Plans</h2>
+                {yearlyEnabled && !live && <BillingIntervalToggle value={interval} onChange={setChosenInterval} />}
+              </div>
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                 {plans.map(plan => {
                   const current = plan.id === currentPlanId;
@@ -136,7 +153,9 @@ export default function Billing() {
                       <div className="min-w-0 flex-1">
                         <p className="flex items-baseline gap-2">
                           <span className="font-semibold">{plan.name}</span>
-                          <span className="text-sm tabular-nums text-muted-foreground">{formatPlanPrice(plan)} / month</span>
+                          <span className="text-sm tabular-nums text-muted-foreground">
+                            {formatPlanPrice(plan, paid ? interval : "month")} {intervalSuffix(paid ? interval : "month")}
+                          </span>
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
                           {formatMinutes(plan.transcriptionMinutesPerMonth)} of transcription and {plan.aiGenerationsPerMonth.toLocaleString("en-US")} AI generations a month
@@ -163,7 +182,7 @@ export default function Billing() {
               </ul>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 {billingEnabled
-                  ? "Prices are in US dollars per month. Checkout, run by Stripe, shows the full price including any tax before you pay. Plans renew every month until you cancel. You can cancel here at any time and keep the plan until the end of the period you paid for. When you switch plans, Stripe shows what changes before you confirm."
+                  ? `Prices are in US dollars. Checkout, run by Stripe, shows the full price including any tax before you pay. Plans renew every ${yearlyEnabled ? "month or year, as you chose," : "month"} until you cancel; allowances reset monthly either way. You can cancel here at any time and keep the plan until the end of the period you paid for. When you switch plans, Stripe shows what changes before you confirm.`
                   : "Paid plans are not on sale yet. Everyone is on the Free plan in the meantime."}{" "}
                 <Link href="/refunds" className="font-medium text-primary underline-offset-2 hover:underline">Refund Policy</Link>
               </p>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { ArrowLeft, Check, Download, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -276,7 +276,7 @@ export default function ExamPack() {
               <TabsContent value="guide" className="pt-4">
                 {pack.guide ? (
                   <article className="prose prose-sm max-w-none rounded-xl border border-border bg-card p-6 text-foreground/90 shadow-sm dark:prose-invert sm:p-8 [&_h2:first-child]:mt-0 [&>*:first-child]:mt-0">
-                    <Streamdown>{pack.guide}</Streamdown>
+                    <Markdown>{pack.guide}</Markdown>
                   </article>
                 ) : (
                   <p className="text-muted-foreground">This pack has no study guide.</p>

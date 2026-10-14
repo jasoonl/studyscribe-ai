@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /manus-storage/
+Disallow: /dashboard
+Disallow: /recording/
+Disallow: /recordings/
+Disallow: /shared/
+Disallow: /shared-with-me
+Disallow: /settings
+Disallow: /admin
+Disallow: /team
+Disallow: /groups
+Disallow: /billing
+
+Sitemap: https://studyscribe-ai.vercel.app/sitemap.xml

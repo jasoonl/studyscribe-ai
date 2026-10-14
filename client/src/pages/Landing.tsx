@@ -4,6 +4,7 @@ import { useScrollToHash } from "@/components/landing/PublicLayout";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import FeatureBento from "@/components/landing/FeatureBento";
+import MoreFeatures from "@/components/landing/MoreFeatures";
 import UseCases from "@/components/landing/UseCases";
 import Languages from "@/components/landing/Languages";
 import PricingSection from "@/components/landing/PricingSection";
@@ -15,10 +16,11 @@ export default function Landing() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav />
-      <main>
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
         <Hero />
         <HowItWorks />
         <FeatureBento />
+        <MoreFeatures />
         <UseCases />
         <Languages />
         <PricingSection />

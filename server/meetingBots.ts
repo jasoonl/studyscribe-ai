@@ -6,7 +6,7 @@ import { z } from "zod";
 import { meetingBots, users, type MeetingBot } from "../drizzle/schema";
 import { findCalendarEvent } from "./calendar";
 import { notifyUser } from "./collabNotifications";
-import { createRecording, getDb, getRecordingsByUserId, updateRecordingStatus } from "./db";
+import { createRecording, getDb, getRecordingByAudioKeyForUser, updateRecordingStatus } from "./db";
 import { probeAudioDuration } from "./audioDuration";
 import { linkRecordingEvent, normalizeAttendees, parseStoredAttendees } from "./recordingEvents";
 import {
@@ -150,7 +150,7 @@ export async function importBotRecording(row: MeetingBot, config: RecallConfig):
       audioKey: stored.key,
       duration: stored.duration ?? 0,
     });
-    const recording = (await getRecordingsByUserId(row.userId)).find((candidate) => candidate.audioKey === stored.key);
+    const recording = await getRecordingByAudioKeyForUser(stored.key, row.userId);
     if (!recording) throw new Error("Recording was not created");
 
     await linkRecordingEvent({

@@ -52,7 +52,12 @@ export default function Login() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
+        // The team requires single sign-on: open that panel with the address filled in.
+        if (error.sso) {
+          setSsoOpen(true);
+          setSsoEmail(email);
+        }
         throw new Error(error.error || "Login failed");
       }
 
@@ -101,7 +106,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-background p-4 focus:outline-none">
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
@@ -250,12 +255,12 @@ export default function Login() {
         <div className="text-center mt-6 pt-6 border-t border-border">
           <p className="text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <a href="/signup" className="text-accent font-medium hover:underline">
+            <a href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="text-accent font-medium hover:underline">
               Sign up
             </a>
           </p>
         </div>
       </Card>
-    </div>
+    </main>
   );
 }

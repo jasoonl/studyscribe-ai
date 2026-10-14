@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getJwtSecret } from "./_core/secrets";
 
 /**
  * Short-lived signed playback links for the mobile app (F1).
@@ -16,12 +17,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const PLAYBACK_TTL_MS = 6 * 60 * 60 * 1000;
 const PURPOSE = "playback";
 
-function secret() {
-  return process.env.JWT_SECRET || "default-dev-secret-change-in-production";
-}
-
 function sign(payload: string) {
-  return createHmac("sha256", secret()).update(`${PURPOSE}:${payload}`).digest("base64url");
+  return createHmac("sha256", getJwtSecret()).update(`${PURPOSE}:${payload}`).digest("base64url");
 }
 
 export function createPlaybackToken(input: { key: string; userId: number | null; recordingId: number }, ttlMs = PLAYBACK_TTL_MS, now = Date.now()) {

@@ -1,12 +1,14 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Redirect } from "wouter";
+import { nextFromLocation } from "@shared/safeNext";
 import { lazy, Suspense } from "react";
 import { RecorderProvider } from "./contexts/RecorderContext";
 import { LiveTranscriptProvider } from "./contexts/LiveTranscriptContext";
 import RecordingIndicator from "./components/RecordingIndicator";
 import CookieBanner from "./components/CookieBanner";
 import SkipLink from "./components/SkipLink";
+import RouteMeta from "./components/RouteMeta";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./components/NotificationContainer";
@@ -25,9 +27,17 @@ const Refunds = lazy(() => import("./pages/Refunds"));
 const Credits = lazy(() => import("./pages/Credits"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Settings = lazy(() => import("./pages/Settings"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+// The two pages people open most start downloading with the app shell when the
+// address is theirs, instead of after the sign-in check (one round trip saved).
+const loadDashboard = () => import("./pages/Dashboard");
+const loadRecordingDetail = () => import("./pages/RecordingDetail");
+if (typeof window !== "undefined") {
+  if (window.location.pathname === "/dashboard") void loadDashboard();
+  else if (window.location.pathname.startsWith("/recording/")) void loadRecordingDetail();
+}
+const Dashboard = lazy(loadDashboard);
 const Record = lazy(() => import("./pages/Record"));
-const RecordingDetail = lazy(() => import("./pages/RecordingDetail"));
+const RecordingDetail = lazy(loadRecordingDetail);
 const Upload = lazy(() => import("./pages/Upload"));
 const Home = lazy(() => import("./pages/Home"));
 const Demo = lazy(() => import("./pages/Demo"));
@@ -38,6 +48,7 @@ const Invite = lazy(() => import("./pages/Invite"));
 const RequestAccess = lazy(() => import("./pages/RequestAccess"));
 const AdminInviteRequests = lazy(() => import("./pages/AdminInviteRequests"));
 const AdminInviteCodes = lazy(() => import("./pages/AdminInviteCodes"));
+const AdminHealth = lazy(() => import("./pages/AdminHealth"));
 const Admin = lazy(() => import("./pages/Admin"));
 const PublicSharedRecording = lazy(() => import("./pages/PublicSharedRecording"));
 const SharedWithMe = lazy(() => import("./pages/SharedWithMe"));
@@ -54,6 +65,7 @@ const Help = lazy(() => import("./pages/Help"));
 const Ask = lazy(() => import("./pages/Ask"));
 const CoursePage = lazy(() => import("./pages/CoursePage"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const Templates = lazy(() => import("./pages/Templates"));
 const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
 const Groups = lazy(() => import("./pages/Groups"));
@@ -89,7 +101,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   if (!isAuthenticated) {
-    return <Redirect to="/login" />;
+    // Come back here after signing in (a group join link, a shared recording, a deep link with ?t=).
+    const next = nextFromLocation(window.location.pathname, window.location.search);
+    return <Redirect to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} />;
   }
 
   return (
@@ -133,6 +147,7 @@ function Router() {
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
         <Route path="/admin/invite-requests" component={() => <ProtectedRoute component={AdminInviteRequests} />} />
         <Route path="/admin/invite-codes" component={() => <ProtectedRoute component={AdminInviteCodes} />} />
+        <Route path="/admin/health" component={() => <ProtectedRoute component={AdminHealth} />} />
         <Route path="/record-or-upload" component={() => <ProtectedRoute component={RecordOrUpload} />} />
         <Route path="/knowledge-base" component={() => <ProtectedRoute component={KnowledgeBase} />} />
         <Route path="/shared-with-me" component={() => <ProtectedRoute component={SharedWithMe} />} />
@@ -144,6 +159,7 @@ function Router() {
         <Route path="/ask" component={() => <ProtectedRoute component={Ask} />} />
         <Route path="/courses/:id" component={() => <ProtectedRoute component={CoursePage} />} />
         <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
+        <Route path="/templates" component={() => <ProtectedRoute component={Templates} />} />
         <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
         <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />
         <Route path="/groups" component={() => <ProtectedRoute component={Groups} />} />
@@ -184,6 +200,7 @@ function App() {
             <RecorderProvider>
               <LiveTranscriptProvider>
                 <SkipLink />
+                <RouteMeta />
                 <Toaster />
                 <Router />
                 <RecordingIndicator />

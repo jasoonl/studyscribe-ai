@@ -1,5 +1,6 @@
 import LanguageSelect, { languageForRequest } from "@/components/LanguageSelect";
 import { VocabularyField, vocabularyForRequest } from "@/components/VocabularyField";
+import { CourseSelect, NO_COURSE, courseForRequest } from "@/components/CourseSelect";
 import RecordingConsentNotice from "@/components/RecordingConsentNotice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -64,6 +65,14 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const [linkAudience, setLinkAudience] = useState<"student" | "professional">("student");
   const [language, setLanguage] = useState<string>("auto");
   const [vocabulary, setVocabulary] = useState("");
+  // `?course=<id>` (from a course page's "Record" button) preselects the course.
+  const [courseChoice, setCourseChoice] = useState<string>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("course") ?? NO_COURSE;
+    } catch {
+      return NO_COURSE;
+    }
+  });
   const [isImporting, setIsImporting] = useState(false);
   const [linkComplete, setLinkComplete] = useState(false);
 
@@ -153,6 +162,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         duration: durationSeconds,
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
+        courseId: courseForRequest(courseChoice),
         bookmarks: bookmarks.map(atSeconds => ({ atSeconds })),
         ...calendarLink,
       });
@@ -237,6 +247,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         duration,
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
+        courseId: courseForRequest(courseChoice),
       });
       setUploadFileComplete(true);
       setCreatedRecordingId(recording.id);
@@ -267,6 +278,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         audience: linkAudience,
         language: languageForRequest(language),
         keyterms: vocabularyForRequest(vocabulary),
+        courseId: courseForRequest(courseChoice),
       });
       setLinkComplete(true);
       setCreatedRecordingId(recording.id);
@@ -304,7 +316,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold mb-4">How would you like to add content?</h2>
@@ -425,7 +437,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className={liveLayout.showHelp ? "mx-auto max-w-6xl" : liveLayout.wide ? "mx-auto max-w-3xl" : "mx-auto max-w-2xl"}>
           {!uploadComplete && <RecordingConsentNotice />}
           <div className={liveLayout.showHelp ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" : ""}>
@@ -596,6 +608,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <LanguageSelect value={language} onChange={setLanguage} id="record-language" />
+                      <CourseSelect value={courseChoice} onChange={setCourseChoice} id="record-course" />
                       <VocabularyField value={vocabulary} onChange={setVocabulary} id="record-vocabulary" />
 
                       <div className="flex gap-4">
@@ -657,7 +670,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-2xl mx-auto space-y-8">
             {linkComplete ? (
               <Card className="p-8 border-2 border-accent bg-primary/5">
@@ -725,6 +738,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   </div>
 
                   <LanguageSelect value={language} onChange={setLanguage} id="link-language" />
+                  <CourseSelect value={courseChoice} onChange={setCourseChoice} id="link-course" />
                   <VocabularyField value={vocabulary} onChange={setVocabulary} id="link-vocabulary" />
 
                   <Button
@@ -766,7 +780,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-2xl mx-auto space-y-8">
             {uploadFileComplete ? (
               <Card className="p-8 border-2 border-accent bg-primary/5">
@@ -859,6 +873,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <LanguageSelect value={language} onChange={setLanguage} id="upload-language" />
+                      <CourseSelect value={courseChoice} onChange={setCourseChoice} id="upload-course" />
                       <VocabularyField value={vocabulary} onChange={setVocabulary} id="upload-vocabulary" />
 
                       <div className="flex gap-4">

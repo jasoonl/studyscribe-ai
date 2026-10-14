@@ -76,7 +76,10 @@ export const recordings = mysqlTable("recordings", {
   deletedAt: timestamp("deletedAt"), // Timestamp when deleted
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("recordings_user_created_idx").on(table.userId, table.createdAt),
+  index("recordings_audio_key_idx").on(table.audioKey),
+]);
 
 export type Recording = typeof recordings.$inferSelect;
 export type InsertRecording = typeof recordings.$inferInsert;
@@ -101,7 +104,9 @@ export const transcripts = mysqlTable("transcripts", {
   status: mysqlEnum("status", ["processing", "completed", "failed"]).default("processing"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("transcripts_recording_idx").on(table.recordingId),
+]);
 
 export type Transcript = typeof transcripts.$inferSelect;
 export type InsertTranscript = typeof transcripts.$inferInsert;
@@ -118,7 +123,10 @@ export const studyNotes = mysqlTable("studyNotes", {
   metadata: json("metadata").$type<Record<string, any>>(),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("studyNotes_recording_idx").on(table.recordingId),
+  index("studyNotes_user_idx").on(table.userId),
+]);
 
 export type StudyNote = typeof studyNotes.$inferSelect;
 export type InsertStudyNote = typeof studyNotes.$inferInsert;
@@ -135,7 +143,10 @@ export const flashcards = mysqlTable("flashcards", {
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).default("medium"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("flashcards_recording_idx").on(table.recordingId),
+  index("flashcards_user_idx").on(table.userId),
+]);
 
 export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertFlashcard = typeof flashcards.$inferInsert;
@@ -172,7 +183,9 @@ export const chatHistory = mysqlTable("chatHistory", {
   role: mysqlEnum("role", ["user", "assistant"]).notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+  index("chatHistory_user_recording_idx").on(table.userId, table.recordingId),
+]);
 
 export type ChatMessage = typeof chatHistory.$inferSelect;
 
@@ -185,7 +198,9 @@ export const tags = mysqlTable("tags", {
   name: varchar("name", { length: 100 }).notNull(),
   color: varchar("color", { length: 7 }).default("#3B82F6"), // Hex color
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+  index("tags_user_idx").on(table.userId),
+]);
 
 export type Tag = typeof tags.$inferSelect;
 export type InsertTag = typeof tags.$inferInsert;
@@ -198,7 +213,9 @@ export const recordingTags = mysqlTable("recordingTags", {
   recordingId: int("recordingId").notNull(),
   tagId: int("tagId").notNull(),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+  index("recordingTags_recording_idx").on(table.recordingId),
+]);
 
 export type RecordingTag = typeof recordingTags.$inferSelect;
 export type InsertRecordingTag = typeof recordingTags.$inferInsert;
@@ -231,7 +248,9 @@ export const userNotifications = mysqlTable("userNotifications", {
   isRead: int("isRead").default(0).notNull(),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+  index("userNotifications_user_read_idx").on(table.userId, table.isRead),
+]);
 
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
@@ -323,7 +342,9 @@ export const studyGuides = mysqlTable("studyGuides", {
   generatedAt: timestamp("generatedAt"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("studyGuides_recording_idx").on(table.recordingId),
+]);
 
 export type StudyGuide = typeof studyGuides.$inferSelect;
 export type InsertStudyGuide = typeof studyGuides.$inferInsert;
@@ -349,7 +370,9 @@ export const quizzes = mysqlTable("quizzes", {
   generatedAt: timestamp("generatedAt"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("quizzes_recording_idx").on(table.recordingId),
+]);
 
 export type Quiz = typeof quizzes.$inferSelect;
 export type InsertQuiz = typeof quizzes.$inferInsert;
@@ -365,7 +388,9 @@ export const quizAttempts = mysqlTable("quizAttempts", {
   score: int("score"), // Percentage score
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+  index("quizAttempts_quiz_idx").on(table.quizId),
+]);
 
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export type InsertQuizAttempt = typeof quizAttempts.$inferInsert;
@@ -387,7 +412,9 @@ export const emailDrafts = mysqlTable("emailDrafts", {
   sentAt: timestamp("sentAt"), // When email was sent (if applicable)
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("emailDrafts_recording_idx").on(table.recordingId),
+]);
 
 export type EmailDraft = typeof emailDrafts.$inferSelect;
 export type EmailDraftTone = "formal" | "casual" | "technical" | "persuasive";
@@ -414,6 +441,7 @@ export const recordingShares = mysqlTable("recordingShares", {
   createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
   uniqueIndex("recordingShares_recording_user_unique").on(table.recordingId, table.sharedWithUserId),
+  index("recordingShares_shared_with_idx").on(table.sharedWithUserId),
 ]);
 
 export type RecordingShare = typeof recordingShares.$inferSelect;
@@ -527,6 +555,24 @@ export const vocabularyLists = mysqlTable("vocabularyLists", {
 ]);
 
 export type VocabularyList = typeof vocabularyLists.$inferSelect;
+
+/**
+ * A course's own vocabulary (Phase 6): names and terms that recordings filed
+ * under the course are transcribed with, between the recording's own terms
+ * and the person's standing list. A separate table rather than a
+ * `vocabularyLists.courseId` column so an unmigrated database keeps reading
+ * the existing lists (migration 0029).
+ */
+export const courseVocabularies = mysqlTable("courseVocabularies", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("courseId").notNull(),
+  userId: int("userId").notNull(),
+  terms: text("terms").notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("courseVocabularies_course_unique").on(table.courseId),
+  index("courseVocabularies_user_idx").on(table.userId),
+]);
 
 /**
  * A combined study guide and practice quiz made from several recordings (often
@@ -678,6 +724,7 @@ export const transcriptChunks = mysqlTable("transcriptChunks", {
 }, (table) => [
   index("transcriptChunks_recording_idx").on(table.recordingId),
   index("transcriptChunks_user_idx").on(table.userId),
+  index("transcriptChunks_user_model_idx").on(table.userId, table.model),
 ]);
 
 export type TranscriptChunk = typeof transcriptChunks.$inferSelect;

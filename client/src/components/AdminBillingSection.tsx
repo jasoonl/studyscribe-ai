@@ -34,6 +34,7 @@ export function AdminBillingSection() {
                 </Badge>
               ))}
               <Badge variant="outline">Automatic tax {billing.automaticTax ? "on" : "off"}</Badge>
+              <Badge variant="outline">Yearly prices {billing.yearly ? "on" : "off"}</Badge>
               {billing.usingTestApi && <Badge variant="outline">Mock Stripe API</Badge>}
             </div>
             <p className="break-all text-xs text-muted-foreground">

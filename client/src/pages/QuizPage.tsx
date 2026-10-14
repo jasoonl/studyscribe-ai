@@ -109,7 +109,7 @@ export default function QuizPage() {
     const isAnswered = !!answers[q.id];
 
     return (
-      <div className="min-h-screen bg-background">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
         {/* Quiz header */}
         <div className="border-b border-border bg-card sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-3">
@@ -219,7 +219,7 @@ export default function QuizPage() {
             ))}
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -228,7 +228,7 @@ export default function QuizPage() {
     const questions: QuizQuestion[] = (activeQuiz.questions as QuizQuestion[]) || [];
 
     return (
-      <div className="min-h-screen bg-background">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
         <div className="border-b border-border bg-card sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => setMode("list")} className="gap-1">
@@ -300,13 +300,13 @@ export default function QuizPage() {
             );
           })}
         </div>
-      </div>
+      </main>
     );
   }
 
   // List mode
   return (
-    <div className="min-h-screen bg-background">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
       <div className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href={`/recording/${recId}`}>
@@ -407,6 +407,6 @@ export default function QuizPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

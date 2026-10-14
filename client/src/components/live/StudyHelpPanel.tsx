@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,7 +128,7 @@ export function StudyHelpPanel({ audience, className }: { audience: "student" | 
                   <span className="shrink-0 font-mono tabular-nums">at {formatClockTime(entry.atSeconds)}</span>
                 </p>
                 <div className="prose-sm mt-2 text-sm leading-relaxed [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5">
-                  <Streamdown>{entry.answer}</Streamdown>
+                  <Markdown>{entry.answer}</Markdown>
                 </div>
               </li>
             ))}

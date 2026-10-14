@@ -5,6 +5,7 @@ import { type AskSource, type Passage, buildPassages } from "./askRetrieval";
 import { getDb } from "./db";
 import { tolerateMissingSchema } from "./schemaTolerance";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
 
@@ -335,6 +336,52 @@ export async function semanticPassages(userId: number, question: string, restric
   ).map(item => ({ recordingId: item.recordingId, title: item.title, start: item.start, text: item.text }));
 }
 
+/** Keeps at most `perRecording` hits from each recording, best first, up to `limit`. */
+export function capPerRecording<T extends { recordingId: number }>(ranked: T[], perRecording: number, limit: number): T[] {
+  const counts = new Map<number, number>();
+  const kept: T[] = [];
+  for (const item of ranked) {
+    const count = counts.get(item.recordingId) ?? 0;
+    if (count >= perRecording) continue;
+    counts.set(item.recordingId, count + 1);
+    kept.push(item);
+    if (kept.length >= limit) break;
+  }
+  return kept;
+}
+
+/**
+ * Smart search for the Knowledge Base: passages ranked by meaning rather than
+ * words, with the score, at most two per recording. Empty when embeddings are
+ * off or nothing is indexed yet.
+ */
+export async function semanticSearch(userId: number, query: string, limit = 15): Promise<Array<ScoredChunk & { createdAt: Date }>> {
+  const config = getEmbeddingConfig();
+  if (!config) return [];
+  const db = await requireDb();
+  const rows = await tolerateMissingSchema(
+    "embeddings",
+    () =>
+      db
+        .select({ recordingId: transcriptChunks.recordingId, title: recordings.title, createdAt: recordings.createdAt, start: transcriptChunks.startSeconds, text: transcriptChunks.text, embedding: transcriptChunks.embedding })
+        .from(transcriptChunks)
+        .innerJoin(recordings, eq(recordings.id, transcriptChunks.recordingId))
+        .where(and(eq(transcriptChunks.userId, userId), eq(recordings.userId, userId), eq(recordings.isDeleted, 0), eq(transcriptChunks.model, config.model)))
+        .orderBy(desc(recordings.createdAt))
+        .limit(MAX_CANDIDATE_CHUNKS),
+    [] as Array<{ recordingId: number; title: string; createdAt: Date; start: number | null; text: string; embedding: Buffer }>,
+  );
+  if (rows.length === 0) return [];
+  const [queryVector] = await embedTexts([query], { timeoutMs: 10_000, config });
+  const createdAt = new Map(rows.map(row => [row.recordingId, row.createdAt]));
+  const ranked = rankBySimilarity(
+    queryVector,
+    rows.map(row => ({ recordingId: row.recordingId, title: row.title, start: row.start, text: row.text, vector: decodeVector(row.embedding) })),
+    limit * 4,
+  );
+  return capPerRecording(ranked, 2, limit).map(item => ({ ...item, createdAt: createdAt.get(item.recordingId)! }));
+}
+
 export async function deleteChunksForRecordings(recordingIds: number[]) {
   if (recordingIds.length === 0) return;
   const db = await requireDb();
@@ -365,6 +412,21 @@ export async function exportChunksForUser(userId: number) {
 export const smartSearchRouter = router({
   /** Whether semantic search is on, and how much of the library is indexed. */
   status: protectedProcedure.query(({ ctx }) => getIndexStatus(ctx.user.id)),
+
+  /** Knowledge Base smart search: passages by meaning, each linking to its moment. */
+  search: protectedProcedure.input(z.object({ query: z.string().trim().min(2).max(300) })).query(async ({ ctx, input }) => {
+    if (!isEmbeddingConfigured()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Smart search is not set up on this server." });
+    if (!checkTrpcRateLimit(`smart-search:${ctx.user.id}`, 60_000, 30)) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "That is a lot of smart searches in a minute. Wait a moment, or switch to keyword search." });
+    }
+    try {
+      const results = await semanticSearch(ctx.user.id, input.query);
+      return results.map(item => ({ recordingId: item.recordingId, title: item.title, start: item.start, text: item.text, score: Math.round(item.score * 1000) / 1000, recordingCreatedAt: item.createdAt }));
+    } catch (error) {
+      console.warn("[smart search] failed:", error instanceof Error ? error.message : error);
+      throw new TRPCError({ code: "BAD_GATEWAY", message: "Smart search is not responding right now. Keyword search still works." });
+    }
+  }),
 
   /** Embeds the next few missing recordings; the Ask page calls it until `remaining` is 0. */
   indexNext: protectedProcedure.mutation(async ({ ctx }) => {

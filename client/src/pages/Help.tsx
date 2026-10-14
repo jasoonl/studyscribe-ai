@@ -17,6 +17,11 @@ interface FAQItem {
 const faqs: FAQItem[] = [
   {
     category: "Getting Started",
+    question: "Can I choose how my notes are laid out?",
+    answer: "Yes. Open Templates (from the Notes tab or the Get set up list) to see every template and the sections it writes: lecture notes, Cornell notes, an exam revision sheet, problem classes, language classes, labs, seminars, research talks, meetings, one-to-ones and interviews. Pick a default for classes and one for meetings; automatic notes use it, and you can still choose any template on a recording.",
+  },
+  {
+    category: "Getting Started",
     question: "How do I record audio?",
     answer: "From the Dashboard, click the 'Recorder' tab. Select 'Record' mode, choose your content type (Student or Professional), then press the red microphone button to start. Press Stop when done, then Save to upload and transcribe your recording.",
   },
@@ -83,7 +88,7 @@ const faqs: FAQItem[] = [
   {
     category: "Getting Started",
     question: "Transcripts keep getting a name or term wrong. Can I fix that?",
-    answer: "Yes. In Settings, add names and terms to listen for (one per line, up to six words each), and they are sent with every new recording. When you record, upload or import a link you can also add terms for that recording only, and the same box appears when you retry a failed transcription. It improves new transcriptions; to fix one that is done, edit the transcript.",
+    answer: "Yes. In Settings, add names and terms to listen for (one per line, up to six words each), and they are sent with every new recording. When you record, upload or import a link you can also add terms for that recording only, and the same box appears when you retry a failed transcription. A course can also keep its own list: open the course and fill in Course vocabulary, then record from the course (its Record button) or pick the course on the record page, and those terms are used too. It improves new transcriptions; to fix one that is done, edit the transcript.",
   },
   {
     category: "Getting Started",
@@ -113,7 +118,7 @@ const faqs: FAQItem[] = [
   {
     category: "Organization",
     question: "How do I search across all my recordings?",
-    answer: "Use the Knowledge Base (accessible from the Dashboard header). Type any keyword and it will search across all your recording titles and transcript content, showing relevant snippets with highlighted matches.",
+    answer: "Use the Knowledge Base (accessible from the Dashboard header). Type any keyword and it will search across all your recording titles and transcript content, showing relevant snippets with highlighted matches. When smart search is available, switch to Smart search to find passages by meaning (for example 'how cells make energy' finds a passage about ATP); results open the recording at that moment.",
   },
   {
     category: "Organization",
@@ -128,7 +133,7 @@ const faqs: FAQItem[] = [
   {
     category: "Sharing",
     question: "How do comments and highlights work?",
-    answer: "On a transcript you own, or one shared with you at comment or edit access, select some words in a line. Choose Highlight to mark them or Comment to start a thread. With a keyboard, Tab to a line's comment button. Threads are listed under the transcript: reply, resolve when it's settled (the person who started it, an editor or the owner can), or delete your own. As the owner you can delete any comment on your recording.",
+    answer: "On a transcript you own, or one shared with you at comment or edit access, select some words in a line. Choose Highlight to mark them or Comment to start a thread. With a keyboard, Tab to a line's comment button. Threads are listed under the transcript: reply, resolve when it's settled (the person who started it, an editor or the owner can), or delete your own. As the owner you can delete any comment on your recording. Type @ in a comment or reply to mention someone who can read the comments; they get a notification with a link.",
   },
   {
     category: "Sharing",
@@ -143,7 +148,7 @@ const faqs: FAQItem[] = [
   {
     category: "Sharing",
     question: "How do webhooks work?",
-    answer: "Under Settings, Webhooks, add a public https address and pick events: a recording finishes processing (recording.completed), a transcript is ready (transcript.ready, includes the text), or notes are written (notes.generated). Each delivery is a JSON POST with a StudyScribe-Signature header of the form t=<unix time>,v1=<hex>. To check it, compute HMAC-SHA256 of '<t>.<raw body>' with your signing secret and compare it to v1, and reject times more than 5 minutes old. Failed deliveries are retried for about a day with growing gaps; you can send a test or redeliver from Settings.",
+    answer: "Under Settings, Webhooks, add a public https address and pick events: a recording finishes processing (recording.completed), a transcript is ready (transcript.ready, includes the text), or notes are written (notes.generated). Each delivery is a JSON POST with a StudyScribe-Signature header of the form t=<unix time>,v1=<hex>. To check it, compute HMAC-SHA256 of '<t>.<raw body>' with your signing secret and compare it to v1, and reject times more than 5 minutes old. Failed deliveries are retried for about a day with growing gaps; you can send a test or redeliver from Settings. Paste a Slack incoming-webhook URL or a Discord webhook URL instead and each event arrives as a short readable message with a link to the recording.",
   },
   {
     category: "AI Features",
@@ -183,7 +188,7 @@ const faqs: FAQItem[] = [
   {
     category: "Account",
     question: "How do I upgrade, change plan or cancel?",
-    answer: "Open Billing from Settings. 'Choose' a plan to pay on Stripe's secure checkout, which shows the full price with any tax before you pay. Once you have a plan, 'Change plan or card' opens Stripe's billing portal, and 'Cancel plan' takes you straight to cancelling. After cancelling you keep the plan until the end of the period you paid for.",
+    answer: "Open Billing from Settings. 'Choose' a plan to pay on Stripe's secure checkout, which shows the full price with any tax before you pay. Once you have a plan, 'Change plan or card' opens Stripe's billing portal, and 'Cancel plan' takes you straight to cancelling. After cancelling you keep the plan until the end of the period you paid for. Where yearly billing is offered, switch Monthly to Yearly before choosing a plan; the allowance still resets every month.",
   },
   {
     category: "Organization",
@@ -208,7 +213,7 @@ const faqs: FAQItem[] = [
   {
     category: "Account",
     question: "How do teams work?",
-    answer: "Start a team from Settings. Members share courses into the team's library, and everyone in the team can open those recordings, transcripts and notes (read only). Owners and admins invite people by email and see each member's usage this month. The owner buys seats on the Team plan (each member then gets the Team allowance), can verify the school's or company's domain so Google Workspace accounts from it join on their own, and can set up SAML single sign-on, after which members use 'Sign in with SSO' on the login page. Leaving a team takes your courses out of its library; your recordings stay yours.",
+    answer: "Start a team from Settings. Members share courses into the team's library, and everyone in the team can open those recordings, transcripts and notes (read only). Owners and admins invite people by email and see each member's usage this month. The owner buys seats on the Team plan (each member then gets the Team allowance), can verify the school's or company's domain so Google Workspace accounts from it join on their own, and can set up SAML single sign-on, after which members use 'Sign in with SSO' on the login page. The owner can then turn on Require single sign-on so passwords and Google sign-in stop working for the team's domain (the owner keeps them as a way back in). Leaving a team takes your courses out of its library; your recordings stay yours.",
   },
   {
     category: "Account",
@@ -241,13 +246,13 @@ export default function Help() {
   const filteredFaqs = activeCategory === "All" ? faqs : faqs.filter(f => f.category === activeCategory);
 
   return (
-    <div className="min-h-screen bg-background">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
       {/* Header */}
       <div className="border-b bg-card px-4 sm:px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1 text-muted-foreground">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Dashboard</span>
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">Dashboard</span>
           </Button>
           <div className="h-4 w-px bg-border" />
           <div>
@@ -333,6 +338,6 @@ export default function Help() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

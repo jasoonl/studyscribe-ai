@@ -181,6 +181,38 @@ Done: F2 Stripe billing + usage limits · F4 open signup flag · F5 onboarding c
 F1 mobile app (built 2026-10-14, branch `claude/mobile-app`, needs `npm run db:migrate` for migration 0029): Expo app in `mobile/` with every web study feature, background recording with crash recovery, multipart uploads, push, Sign in with Apple and Google, deep links, a read-only plan screen (no in-app purchase, guideline 3.1.3(f)), privacy manifest and store notes. Verified with unit tests, iOS/Android bundle exports, expo-doctor and a Playwright walk of every screen on the web target against local MariaDB; not yet run on a phone or submitted to the stores (owner steps in `mobile/README.md`).
 Remaining: none from the roadmap; F1 store release is the owner's (accounts, signing, review).
 
+### Phase 6 — Finish, harden, launch-ready · built 2026-10-14
+
+Status (needs `npm run db:migrate` for migration 0030): all six items are built. Leftovers: live speaker labels, chapter marks on the player, @mentions, per-course vocabulary, Knowledge Base smart search, yearly billing (Terms, Refunds and the checklist updated), a note templates gallery with defaults, an IndexedDB crash backup in the Chrome extension, a safe `next` after sign-in (join links come back to the group), Slack and Discord delivery, and SSO-only teams. Security review: twelve fixes, written up in `docs/security/review-2026-10.md` (open legacy storage reads, JWT secret fallback, login CSRF, sessions surviving a password change, the password hash in `auth.me`, an open redirect through control characters, and smaller ones). Performance: dashboard JS 1,722 KB to 826 KB and recording page 1,551 KB to 800 KB on a cold load, one auth check instead of three, indexes for the hot queries, no full-library scans on create. Accessibility: axe-core clean on 25 pages at 1280 and 375 (from 439 issues), keyboard walkthrough of record, transcript, notes, flashcards and quiz. Reliability: an admin System health page and retried uploads. Launch content: landing, pricing, Help and API page updated; per-route meta tags, sitemap, robots and structured data. Verified in Chromium against local MariaDB with the Phase 5 platform mock; not yet run against the real Stripe yearly prices, AssemblyAI streaming diarization or WorkOS.
+
+1. **Leftovers from earlier phases**: speaker labels in live transcription where the streaming API provides them; chapter marks on the `AudioPlayer` progress bar; @mentions in comments (notify the mentioned person, only people who can see the recording); per-course vocabulary lists; a smart search option on the Knowledge Base page when embeddings are configured; annual billing (Stripe yearly prices via env, a monthly/yearly toggle on Pricing and Billing, Terms and Refunds consistent); a templates gallery for notes and onboarding; an IndexedDB crash backup for Chrome extension recordings; returning to the group after signing in from a join link, and a safe `next` redirect after login and sign-up in general; native Slack and Discord delivery for outgoing webhooks (same SSRF and signing rules); an SSO-only option for teams.
+2. **Security review** of every route and procedure added in Phases 1 to 5 (auth, sharing roles, groups, comments, API keys, webhooks, uploads and the storage proxy, Stripe and Recall webhooks, teams and SSO, calendar and integration OAuth, unsubscribe): IDOR, role checks, SSRF, open redirects, CSRF on cookie-auth REST endpoints, rate limits, secrets in responses, logs or exports, timing-unsafe comparisons. Every real issue fixed with a test; summary in `docs/security/review-2026-10.md`.
+3. **Performance**: measure the client bundle, split heavy routes and components further, lazy-load rarely used panels, add indexes for the new tables' common queries (one migration), remove N+1 queries in list endpoints, and time the dashboard and recording page before and after.
+4. **Accessibility audit of the signed-in app**: axe-core on every main page at 1280 and 375, fix labels, roles, focus order, contrast, dialog focus traps and live regions for async status, and a keyboard-only walkthrough of record, transcript, notes, flashcards and quiz.
+5. **Reliability**: consistent error states and retry for failed uploads, provider outages (AssemblyAI, LLM, Stripe, Resend) and plan limits; an admin System health page that checks each configured service without exposing secrets.
+6. **Launch content**: landing sections, Pricing, Help and `/developers` updated for Phases 2 to 5; SEO basics (per-route meta tags through a small head manager, `sitemap.xml`, `robots.txt`, SoftwareApplication structured data, a canonical per route).
+
+### Phase 7 — Students and schools, deeper (planned, not started)
+
+Status: planned only. Nothing in this phase has been built. Items 1 and 2 are deferred (set aside for now); Phase 7 work covers items 3 to 8 plus anything carried over from Phase 6.
+
+1. **School integrations** (Deferred: set aside for now): LTI 1.3 for Canvas, Blackboard, Moodle and Google Classroom. Instructors post recordings and study packs to a class, and students launch from the course page. Each school must register StudyScribe as a tool, so this stays off until one is configured.
+2. **Instructor accounts** (Deferred: set aside for now): a professor records once and the class gets the transcript, notes and flashcards, with each student's progress kept separate.
+3. **Personal study planner**: spaced-repetition review across courses, scheduled around exam dates from tasks and calendar, with a daily "what to study today".
+4. **Learning progress dashboard**: mastery by course and topic, weak spots, streaks and time spent.
+5. **Interface localisation**: translate the app UI itself, starting with Spanish, Chinese, French, Korean and Japanese. Today only content can be translated.
+6. **Offline and installable**: a PWA install, plus offline review of flashcards and transcripts.
+7. **AI quality evals**: a test suite that scores notes, flashcards, quizzes and Ask answers against the transcript, so prompt changes can't quietly make results worse.
+8. **Growth**: referral credits, and share pages that introduce StudyScribe to new visitors.
+
+Carried over from Phase 6:
+- A server-side session store, so "sign out everywhere" and logout revoke a copied token (today only a password change does).
+- Hashing password reset tokens at rest (needs a migration).
+- Consistent outage messages for every AI procedure (each maps provider errors itself today), and live probes for Resend, Recall.ai and WorkOS on the System health page (they report configuration only).
+- Loading the live transcription and slide capture code only when a recording starts (about 10 KB gzipped still in the app shell).
+- Refreshed landing screenshots for the newer features (the copy is updated; the images are from the Phase 1 library).
+- Live text inside the floating recording pill, and Study help on pages other than the record pages (Phase 3 leftovers).
+
 ---
 
 ## 5. Detailed specs for the first items to build

@@ -146,6 +146,7 @@ function startStreamingSession(ws, url) {
   const encoding = url.searchParams.get("encoding");
   const model = url.searchParams.get("speech_model") || "universal-3-6-pro";
   const formatTurns = url.searchParams.get("format_turns") === "true";
+  const speakerLabels = url.searchParams.get("speaker_labels") === "true";
   stats.sessions++;
   log(`session ${id.slice(0, 8)} opened (rate=${sampleRate}, encoding=${encoding}, model=${model}, format_turns=${formatTurns})`);
   if (sampleRate !== 16000 || encoding !== "pcm_s16le") {
@@ -188,6 +189,8 @@ function startStreamingSession(ws, url) {
       end_of_turn_confidence: final ? 0.9 : 0.1,
       words: list,
       utterance: final ? transcript : "",
+      // Two alternating voices when diarization is asked for; short partials are UNKNOWN like the real service.
+      ...(speakerLabels ? { speaker_label: wordIndex < 3 ? "UNKNOWN" : turnOrder % 3 === 2 ? "B" : "A" } : {}),
     });
   };
 

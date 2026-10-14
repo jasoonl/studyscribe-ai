@@ -1,4 +1,4 @@
-import { uploadPresigned } from "@vercel/blob/client";
+import { fetchWithRetry } from "@/lib/retry";
 
 const MULTIPART_THRESHOLD_BYTES = 50 * 1024 * 1024;
 
@@ -26,12 +26,15 @@ export async function uploadAudioDirectly(
   // Blank or generic types (common for .mov) are resolved from the file name; the server also falls back to it.
   const generic = !file.type || file.type === "application/octet-stream";
   const mimeType = generic ? (/\.mov$/i.test(fileName) ? "video/quicktime" : file.type || "audio/webm") : file.type;
-  const preparationResponse = await fetch("/api/storage/upload-url", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName, mimeType, size: file.size }),
-  });
+  // A dropped connection or a passing server error is retried before the person sees a failure.
+  const preparationResponse = await fetchWithRetry(() =>
+    fetch("/api/storage/upload-url", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName, mimeType, size: file.size }),
+    }),
+  );
 
   if (preparationResponse.status === 409) return null;
   if (!preparationResponse.ok) {
@@ -55,6 +58,8 @@ export async function uploadAudioDirectly(
 
   // A single PUT is rejected for very large files, so send those in parts.
   if (file.size > MULTIPART_THRESHOLD_BYTES) {
+    // The Blob client is only needed for large files; load it then.
+    const { uploadPresigned } = await import("@vercel/blob/client");
     await uploadPresigned(prepared.upload.key, uploadBody, {
       access: "private",
       handleUploadUrl: "/api/storage/upload-presigned",
@@ -66,11 +71,13 @@ export async function uploadAudioDirectly(
     onProgress?.(65);
     return { key: prepared.upload.key, mimeType: prepared.upload.mimeType };
   }
-  const uploadResponse = await fetch(prepared.upload.uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": prepared.upload.uploadContentType },
-    body: uploadBody,
-  });
+  const uploadResponse = await fetchWithRetry(() =>
+    fetch(prepared.upload.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": prepared.upload.uploadContentType },
+      body: uploadBody,
+    }),
+  );
 
   if (!uploadResponse.ok) {
     const detail = await uploadResponse.text().catch(() => "");

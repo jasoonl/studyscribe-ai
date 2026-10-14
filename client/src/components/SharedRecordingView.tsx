@@ -7,7 +7,7 @@ import { AudioPlayer, type AudioPlayerHandle } from "@/components/AudioPlayer";
 import { TranscriptView } from "@/components/TranscriptView";
 import { useRecordingSlides } from "@/components/RecordingSlides";
 import { FileText, BookOpen, Layers3, ClipboardCheck, NotebookPen, Loader2, Pencil } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { formatTranscriptTimestamp, type TranscriptSegment } from "@/lib/transcriptSegments";
@@ -204,7 +204,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
               <Card key={note.id} className="p-6">
                 <Badge variant="outline" className="mb-3 capitalize">{note.type.replace(/_/g, " ")}</Badge>
                 <div className="text-sm">
-                  <Streamdown>{note.content}</Streamdown>
+                  <Markdown>{note.content}</Markdown>
                 </div>
               </Card>
             ))
@@ -232,7 +232,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
                 <Card key={guide.id} className="p-6">
                   <h3 className="font-semibold mb-3">{guide.title}</h3>
                   <div className="text-sm">
-                    <Streamdown>{guide.content}</Streamdown>
+                    <Markdown>{guide.content}</Markdown>
                   </div>
                 </Card>
               ))}

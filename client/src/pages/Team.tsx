@@ -368,6 +368,13 @@ function SignIn({ org, mine }: { org: Org; mine: Mine }) {
   const options = trpc.teams.setDomainOptions.useMutation({ onSuccess: refresh, onError });
   const removeDomain = trpc.teams.removeDomain.useMutation({ onSuccess: refresh, onError });
   const portal = trpc.teams.ssoPortal.useMutation({ onSuccess: result => window.open(result.url, "_blank", "noopener"), onError });
+  const ssoOnly = trpc.teams.setSsoOnly.useMutation({
+    onSuccess: async result => {
+      toast.success(result.required ? "Single sign-on is now required" : "Other sign-in methods are allowed again");
+      await refresh();
+    },
+    onError,
+  });
 
   return (
     <Card className="gap-0 p-6">
@@ -420,6 +427,17 @@ function SignIn({ org, mine }: { org: Org; mine: Mine }) {
           </p>
           {mine.ssoConfigured && org.sso.linked && (
             <Button className="mt-3" variant="outline" disabled={portal.isPending} onClick={() => portal.mutate()}>Open SSO setup</Button>
+          )}
+          {org.role === "owner" && org.sso.canRequire && (
+            <div className="mt-4 flex items-start gap-3">
+              <Switch id="team-sso-only" checked={org.sso.required} disabled={ssoOnly.isPending} onCheckedChange={required => ssoOnly.mutate({ required })} className="mt-0.5" />
+              <div>
+                <Label htmlFor="team-sso-only" className="text-sm font-medium">Require single sign-on</Label>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Everyone with an @{org.verifiedDomain} address must use Sign in with SSO; passwords and Google sign-in stop working for them. You, as owner, keep your other sign-in methods in case the identity provider is down. People already signed in stay signed in until their session ends.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -487,7 +505,7 @@ export default function Team() {
           {org && <span className="ml-auto shrink-0 text-sm text-muted-foreground">{ORG_ROLE_LABELS[org.role]}</span>}
         </div>
       </header>
-      <main className="mx-auto max-w-4xl space-y-6 px-4 py-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl space-y-6 px-4 py-10 focus:outline-none">
         {mine.isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : !mine.data?.available ? (

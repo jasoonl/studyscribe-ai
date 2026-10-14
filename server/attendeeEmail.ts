@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { getJwtSecret } from "./_core/secrets";
 import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
@@ -44,7 +45,7 @@ export function emailHash(email: string) {
 }
 
 function unsubscribeSecret() {
-  return `${process.env.JWT_SECRET || "default-dev-secret-change-in-production"}:email-opt-out`;
+  return `${getJwtSecret()}:email-opt-out`;
 }
 
 /** A token that names one address and cannot be forged; it does not expire, as unsubscribe links must keep working. */

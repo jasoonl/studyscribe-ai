@@ -455,7 +455,7 @@ export default function Record() {
         </div>
       </header>
 
-      <main className="container py-8 sm:py-12">
+      <main id="main-content" tabIndex={-1} className="container py-8 sm:py-12 focus:outline-none">
         {layout.wide ? (
           <div className={cn("mx-auto", layout.showHelp ? "max-w-6xl" : "max-w-3xl")}>
             {!uploadComplete && <RecordingConsentNotice />}

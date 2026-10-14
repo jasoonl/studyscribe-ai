@@ -2,7 +2,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { users, type User } from "../drizzle/schema";
 import { getAppSetting, getDb, getRecordingByAudioKey } from "./db";
-import { createSessionToken, getBearerToken, verifySessionToken } from "./sessionManager";
+import { createSessionToken, getBearerToken, sessionMatchesUser, verifySessionToken } from "./sessionManager";
 import { authLimiter } from "./_core/rateLimit";
 import { streamStoredAudio } from "./_core/storageProxy";
 import { completeNativeSocialAuth } from "./nativeSocialAuth";
@@ -27,8 +27,9 @@ export function publicUser(user: Pick<User, "id" | "email" | "name" | "role">) {
   return { id: user.id, email: user.email, name: user.name, role: user.role };
 }
 
-function issueToken(user: Pick<User, "id" | "email" | "role">) {
-  return createSessionToken({ userId: user.id, email: user.email, role: user.role });
+/** Carries the password fingerprint when the row has one, so a password change also signs the app out. */
+function issueToken(user: Pick<User, "id" | "email" | "role"> & { passwordHash?: string | null }) {
+  return createSessionToken({ userId: user.id, email: user.email, role: user.role, ...(user.passwordHash !== undefined ? { passwordHash: user.passwordHash } : {}) });
 }
 
 export function isMobileRequest(req: Request) {
@@ -104,6 +105,11 @@ export function registerMobileRoutes(app: Express) {
       const user = await loadUser(session.userId);
       if (!user) {
         res.status(401).json({ error: "Account not found" });
+        return;
+      }
+      // A token from before a password change must not be refreshed into a valid one.
+      if (!sessionMatchesUser(session, user)) {
+        res.status(401).json({ error: "Not authenticated" });
         return;
       }
       res.json({ success: true, token: issueToken(user), user: publicUser(user) });

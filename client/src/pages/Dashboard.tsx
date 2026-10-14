@@ -3,11 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, UsersRound, Sparkles, ListChecks, GraduationCap, Building2 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import RecordOrUpload from "./RecordOrUpload";
+// The recorder tab loads its code only when opened (upload client, live transcript, study help).
+const RecordOrUpload = lazy(() => import("./RecordOrUpload"));
 import { useAuth } from "@/_core/hooks/useAuth";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -307,7 +308,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <main className="container py-6 pb-20">
+      <main id="main-content" tabIndex={-1} className="container py-6 pb-20 focus:outline-none">
         {/* Quick Access Buttons */}
         <div className="flex flex-wrap justify-end gap-2 mb-4">
           <Link href="/ask">
@@ -482,7 +483,9 @@ export default function Dashboard() {
 
           {/* Recorder Tab */}
           <TabsContent value="recorder">
-            <RecordOrUpload embedded />
+            <Suspense fallback={<div className="flex justify-center py-16" role="status"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" /><span className="sr-only">Loading the recorder</span></div>}>
+              <RecordOrUpload embedded />
+            </Suspense>
           </TabsContent>
 
           {/* Transcription Tab */}

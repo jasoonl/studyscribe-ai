@@ -3,10 +3,11 @@ import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { transcriptAnnotations, users } from "../drizzle/schema";
 import { MAX_COMMENT_CHARS, MAX_QUOTE_CHARS, buildThreads, canDelete, canResolve, validateAnchor } from "@shared/annotations";
+import { mentionedIds } from "@shared/mentions";
 import { canSeeAnnotations, roleAllows } from "@shared/sharing";
 import { notifyUser } from "./collabNotifications";
 import { getDb, getTranscriptByRecordingId } from "./db";
-import { getRecordingAccess, requireRecordingAccess } from "./recordingAccess";
+import { commentAudience, getRecordingAccess, requireRecordingAccess, type RecordingRow } from "./recordingAccess";
 import { explainMissingSchema, tolerateMissingSchema } from "./schemaTolerance";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -105,7 +106,51 @@ function rateLimit(userId: number) {
 
 const recordingLink = (role: string, recordingId: number) => (role === "owner" ? `/recording/${recordingId}` : `/shared-with-me/${recordingId}`);
 
+/** People who can be @mentioned on this recording (they can all read its comments), with display names. */
+export async function mentionCandidates(recording: Pick<RecordingRow, "id" | "userId">) {
+  const ids = await commentAudience(recording.id, recording.userId);
+  const names = await authorsById(ids);
+  return ids.filter(id => names.has(id)).map(id => ({ id, name: names.get(id)! }));
+}
+
+/**
+ * Notifies the people a comment @mentions. Only people who can read the
+ * comments are candidates, the author is never notified, and anyone in
+ * `alreadyNotified` (the owner or thread author who got the general notice)
+ * is skipped. Returns the ids notified.
+ */
+export async function notifyMentions(options: {
+  recording: Pick<RecordingRow, "id" | "userId" | "title">;
+  body: string;
+  author: { id: number; name: string | null; email: string };
+  alreadyNotified?: number[];
+}): Promise<number[]> {
+  if (!options.body.includes("@")) return [];
+  const candidates = await mentionCandidates(options.recording);
+  const skip = new Set([options.author.id, ...(options.alreadyNotified ?? [])]);
+  const mentioned = mentionedIds(options.body, candidates).filter(id => !skip.has(id));
+  for (const userId of mentioned) {
+    const role = userId === options.recording.userId ? "owner" : "shared";
+    await notifyUser(userId, {
+      title: "You were mentioned in a comment",
+      message: `${options.author.name || options.author.email} mentioned you on "${options.recording.title}": ${options.body.slice(0, 140)}`,
+      url: recordingLink(role, options.recording.id),
+      recordingId: role === "owner" ? options.recording.id : undefined,
+      tag: `mention-${options.recording.id}`,
+    });
+  }
+  return mentioned;
+}
+
 export const annotationsRouter = router({
+  /** Who can be @mentioned: people who can read this recording's comments. */
+  mentionable: protectedProcedure.input(z.object({ recordingId: z.number().int().positive() })).query(async ({ input, ctx }) => {
+    const access = await requireRecordingAccess(input.recordingId, ctx.user.id, "comment");
+    const candidates = await mentionCandidates(access.recording);
+    // Includes the person asking (flagged) so their own name is highlighted; the composer leaves them out.
+    return candidates.map(candidate => ({ ...candidate, isYou: candidate.id === ctx.user.id }));
+  }),
+
   list: protectedProcedure.input(z.object({ recordingId: z.number().int().positive() })).query(async ({ input, ctx }) => {
     const access = await requireRecordingAccess(input.recordingId, ctx.user.id, "view");
     const permissions = {
@@ -165,7 +210,11 @@ export const annotationsRouter = router({
           body: input.body || null,
         }),
       );
-      if (input.kind === "comment" && access.recording.userId !== ctx.user.id) {
+      const ownerNotified = input.kind === "comment" && access.recording.userId !== ctx.user.id;
+      if (input.kind === "comment" && input.body) {
+        await notifyMentions({ recording: access.recording, body: input.body, author: ctx.user, alreadyNotified: ownerNotified ? [access.recording.userId] : [] });
+      }
+      if (ownerNotified) {
         await notifyUser(access.recording.userId, {
           title: "New comment on your transcript",
           message: `${ctx.user.name || ctx.user.email} commented on "${access.recording.title}": ${input.body!.slice(0, 140)}`,
@@ -211,6 +260,7 @@ export const annotationsRouter = router({
           tag: `comments-${access.recording.id}`,
         });
       }
+      await notifyMentions({ recording: access.recording, body: input.body, author: ctx.user, alreadyNotified: Array.from(recipients) });
       return { created: true };
     }),
 

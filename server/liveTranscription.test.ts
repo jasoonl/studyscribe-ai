@@ -5,6 +5,7 @@ import {
   buildStreamingSocketUrl,
   getLiveAvailability,
   getLiveTranscriptionStatus,
+  liveSpeakerLabelsEnabled,
   mintLiveToken,
   resolveStreamingEndpoint,
   resolveStreamingModel,
@@ -54,6 +55,16 @@ describe("buildStreamingSocketUrl", () => {
     expect(url.searchParams.get("speech_model")).toBe("universal-streaming-english");
     expect(url.searchParams.get("format_turns")).toBe("true");
     expect(url.searchParams.has("token")).toBe(false);
+  });
+
+  it("asks for speaker labels unless they are switched off", () => {
+    const on = new URL(buildStreamingSocketUrl("wss://streaming.assemblyai.com", "universal-streaming-english", true));
+    expect(on.searchParams.get("speaker_labels")).toBe("true");
+    const off = new URL(buildStreamingSocketUrl("wss://streaming.assemblyai.com", "universal-streaming-english", false));
+    expect(off.searchParams.has("speaker_labels")).toBe(false);
+    expect(liveSpeakerLabelsEnabled(undefined)).toBe(true);
+    expect(liveSpeakerLabelsEnabled("off")).toBe(false);
+    expect(liveSpeakerLabelsEnabled("OFF ")).toBe(false);
   });
 });
 

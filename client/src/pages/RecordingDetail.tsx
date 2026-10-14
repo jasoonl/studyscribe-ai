@@ -130,6 +130,8 @@ export default function RecordingDetail() {
   const [retryLanguage, setRetryLanguage] = useState("auto");
   const [retryVocabulary, setRetryVocabulary] = useState<string | null>(null);
   const needsRetry = recording?.status === "failed" || (recording?.status === "processing" && !recording?.transcriptionProviderId);
+  // Same query (and cache entry) as RecordingChapters; feeds the player's chapter marks.
+  const { data: insights } = trpc.insights.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && recording?.status === "completed" });
   const { data: storedVocabulary } = trpc.vocabulary.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && needsRetry });
   const retryTranscription = trpc.recordings.retryTranscription.useMutation({
     onSuccess: () => {
@@ -276,7 +278,7 @@ export default function RecordingDetail() {
       )}
 
       {/* Main Content */}
-      <main className="container py-8">
+      <main id="main-content" tabIndex={-1} className="container py-8 focus:outline-none">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Left: Transcript & Notes */}
           <div className="lg:col-span-2 space-y-6">
@@ -284,9 +286,9 @@ export default function RecordingDetail() {
             <Card className="p-6 border-2 border-border">
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-1">
+                  <h2 className="font-semibold text-sm text-muted-foreground mb-1">
                     Recording Details
-                  </h3>
+                  </h2>
                   <div className="space-y-2 text-sm">
                     <p>
                       <span className="font-medium">Duration:</span>{" "}
@@ -361,10 +363,10 @@ export default function RecordingDetail() {
                 {/* Audio Player */}
                 {recording.audioUrl && (
                   <div>
-                    <h3 className="font-semibold text-sm text-muted-foreground mb-2">
+                    <h2 className="font-semibold text-sm text-muted-foreground mb-2">
                       Play Recording
-                    </h3>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} />
+                    </h2>
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} chapters={insights?.chapters} />
                     <RecordingBookmarks
                       recordingId={recordingId || 0}
                       playbackTime={playbackTime}
@@ -395,32 +397,32 @@ export default function RecordingDetail() {
                 <TabsTrigger value="transcript" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <FileText className="h-5 w-5" />
                   <span>Transcript</span>
-                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Source material</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Source material</span>
                 </TabsTrigger>
                 <TabsTrigger value="notes" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <NotebookPen className="h-5 w-5" />
                   <span>Study Notes</span>
-                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Understand</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Understand</span>
                 </TabsTrigger>
                 <TabsTrigger value="flashcards" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <Layers3 className="h-5 w-5" />
                   <span>Flashcards</span>
-                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Recall</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Recall</span>
                 </TabsTrigger>
                 <TabsTrigger value="learn" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <Brain className="h-5 w-5" />
                   <span>Learn</span>
-                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Build mastery</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Build mastery</span>
                 </TabsTrigger>
                 <TabsTrigger value="test" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <ClipboardCheck className="h-5 w-5" />
                   <span>Test</span>
-                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Check mastery</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Check mastery</span>
                 </TabsTrigger>
                 <TabsTrigger value="tutor" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <MessageSquare className="h-5 w-5" />
                   <span>AI Assistant</span>
-                  <span className="hidden text-[10px] font-normal opacity-70 sm:block">Ask questions</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Ask questions</span>
                 </TabsTrigger>
               </TabsList>
 

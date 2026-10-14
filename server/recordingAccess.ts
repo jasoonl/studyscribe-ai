@@ -191,6 +191,43 @@ export async function requireRecordingAccess(recordingId: number, userId: number
   return access;
 }
 
+/**
+ * Everyone who can read the comments on a recording: the owner, direct shares
+ * at comment or edit, and members of groups the recording (or its course) was
+ * shared to at comment or edit. Team library access is view only, so it never
+ * counts. Used to decide who may be @mentioned.
+ */
+export async function commentAudience(recordingId: number, ownerId: number): Promise<number[]> {
+  const ids = new Set<number>([ownerId]);
+  const direct = await getSharesForRecording(recordingId);
+  for (const share of direct) if (roleAllows(share.role, "comment")) ids.add(share.sharedWithUserId);
+
+  const db = await requireDb();
+  const courseId = await courseIdForRecording(recordingId);
+  const itemMatch =
+    courseId !== null
+      ? or(
+          and(eq(groupShares.itemType, "recording"), eq(groupShares.itemId, recordingId)),
+          and(eq(groupShares.itemType, "course"), eq(groupShares.itemId, courseId)),
+        )
+      : and(eq(groupShares.itemType, "recording"), eq(groupShares.itemId, recordingId));
+  const groupRows = await tolerateMissingSchema(
+    "groups",
+    () => db.select({ groupId: groupShares.groupId, role: groupShares.role }).from(groupShares).where(itemMatch),
+    [] as Array<{ groupId: number; role: ShareRole }>,
+  );
+  const groupIds = Array.from(new Set(groupRows.filter(row => roleAllows(row.role, "comment")).map(row => row.groupId)));
+  if (groupIds.length) {
+    const members = await tolerateMissingSchema(
+      "groups",
+      () => db.select({ userId: studyGroupMembers.userId }).from(studyGroupMembers).where(inArray(studyGroupMembers.groupId, groupIds)),
+      [] as Array<{ userId: number }>,
+    );
+    for (const member of members) ids.add(member.userId);
+  }
+  return Array.from(ids);
+}
+
 export type SharedRecordingListItem = {
   recordingId: number;
   title: string;

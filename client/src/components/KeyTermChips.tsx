@@ -45,7 +45,7 @@ export function KeyTermChips({ recordingId, query, onPick }: { recordingId: numb
                 )}
               >
                 {term}
-                <span className={cn("tabular-nums", pressed ? "text-primary-foreground/80" : "text-muted-foreground")}>{count}</span>
+                <span className={cn("tabular-nums", pressed ? "text-primary-foreground/90" : "text-muted-foreground")}>{count}</span>
               </button>
             );
           })}

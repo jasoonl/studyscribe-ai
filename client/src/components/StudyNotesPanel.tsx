@@ -1,5 +1,6 @@
+import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { AlertCircle, BookOpen, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,7 +12,8 @@ import { SendToMenu } from "@/components/SendToMenu";
 import { TranslateMenu } from "@/components/TranslateDialog";
 import { trpc } from "@/lib/trpc";
 import { claimAutoNotesAttempt, getAutoNotesEnabled } from "@/lib/preferences";
-import { NOTE_TEMPLATES, defaultNoteTemplate, getNoteTemplate, type NoteTemplateId } from "@shared/noteTemplates";
+import { NOTE_TEMPLATES, audienceKey, getNoteTemplate, resolveNoteTemplate, type NoteTemplateId } from "@shared/noteTemplates";
+import { getPreferredNoteTemplate } from "@/lib/preferences";
 
 type Note = { id: number; type: string; content: string; metadata?: Record<string, unknown> | null };
 
@@ -34,7 +36,8 @@ export function StudyNotesPanel({
   notes: Note[] | undefined;
 }) {
   const utils = trpc.useUtils();
-  const [template, setTemplate] = useState<NoteTemplateId>(() => defaultNoteTemplate(audience).id);
+  const preferred = () => resolveNoteTemplate(getPreferredNoteTemplate(audienceKey(audience)), audience).id;
+  const [template, setTemplate] = useState<NoteTemplateId>(preferred);
   const generate = trpc.ai.generateStudyNotes.useMutation();
   const autoStarted = useRef(false);
 
@@ -53,7 +56,7 @@ export function StudyNotesPanel({
     if (autoStarted.current || !transcriptReady || !notes || notes.length > 0) return;
     if (!getAutoNotesEnabled() || !claimAutoNotesAttempt(recordingId)) return;
     autoStarted.current = true;
-    void run(defaultNoteTemplate(audience).id, true);
+    void run(preferred(), true);
   }, [transcriptReady, notes, recordingId, audience]);
 
   const picker = (
@@ -94,7 +97,10 @@ export function StudyNotesPanel({
       {notes && notes.length > 0 ? (
         <>
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">Need a different angle? Write another set with a template.</p>
+            <p className="text-sm text-muted-foreground">
+              Need a different angle? Write another set with a template, or{" "}
+              <Link href="/templates" className="font-medium text-primary underline-offset-4 hover:underline">browse templates</Link>.
+            </p>
             {picker}
           </div>
           {notes.map(note => (
@@ -110,7 +116,7 @@ export function StudyNotesPanel({
                 </div>
               </div>
               <div className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert">
-                <Streamdown>{note.content}</Streamdown>
+                <Markdown>{note.content}</Markdown>
               </div>
             </Card>
           ))}

@@ -20,6 +20,12 @@ export type LiveTurn = {
   final: boolean;
   startAt: number;
   endAt: number;
+  /**
+   * The streaming service's speaker label ("A", "B", ...) when diarization is
+   * on, or null. Labels are per session: after a pause or rollover "A" may be
+   * someone else, so they only group turns, they never name anyone.
+   */
+  speaker: string | null;
 };
 
 export type StreamingWord = { start?: number; end?: number; text?: string };
@@ -30,6 +36,7 @@ export type StreamingTurnMessage = {
   end_of_turn?: boolean;
   turn_is_formatted?: boolean;
   words?: StreamingWord[];
+  speaker_label?: string;
 };
 
 export type LiveSessionClock = { index: number; offsetSeconds: number };
@@ -43,6 +50,14 @@ function wordTimes(words: StreamingWord[] | undefined): { start: number; end: nu
   const ends = words.map(word => word.end).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   if (starts.length === 0 || ends.length === 0) return null;
   return { start: Math.min(...starts) / 1000, end: Math.max(...ends) / 1000 };
+}
+
+/** A usable speaker label, or null for missing, "UNKNOWN" and junk values. */
+export function speakerFromLabel(label: unknown): string | null {
+  if (typeof label !== "string") return null;
+  const value = label.trim();
+  if (!value || value.toUpperCase() === "UNKNOWN" || value.length > 12) return null;
+  return value;
 }
 
 /**
@@ -71,10 +86,12 @@ export function applyTurnMessage(turns: LiveTurn[], message: StreamingTurnMessag
 
   const startAt = times ? session.offsetSeconds + times.start : existing?.startAt ?? nowSeconds;
   const endAt = times ? session.offsetSeconds + times.end : Math.max(existing?.endAt ?? nowSeconds, startAt);
-  const next: LiveTurn = { key, session: session.index, order: message.turn_order, text, final, startAt, endAt };
+  // Short turns come back "UNKNOWN"; keep a label an earlier message gave.
+  const speaker = speakerFromLabel(message.speaker_label) ?? existing?.speaker ?? null;
+  const next: LiveTurn = { key, session: session.index, order: message.turn_order, text, final, startAt, endAt, speaker };
 
   if (existing) {
-    if (existing.text === next.text && existing.final === next.final && existing.endAt === next.endAt) return turns;
+    if (existing.text === next.text && existing.final === next.final && existing.endAt === next.endAt && existing.speaker === next.speaker) return turns;
     const copy = turns.slice();
     copy[index] = next;
     return copy;
@@ -127,22 +144,41 @@ export function liveTranscriptText(turns: LiveTurn[]): string {
   return turns.filter(turn => turn.text).map(turn => turn.text).join(" ");
 }
 
+export type LiveParagraph = { key: string; startAt: number; speaker: string | null; turns: LiveTurn[] };
+
 /**
  * Groups finished turns into readable paragraphs: a new one starts after a
- * pause of `gapSeconds` or once a paragraph holds `maxTurns` turns.
+ * pause of `gapSeconds`, once a paragraph holds `maxTurns` turns, or when the
+ * speaker label changes (a turn without a label stays with the paragraph).
  */
-export function groupParagraphs(turns: LiveTurn[], gapSeconds = 4, maxTurns = 5): Array<{ key: string; startAt: number; turns: LiveTurn[] }> {
-  const paragraphs: Array<{ key: string; startAt: number; turns: LiveTurn[] }> = [];
-  let current: { key: string; startAt: number; turns: LiveTurn[] } | null = null;
+export function groupParagraphs(turns: LiveTurn[], gapSeconds = 4, maxTurns = 5): LiveParagraph[] {
+  const paragraphs: LiveParagraph[] = [];
+  let current: LiveParagraph | null = null;
   let lastEnd = -Infinity;
   for (const turn of turns) {
     if (!turn.text) continue;
-    if (!current || turn.startAt - lastEnd >= gapSeconds || current.turns.length >= maxTurns) {
-      current = { key: turn.key, startAt: turn.startAt, turns: [] };
+    const speakerChanged = Boolean(current && turn.speaker && current.speaker && turn.speaker !== current.speaker);
+    if (!current || speakerChanged || turn.startAt - lastEnd >= gapSeconds || current.turns.length >= maxTurns) {
+      current = { key: turn.key, startAt: turn.startAt, speaker: turn.speaker, turns: [] };
       paragraphs.push(current);
     }
+    if (!current.speaker && turn.speaker) current.speaker = turn.speaker;
     current.turns.push(turn);
     lastEnd = Math.max(lastEnd, turn.endAt);
   }
   return paragraphs;
+}
+
+/**
+ * Whether labels are worth showing: only once two different speakers have
+ * been heard, so a lecture with one voice shows no "Speaker A" noise.
+ */
+export function hasSeveralSpeakers(turns: LiveTurn[]): boolean {
+  let first: string | null = null;
+  for (const turn of turns) {
+    if (!turn.speaker) continue;
+    if (first === null) first = turn.speaker;
+    else if (turn.speaker !== first) return true;
+  }
+  return false;
 }

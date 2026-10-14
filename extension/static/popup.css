@@ -263,3 +263,14 @@ main {
 #form-message:empty {
   display: none;
 }
+
+.backup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.backup-list > li + li {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}

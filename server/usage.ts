@@ -10,6 +10,7 @@ import { tolerateMissingSchema } from "./schemaTolerance";
 import { isBillingConfigured } from "./stripe";
 import { checkGenerationAllowance, checkTranscriptionAllowance, summarizeUsage, usagePeriod, UsageLimitError, type UsageTotals } from "./usageRules";
 import { protectedProcedure } from "./_core/trpc";
+import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { assertEmailConfirmed } from "./emailConfirmation";
 
 /**
@@ -139,7 +140,14 @@ export function recordAiGeneration(userId: number, dedupeKey?: string) {
  * month's AI generations are used up and counts one after a success.
  * Failures are not counted.
  */
+export const AI_BURST_LIMIT = { windowMs: 10 * 60 * 1000, max: 60 };
+
 export const aiProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  // A burst cap that holds whether or not plan limits are enforced, so one
+  // account (or a leaked API key) cannot run up the model bill in minutes.
+  if (ctx.user.role !== "admin" && !checkTrpcRateLimit(`ai-burst:${ctx.user.id}`, AI_BURST_LIMIT.windowMs, AI_BURST_LIMIT.max)) {
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "That is a lot of AI requests in a few minutes. Wait a little and try again." });
+  }
   await assertCanGenerate(ctx.user);
   const result = await next();
   if (result.ok) await recordAiGeneration(ctx.user.id);

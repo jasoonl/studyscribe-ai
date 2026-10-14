@@ -4,10 +4,20 @@ export const PLAN_IDS = ["free", "basic", "pro", "max"] as const satisfies reado
 export const PAID_PLAN_IDS = ["basic", "pro", "max"] as const satisfies readonly PlanId[];
 export type PaidPlanId = (typeof PAID_PLAN_IDS)[number];
 
+/** How often a paid plan is billed. Yearly needs its own Stripe prices (STRIPE_PRICE_*_YEARLY). */
+export const BILLING_INTERVALS = ["month", "year"] as const;
+export type BillingInterval = (typeof BILLING_INTERVALS)[number];
+
 export type Plan = {
   id: PlanId;
   name: string;
   priceMonthlyUsd: number;
+  /**
+   * What the yearly price is shown as (PROPOSED: ten months for twelve). The
+   * amount charged is the Stripe price in STRIPE_PRICE_<PLAN>_YEARLY; keep the
+   * two equal. Allowances stay monthly on a yearly plan.
+   */
+  priceYearlyUsd: number;
   tagline: string;
   /** Minutes of audio that can be transcribed each calendar month (UTC). */
   transcriptionMinutesPerMonth: number;
@@ -37,16 +47,19 @@ export type Plan = {
  * ---------------------------------------------------------------------------
  */
 export const PLANS: Plan[] = [
-  { id: "free", name: "Free", priceMonthlyUsd: 0, tagline: "Try every feature on a couple of lectures.", transcriptionMinutesPerMonth: 120, aiGenerationsPerMonth: 60, purchasable: true },
-  { id: "basic", name: "Basic", priceMonthlyUsd: 5, tagline: "For a regular class schedule.", transcriptionMinutesPerMonth: 600, aiGenerationsPerMonth: 300, purchasable: false },
-  { id: "pro", name: "Pro", priceMonthlyUsd: 20, tagline: "For full course loads and weekly meetings.", transcriptionMinutesPerMonth: 1800, aiGenerationsPerMonth: 1500, highlight: true, purchasable: false },
-  { id: "max", name: "Max", priceMonthlyUsd: 50, tagline: "The largest allowance, for heavy use.", transcriptionMinutesPerMonth: 6000, aiGenerationsPerMonth: 5000, purchasable: false },
+  { id: "free", name: "Free", priceMonthlyUsd: 0, priceYearlyUsd: 0, tagline: "Try every feature on a couple of lectures.", transcriptionMinutesPerMonth: 120, aiGenerationsPerMonth: 60, purchasable: true },
+  { id: "basic", name: "Basic", priceMonthlyUsd: 5, priceYearlyUsd: 50, tagline: "For a regular class schedule.", transcriptionMinutesPerMonth: 600, aiGenerationsPerMonth: 300, purchasable: false },
+  { id: "pro", name: "Pro", priceMonthlyUsd: 20, priceYearlyUsd: 200, tagline: "For full course loads and weekly meetings.", transcriptionMinutesPerMonth: 1800, aiGenerationsPerMonth: 1500, highlight: true, purchasable: false },
+  { id: "max", name: "Max", priceMonthlyUsd: 50, priceYearlyUsd: 500, tagline: "The largest allowance, for heavy use.", transcriptionMinutesPerMonth: 6000, aiGenerationsPerMonth: 5000, purchasable: false },
 ];
 
 export const PLAN_FEATURES = [
   "Transcripts with speaker labels",
   "Flashcards, quizzes and study guides",
   "AI tutor and email drafts",
+  "Live transcript and study help",
+  "Courses, Ask across recordings and exam packs",
+  "Sharing, comments and study groups",
   "Export to Quizlet, Anki and Notion",
 ];
 
@@ -61,6 +74,7 @@ export const TEAM_PLAN: Plan = {
   id: "team",
   name: "Team",
   priceMonthlyUsd: 12,
+  priceYearlyUsd: 0,
   tagline: "For study groups, labs, classes and teams, paid per seat.",
   transcriptionMinutesPerMonth: 1800,
   aiGenerationsPerMonth: 1500,
@@ -87,8 +101,26 @@ export function withAvailability(billingEnabled: boolean): Plan[] {
   return PLANS.map((plan) => ({ ...plan, purchasable: plan.id === "free" || billingEnabled }));
 }
 
-export function formatPlanPrice(plan: Plan) {
-  return plan.priceMonthlyUsd === 0 ? "$0" : `$${plan.priceMonthlyUsd}`;
+export function formatPlanPrice(plan: Plan, interval: BillingInterval = "month") {
+  const amount = interval === "year" ? plan.priceYearlyUsd : plan.priceMonthlyUsd;
+  return amount === 0 ? "$0" : `$${amount.toLocaleString("en-US")}`;
+}
+
+/** "/ month" or "/ year". */
+export function intervalSuffix(interval: BillingInterval) {
+  return interval === "year" ? "/ year" : "/ month";
+}
+
+/** Whole percent saved by paying yearly instead of twelve months, or 0. */
+export function yearlySavingsPercent(plan: Plan) {
+  const twelve = plan.priceMonthlyUsd * 12;
+  if (twelve <= 0 || plan.priceYearlyUsd <= 0 || plan.priceYearlyUsd >= twelve) return 0;
+  return Math.round((1 - plan.priceYearlyUsd / twelve) * 100);
+}
+
+/** The largest saving across the paid plans, for the toggle's label. */
+export function bestYearlySavingsPercent(plans: Plan[] = PLANS) {
+  return Math.max(0, ...plans.map(yearlySavingsPercent));
 }
 
 export function formatMinutes(minutes: number) {

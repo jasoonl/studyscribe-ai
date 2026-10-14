@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
+import { createRecording, getRecordingByAudioKeyForUser, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
@@ -26,7 +26,7 @@ import { sharingRouter } from "./sharingRouter";
 import { MAX_BOOKMARKS_PER_RECORDING, bookmarkInputSchema, bookmarksRouter, saveBookmarks } from "./bookmarks";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { renameSpeakerInSegments, speakerRenameInputSchema, transcriptUpdateInputSchema } from "./transcriptInput";
-import { desc, and } from "drizzle-orm";
+import { desc, and, sql } from "drizzle-orm";
 import { createHash } from "crypto";
 import { assignRecordingToCourse, attachOrganization, coursesRouter, recordingIdsInCourse } from "./courses";
 import { tagsRouter } from "./tagsRouter";
@@ -35,6 +35,7 @@ import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { actionItemsRouter } from "./actionItems";
 import { insightsRouter } from "./recordingInsights";
 import { examPacksRouter } from "./examPacks";
+import { runHealthChecks } from "./systemHealth";
 import { rememberRecordingVocabulary, resolveKeyterms, vocabularyRouter } from "./vocabulary";
 import { keytermsInput } from "./vocabularyInput";
 import { LiveTokenError, getLiveAvailability, getLiveTranscriptionStatus, mintLiveToken } from "./liveTranscription";
@@ -68,6 +69,32 @@ const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTe
 // "auto" (or omitted) lets the provider detect the language.
 const languageInput = z.enum(TRANSCRIPTION_LANGUAGE_CODES).optional();
 
+/** Host and path only: query strings of imported links can carry signed tokens. */
+export function redactUrlForLog(raw: string) {
+  try {
+    const url = new URL(raw);
+    return `${url.origin}${url.pathname}${url.search ? "?…" : ""}`;
+  } catch {
+    return "(invalid url)";
+  }
+}
+
+/** The fields of an account that may leave the server. */
+export function publicUser(user: { id: number; email: string; name: string | null; role: string; loginMethod: string | null; emailVerified: number; createdAt: Date; lastSignedIn: Date } | null) {
+  if (!user) return null;
+  return { id: user.id, email: user.email, name: user.name, role: user.role, loginMethod: user.loginMethod, emailVerified: user.emailVerified === 1, createdAt: user.createdAt, lastSignedIn: user.lastSignedIn };
+}
+
+/** Files a new recording under a course; a failure (archived, missing table) never loses the recording. */
+async function fileUnderCourseQuietly(userId: number, recordingId: number, courseId: number | undefined) {
+  if (!courseId) return;
+  try {
+    await assignRecordingToCourse(userId, recordingId, courseId);
+  } catch (error) {
+    console.warn("[courses] could not file new recording", recordingId, error instanceof Error ? error.message : error);
+  }
+}
+
 export const appRouter = router({
   system: systemRouter,
   /**
@@ -76,6 +103,8 @@ export const appRouter = router({
    * scheme) silently failed every transcript with no way to see why.
    */
   diagnostics: router({
+    /** System health (Phase 6): a live check of each configured service; statuses and sentences only, no secrets. */
+    health: adminProcedure.query(async () => ({ checkedAt: new Date(), checks: await runHealthChecks() })),
     transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
     storage: adminProcedure.query(() => getBlobUsage()),
     billing: billingDiagnostics,
@@ -86,7 +115,8 @@ export const appRouter = router({
       .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
   }),
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    // Never the whole row: it holds the password hash and provider ids.
+    me: publicProcedure.query(opts => publicUser(opts.ctx.user)),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -198,6 +228,8 @@ export const appRouter = router({
         bookmarks: z.array(bookmarkInputSchema).max(MAX_BOOKMARKS_PER_RECORDING).optional(),
         /** Extra words to listen for in this recording only. */
         keyterms: keytermsInput,
+        /** File it under one of the person's courses before transcription, so the course's vocabulary applies. */
+        courseId: z.number().int().positive().optional(),
         /** The calendar event this recording was made during (A5), for offering its notes to the attendees (D4). */
         calendarEventId: z.string().min(1).max(255).optional(),
         /** When recording started (ms), to find that event. */
@@ -261,9 +293,8 @@ export const appRouter = router({
           duration: input.duration || 0,
         });
 
-        // Get the created recording (query by audioKey since we just created it)
-        const recordings = await getRecordingsByUserId(ctx.user.id);
-        const recording = recordings.find(r => r.audioKey === actualFileKey);
+        // Get the created recording by its storage key (indexed), not by listing the whole library.
+        const recording = await getRecordingByAudioKeyForUser(actualFileKey, ctx.user.id);
 
         if (!recording) {
           throw new Error("Failed to create recording");
@@ -277,6 +308,7 @@ export const appRouter = router({
         }
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await fileUnderCourseQuietly(ctx.user.id, recording.id, input.courseId);
         if (input.calendarEventId) {
           // Read from Google, not from the page; a failure only means no attendee list.
           try {
@@ -306,6 +338,7 @@ export const appRouter = router({
         audience: z.enum(["student", "professional"]).default("student"),
         language: languageInput,
         keyterms: keytermsInput,
+        courseId: z.number().int().positive().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         // Before downloading anything: is any transcription left this month?
@@ -331,7 +364,7 @@ export const appRouter = router({
         }
 
         const verified = await verifyUploadedAudio(stored.key);
-        console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
+        console.log(`[Import] Stored ${redactUrlForLog(finalUrl)} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
 
         const fallbackTitle = sourceTitle?.trim() || decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() || "Imported audio")
           .replace(/\.[^/.]+$/, "")
@@ -348,11 +381,11 @@ export const appRouter = router({
           duration: duration ?? Math.round(sourceDuration ?? 0),
         });
 
-        const userRecordings = await getRecordingsByUserId(ctx.user.id);
-        const recording = userRecordings.find(r => r.audioKey === stored.key);
+        const recording = await getRecordingByAudioKeyForUser(stored.key, ctx.user.id);
         if (!recording) throw new Error("Failed to create recording");
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
+        await fileUnderCourseQuietly(ctx.user.id, recording.id, input.courseId);
         await startTranscription(recording, stored.key, stored.mimeType, input.language, input.keyterms);
 
         return recording;
@@ -1263,11 +1296,11 @@ export const appRouter = router({
       .query(async ({ ctx }) => {
         const db = await getDb();
         if (!db) return { count: 0 };
-        const all = await db
-          .select()
+        const [row] = await db
+          .select({ count: sql<number>`count(*)` })
           .from(userNotifications)
           .where(and(eq(userNotifications.userId, ctx.user.id), eq(userNotifications.isRead, 0)));
-        return { count: all.length };
+        return { count: Number(row?.count ?? 0) };
       }),
   }),
 

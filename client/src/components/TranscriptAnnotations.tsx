@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Check, Highlighter, Loader2, MessageSquare, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionText, MentionTextarea, useMentionCandidates, type MentionPerson } from "@/components/MentionTextarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatTranscriptTimestamp, type TranscriptSegment } from "@/lib/transcriptSegments";
@@ -107,6 +107,7 @@ export function SelectionToolbar({
   const [writing, setWriting] = useState(false);
   const [body, setBody] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const people = useMentionCandidates(recordingId, writing);
   const create = trpc.annotations.create.useMutation({
     onSuccess: async (_data, variables) => {
       await utils.annotations.list.invalidate({ recordingId });
@@ -159,17 +160,15 @@ export function SelectionToolbar({
           }}
         >
           <p className="line-clamp-2 text-xs text-muted-foreground">“{selection.quote}”</p>
-          <Textarea
+          <MentionTextarea
             ref={textareaRef}
             value={body}
-            onChange={event => setBody(event.target.value)}
-            onKeyDown={event => {
-              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault();
-                if (body.trim()) save("comment");
-              }
+            onValueChange={setBody}
+            people={people}
+            onSubmitShortcut={() => {
+              if (body.trim()) save("comment");
             }}
-            placeholder="Add a comment"
+            placeholder="Add a comment, @ to mention"
             aria-label="Comment"
             rows={3}
             maxLength={4000}
@@ -214,7 +213,9 @@ function ThreadCard({
   start,
   onGoTo,
   registerRef,
+  people,
 }: {
+  people: MentionPerson[];
   thread: AnnotationThread;
   recordingId: number;
   permissions: AnnotationPermissions;
@@ -295,7 +296,7 @@ function ThreadCard({
               {thread.resolved && ", resolved"}
             </span>
           </p>
-          {thread.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{thread.body}</p>}
+          {thread.body && <MentionText body={thread.body} people={people} className="mt-1 whitespace-pre-wrap text-sm leading-relaxed" />}
         </div>
         {thread.replies.map(item => (
           <div key={item.id} className="flex items-start justify-between gap-2 pl-4">
@@ -303,7 +304,7 @@ function ThreadCard({
               <p className="text-sm">
                 <span className="font-semibold">{item.authorId === me ? "You" : item.authorName}</span> <span className="text-xs text-muted-foreground">{when(item.createdAt)}</span>
               </p>
-              <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed">{item.body}</p>
+              <MentionText body={item.body ?? ""} people={people} className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed" />
             </div>
             {canRemove(item.authorId) && (
               <Button
@@ -327,14 +328,12 @@ function ThreadCard({
               if (reply.trim()) sendReply.mutate({ parentId: thread.id, body: reply.trim() });
             }}
           >
-            <Textarea
+            <MentionTextarea
               value={reply}
-              onChange={event => setReply(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && reply.trim()) {
-                  event.preventDefault();
-                  sendReply.mutate({ parentId: thread.id, body: reply.trim() });
-                }
+              onValueChange={setReply}
+              people={people}
+              onSubmitShortcut={() => {
+                if (reply.trim()) sendReply.mutate({ parentId: thread.id, body: reply.trim() });
               }}
               placeholder="Reply"
               aria-label={`Reply to ${thread.authorName}`}
@@ -370,6 +369,7 @@ export function CommentsPanel({
   onGoTo: (thread: AnnotationThread) => void;
 }) {
   const [showResolved, setShowResolved] = useState(false);
+  const people = useMentionCandidates(recordingId, permissions.canSee && threads.length > 0);
   const refs = useRef(new Map<number, HTMLLIElement>());
   const open = threads.filter(thread => !thread.resolved);
   const resolved = threads.filter(thread => thread.resolved);
@@ -411,6 +411,7 @@ export function CommentsPanel({
           {shown.map(thread => (
             <ThreadCard
               key={thread.id}
+              people={people}
               thread={thread}
               recordingId={recordingId}
               permissions={permissions}

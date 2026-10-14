@@ -55,7 +55,7 @@ export function RecordingList({ recordings, courses, tags, onDelete, showCourse 
           >
             <div className="min-w-0 flex-1">
               <Link href={`/recording/${recording.id}`}>
-                <h4 className="cursor-pointer truncate font-semibold hover:text-primary">{recording.title}</h4>
+                <h3 className="cursor-pointer truncate font-semibold hover:text-primary">{recording.title}</h3>
               </Link>
               <p className="truncate text-sm text-muted-foreground">
                 {new Date(recording.createdAt).toLocaleDateString()}

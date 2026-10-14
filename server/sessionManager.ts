@@ -3,7 +3,8 @@ import jwt from "jsonwebtoken";
 import type { Request } from "express";
 const { sign, verify } = jwt;
 
-const JWT_SECRET = process.env.JWT_SECRET || "default-dev-secret-change-in-production";
+import { createHash } from "node:crypto";
+import { getJwtSecret } from "./_core/secrets";
 const SESSION_COOKIE_NAME = "studyscribe_session";
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -11,6 +12,13 @@ export interface SessionData {
   userId: number;
   email: string;
   role: "admin" | "user";
+  /**
+   * Password version: a short hash of the account's password hash when the
+   * session was made. Changing or resetting the password changes it, which
+   * signs out every other session (`sessionMatchesUser`). Absent on sessions
+   * made before Phase 6, which stay valid until they expire.
+   */
+  pv?: string;
   iat?: number;
   exp?: number;
 }
@@ -18,10 +26,29 @@ export interface SessionData {
 /**
  * Create a session token
  */
-export function createSessionToken(data: Omit<SessionData, "iat" | "exp">): string {
-  return sign(data, JWT_SECRET, {
+export function passwordFingerprint(passwordHash: string | null | undefined): string {
+  return createHash("sha256").update(`pv:${passwordHash ?? ""}`).digest("base64url").slice(0, 16);
+}
+
+export function createSessionToken(data: { userId: number; email: string; role: "admin" | "user"; passwordHash?: string | null }): string {
+  const payload: Omit<SessionData, "iat" | "exp"> = { userId: data.userId, email: data.email, role: data.role };
+  if (data.passwordHash !== undefined) payload.pv = passwordFingerprint(data.passwordHash);
+  return sign(payload, getJwtSecret(), {
     expiresIn: "30d",
   }) as string;
+}
+
+/** False when the session was made before the account's password last changed. */
+export function sessionMatchesUser(session: Pick<SessionData, "pv">, user: { passwordHash?: string | null }): boolean {
+  return session.pv === undefined || session.pv === passwordFingerprint(user.passwordHash);
+}
+
+/** Session tokens only: other tokens signed with the same secret (OAuth state, email links) have other shapes. */
+function isSessionShape(value: unknown): value is SessionData {
+  if (!value || typeof value !== "object") return false;
+  const data = value as Record<string, unknown>;
+  if ("purpose" in data || "provider" in data || "nonce" in data) return false;
+  return Number.isInteger(data.userId) && typeof data.email === "string" && (data.role === "admin" || data.role === "user");
 }
 
 /**
@@ -29,8 +56,8 @@ export function createSessionToken(data: Omit<SessionData, "iat" | "exp">): stri
  */
 export function verifySessionToken(token: string): SessionData | null {
   try {
-    const decoded = verify(token, JWT_SECRET) as SessionData;
-    return decoded;
+    const decoded = verify(token, getJwtSecret(), { algorithms: ["HS256"] });
+    return isSessionShape(decoded) ? decoded : null;
   } catch {
     return null;
   }
