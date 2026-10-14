@@ -6,7 +6,9 @@ import { useSignupMode } from "@/lib/signupMode";
 import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
 import { PLANS, PLAN_FEATURES, describeAllowance, describeGenerations, formatPlanPrice, intervalSuffix, type BillingInterval } from "@shared/plans";
 
-export default function PricingSection({ id = "pricing", heading = "Simple pricing that grows with your course load" }: { id?: string; heading?: string }) {
+export default function PricingSection({ id = "pricing", heading = "Simple pricing that grows with your course load", headingLevel = "h2" }: { id?: string; heading?: string; headingLevel?: "h1" | "h2" }) {
+  const Heading = headingLevel;
+  const PlanHeading = headingLevel === "h1" ? "h2" : "h3";
   const { data } = trpc.billing.plans.useQuery(undefined, { staleTime: 5 * 60_000, retry: false });
   const signup = useSignupMode();
   // Until the server answers, paid plans read "Coming soon", which is also what a server without billing says.
@@ -19,7 +21,7 @@ export default function PricingSection({ id = "pricing", heading = "Simple prici
     <section id={id} className="scroll-mt-24 py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">{heading}</h2>
+          <Heading className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">{heading}</Heading>
           <p className="mt-4 text-muted-foreground">Every plan includes the full toolkit. Higher plans allow more transcription and more AI help each month.</p>
           {yearlyEnabled && <BillingIntervalToggle value={interval} onChange={setChosen} className="mt-8" />}
         </div>
@@ -31,14 +33,14 @@ export default function PricingSection({ id = "pricing", heading = "Simple prici
                 plan.highlight ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card"
               }`}
             >
-              <h3 className="text-lg font-semibold">{plan.name}</h3>
+              <PlanHeading className="text-lg font-semibold">{plan.name}</PlanHeading>
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="text-5xl font-bold tracking-tighter">{formatPlanPrice(plan, plan.priceMonthlyUsd === 0 ? "month" : interval)}</span>
-                <span className={plan.highlight ? "text-primary-foreground/70" : "text-muted-foreground"}>{intervalSuffix(plan.priceMonthlyUsd === 0 ? "month" : interval)}</span>
+                <span className={plan.highlight ? "text-primary-foreground/90" : "text-muted-foreground"}>{intervalSuffix(plan.priceMonthlyUsd === 0 ? "month" : interval)}</span>
               </p>
-              <p className={`mt-3 text-sm ${plan.highlight ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{plan.tagline}</p>
+              <p className={`mt-3 text-sm ${plan.highlight ? "text-primary-foreground/90" : "text-muted-foreground"}`}>{plan.tagline}</p>
               <div className={`mt-5 rounded-md px-3 py-2.5 text-sm ${plan.highlight ? "bg-white/10" : "bg-brand-mist"}`}>
-                <p className={`text-xs ${plan.highlight ? "text-primary-foreground/75" : "text-muted-foreground"}`}>Each month</p>
+                <p className={`text-xs ${plan.highlight ? "text-primary-foreground" : "text-muted-foreground"}`}>Each month</p>
                 <p className="mt-0.5 font-medium">{describeAllowance(plan)}</p>
                 <p className="font-medium">{describeGenerations(plan)}</p>
               </div>
@@ -63,7 +65,7 @@ export default function PricingSection({ id = "pricing", heading = "Simple prici
                 <span
                   aria-disabled="true"
                   className={`mt-8 block cursor-not-allowed rounded-md border px-5 py-3 text-center text-sm font-semibold ${
-                    plan.highlight ? "border-white/30 text-primary-foreground/80" : "border-border text-muted-foreground"
+                    plan.highlight ? "border-white/30 text-primary-foreground/90" : "border-border text-muted-foreground"
                   }`}
                 >
                   Coming soon

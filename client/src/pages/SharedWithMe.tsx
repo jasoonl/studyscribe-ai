@@ -24,7 +24,7 @@ export default function SharedWithMe() {
         </div>
       </header>
 
-      <main className="container py-8 max-w-3xl">
+      <main id="main-content" tabIndex={-1} className="container py-8 max-w-3xl focus:outline-none">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-accent" />

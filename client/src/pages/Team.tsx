@@ -505,7 +505,7 @@ export default function Team() {
           {org && <span className="ml-auto shrink-0 text-sm text-muted-foreground">{ORG_ROLE_LABELS[org.role]}</span>}
         </div>
       </header>
-      <main className="mx-auto max-w-4xl space-y-6 px-4 py-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl space-y-6 px-4 py-10 focus:outline-none">
         {mine.isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : !mine.data?.available ? (

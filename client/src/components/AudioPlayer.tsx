@@ -245,7 +245,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       {loadError && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
-          <p className="text-xs leading-relaxed text-destructive">{loadError}</p>
+          <p className="text-xs leading-relaxed text-foreground">{loadError}</p>
         </div>
       )}
 

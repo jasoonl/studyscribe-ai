@@ -36,7 +36,7 @@ export function FinalCta() {
     <section className="px-4 pb-24 sm:px-6">
       <div className="mx-auto max-w-5xl rounded-xl bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
         <h2 className="text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">Your next lecture deserves better notes</h2>
-        <p className="mx-auto mt-4 max-w-lg text-primary-foreground/80">Try StudyScribe on one recording and see the difference.</p>
+        <p className="mx-auto mt-4 max-w-lg text-primary-foreground/90">Try StudyScribe on one recording and see the difference.</p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href={signup.href} className="whitespace-nowrap rounded-md bg-background px-7 py-3.5 text-base font-semibold text-primary transition-[filter,transform] hover:brightness-95 active:scale-[0.98]">
             {signup.label}

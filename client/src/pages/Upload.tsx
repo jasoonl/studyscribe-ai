@@ -174,7 +174,7 @@ export default function Upload() {
         </div>
       </header>
 
-      <main className="container py-12">
+      <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
         <div className="max-w-2xl mx-auto">
           <Card className="p-8 border-2 border-border">
             <div className="space-y-6">

@@ -15,7 +15,7 @@ export default function Landing() {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav />
-      <main>
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
         <Hero />
         <HowItWorks />
         <FeatureBento />

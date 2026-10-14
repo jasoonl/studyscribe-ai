@@ -106,7 +106,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center bg-background p-4 focus:outline-none">
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
@@ -261,6 +261,6 @@ export default function Login() {
           </p>
         </div>
       </Card>
-    </div>
+    </main>
   );
 }

@@ -57,21 +57,21 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center focus:outline-none">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
+      </main>
     );
   }
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-gray-500">
+      <main id="main-content" tabIndex={-1} className="min-h-screen flex flex-col items-center justify-center gap-4 text-gray-500 focus:outline-none">
         <ShieldAlert className="w-12 h-12 text-red-400" />
         <p className="text-lg font-medium">Admin access required</p>
         <Link href="/dashboard">
           <Button variant="outline">Go to Dashboard</Button>
         </Link>
-      </div>
+      </main>
     );
   }
 
@@ -79,7 +79,7 @@ export default function Admin() {
   const adminCount = users?.filter((u) => u.role === "admin").length ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-gray-50 focus:outline-none">
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500">
@@ -310,7 +310,7 @@ export default function Admin() {
                             updateRoleMutation.mutate({ userId: u.id, role: role as "user" | "admin" })
                           }
                         >
-                          <SelectTrigger className="w-28 h-8">
+                          <SelectTrigger className="w-28 h-8" aria-label={`Role for ${u.email}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -330,6 +330,6 @@ export default function Admin() {
           </Card>
         </section>
       </div>
-    </div>
+    </main>
   );
 }

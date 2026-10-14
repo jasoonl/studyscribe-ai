@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Mic, FileText, Sparkles, ChevronRight, ChevronLeft, X } from "lucide-react";
 
@@ -84,8 +84,8 @@ export function OnboardingModal() {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-2">{current.title}</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">{current.description}</p>
+          <DialogTitle className="text-xl font-bold text-foreground mb-2">{current.title}</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground leading-relaxed">{current.description}</DialogDescription>
         </div>
 
         {/* Bottom section */}

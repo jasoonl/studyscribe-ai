@@ -7,7 +7,7 @@ export type LegalSection = { heading: string; body: ReactNode };
 /** The public contact address as a mail link, for use inside legal text. */
 export function ContactEmail({ subject }: { subject?: string }) {
   const href = `mailto:${CONTACT_EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
-  return <a className="text-primary hover:underline" href={href}>{CONTACT_EMAIL}</a>;
+  return <a className="text-primary underline underline-offset-2 hover:decoration-2" href={href}>{CONTACT_EMAIL}</a>;
 }
 
 export default function LegalLayout({ title, intro, sections }: { title: string; intro: ReactNode; sections: LegalSection[] }) {

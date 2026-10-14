@@ -100,7 +100,7 @@ export default function EmailDrafts() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
       {/* Header */}
       <div className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -128,11 +128,11 @@ export default function EmailDrafts() {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Generate New</p>
             {/* Tone selector */}
             <div className="mb-4 p-3 rounded-2xl border border-border bg-muted/20">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
+              <label id="email-tone-label" className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">
                 Writing Tone
               </label>
               <Select value={selectedTone} onValueChange={(val) => setSelectedTone(val as ToneType)}>
-                <SelectTrigger className="w-full text-sm">
+                <SelectTrigger className="w-full text-sm" aria-labelledby="email-tone-label">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -298,6 +298,6 @@ export default function EmailDrafts() {
           ) : null}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

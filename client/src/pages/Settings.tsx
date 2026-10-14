@@ -72,7 +72,7 @@ export default function Settings() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-3xl space-y-6 px-4 py-10 focus:outline-none">
         <Card className="p-6">
           <h2 className="text-lg font-semibold">Account</h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">

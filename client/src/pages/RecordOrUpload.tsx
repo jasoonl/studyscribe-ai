@@ -316,7 +316,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold mb-4">How would you like to add content?</h2>
@@ -437,7 +437,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className={liveLayout.showHelp ? "mx-auto max-w-6xl" : liveLayout.wide ? "mx-auto max-w-3xl" : "mx-auto max-w-2xl"}>
           {!uploadComplete && <RecordingConsentNotice />}
           <div className={liveLayout.showHelp ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" : ""}>
@@ -670,7 +670,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-2xl mx-auto space-y-8">
             {linkComplete ? (
               <Card className="p-8 border-2 border-accent bg-primary/5">
@@ -780,7 +780,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           </div>
         </header>
 
-        <main className="container py-12">
+        <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-2xl mx-auto space-y-8">
             {uploadFileComplete ? (
               <Card className="p-8 border-2 border-accent bg-primary/5">

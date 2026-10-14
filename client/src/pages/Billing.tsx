@@ -92,7 +92,7 @@ export default function Billing() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-3xl space-y-6 px-4 py-10 focus:outline-none">
         {status.isLoading || plansQuery.isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : !data ? (

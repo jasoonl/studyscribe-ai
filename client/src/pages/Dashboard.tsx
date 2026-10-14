@@ -308,7 +308,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <main className="container py-6 pb-20">
+      <main id="main-content" tabIndex={-1} className="container py-6 pb-20 focus:outline-none">
         {/* Quick Access Buttons */}
         <div className="flex flex-wrap justify-end gap-2 mb-4">
           <Link href="/ask">

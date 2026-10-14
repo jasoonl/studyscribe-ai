@@ -12,7 +12,7 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative">
-      <pre className="overflow-x-auto rounded-xl border border-border bg-muted/60 p-4 pr-12 text-[13px] leading-relaxed text-foreground">
+      <pre tabIndex={0} aria-label={label} className="overflow-x-auto rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-border bg-muted/60 p-4 pr-12 text-[13px] leading-relaxed text-foreground">
         <code>{code}</code>
       </pre>
       <Button
@@ -54,7 +54,7 @@ const SECTIONS: Array<{ id: string; heading: string; body: ReactNode }> = [
     body: (
       <>
         <p>
-          Create a key in <Link href="/settings#api-keys" className="text-primary hover:underline">Settings</Link>. It is shown once, so copy it then; StudyScribe keeps only a hash of it. Send it on every request in the <C>Authorization</C> header.
+          Create a key in <Link href="/settings#api-keys" className="text-primary underline underline-offset-2 hover:decoration-2">Settings</Link>. It is shown once, so copy it then; StudyScribe keeps only a hash of it. Send it on every request in the <C>Authorization</C> header.
         </p>
         <CodeBlock label="authentication example" code={`curl ${BASE}/me \\\n  -H "Authorization: Bearer $STUDYSCRIBE_KEY"`} />
         <p>
@@ -82,7 +82,7 @@ const SECTIONS: Array<{ id: string; heading: string; body: ReactNode }> = [
           Each key can make 60 requests a minute, of which 10 may import recordings or write notes. Every response carries <C>X-RateLimit-Limit</C>, <C>X-RateLimit-Remaining</C> and <C>X-RateLimit-Reset</C> (seconds); a refused request gets status 429 and a <C>Retry-After</C> header.
         </p>
         <p>
-          What a key does counts toward your plan exactly as if you did it in the app: an imported recording uses transcription minutes once it is transcribed, and each set of notes is one AI generation. When the month's allowance is used up, those requests return 402 with the code <C>usage_limit</C> until it resets or you change plan on the <Link href="/pricing" className="text-primary hover:underline">Pricing</Link> page.
+          What a key does counts toward your plan exactly as if you did it in the app: an imported recording uses transcription minutes once it is transcribed, and each set of notes is one AI generation. When the month's allowance is used up, those requests return 402 with the code <C>usage_limit</C> until it resets or you change plan on the <Link href="/pricing" className="text-primary underline underline-offset-2 hover:decoration-2">Pricing</Link> page.
         </p>
       </>
     ),
@@ -141,7 +141,7 @@ const SECTIONS: Array<{ id: string; heading: string; body: ReactNode }> = [
         </Endpoint>
         <Endpoint method="POST" path="/v1/recordings" scope="write">
           <p>
-            Imports audio or video from a public link and starts transcribing it, the same as Import from link in the app. Body: <C>url</C> (required), and optionally <C>title</C>, <C>language</C> (for example <C>en</C> or <C>es</C>; detected when left out) and <C>audience</C> (<C>student</C> or <C>professional</C>). Answers 202 with the new recording; poll it until it is <C>completed</C>. Only send links you have the right to use (see the <Link href="/terms" className="text-primary hover:underline">Terms</Link>).
+            Imports audio or video from a public link and starts transcribing it, the same as Import from link in the app. Body: <C>url</C> (required), and optionally <C>title</C>, <C>language</C> (for example <C>en</C> or <C>es</C>; detected when left out) and <C>audience</C> (<C>student</C> or <C>professional</C>). Answers 202 with the new recording; poll it until it is <C>completed</C>. Only send links you have the right to use (see the <Link href="/terms" className="text-primary underline underline-offset-2 hover:decoration-2">Terms</Link>).
           </p>
           <CodeBlock label="request" code={`curl -X POST ${BASE}/recordings \\\n  -H "Authorization: Bearer $STUDYSCRIBE_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"url": "https://example.edu/lectures/week3.mp3", "title": "Week 3"}'`} />
         </Endpoint>
@@ -183,7 +183,7 @@ export default function Developers() {
           <ol className="grid gap-1.5 text-sm sm:grid-cols-2">
             {SECTIONS.map((section, i) => (
               <li key={section.id}>
-                <a href={`#${section.id}`} className="text-primary hover:underline">{i + 1}. {section.heading}</a>
+                <a href={`#${section.id}`} className="text-primary underline underline-offset-2 hover:decoration-2">{i + 1}. {section.heading}</a>
               </li>
             ))}
           </ol>

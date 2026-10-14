@@ -37,13 +37,13 @@ export default function Analytics() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-background focus:outline-none">
       {/* Header */}
       <div className="border-b bg-card px-4 sm:px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1 text-muted-foreground">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Dashboard</span>
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">Dashboard</span>
           </Button>
           <div className="h-4 w-px bg-border" />
           <div>
@@ -156,6 +156,6 @@ export default function Analytics() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

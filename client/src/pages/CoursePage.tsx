@@ -168,7 +168,10 @@ export default function CoursePage() {
                 )}
               </div>
             ) : (
-              <RecordingList recordings={sorted} courses={courses} tags={tags} onDelete={handleDelete} showCourse={false} />
+              <>
+                <h2 className="sr-only">Recordings</h2>
+                <RecordingList recordings={sorted} courses={courses} tags={tags} onDelete={handleDelete} showCourse={false} />
+              </>
             )}
 
             <CourseVocabulary courseId={course.id} />

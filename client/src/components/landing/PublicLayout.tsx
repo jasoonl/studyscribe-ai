@@ -27,7 +27,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <SiteNav />
-      <main className="pt-24">{children}</main>
+      <main id="main-content" tabIndex={-1} className="pt-24 focus:outline-none">{children}</main>
       <SiteFooter />
     </div>
   );

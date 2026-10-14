@@ -5,7 +5,7 @@ import { Faq } from "@/components/landing/FaqAndCta";
 export default function Pricing() {
   return (
     <PublicLayout>
-      <PricingSection id="plans" heading="Pick the plan that fits your recording habit" />
+      <PricingSection id="plans" heading="Pick the plan that fits your recording habit" headingLevel="h1" />
       <Faq />
     </PublicLayout>
   );
