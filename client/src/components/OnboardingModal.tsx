@@ -2,40 +2,40 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Mic, FileText, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
+import type { MessageKey } from "@shared/i18n";
+import { useI18n } from "@/i18n";
 
 const ONBOARDING_KEY = "studyscribe_onboarding_done";
 
 const steps = [
   {
     icon: <Mic className="w-10 h-10 text-blue-500" />,
-    title: "Record or Upload",
-    description:
-      "Use the built-in recorder to capture lectures and meetings live, or upload an existing audio file (MP3, WAV, M4A, WebM). StudyScribe AI handles the rest.",
-    tip: "Tip: You can record directly in your browser, no app needed.",
+    title: "tour.step1Title",
+    description: "tour.step1Text",
+    tip: "tour.step1Tip",
     color: "bg-blue-50",
     dot: "bg-blue-500",
   },
   {
     icon: <FileText className="w-10 h-10 text-primary" />,
-    title: "Get Your Transcript",
-    description:
-      "Your audio is automatically transcribed using AI. Review and edit the transcript, then explore key insights, action items, and summaries generated for you.",
-    tip: "Tip: Transcription usually takes 1–2 minutes for a 30-minute recording.",
+    title: "tour.step2Title",
+    description: "tour.step2Text",
+    tip: "tour.step2Tip",
     color: "bg-brand-mist",
     dot: "bg-primary",
   },
   {
     icon: <Sparkles className="w-10 h-10 text-amber-500" />,
-    title: "Study from the Transcript",
-    description:
-      "Generate study guides, practice quizzes, email drafts, and flashcards from any recording. Use the AI Assistant to ask questions about your content.",
-    tip: "Tip: The Get set up list on your library ticks off these first steps as you go.",
+    title: "tour.step3Title",
+    description: "tour.step3Text",
+    tip: "tour.step3Tip",
     color: "bg-amber-50",
     dot: "bg-amber-500",
   },
-];
+] satisfies Array<{ title: MessageKey; description: MessageKey; tip: MessageKey } & Record<string, unknown>>;
 
 export function OnboardingModal() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -75,13 +75,13 @@ export function OnboardingModal() {
           <div className="mb-4 inline-flex p-3 bg-white rounded-xl shadow-sm">
             {current.icon}
           </div>
-          <DialogTitle className="text-xl font-bold text-foreground mb-2">{current.title}</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground leading-relaxed">{current.description}</DialogDescription>
+          <DialogTitle className="text-xl font-bold text-foreground mb-2">{t(current.title)}</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground leading-relaxed">{t(current.description)}</DialogDescription>
         </div>
 
         {/* Bottom section */}
         <div className="px-8 py-5 bg-white">
-          <p className="text-xs text-muted-foreground italic mb-5">{current.tip}</p>
+          <p className="text-xs text-muted-foreground italic mb-5">{t(current.tip)}</p>
 
           {/* Step dots */}
           <div className="flex items-center justify-between">
@@ -93,7 +93,7 @@ export function OnboardingModal() {
                   className={`w-2 h-2 rounded-full transition-all duration-200 ${
                     i === step ? `${s.dot} w-5` : "bg-gray-200"
                   }`}
-                  aria-label={`Go to step ${i + 1}`}
+                  aria-label={t("tour.goToStep", { step: i + 1 })}
                 />
               ))}
             </div>
@@ -102,17 +102,17 @@ export function OnboardingModal() {
               {step > 0 && (
                 <Button variant="ghost" size="sm" onClick={prev} className="gap-1">
                   <ChevronLeft className="w-4 h-4" />
-                  Back
+                  {t("tour.back")}
                 </Button>
               )}
               <Button size="sm" onClick={next} className="gap-1 bg-blue-600 hover:bg-blue-700 text-white">
                 {step < steps.length - 1 ? (
                   <>
-                    Next
+                    {t("tour.next")}
                     <ChevronRight className="w-4 h-4" />
                   </>
                 ) : (
-                  "Get Started"
+                  t("tour.start")
                 )}
               </Button>
             </div>
@@ -125,7 +125,7 @@ export function OnboardingModal() {
                 onClick={dismiss}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
               >
-                Skip tour
+                {t("tour.skip")}
               </button>
             </div>
           )}

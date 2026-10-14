@@ -95,6 +95,27 @@ export function formatDate(value: Date | string | number, options?: Intl.DateTim
   return new Date(value).toLocaleDateString(htmlLangFor(language), options);
 }
 
+/**
+ * A due date said the way people say it: "today", "tomorrow", "3 days ago" (Intl.RelativeTimeFormat,
+ * so every language words it naturally), else a short date. Both dates are zone-less YYYY-MM-DD.
+ */
+export function formatDueDate(dueDate: string, todayIso: string) {
+  const locale = htmlLangFor(language);
+  const [y1, m1, d1] = todayIso.split("-").map(Number);
+  const [y2, m2, d2] = dueDate.split("-").map(Number);
+  const days = Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000);
+  if (days >= -13 && days <= 1) {
+    const text = new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(days, "day");
+    return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+  }
+  return new Date(y2, m2 - 1, d2).toLocaleDateString(locale, {
+    weekday: days > 0 && days < 7 ? "short" : undefined,
+    day: "numeric",
+    month: "short",
+    year: y1 === y2 ? undefined : "numeric",
+  });
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -103,7 +124,7 @@ function subscribe(listener: () => void) {
 /** Re-renders the component when the language changes. */
 export function useI18n() {
   const current = useSyncExternalStore(subscribe, getUiLanguage, getUiLanguage);
-  return { language: current, t, tn, formatDate, formatNumber, setLanguage: setUiLanguage };
+  return { language: current, t, tn, formatDate, formatDueDate, formatNumber, setLanguage: setUiLanguage };
 }
 
 /**

@@ -9,10 +9,11 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { formatDistanceToNow } from "date-fns";
 import { CreateNotificationDialog } from "./CreateNotificationDialog";
 import { createBrowserPushSubscription, isBrowserPushSupported } from "@/lib/browserPush";
 import { toast } from "sonner";
+import { htmlLangFor } from "@shared/i18n";
+import { getUiLanguage, useI18n } from "@/i18n";
 
 const ICON_STYLES: Record<string, { Icon: typeof Info; tone: string }> = {
   success: { Icon: CheckCircle, tone: "bg-green-500/10 text-green-600" },
@@ -30,13 +31,19 @@ function NotificationIcon({ type }: { type: string }) {
   );
 }
 
+/** "5 minutes ago" in the interface language. */
 function timeAgo(date: string | Date) {
-  return formatDistanceToNow(new Date(date), { addSuffix: true }).replace(/^about /, "");
+  const seconds = Math.round((new Date(date).getTime() - Date.now()) / 1000);
+  const format = new Intl.RelativeTimeFormat(htmlLangFor(getUiLanguage()), { numeric: "auto" });
+  const steps: Array<[Intl.RelativeTimeFormatUnit, number]> = [["year", 31_536_000], ["month", 2_592_000], ["week", 604_800], ["day", 86_400], ["hour", 3_600], ["minute", 60]];
+  for (const [unit, size] of steps) if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+  return format.format(0, "minute");
 }
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [isEnablingPush, setIsEnablingPush] = useState(false);
+  const { t } = useI18n();
   const utils = trpc.useUtils();
 
   const { data: browserPushConfig } = trpc.browserPush.configuration.useQuery(undefined, { enabled: open });
@@ -75,11 +82,11 @@ export function NotificationBell() {
 
   const enableBrowserPush = async () => {
     if (!browserPushConfig?.supported || !browserPushConfig.publicKey) {
-      toast.error("Browser notifications are temporarily unavailable.");
+      toast.error(t("notif.pushUnavailable"));
       return;
     }
     if (!isBrowserPushSupported()) {
-      toast.error("This browser does not support push notifications.");
+      toast.error(t("notif.pushUnsupported"));
       return;
     }
 
@@ -87,14 +94,14 @@ export function NotificationBell() {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        toast.message("Notifications remain off. You can enable them in your browser settings later.");
+        toast.message(t("notif.pushDenied"));
         return;
       }
       const subscription = await createBrowserPushSubscription(browserPushConfig.publicKey);
       await subscribeBrowserPush.mutateAsync(subscription);
-      toast.success("Browser notifications are enabled for this device.");
+      toast.success(t("notif.pushOn"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to enable browser notifications.");
+      toast.error(error instanceof Error ? error.message : t("notif.pushFailed"));
     } finally {
       setIsEnablingPush(false);
     }
@@ -109,7 +116,7 @@ export function NotificationBell() {
           variant="ghost"
           size="icon"
           className="relative"
-          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+          aria-label={unreadCount > 0 ? t("notif.labelUnread", { count: unreadCount }) : t("notif.label")}
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
@@ -127,10 +134,10 @@ export function NotificationBell() {
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold tracking-tight">Notifications</h3>
+            <h3 className="text-base font-semibold tracking-tight">{t("notif.label")}</h3>
             {unreadCount > 0 && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {unreadCount} new
+                {t("notif.new", { count: unreadCount })}
               </span>
             )}
           </div>
@@ -142,13 +149,13 @@ export function NotificationBell() {
             disabled={unreadCount === 0 || markAllRead.isPending}
           >
             <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            Mark all as read
+            {t("notif.markAll")}
           </Button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {isLoading ? (
-            <div className="space-y-4 p-4" aria-label="Loading notifications">
+            <div className="space-y-4 p-4" aria-label={t("notif.loading")}>
               {[0, 1, 2].map((row) => (
                 <div key={row} className="flex animate-pulse gap-3">
                   <div className="h-8 w-8 rounded-full bg-muted" />
@@ -164,9 +171,9 @@ export function NotificationBell() {
               <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Bell className="h-5 w-5" aria-hidden="true" />
               </span>
-              <p className="text-sm font-medium">You're all caught up</p>
+              <p className="text-sm font-medium">{t("notif.caughtUp")}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                We'll let you know when a transcription finishes.
+                {t("notif.caughtUpHelp")}
               </p>
             </div>
           ) : (
@@ -186,7 +193,7 @@ export function NotificationBell() {
                     }}
                   >
                     {unread && (
-                      <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary" aria-label="Unread" />
+                      <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary" aria-label={t("notif.unread")} />
                     )}
                     <NotificationIcon type={notif.type ?? "info"} />
                     <div className="min-w-0 flex-1">
@@ -198,8 +205,8 @@ export function NotificationBell() {
                           variant="ghost"
                           size="icon"
                           className="-mr-1 -mt-1 h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-                          aria-label={`Dismiss ${notif.title} notification`}
-                          title="Dismiss"
+                          aria-label={t("notif.dismissOne", { title: notif.title })}
+                          title={t("notif.dismiss")}
                           onClick={(event) => {
                             event.stopPropagation();
                             dismiss.mutate({ id: notif.id });
@@ -225,7 +232,7 @@ export function NotificationBell() {
                                 setOpen(false);
                               }}
                             >
-                              View recording
+                              {t("notif.viewRecording")}
                             </Link>
                           </>
                         )}
@@ -247,10 +254,10 @@ export function NotificationBell() {
               className="h-9 w-full justify-center gap-1.5 text-xs font-medium"
               onClick={enableBrowserPush}
               disabled={isEnablingPush}
-              title="Get notified on this device even when StudyScribe is closed"
+              title={t("notif.pushHint")}
             >
               <BellRing className="h-3.5 w-3.5" aria-hidden="true" />
-              {isEnablingPush ? "Enabling..." : "Enable push"}
+              {isEnablingPush ? t("notif.enabling") : t("notif.enablePush")}
             </Button>
           )}
         </div>

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { CourseDialog } from "@/components/CourseDialog";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import type { MessageKey } from "@shared/i18n";
+import { t, useI18n } from "@/i18n";
 
 const DISMISS_KEY = "studyscribe_setup_checklist_hidden";
 
@@ -16,6 +18,25 @@ function readHidden(userId: number) {
   }
 }
 
+type Step = { id: "record" | "notes" | "flashcards" | "course" | "ask"; action: { kind: string; href?: string } };
+
+// The server words each step in English; the client shows them in the interface language.
+function stepDetailKey(step: Step): MessageKey {
+  if (step.id !== "notes") return `setup.${step.id}.detail`;
+  return step.action.href?.startsWith("/recording/") ? "setup.notes.detailReady" : "setup.notes.detailWaiting";
+}
+
+const ACTION_KEYS: Record<string, MessageKey> = {
+  Start: "setup.action.start",
+  "Open recording": "setup.action.openRecording",
+  "See templates": "setup.action.templates",
+  "Record first": "setup.action.recordFirst",
+  "New course": "setup.action.newCourse",
+  Ask: "setup.action.ask",
+};
+
+const actionLabel = (label: string) => (ACTION_KEYS[label] ? t(ACTION_KEYS[label]) : label);
+
 /**
  * "Get set up" on the library (F5): five first steps, ticked off from real
  * data. Follows the welcome tour (OnboardingModal); hidden once every step is
@@ -26,6 +47,7 @@ export function OnboardingChecklist({ userId, onOpenRecorder }: { userId: number
   const [hidden, setHidden] = useState(() => readHidden(userId));
   const [creatingCourse, setCreatingCourse] = useState(false);
   const utils = trpc.useUtils();
+  const { t } = useI18n();
 
   if (hidden || !data || data.done === data.total) return null;
 
@@ -42,13 +64,13 @@ export function OnboardingChecklist({ userId, onOpenRecorder }: { userId: number
     <section aria-labelledby="setup-heading" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 id="setup-heading" className="text-base font-semibold">Get set up</h2>
+          <h2 id="setup-heading" className="text-base font-semibold">{t("setup.title")}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {data.done} of {data.total} done
+            {t("setup.progress", { done: data.done, total: data.total })}
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={hide} className="-mr-2 -mt-1 text-muted-foreground">
-          Hide
+          {t("setup.hide")}
         </Button>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
@@ -64,24 +86,24 @@ export function OnboardingChecklist({ userId, onOpenRecorder }: { userId: number
               )}
             >
               {step.done && <Check className="h-3 w-3" strokeWidth={3} />}
-              <span className="sr-only">{step.done ? "Done:" : "To do:"}</span>
+              <span className="sr-only">{step.done ? t("setup.done") : t("setup.todo")}</span>
             </span>
             <div className="min-w-0 flex-1">
-              <p className={cn("text-sm font-medium", step.done && "text-muted-foreground line-through decoration-muted-foreground/50")}>{step.title}</p>
-              {!step.done && <p className="text-xs text-muted-foreground">{step.detail}</p>}
+              <p className={cn("text-sm font-medium", step.done && "text-muted-foreground line-through decoration-muted-foreground/50")}>{t(`setup.${step.id}.title`)}</p>
+              {!step.done && <p className="text-xs text-muted-foreground">{t(stepDetailKey(step))}</p>}
             </div>
             {!step.done &&
               (step.action.kind === "link" ? (
                 <Button variant="outline" size="sm" asChild className="shrink-0">
-                  <Link href={step.action.href}>{step.action.label}</Link>
+                  <Link href={step.action.href}>{actionLabel(step.action.label)}</Link>
                 </Button>
               ) : step.action.kind === "recorder" ? (
                 <Button variant="outline" size="sm" className="shrink-0" onClick={onOpenRecorder}>
-                  {step.action.label}
+                  {actionLabel(step.action.label)}
                 </Button>
               ) : (
                 <Button variant="outline" size="sm" className="shrink-0" onClick={() => setCreatingCourse(true)}>
-                  {step.action.label}
+                  {actionLabel(step.action.label)}
                 </Button>
               ))}
           </li>
