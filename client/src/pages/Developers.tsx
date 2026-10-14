@@ -162,7 +162,7 @@ const SECTIONS: Array<{ id: string; heading: string; body: ReactNode }> = [
         <p>
           Everything here is under <C>/api/v1</C>. Within v1 we only add things: new endpoints, new fields and new error codes, so ignore fields you do not know. A change that would break a working script gets a new version, announced at least 90 days before the old one stops.
         </p>
-        <p>To be told about each finished transcript instead of polling, add a webhook in Settings. Questions: <ContactEmail subject="StudyScribe API" />.</p>
+        <p>To be told about each finished transcript instead of polling, add a webhook in Settings. Deliveries are JSON signed with a <C>StudyScribe-Signature</C> header (HMAC-SHA256 of <C>&lt;t&gt;.&lt;body&gt;</C>); a Slack incoming-webhook or Discord webhook URL gets a short readable message instead. Questions: <ContactEmail subject="StudyScribe API" />.</p>
       </>
     ),
   },

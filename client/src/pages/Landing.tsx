@@ -4,6 +4,7 @@ import { useScrollToHash } from "@/components/landing/PublicLayout";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import FeatureBento from "@/components/landing/FeatureBento";
+import MoreFeatures from "@/components/landing/MoreFeatures";
 import UseCases from "@/components/landing/UseCases";
 import Languages from "@/components/landing/Languages";
 import PricingSection from "@/components/landing/PricingSection";
@@ -19,6 +20,7 @@ export default function Landing() {
         <Hero />
         <HowItWorks />
         <FeatureBento />
+        <MoreFeatures />
         <UseCases />
         <Languages />
         <PricingSection />

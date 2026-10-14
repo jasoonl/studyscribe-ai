@@ -57,6 +57,9 @@ export const PLAN_FEATURES = [
   "Transcripts with speaker labels",
   "Flashcards, quizzes and study guides",
   "AI tutor and email drafts",
+  "Live transcript and study help",
+  "Courses, Ask across recordings and exam packs",
+  "Sharing, comments and study groups",
   "Export to Quizlet, Anki and Notion",
 ];
 
