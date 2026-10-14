@@ -153,6 +153,8 @@ export default function SwipeRow({
   const exposed = useTransform(x, (v) => s * v);
   const surfaceXf = useTransform(x, (v) => `translateX(${v}px)`);
   const railXf = useTransform(exposed, (e) => `translateX(${-s * Math.max(0, D - e)}px)`);
+  // Hidden at rest so the drawer colour can't bleed past the row's rounded corners.
+  const railVisibility = useTransform(x, (v) => (v === 0 ? "hidden" : "visible"));
   const shift = useTransform([exposed, spread], (latest) => {
     const [e, p] = latest as number[];
     return p * Math.max(0, e - A);
@@ -270,6 +272,9 @@ export default function SwipeRow({
   const down = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (disabled || n === 0 || phase !== "idle" || grip.current || e.button !== 0) return;
     if ((e.target as HTMLElement).closest(INTERACTIVE)) return;
+    // React bubbles events from portals (menus, popovers opened from the row) through
+    // the row; grabbing those would capture the pointer and swallow the menu's click.
+    if (!e.currentTarget.contains(e.target as Node)) return;
     x.stop();
     heading.current = null;
     grip.current = {
@@ -414,7 +419,7 @@ export default function SwipeRow({
       }
     >
       <div className="swipe-row__clip">
-        <motion.div id={railId} className="swipe-row__rail" style={{ transform: railXf }} inert={!open || undefined} aria-hidden={!open}>
+        <motion.div id={railId} className="swipe-row__rail" style={{ transform: railXf, visibility: railVisibility }} inert={!open || undefined} aria-hidden={!open}>
           {actions.slice(1).map((a, i) => (
             <button
               key={a.id}

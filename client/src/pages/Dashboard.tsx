@@ -2,7 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Settings as SettingsIcon, Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Clock, TrendingUp, Database, BarChart2, HelpCircle, ShieldCheck, Users2, UsersRound, Sparkles, ListChecks, GraduationCap, Building2 } from "lucide-react";
+import { Loader2, Trash2, Mic, FileText, MessageSquare, BookOpen, Plus, Search, Filter, Calendar, Sparkles, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { lazy, Suspense, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -236,17 +244,25 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:block text-sm text-muted-foreground">
-              Welcome, {user?.name || user?.email}
-            </span>
             <NotificationBell />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => logout()}
-            >
-              Sign Out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="max-w-[12rem] gap-1.5" aria-label="Account menu">
+                  <span className="truncate">{user?.name?.split(" ")[0] || "Account"}</span>
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="truncate font-normal text-muted-foreground">{user?.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/billing">Plan and billing</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/help">Help</Link></DropdownMenuItem>
+                {isAdmin && <DropdownMenuItem asChild><Link href="/admin">Admin</Link></DropdownMenuItem>}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => logout()}>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -255,151 +271,48 @@ export default function Dashboard() {
       <div>
         <div className="container pt-12 pb-4">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-[-0.04em] mb-8 text-foreground">Your library</h1>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Total Hours */}
-            <Card className="p-6 gap-0 bg-card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Hours Recorded</p>
-                  <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">{statistics.totalHours}</p>
-                  <p className="text-xs text-muted-foreground mt-1">hours</p>
-                </div>
-                <Clock className="w-6 h-6 text-blue-500 opacity-50" />
-              </div>
-            </Card>
-
-            {/* Total Recordings */}
-            <Card className="p-6 gap-0 bg-card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Recordings</p>
-                  <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">{statistics.totalRecordings}</p>
-                  <p className="text-xs text-muted-foreground mt-1">lectures & meetings</p>
-                </div>
-                <Mic className="w-6 h-6 text-primary opacity-50" />
-              </div>
-            </Card>
-
-            {/* Study Progress */}
-            <Card className="p-6 gap-0 bg-card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Study Streak</p>
-                  <p className="text-4xl font-bold tracking-[-0.035em] text-foreground mt-3">Active</p>
-                  <p className="text-xs text-muted-foreground mt-1">keep it up!</p>
-                </div>
-                <TrendingUp className="w-6 h-6 text-green-500 opacity-50" />
-              </div>
-            </Card>
-          </div>
+          <p className="-mt-5 text-base text-muted-foreground tabular-nums">
+            {statistics.totalRecordings} {statistics.totalRecordings === 1 ? "recording" : "recordings"} · {statistics.totalHours} hours recorded
+          </p>
         </div>
       </div>
 
       {/* Main Content */}
       <main id="main-content" tabIndex={-1} className="container py-6 pb-20 focus:outline-none">
-        {/* Quick Access Buttons */}
-        <div className="flex flex-wrap justify-end gap-2 mb-4">
-          <Link href="/ask">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-primary/30 bg-primary text-primary-foreground text-xs sm:text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap">
-              <Sparkles className="w-4 h-4" />
-              <span>Ask<span className="hidden sm:inline"> StudyScribe</span></span>
-            </button>
-          </Link>
-          <Link href="/tasks">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <ListChecks className="w-4 h-4" />
-              <span>Tasks</span>
-            </button>
-          </Link>
-          <Link href="/exam-packs">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <GraduationCap className="w-4 h-4" />
-              <span className="hidden sm:inline">Exam packs</span>
-              <span className="sm:hidden">Exams</span>
-            </button>
-          </Link>
-          <Link href="/knowledge-base">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">Knowledge Base</span>
-              <span className="sm:hidden">Search</span>
-            </button>
-          </Link>
-          <Link href="/analytics">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <BarChart2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Analytics</span>
-            </button>
-          </Link>
-          <Link href="/help">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <HelpCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Help</span>
-            </button>
-          </Link>
-          <Link href="/settings">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <SettingsIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-          </Link>
-          <Link href="/groups">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <UsersRound className="w-4 h-4" />
-              <span>Groups</span>
-            </button>
-          </Link>
-          {teamName && (
-            <Link href="/team">
-              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-                <Building2 className="w-4 h-4" />
-                <span className="max-w-[10rem] truncate">{teamName}</span>
-              </button>
+        <nav aria-label="Study tools" className="mb-6 flex flex-wrap items-center gap-x-1 gap-y-2">
+          <Button asChild size="sm" className="mr-2 rounded-full">
+            <Link href="/ask"><Sparkles className="size-4" aria-hidden="true" />Ask StudyScribe</Link>
+          </Button>
+          {[
+            { href: "/tasks", label: "Tasks" },
+            { href: "/exam-packs", label: "Exam packs" },
+            { href: "/knowledge-base", label: "Knowledge Base" },
+            { href: "/analytics", label: "Analytics" },
+            { href: "/groups", label: "Groups" },
+            { href: "/shared-with-me", label: "Shared with me" },
+            ...(teamName ? [{ href: "/team", label: teamName }] : []),
+          ].map(link => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="max-w-[12rem] truncate rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {link.label}
             </Link>
-          )}
-          <Link href="/shared-with-me">
-            <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-              <Users2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Shared with Me</span>
-            </button>
-          </Link>
-          {isAdmin && (
-            <Link href="/admin">
-              <button className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full border border-border/60 bg-secondary/60 text-primary text-xs sm:text-sm font-medium hover:bg-secondary transition-colors whitespace-nowrap">
-                <ShieldCheck className="w-4 h-4" />
-                <span className="hidden sm:inline">Admin</span>
-              </button>
-            </Link>
-          )}
-        </div>
+          ))}
+        </nav>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-10 gap-1 sm:gap-0">
-            <TabsTrigger value="library" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
-              <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">My Library</span>
-            </TabsTrigger>
-            <TabsTrigger value="recorder" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
-              <Mic className="w-4 h-4" />
-              <span className="hidden sm:inline">Recorder</span>
-            </TabsTrigger>
-            <TabsTrigger value="transcription" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Transcription</span>
-            </TabsTrigger>
-            <TabsTrigger value="tutor" className="gap-1 text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex">
-              <MessageSquare className="w-4 h-4" />
-              <span>AI Tutor</span>
-            </TabsTrigger>
-            <TabsTrigger value="summary" className="gap-1 text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex">
-              <BookOpen className="w-4 h-4" />
-              <span>Summary</span>
-            </TabsTrigger>
-            <TabsTrigger value="trash" className="gap-1 text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex">
-              <Trash2 className="w-4 h-4" />
-              <span>Trash</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="-mx-4 mb-10 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <TabsList className="w-max min-w-full sm:grid sm:w-full sm:grid-cols-6">
+              <TabsTrigger value="library" className="px-3 text-sm">My Library</TabsTrigger>
+              <TabsTrigger value="recorder" className="px-3 text-sm">Record or upload</TabsTrigger>
+              <TabsTrigger value="transcription" className="px-3 text-sm">Transcription</TabsTrigger>
+              <TabsTrigger value="tutor" className="px-3 text-sm">AI Tutor</TabsTrigger>
+              <TabsTrigger value="summary" className="px-3 text-sm">Summary</TabsTrigger>
+              <TabsTrigger value="trash" className="px-3 text-sm">Trash</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* My Library Tab */}
           <TabsContent value="library" className="space-y-6">
