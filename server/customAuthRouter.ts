@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { createInvite } from './authService';
 import { getDb, createInviteRequest, getAllInviteRequests, getInviteRequestById, updateInviteRequestStatus, createInviteCode, getAllInviteCodes, getInviteCodeById, updateInviteCodeExpiry, revokeInviteCode, deleteInviteCode } from './db';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { users, inviteCodes } from '../drizzle/schema';
 import { notifyOwner } from './_core/notification';
 import { nanoid } from 'nanoid';
@@ -244,15 +244,11 @@ export const customAuthRouter = router({
     // Enrich with user info for usedBy
     const db = await getDb();
     if (!db) throw new Error('Database not available');
-    const enriched = await Promise.all(codes.map(async (c) => {
-      let usedByEmail: string | null = null;
-      if (c.usedBy) {
-        const userRows = await db.select({ email: users.email }).from(users).where(eq(users.id, c.usedBy)).limit(1);
-        usedByEmail = userRows[0]?.email ?? null;
-      }
-      return { ...c, usedByEmail };
-    }));
-    return enriched;
+    // One query for every redeemer's email rather than one per code.
+    const usedByIds = Array.from(new Set(codes.map((c) => c.usedBy).filter((id): id is number => typeof id === 'number')));
+    const emailRows = usedByIds.length ? await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.id, usedByIds)) : [];
+    const emailById = new Map(emailRows.map((row) => [row.id, row.email]));
+    return codes.map((c) => ({ ...c, usedByEmail: c.usedBy ? emailById.get(c.usedBy) ?? null : null }));
   }),
 
   /**

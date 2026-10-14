@@ -26,9 +26,17 @@ const Refunds = lazy(() => import("./pages/Refunds"));
 const Credits = lazy(() => import("./pages/Credits"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Settings = lazy(() => import("./pages/Settings"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+// The two pages people open most start downloading with the app shell when the
+// address is theirs, instead of after the sign-in check (one round trip saved).
+const loadDashboard = () => import("./pages/Dashboard");
+const loadRecordingDetail = () => import("./pages/RecordingDetail");
+if (typeof window !== "undefined") {
+  if (window.location.pathname === "/dashboard") void loadDashboard();
+  else if (window.location.pathname.startsWith("/recording/")) void loadRecordingDetail();
+}
+const Dashboard = lazy(loadDashboard);
 const Record = lazy(() => import("./pages/Record"));
-const RecordingDetail = lazy(() => import("./pages/RecordingDetail"));
+const RecordingDetail = lazy(loadRecordingDetail);
 const Upload = lazy(() => import("./pages/Upload"));
 const Home = lazy(() => import("./pages/Home"));
 const Demo = lazy(() => import("./pages/Demo"));

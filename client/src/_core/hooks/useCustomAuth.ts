@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { fetchSessionUser, forgetSessionUser, peekSessionUser } from "./sessionUser";
 
 export interface AuthUser {
   id: number;
@@ -10,25 +11,17 @@ export interface AuthUser {
 
 export function useCustomAuth() {
   const [, navigate] = useLocation();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const known = peekSessionUser();
+  const [user, setUser] = useState<AuthUser | null>(known?.user ?? null);
+  const [loading, setLoading] = useState(!known);
   const [error, setError] = useState<string | null>(null);
 
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Try to get current user from session
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data);
-        } else {
-          setUser(null);
-        }
+        // Shared with every other caller on the page (one request).
+        setUser(await fetchSessionUser());
       } catch (err) {
         console.error("Auth check failed:", err);
         setUser(null);
@@ -46,6 +39,7 @@ export function useCustomAuth() {
         method: "POST",
         credentials: "include",
       });
+      forgetSessionUser();
       setUser(null);
       navigate("/login");
     } catch (err) {

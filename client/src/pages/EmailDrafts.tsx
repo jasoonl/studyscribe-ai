@@ -17,7 +17,7 @@ import {
   Mail, ArrowLeft, Sparkles, Clock, ChevronRight, FileText,
   Copy, Check, FileCheck
 } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 
 type DraftType = "email-summary" | "document" | "report";
 type ToneType = "formal" | "casual" | "technical" | "persuasive";
@@ -291,7 +291,7 @@ export default function EmailDrafts() {
               </CardHeader>
               <CardContent className="pt-5">
                 <div className="prose prose-sm prose-invert max-w-none">
-                  <Streamdown>{selectedDraft.content}</Streamdown>
+                  <Markdown>{selectedDraft.content}</Markdown>
                 </div>
               </CardContent>
             </Card>

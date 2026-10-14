@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { Copy, Languages, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -175,7 +175,7 @@ export function TranslateDialog({ kind, id, language, onClose }: { kind: Transla
                   </ol>
                 ) : (
                   <div key={chunk.index} className="prose prose-sm max-w-none dark:prose-invert">
-                    {kind === "transcript" ? <p className="whitespace-pre-wrap">{chunk.translation}</p> : <Streamdown>{chunk.translation ?? ""}</Streamdown>}
+                    {kind === "transcript" ? <p className="whitespace-pre-wrap">{chunk.translation}</p> : <Markdown>{chunk.translation ?? ""}</Markdown>}
                   </div>
                 ),
               )}

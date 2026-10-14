@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
-import { Streamdown } from "streamdown";
+import { Markdown } from "@/components/Markdown";
 import { AlertCircle, BookOpen, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -116,7 +116,7 @@ export function StudyNotesPanel({
                 </div>
               </div>
               <div className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert">
-                <Streamdown>{note.content}</Streamdown>
+                <Markdown>{note.content}</Markdown>
               </div>
             </Card>
           ))}

@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createRecording, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
+import { createRecording, getRecordingByAudioKeyForUser, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
@@ -26,7 +26,7 @@ import { sharingRouter } from "./sharingRouter";
 import { MAX_BOOKMARKS_PER_RECORDING, bookmarkInputSchema, bookmarksRouter, saveBookmarks } from "./bookmarks";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { renameSpeakerInSegments, speakerRenameInputSchema, transcriptUpdateInputSchema } from "./transcriptInput";
-import { desc, and } from "drizzle-orm";
+import { desc, and, sql } from "drizzle-orm";
 import { createHash } from "crypto";
 import { assignRecordingToCourse, attachOrganization, coursesRouter, recordingIdsInCourse } from "./courses";
 import { tagsRouter } from "./tagsRouter";
@@ -289,9 +289,8 @@ export const appRouter = router({
           duration: input.duration || 0,
         });
 
-        // Get the created recording (query by audioKey since we just created it)
-        const recordings = await getRecordingsByUserId(ctx.user.id);
-        const recording = recordings.find(r => r.audioKey === actualFileKey);
+        // Get the created recording by its storage key (indexed), not by listing the whole library.
+        const recording = await getRecordingByAudioKeyForUser(actualFileKey, ctx.user.id);
 
         if (!recording) {
           throw new Error("Failed to create recording");
@@ -378,8 +377,7 @@ export const appRouter = router({
           duration: duration ?? Math.round(sourceDuration ?? 0),
         });
 
-        const userRecordings = await getRecordingsByUserId(ctx.user.id);
-        const recording = userRecordings.find(r => r.audioKey === stored.key);
+        const recording = await getRecordingByAudioKeyForUser(stored.key, ctx.user.id);
         if (!recording) throw new Error("Failed to create recording");
 
         await rememberRecordingVocabulary(ctx.user.id, recording.id, input.keyterms);
@@ -1293,11 +1291,11 @@ export const appRouter = router({
       .query(async ({ ctx }) => {
         const db = await getDb();
         if (!db) return { count: 0 };
-        const all = await db
-          .select()
+        const [row] = await db
+          .select({ count: sql<number>`count(*)` })
           .from(userNotifications)
           .where(and(eq(userNotifications.userId, ctx.user.id), eq(userNotifications.isRead, 0)));
-        return { count: all.length };
+        return { count: Number(row?.count ?? 0) };
       }),
   }),
 
