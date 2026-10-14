@@ -1,3 +1,4 @@
+import { localIsoDate } from "@shared/actionItems";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, CircleHelp, Lightbulb, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ export function FlashcardLearnMode({ recordingId, cards, reviews = [], onExit }:
     if (!currentCard || !checked) return;
     const status = getLearnReviewStatus(isCorrect, currentReview);
     try {
-      await reviewMutation.mutateAsync({ recordingId, flashcardId: currentCard.id, status });
+      await reviewMutation.mutateAsync({ recordingId, flashcardId: currentCard.id, status, localDate: localIsoDate(new Date()) });
       setActiveIndex((index) => (index + 1) % Math.max(queue.length, 1));
       setAnswer("");
       setChecked(false);

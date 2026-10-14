@@ -1,3 +1,4 @@
+import { deletePlannerDataForRecordings } from "./planner";
 import { inArray } from "drizzle-orm";
 import {
   chatHistory, emailDrafts, flashcardReviews, flashcards, quizzes, recordingShares, recordingTags,
@@ -48,6 +49,7 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
     await db.delete(emailDrafts).where(inArray(emailDrafts.recordingId, batch));
     await db.delete(recordingShares).where(inArray(recordingShares.recordingId, batch));
     await deleteBookmarksForRecordings(batch);
+    await deletePlannerDataForRecordings(batch);
     await deleteCourseLinksForRecordings(batch);
     await deleteActionItemsForRecordings(batch);
     await deleteVocabularyForRecordings(batch);

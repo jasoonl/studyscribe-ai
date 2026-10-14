@@ -1,3 +1,4 @@
+import { localIsoDate } from "@shared/actionItems";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Brain, CheckCircle2, ChevronLeft, ChevronRight, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,11 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
   });
 
   const currentCard = reviewQueue[activeIndex];
+  // When the current card appeared, for the planner's time-spent figure.
+  const shownAt = useRef(Date.now());
+  useEffect(() => {
+    shownAt.current = Date.now();
+  }, [currentCard?.id]);
   const progress = reviewQueue.length ? ((activeIndex + 1) / reviewQueue.length) * 100 : 100;
 
   const selectCard = (index: number) => {
@@ -63,6 +69,8 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
         recordingId,
         flashcardId: currentCard.id,
         status,
+        seconds: (Date.now() - shownAt.current) / 1000,
+        localDate: localIsoDate(new Date()),
       });
 
       if (status === "mastered" && !includeMastered) {

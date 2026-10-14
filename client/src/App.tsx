@@ -65,6 +65,8 @@ const Help = lazy(() => import("./pages/Help"));
 const Ask = lazy(() => import("./pages/Ask"));
 const CoursePage = lazy(() => import("./pages/CoursePage"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const StudyPlan = lazy(() => import("./pages/StudyPlan"));
+const Progress = lazy(() => import("./pages/Progress"));
 const Templates = lazy(() => import("./pages/Templates"));
 const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
@@ -159,6 +161,8 @@ function Router() {
         <Route path="/ask" component={() => <ProtectedRoute component={Ask} />} />
         <Route path="/courses/:id" component={() => <ProtectedRoute component={CoursePage} />} />
         <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
+        <Route path="/plan" component={() => <ProtectedRoute component={StudyPlan} />} />
+        <Route path="/progress" component={() => <ProtectedRoute component={Progress} />} />
         <Route path="/templates" component={() => <ProtectedRoute component={Templates} />} />
         <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
         <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />
