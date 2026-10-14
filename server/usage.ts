@@ -3,6 +3,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { subscriptions, usageEvents } from "../drizzle/schema";
 import { betterPlan, getPlan, type Plan } from "@shared/plans";
 import { teamPlanFor } from "./organizations";
+import { referralRewardsThisMonth } from "./referrals";
+import { withReferralBonus } from "@shared/referrals";
 import { effectivePlanId } from "./billingState";
 import { getDb } from "./db";
 import { isMissingTableError } from "./bookmarks";
@@ -46,7 +48,8 @@ export async function getPlanForUser(userId: number): Promise<Plan> {
   const own = getPlan(effectivePlanId(await getSubscriptionRow(userId)));
   // A member of a team with a live Team plan gets its allowance when it is larger.
   const team = await teamPlanFor(userId).catch(() => null);
-  return team ? betterPlan(own, team) : own;
+  // Referral rewards (Phase 7) add to whichever plan applies, for the month they were earned.
+  return withReferralBonus(team ? betterPlan(own, team) : own, await referralRewardsThisMonth(userId));
 }
 
 export async function getUsageTotals(userId: number, period = usagePeriod()): Promise<UsageTotals> {

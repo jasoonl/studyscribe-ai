@@ -1,3 +1,4 @@
+import { getOrCreateReferralCode } from "./referrals";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -178,6 +179,8 @@ export const sharingRouter = router({
       if (!recording) {
         throw new TRPCError({ code: "NOT_FOUND", message: "This share link is invalid or has been turned off" });
       }
-      return buildSharedBundle(recording.id, input.token);
+      // The owner's referral code, so a visitor who signs up from this page credits them (Phase 7).
+      const referralCode = await getOrCreateReferralCode(recording.userId).catch(() => null);
+      return { ...(await buildSharedBundle(recording.id, input.token)), referralCode };
     }),
 });
