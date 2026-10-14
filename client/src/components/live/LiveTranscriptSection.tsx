@@ -4,6 +4,7 @@ import { useRecorder } from "@/contexts/RecorderContext";
 import type { LiveTurn } from "@/lib/liveTurns";
 import { LiveCaptions } from "./LiveCaptions";
 import { LiveTranscriptPanel } from "./LiveTranscriptPanel";
+import { t, useI18n } from "@/i18n";
 
 /** What the record pages show of live text right now. */
 export function useLiveLayout(snapshot: LiveTurn[] | null) {
@@ -20,6 +21,7 @@ export function useLiveLayout(snapshot: LiveTurn[] | null) {
  * shows text kept after upload until the real transcript is ready.
  */
 export function LiveTranscriptSection({ snapshot }: { snapshot: LiveTurn[] | null }) {
+  useI18n();
   const live = useLiveTranscript();
   const { status: recorderStatus } = useRecorder();
   const [captionsOpen, setCaptionsOpen] = useState(false);
@@ -28,10 +30,10 @@ export function LiveTranscriptSection({ snapshot }: { snapshot: LiveTurn[] | nul
   const turns = snapshot ?? live.turns;
 
   const footnote = snapshot
-    ? "A quick preview from live transcription. It is replaced by the full transcript, with speakers, as soon as that is ready."
+    ? t("live.footnote.snapshot")
     : recording
-      ? "A quick preview. The full transcript, with speakers, is made after you save."
-      : "A quick preview. Save the recording to get the full transcript, with speakers.";
+      ? t("live.footnote.recording")
+      : t("live.footnote.stopped");
 
   return (
     <>

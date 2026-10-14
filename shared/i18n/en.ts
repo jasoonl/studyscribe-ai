@@ -628,6 +628,8 @@ const en = {
   "duration.seconds": "{s}s",
   "duration.minutes": "{m}m {s}s",
   "duration.hours": "{h}h {m}m",
+
+  "record.error.readAudio": "Couldn't read the audio",
 } as const;
 
 export type MessageKey = keyof typeof en;

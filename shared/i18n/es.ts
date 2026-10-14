@@ -617,6 +617,8 @@ const es: Messages = {
   "duration.seconds": "{s} s",
   "duration.minutes": "{m} min {s} s",
   "duration.hours": "{h} h {m} min",
+
+  "record.error.readAudio": "No se pudo leer el audio",
 };
 
 export default es;

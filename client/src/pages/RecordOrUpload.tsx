@@ -23,11 +23,13 @@ import { LiveTextToggle, TabAudioControl, TabAudioOption } from "@/components/li
 import { LiveTranscriptSection, useLiveLayout } from "@/components/live/LiveTranscriptSection";
 import { StudyHelpPanel } from "@/components/live/StudyHelpPanel";
 import { useCalendarEventForRecording, useCalendarTitle } from "@/components/CalendarReminderWatcher";
+import { formatNumber, t, useI18n } from "@/i18n";
 
 type Mode = "choose" | "record" | "upload" | "link";
 
 export default function RecordOrUpload({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useCustomAuth();
+  useI18n();
   const [, navigate] = useLocation();
   const recorder = useRecorder();
   const live = useLiveTranscript();
@@ -116,7 +118,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
     setUploadComplete(false);
     setLiveSnapshot(null);
     const started = await recorder.start({ userId: user?.id ?? null, returnPath: "/record-or-upload", tabAudio: withTabAudio });
-    if (started) toast.success("Recording started. It keeps going if you switch tabs or windows.");
+    if (started) toast.success(t("record.toast.started"));
   };
 
   const pauseRecording = () => recorder.pause();
@@ -132,20 +134,20 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read audio"));
+      reader.onerror = () => reject(new Error(t("record.error.readAudio")));
       reader.readAsDataURL(blob);
     });
   };
 
   const submitRecording = async () => {
     if (!recordingTitle.trim()) {
-      toast.error("Please enter a title");
+      toast.error(t("record.error.titleRequired"));
       return;
     }
 
     const finished = recorder.getRecording();
     if (!finished) {
-      toast.error("No audio recorded");
+      toast.error(t("record.error.noAudio"));
       return;
     }
 
@@ -172,12 +174,12 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
       saveSlides(recording.id, finished.slides);
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
-      toast.success("Recording uploaded! Waiting for transcription...");
+      toast.success(t("record.toast.recordingUploaded"));
       // Fallback redirect after 90 seconds
       setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
       console.error("Failed to upload recording:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload recording";
+      const errorMessage = error instanceof Error ? error.message : t("record.error.uploadRecordingFailed");
       toast.error(errorMessage);
     } finally {
       setIsUploading(false);
@@ -188,13 +190,13 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
   const validateAndSetFile = (file: File) => {
     const validTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/ogg", "audio/mp4", "audio/webm", "audio/m4a", "audio/x-m4a", "video/quicktime"];
     if (!validTypes.includes(file.type) && !/\.mov$/i.test(file.name)) {
-      toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, MOV, or WebM)");
+      toast.error(t("record.error.invalidFile"));
       return;
     }
 
     const maxSize = MAX_UPLOAD_BYTES;
     if (file.size > maxSize) {
-      toast.error(`File size must be less than ${MAX_UPLOAD_LABEL}`);
+      toast.error(t("record.error.fileTooLarge", { size: MAX_UPLOAD_LABEL }));
       return;
     }
 
@@ -223,12 +225,12 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      toast.error("Please select a file");
+      toast.error(t("record.error.noFile"));
       return;
     }
 
     if (!uploadTitle.trim()) {
-      toast.error("Please enter a title");
+      toast.error(t("record.error.titleRequired"));
       return;
     }
 
@@ -252,12 +254,12 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
       setUploadFileComplete(true);
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
-      toast.success("File uploaded! Waiting for transcription...");
+      toast.success(t("record.toast.fileUploaded"));
       // Fallback redirect after 90 seconds
       setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
       console.error("Failed to upload file:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
+      const errorMessage = error instanceof Error ? error.message : t("record.error.uploadFileFailed");
       toast.error(errorMessage);
     } finally {
       setIsUploadingFile(false);
@@ -266,7 +268,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
 
   const handleImportLink = async () => {
     if (!linkUrl.trim()) {
-      toast.error("Paste a link to an audio or video file");
+      toast.error(t("record.error.linkRequired"));
       return;
     }
 
@@ -283,11 +285,11 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
       setLinkComplete(true);
       setCreatedRecordingId(recording.id);
       setIsPolling(true);
-      toast.success("Audio imported! Waiting for transcription...");
+      toast.success(t("record.toast.linkImported"));
       setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
       console.error("Failed to import link:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to import that link");
+      toast.error(error instanceof Error ? error.message : t("record.error.linkFailed"));
     } finally {
       setIsImporting(false);
     }
@@ -308,10 +310,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                Back to library
+                {t("record.backToLibrary")}
               </Button>
             </Link>
-            <h1 className="text-xl font-bold">Add Recording or Lecture</h1>
+            <h1 className="text-xl font-bold">{t("record.choose.title")}</h1>
             <div className="w-20" />
           </div>
         </header>
@@ -319,8 +321,8 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
         <main id="main-content" tabIndex={-1} className="container py-12 focus:outline-none">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">How would you like to add content?</h2>
-              <p className="text-lg text-muted-foreground">Choose to record a live lecture or upload an existing audio file</p>
+              <h2 className="text-4xl font-bold mb-4">{t("record.choose.heading")}</h2>
+              <p className="text-lg text-muted-foreground">{t("record.choose.subtitle")}</p>
             </div>
 
             <RecordingConsentNotice />
@@ -333,25 +335,25 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <Mic className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold mb-2">Record Live</h3>
-                    <p className="text-muted-foreground mb-4">Record a lecture, meeting, or presentation directly from your browser</p>
+                    <h3 className="text-2xl font-bold mb-2">{t("record.choose.recordTitle")}</h3>
+                    <p className="text-muted-foreground mb-4">{t("record.choose.recordDesc")}</p>
                     <ul className="space-y-2 text-sm text-muted-foreground text-left mb-6">
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Real-time recording
+                        {t("record.choose.recordFeature1")}
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Pause and resume
+                        {t("record.choose.recordFeature2")}
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Automatic transcription
+                        {t("record.choose.recordFeature3")}
                       </li>
                     </ul>
                   </div>
                   <Button size="lg" className="w-full bg-accent hover:bg-accent/90">
-                    Start Recording
+                    {t("record.startRecording")}
                   </Button>
                 </div>
               </Card>
@@ -363,8 +365,8 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <UploadCloud className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold mb-2">Upload File</h3>
-                    <p className="text-muted-foreground mb-4">Upload an existing audio or video file from your device</p>
+                    <h3 className="text-2xl font-bold mb-2">{t("record.uploadFile")}</h3>
+                    <p className="text-muted-foreground mb-4">{t("record.choose.uploadDesc")}</p>
                     <ul className="space-y-2 text-sm text-muted-foreground text-left mb-6">
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
@@ -372,16 +374,16 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Up to {MAX_UPLOAD_LABEL} file size
+                        {t("record.choose.uploadMaxSize", { size: MAX_UPLOAD_LABEL })}
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Drag and drop support
+                        {t("record.choose.uploadDragDrop")}
                       </li>
                     </ul>
                   </div>
                   <Button size="lg" className="w-full bg-accent hover:bg-accent/90">
-                    Upload File
+                    {t("record.uploadFile")}
                   </Button>
                 </div>
               </Card>
@@ -393,25 +395,25 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <LinkIcon className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold mb-2">From a Link</h3>
-                    <p className="text-muted-foreground mb-4">Paste a link to a talk or lecture recording and we'll fetch and transcribe it</p>
+                    <h3 className="text-2xl font-bold mb-2">{t("record.choose.linkTitle")}</h3>
+                    <p className="text-muted-foreground mb-4">{t("record.choose.linkDesc")}</p>
                     <ul className="space-y-2 text-sm text-muted-foreground text-left mb-6">
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        No download needed
+                        {t("record.choose.linkFeature1")}
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        YouTube, audio or video
+                        {t("record.choose.linkFeature2")}
                       </li>
                       <li className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent" />
-                        Up to {MAX_LINK_IMPORT_LABEL}
+                        {t("record.choose.linkFeature3", { size: MAX_LINK_IMPORT_LABEL })}
                       </li>
                     </ul>
                   </div>
                   <Button size="lg" className="w-full bg-accent hover:bg-accent/90">
-                    Import Link
+                    {t("record.importLink")}
                   </Button>
                 </div>
               </Card>
@@ -430,9 +432,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("record.back")}
             </Button>
-            <h1 className="text-xl font-bold">Record Lecture</h1>
+            <h1 className="text-xl font-bold">{t("record.recordLectureTitle")}</h1>
             <div className="w-20" />
           </div>
         </header>
@@ -455,13 +457,13 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       <p className="text-muted-foreground">
                         {isRecording
                           ? recorder.micReconnecting
-                            ? "Microphone disconnected, reconnecting..."
-                            : isPaused ? "Paused" : "Recording..."
-                          : "Ready to record"}
+                            ? t("record.status.micReconnecting")
+                            : isPaused ? t("record.status.paused") : t("record.status.recording")
+                          : t("record.status.ready")}
                       </p>
                       {isRecording && (
                         <p className="mt-2 text-xs text-muted-foreground">
-                          Keeps recording when you switch tabs, windows or pages, until you press Stop. Keep this tab open.
+                          {t("record.keepsRecording")}
                         </p>
                       )}
                     </div>
@@ -471,21 +473,21 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       {!isRecording ? (
                         <Button size="lg" onClick={startRecording} className="gap-2 bg-red-500 hover:bg-red-600">
                           <Mic className="w-5 h-5" />
-                          Start Recording
+                          {t("record.startRecording")}
                         </Button>
                       ) : (
                         <>
                           <Button size="lg" onClick={pauseRecording} disabled={isPaused} variant="outline" className="gap-2">
                             <Pause className="w-5 h-5" />
-                            Pause
+                            {t("record.pause")}
                           </Button>
                           <Button size="lg" onClick={resumeRecording} disabled={!isPaused} variant="outline" className="gap-2">
                             <Play className="w-5 h-5" />
-                            Resume
+                            {t("record.resume")}
                           </Button>
                           <Button size="lg" onClick={stopRecording} className="gap-2 bg-red-500 hover:bg-red-600">
                             <Square className="w-5 h-5" />
-                            Stop
+                            {t("record.stop")}
                           </Button>
                         </>
                       )}
@@ -503,10 +505,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                 <Card className="p-6 border-2 border-border">
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Recording Title *</label>
+                      <label className="text-sm font-medium mb-2 block">{t("record.titleLabel")}</label>
                       <input
                         type="text"
-                        placeholder="e.g., Physics 101 - Lecture 5"
+                        placeholder={t("record.titlePlaceholder")}
                         value={recordingTitle}
                         onChange={(e) => setRecordingTitle(e.target.value)}
                         className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
@@ -515,7 +517,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Content Type</label>
+                      <label className="text-sm font-medium mb-2 block">{t("record.contentType")}</label>
                       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -526,7 +528,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                             onChange={(e) => setAudience(e.target.value as "student" | "professional")}
                             className="w-4 h-4"
                           />
-                          <span>Student Lecture</span>
+                          <span>{t("record.audience.student")}</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -537,7 +539,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                             onChange={(e) => setAudience(e.target.value as "student" | "professional")}
                             className="w-4 h-4"
                           />
-                          <span>Professional Meeting</span>
+                          <span>{t("record.audience.professional")}</span>
                         </label>
                       </div>
                     </div>
@@ -551,8 +553,8 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   <Card className="p-8 border-2 border-accent bg-primary/5">
                     <div className="text-center space-y-4">
                       <CheckCircle className="w-16 h-16 text-accent mx-auto" />
-                      <h3 className="text-2xl font-bold">Recording uploaded successfully!</h3>
-                      <p className="text-muted-foreground">Your recording is being transcribed. You'll be redirected to your dashboard shortly.</p>
+                      <h3 className="text-2xl font-bold">{t("record.uploadedTitle")}</h3>
+                      <p className="text-muted-foreground">{t("record.uploadedBody")}</p>
                       <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent" />
                     </div>
                   </Card>
@@ -561,16 +563,16 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     <div className="space-y-6">
                       <div className="text-center">
                         <CheckCircle className="w-12 h-12 text-accent mx-auto mb-4" />
-                        <h3 className="text-xl font-bold mb-2">{recorder.recovered ? "Recovered Recording" : "Recording Complete"}</h3>
-                        <p className="text-muted-foreground mb-6">Duration: {formatTime(duration)}</p>
+                        <h3 className="text-xl font-bold mb-2">{recorder.recovered ? t("record.recovered") : t("record.complete")}</h3>
+                        <p className="text-muted-foreground mb-6">{t("record.duration", { time: formatTime(duration) })}</p>
                       </div>
 
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-2 block">Recording Title *</label>
+                          <label className="text-sm font-medium mb-2 block">{t("record.titleLabel")}</label>
                           <input
                             type="text"
-                            placeholder="e.g., Physics 101 - Lecture 5"
+                            placeholder={t("record.titlePlaceholder")}
                             value={recordingTitle}
                             onChange={(e) => setRecordingTitle(e.target.value)}
                             className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
@@ -579,7 +581,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                         </div>
 
                         <div>
-                          <label className="text-sm font-medium mb-2 block">Content Type</label>
+                          <label className="text-sm font-medium mb-2 block">{t("record.contentType")}</label>
                           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input
@@ -590,7 +592,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                                 onChange={(e) => setAudience(e.target.value as "student" | "professional")}
                                 className="w-4 h-4"
                               />
-                              <span>Student Lecture</span>
+                              <span>{t("record.audience.student")}</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input
@@ -601,7 +603,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                                 onChange={(e) => setAudience(e.target.value as "student" | "professional")}
                                 className="w-4 h-4"
                               />
-                              <span>Professional Meeting</span>
+                              <span>{t("record.audience.professional")}</span>
                             </label>
                           </div>
                         </div>
@@ -618,7 +620,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                           className="flex-1"
                           onClick={() => recorder.discard()}
                         >
-                          Record Again
+                          {t("record.recordAgain")}
                         </Button>
                         <Button
                           size="lg"
@@ -629,10 +631,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                           {isUploading ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Uploading...
+                              {t("record.uploading")}
                             </>
                           ) : (
-                            "Upload Recording"
+                            t("record.uploadRecording")
                           )}
                         </Button>
                       </div>
@@ -663,9 +665,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("record.back")}
             </Button>
-            <h1 className="text-xl font-bold">Import from Link</h1>
+            <h1 className="text-xl font-bold">{t("record.link.title")}</h1>
             <div className="w-20" />
           </div>
         </header>
@@ -676,8 +678,8 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               <Card className="p-8 border-2 border-accent bg-primary/5">
                 <div className="text-center space-y-4">
                   <CheckCircle className="w-16 h-16 text-accent mx-auto" />
-                  <h3 className="text-2xl font-bold">Audio imported successfully!</h3>
-                  <p className="text-muted-foreground">It's being transcribed now. You'll be redirected shortly.</p>
+                  <h3 className="text-2xl font-bold">{t("record.link.doneTitle")}</h3>
+                  <p className="text-muted-foreground">{t("record.link.doneBody")}</p>
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent" />
                 </div>
               </Card>
@@ -685,7 +687,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               <Card className="p-6 border-2 border-border">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Audio or Video Link *</label>
+                    <label className="text-sm font-medium mb-2 block">{t("record.link.urlLabel")}</label>
                     <input
                       type="url"
                       placeholder="https://youtube.com/watch?v=… or https://example.com/lecture.mp3"
@@ -695,21 +697,18 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      A YouTube link, a link to an audio or video file (MP3, M4A, WAV, FLAC, OGG, MP4, MOV, WebM, MKV and
-                      more), or a public page that hosts one, such as an archive.org or Wikimedia Commons item. The
-                      audio track of a video is transcribed automatically.
+                      {t("record.link.help")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Private, age-restricted and live YouTube videos can't be imported, and Vimeo, SoundCloud and
-                      other streaming sites aren't supported. For those, download the file and use Upload instead.
+                      {t("record.link.limits")}
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Title (optional)</label>
+                    <label className="text-sm font-medium mb-2 block">{t("record.link.titleLabel")}</label>
                     <input
                       type="text"
-                      placeholder="Defaults to the file name"
+                      placeholder={t("record.link.titlePlaceholder")}
                       value={linkTitle}
                       onChange={(e) => setLinkTitle(e.target.value)}
                       disabled={isImporting}
@@ -718,7 +717,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Content Type</label>
+                    <label className="text-sm font-medium mb-2 block">{t("record.contentType")}</label>
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                       {(["student", "professional"] as const).map((val) => (
                         <label key={val} className="flex items-center gap-2 cursor-pointer">
@@ -731,7 +730,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                             disabled={isImporting}
                             className="w-4 h-4"
                           />
-                          <span>{val === "student" ? "Student Lecture" : "Professional Meeting"}</span>
+                          <span>{val === "student" ? t("record.audience.student") : t("record.audience.professional")}</span>
                         </label>
                       ))}
                     </div>
@@ -750,10 +749,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                     {isImporting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Fetching audio...
+                        {t("record.link.fetching")}
                       </>
                     ) : (
-                      "Import & Transcribe"
+                      t("record.link.submit")
                     )}
                   </Button>
                 </div>
@@ -773,9 +772,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
           <div className="container h-16 flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-2" onClick={() => setMode("choose")}>
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("record.back")}
             </Button>
-            <h1 className="text-xl font-bold">Upload File</h1>
+            <h1 className="text-xl font-bold">{t("record.uploadFile")}</h1>
             <div className="w-20" />
           </div>
         </header>
@@ -786,8 +785,8 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
               <Card className="p-8 border-2 border-accent bg-primary/5">
                 <div className="text-center space-y-4">
                   <CheckCircle className="w-16 h-16 text-accent mx-auto" />
-                  <h3 className="text-2xl font-bold">File uploaded successfully!</h3>
-                  <p className="text-muted-foreground">Your file is being transcribed. You'll be redirected to your dashboard shortly.</p>
+                  <h3 className="text-2xl font-bold">{t("record.upload.doneTitle")}</h3>
+                  <p className="text-muted-foreground">{t("record.upload.doneBody")}</p>
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent" />
                 </div>
               </Card>
@@ -803,9 +802,9 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   <div className="text-center space-y-4">
                     <UploadCloud className="w-16 h-16 text-muted-foreground mx-auto" />
                     <div>
-                      <h3 className="text-xl font-bold mb-2">Drag and drop your file here</h3>
-                      <p className="text-muted-foreground mb-2">or click to browse</p>
-                      <p className="text-sm text-muted-foreground">Supported formats: MP3, WAV, OGG, MP4, MOV, WebM (Max {MAX_UPLOAD_LABEL})</p>
+                      <h3 className="text-xl font-bold mb-2">{t("record.upload.dropTitle")}</h3>
+                      <p className="text-muted-foreground mb-2">{t("record.upload.browse")}</p>
+                      <p className="text-sm text-muted-foreground">{t("record.upload.formats", { size: MAX_UPLOAD_LABEL })}</p>
                     </div>
                     {selectedFile && (
                       <div className="pt-4 border-t border-border">
@@ -814,7 +813,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                           <div className="text-left">
                             <p className="font-medium">{selectedFile.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                              {t("record.upload.fileSize", { size: formatNumber(selectedFile.size / 1024 / 1024, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                             </p>
                           </div>
                         </div>
@@ -834,10 +833,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                   <Card className="p-6 border-2 border-border">
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium mb-2 block">File Title *</label>
+                        <label className="text-sm font-medium mb-2 block">{t("record.upload.titleLabel")}</label>
                         <input
                           type="text"
-                          placeholder="e.g., Physics 101 - Lecture 5"
+                          placeholder={t("record.titlePlaceholder")}
                           value={uploadTitle}
                           onChange={(e) => setUploadTitle(e.target.value)}
                           className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
@@ -845,7 +844,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium mb-2 block">Content Type</label>
+                        <label className="text-sm font-medium mb-2 block">{t("record.contentType")}</label>
                         <div className="flex gap-4">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -856,7 +855,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                               onChange={(e) => setUploadAudience(e.target.value as "student" | "professional")}
                               className="w-4 h-4"
                             />
-                            <span>Student Lecture</span>
+                            <span>{t("record.audience.student")}</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -867,7 +866,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                               onChange={(e) => setUploadAudience(e.target.value as "student" | "professional")}
                               className="w-4 h-4"
                             />
-                            <span>Professional Meeting</span>
+                            <span>{t("record.audience.professional")}</span>
                           </label>
                         </div>
                       </div>
@@ -886,7 +885,7 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                             setUploadTitle("");
                           }}
                         >
-                          Choose Different File
+                          {t("record.upload.chooseDifferent")}
                         </Button>
                         <Button
                           size="lg"
@@ -897,10 +896,10 @@ export default function RecordOrUpload({ embedded = false }: { embedded?: boolea
                           {isUploadingFile ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              {uploadPercent > 0 ? `Uploading ${uploadPercent}%` : "Uploading..."}
+                              {uploadPercent > 0 ? t("record.uploadingPercent", { percent: uploadPercent }) : t("record.uploading")}
                             </>
                           ) : (
-                            "Upload File"
+                            t("record.uploadFile")
                           )}
                         </Button>
                       </div>

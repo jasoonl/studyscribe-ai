@@ -617,6 +617,8 @@ const ja: Messages = {
   "duration.seconds": "{s} 秒",
   "duration.minutes": "{m} 分 {s} 秒",
   "duration.hours": "{h} 時間 {m} 分",
+
+  "record.error.readAudio": "音声を読み込めませんでした",
 };
 
 export default ja;

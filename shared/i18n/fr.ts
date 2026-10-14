@@ -617,6 +617,8 @@ const fr: Messages = {
   "duration.seconds": "{s} s",
   "duration.minutes": "{m} min {s} s",
   "duration.hours": "{h} h {m} min",
+
+  "record.error.readAudio": "Impossible de lire l’audio",
 };
 
 export default fr;

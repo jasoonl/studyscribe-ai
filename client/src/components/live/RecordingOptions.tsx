@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
 import { useRecorder } from "@/contexts/RecorderContext";
 import { trpc } from "@/lib/trpc";
+import { t, tn, useI18n } from "@/i18n";
 
 /** Whether this server can run live text at all (an API key and not switched off). */
 export function useLiveAvailability() {
@@ -18,6 +19,7 @@ export function useLiveAvailability() {
  * to the transcription provider for as long as the recording runs.
  */
 export function LiveTextToggle() {
+  useI18n();
   const { enabled, setEnabled } = useLiveTranscript();
   const availability = useLiveAvailability();
   const unavailable = availability !== null && !availability.available;
@@ -25,11 +27,11 @@ export function LiveTextToggle() {
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
-        <label htmlFor="live-text-switch" className="text-sm font-medium">Live transcript</label>
+        <label htmlFor="live-text-switch" className="text-sm font-medium">{t("live.transcript.title")}</label>
         <p id="live-text-help" className="mt-0.5 text-sm text-muted-foreground">
           {unavailable
-            ? "Not available on this server yet. Your recording is still transcribed after you save."
-            : "Words appear as they're spoken, with study help and captions. Your audio is sent to our transcription provider while you record."}
+            ? t("live.toggle.unavailable")
+            : t("live.toggle.help")}
         </p>
       </div>
       <Switch
@@ -46,15 +48,16 @@ export function LiveTextToggle() {
 
 /** "Capture slides" (A6): keep a picture of the shared tab or screen whenever it changes. */
 function CaptureSlidesOption({ idSuffix }: { idSuffix: string }) {
+  useI18n();
   const { captureSlides, setCaptureSlides } = useRecorder();
   const id = `capture-slides-${idSuffix}`;
   return (
     <div className="flex items-start gap-3">
       <Checkbox id={id} checked={captureSlides} onCheckedChange={value => setCaptureSlides(value === true)} className="mt-0.5" aria-describedby={`${id}-help`} />
       <div className="min-w-0">
-        <label htmlFor={id} className="text-sm font-medium">Capture slides</label>
+        <label htmlFor={id} className="text-sm font-medium">{t("record.slides.label")}</label>
         <p id={`${id}-help`} className="mt-0.5 text-sm text-muted-foreground">
-          Saves a picture of the shared screen each time it changes, up to {MAX_SLIDES_PER_RECORDING} per recording, and shows them in the transcript.
+          {t("record.slides.help", { max: MAX_SLIDES_PER_RECORDING })}
         </p>
       </div>
     </div>
@@ -69,15 +72,16 @@ function CaptureSlidesOption({ idSuffix }: { idSuffix: string }) {
  */
 export function TabAudioOption({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
   const { tabAudioSupported } = useRecorder();
+  useI18n();
   if (!tabAudioSupported) return null;
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
         <Checkbox id="tab-audio-option" checked={checked} onCheckedChange={value => onCheckedChange(value === true)} className="mt-0.5" aria-describedby="tab-audio-help" />
         <div className="min-w-0">
-          <label htmlFor="tab-audio-option" className="text-sm font-medium">Record a tab or screen audio too</label>
+          <label htmlFor="tab-audio-option" className="text-sm font-medium">{t("record.tabAudio.label")}</label>
           <p id="tab-audio-help" className="mt-0.5 text-sm text-muted-foreground">
-            For an online class or video. Choose the tab and turn on "Also share tab audio". Your microphone is recorded as well.
+            {t("record.tabAudio.help")}
           </p>
         </div>
       </div>
@@ -92,10 +96,11 @@ export function TabAudioOption({ checked, onCheckedChange }: { checked: boolean;
 
 export function TabAudioControl() {
   const { tabAudioSupported, tabAudioActive, slidesActive, slideCount, addTabAudio, stopTabAudio, status } = useRecorder();
+  useI18n();
   const live = status === "recording" || status === "paused";
   if (!tabAudioSupported || !live) return null;
   const sharing = tabAudioActive || slidesActive;
-  const slideLabel = `${slideCount} ${slideCount === 1 ? "slide" : "slides"} kept`;
+  const slideLabel = tn("record.slides.kept", slideCount);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
@@ -104,19 +109,19 @@ export function TabAudioControl() {
             <span className="inline-flex items-center gap-2 text-muted-foreground">
               {slidesActive ? <Presentation className="h-4 w-4 text-primary" aria-hidden="true" /> : <MonitorSpeaker className="h-4 w-4 text-primary" aria-hidden="true" />}
               {tabAudioActive && slidesActive
-                ? "Recording tab audio and capturing slides"
+                ? t("record.tabAudio.recordingAndSlides")
                 : slidesActive
-                  ? "Capturing slides from the shared screen"
-                  : "Recording tab audio and your microphone"}
+                  ? t("record.tabAudio.slidesOnly")
+                  : t("record.tabAudio.audioOnly")}
             </span>
             <Button type="button" variant="ghost" size="sm" onClick={stopTabAudio}>
-              Stop sharing
+              {t("record.tabAudio.stopSharing")}
             </Button>
           </>
         ) : (
           <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void addTabAudio()}>
             <MonitorSpeaker className="h-4 w-4" aria-hidden="true" />
-            Add tab or screen audio
+            {t("record.tabAudio.add")}
           </Button>
         )}
       </div>

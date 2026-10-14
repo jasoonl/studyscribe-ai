@@ -617,6 +617,8 @@ const zh: Messages = {
   "duration.seconds": "{s} 秒",
   "duration.minutes": "{m} 分 {s} 秒",
   "duration.hours": "{h} 小时 {m} 分",
+
+  "record.error.readAudio": "无法读取音频",
 };
 
 export default zh;

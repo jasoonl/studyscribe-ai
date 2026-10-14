@@ -617,6 +617,8 @@ const ko: Messages = {
   "duration.seconds": "{s}초",
   "duration.minutes": "{m}분 {s}초",
   "duration.hours": "{h}시간 {m}분",
+
+  "record.error.readAudio": "오디오를 읽지 못했어요",
 };
 
 export default ko;

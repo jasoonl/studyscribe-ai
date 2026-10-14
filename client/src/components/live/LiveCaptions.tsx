@@ -5,6 +5,8 @@ import { Kbd } from "@/components/ui/kbd";
 import { splitLiveText, type LiveTurn } from "@/lib/liveTurns";
 import { getCaptionSize, setCaptionSize } from "@/lib/preferences";
 import type { LiveStatus } from "@/lib/liveTranscription";
+import { Trans, t, useI18n } from "@/i18n";
+import type { MessageKey } from "@shared/i18n";
 
 /** Caption sizes in pixels, chosen to stay readable from across a room. */
 export const CAPTION_SIZES = [28, 36, 48, 60, 76] as const;
@@ -13,13 +15,13 @@ const defaultSize = () => (typeof window !== "undefined" && window.innerWidth < 
 /** Only the newest turns are drawn; older lines scroll off the top anyway. */
 const VISIBLE_TURNS = 14;
 
-const STATUS_WORDS: Partial<Record<LiveStatus | "unsupported", string>> = {
-  connecting: "Connecting",
-  reconnecting: "Reconnecting",
-  paused: "Recording paused",
-  error: "Live text stopped",
-  unavailable: "Live text unavailable",
-  unsupported: "Live text unavailable",
+const STATUS_WORDS: Partial<Record<LiveStatus | "unsupported", MessageKey>> = {
+  connecting: "live.status.connecting",
+  reconnecting: "live.status.reconnecting",
+  paused: "live.captions.recordingPaused",
+  error: "live.captions.textStopped",
+  unavailable: "live.captions.textUnavailable",
+  unsupported: "live.captions.textUnavailable",
 };
 
 /**
@@ -42,6 +44,7 @@ export function LiveCaptions({
   /** Where keyboard focus goes back to on exit (the button that opened it). */
   returnFocusTo?: () => HTMLElement | null;
 }) {
+  useI18n();
   const [size, setSize] = useState(() => Math.min(getCaptionSize(defaultSize()), CAPTION_SIZES.length - 1));
   const { finals, partial } = useMemo(() => splitLiveText(turns), [turns]);
   const recent = finals.slice(-VISIBLE_TURNS);
@@ -59,7 +62,8 @@ export function LiveCaptions({
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [turns, size, open]);
 
-  const statusWords = status ? STATUS_WORDS[status] : undefined;
+  const statusKey = status ? STATUS_WORDS[status] : undefined;
+  const statusWords = statusKey ? t(statusKey) : undefined;
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -86,16 +90,16 @@ export function LiveCaptions({
         >
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/25 px-4 py-3 sm:px-8">
             <div className="flex items-center gap-3">
-              <DialogPrimitive.Title className="text-base font-semibold">Live captions</DialogPrimitive.Title>
+              <DialogPrimitive.Title className="text-base font-semibold">{t("live.captions.title")}</DialogPrimitive.Title>
               {statusWords && <span className="text-sm text-white/80">{statusWords}</span>}
             </div>
             <div className="flex items-center gap-2">
-              <div role="group" aria-label="Text size" className="flex items-center rounded-lg border border-white/40">
+              <div role="group" aria-label={t("live.captions.textSize")} className="flex items-center rounded-lg border border-white/40">
                 <button
                   type="button"
                   onClick={() => changeSize(-1)}
                   disabled={size === 0}
-                  aria-label="Smaller text"
+                  aria-label={t("live.captions.smaller")}
                   className="flex h-10 w-11 items-center justify-center rounded-l-lg hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:text-white/40 disabled:hover:bg-transparent"
                 >
                   <Minus className="h-5 w-5" aria-hidden="true" />
@@ -107,7 +111,7 @@ export function LiveCaptions({
                   type="button"
                   onClick={() => changeSize(1)}
                   disabled={size === CAPTION_SIZES.length - 1}
-                  aria-label="Larger text"
+                  aria-label={t("live.captions.larger")}
                   className="flex h-10 w-11 items-center justify-center rounded-r-lg hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:text-white/40 disabled:hover:bg-transparent"
                 >
                   <Plus className="h-5 w-5" aria-hidden="true" />
@@ -115,7 +119,7 @@ export function LiveCaptions({
               </div>
               <DialogPrimitive.Close className="flex h-10 items-center gap-2 rounded-lg border border-white/40 px-3 text-sm font-medium hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 <X className="h-5 w-5" aria-hidden="true" />
-                Exit
+                {t("live.captions.exit")}
                 <Kbd className="hidden border-white/40 bg-transparent text-white sm:inline-flex">Esc</Kbd>
               </DialogPrimitive.Close>
             </div>
@@ -129,8 +133,8 @@ export function LiveCaptions({
               {recent.length === 0 && !partial ? (
                 <p className="text-white/80" style={{ fontSize: "0.6em" }}>
                   {status === "live" || status === "connecting" || status === "reconnecting"
-                    ? "Captions appear here as people speak."
-                    : "Turn on live text and start recording to see captions."}
+                    ? t("live.captions.emptyActive")
+                    : t("live.captions.emptyOff")}
                 </p>
               ) : (
                 <>
@@ -150,7 +154,7 @@ export function LiveCaptions({
             </div>
           </div>
           <p className="px-4 pb-3 text-xs text-white/70 sm:px-8">
-            Automatic captions can contain mistakes. Press <span className="font-semibold">+</span> or <span className="font-semibold">-</span> to change the size.
+            <Trans k="live.captions.footer" parts={{ key: text => <span className="font-semibold">{text}</span> }} />
           </p>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
