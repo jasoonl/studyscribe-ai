@@ -13,6 +13,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import { MAX_WEBHOOKS_PER_USER, WEBHOOK_EVENTS, WEBHOOK_EVENT_LABELS, type WebhookEvent } from "@shared/webhooks";
+import { WEBHOOK_FORMAT_LABELS, webhookFormatFor, type WebhookFormat } from "@shared/webhookFormats";
+
+/** Slack and Discord webhook URLs are secrets in themselves; show only the host once saved. */
+function displayUrl(url: string, format: WebhookFormat) {
+  if (format === "json") return url;
+  try {
+    return `${new URL(url).host}/…`;
+  } catch {
+    return url;
+  }
+}
 
 type Delivery = {
   id: number;
@@ -154,7 +165,12 @@ export function WebhookSettings() {
             <div key={endpoint.id} className="rounded-xl border border-border p-4">
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-mono text-sm">{endpoint.url}</p>
+                  <p className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-mono text-sm">{displayUrl(endpoint.url, endpoint.format)}</span>
+                    {endpoint.format !== "json" && (
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">{WEBHOOK_FORMAT_LABELS[endpoint.format]} message</span>
+                    )}
+                  </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {endpoint.description ? `${endpoint.description} · ` : ""}
                     {endpoint.events.join(", ")}
@@ -228,7 +244,11 @@ export function WebhookSettings() {
               <div className="space-y-2">
                 <Label htmlFor="webhook-url">Endpoint URL</Label>
                 <Input id="webhook-url" type="url" value={url} onChange={event => setUrl(event.target.value)} placeholder="https://hooks.example.com/studyscribe" autoFocus />
-                <p className="text-xs text-muted-foreground">Must be a public https address. Redirects are not followed.</p>
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {webhookFormatFor(url.trim()) === "json"
+                    ? "Must be a public https address. Redirects are not followed. A Slack incoming-webhook or Discord webhook URL gets a readable message instead of JSON."
+                    : `${WEBHOOK_FORMAT_LABELS[webhookFormatFor(url.trim())]} webhook: each event arrives as a short message with a link to the recording.`}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="webhook-description">Name (optional)</Label>

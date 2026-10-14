@@ -14,6 +14,7 @@ import {
   WEBHOOK_SIGNATURE_HEADER,
   type WebhookEvent,
 } from "@shared/webhooks";
+import { formatWebhookBody, webhookFormatFor } from "@shared/webhookFormats";
 import { getDb } from "./db";
 import { explainMissingSchema, tolerateMissingSchema } from "./schemaTolerance";
 import { decryptSecret, encryptSecret } from "./tokenCrypto";
@@ -183,8 +184,10 @@ async function attempt(db: Db, endpoint: EndpointRow, delivery: DeliveryRow): Pr
     const target = await resolveWebhookTarget(endpoint.url);
     const secret = decryptSecret(endpoint.secret, "webhook-secret");
     const timestamp = Math.floor(Date.now() / 1000);
-    result = await postSigned(target, delivery.payload, {
-      [WEBHOOK_SIGNATURE_HEADER]: signWebhookPayload(secret, delivery.payload, timestamp),
+    // Slack and Discord URLs get a readable message; the signature covers the bytes actually sent.
+    const body = formatWebhookBody(webhookFormatFor(endpoint.url), delivery.payload);
+    result = await postSigned(target, body, {
+      [WEBHOOK_SIGNATURE_HEADER]: signWebhookPayload(secret, body, timestamp),
       [WEBHOOK_EVENT_HEADER]: delivery.event,
       [WEBHOOK_DELIVERY_HEADER]: delivery.deliveryId,
     });
@@ -380,6 +383,7 @@ export const webhooksRouter = router({
         url: endpoint.url,
         description: endpoint.description,
         events: parseEvents(endpoint.events),
+        format: webhookFormatFor(endpoint.url),
         enabled: endpoint.enabled,
         createdAt: endpoint.createdAt,
         deliveries: deliveries.filter(row => row.endpointId === endpoint.id).slice(0, 10).map(shapeDelivery),
