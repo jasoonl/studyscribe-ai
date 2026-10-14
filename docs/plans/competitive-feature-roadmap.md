@@ -192,9 +192,9 @@ Status (needs `npm run db:migrate` for migration 0030): all six items are built.
 5. **Reliability**: consistent error states and retry for failed uploads, provider outages (AssemblyAI, LLM, Stripe, Resend) and plan limits; an admin System health page that checks each configured service without exposing secrets.
 6. **Launch content**: landing sections, Pricing, Help and `/developers` updated for Phases 2 to 5; SEO basics (per-route meta tags through a small head manager, `sitemap.xml`, `robots.txt`, SoftwareApplication structured data, a canonical per route).
 
-### Phase 7 — Students and schools, deeper (planned, not started)
+### Phase 7 — Students and schools, deeper (in progress)
 
-Status: planned only. Nothing in this phase has been built. Items 1 and 2 are deferred (set aside for now); Phase 7 work covers items 3 to 8 plus anything carried over from Phase 6.
+Status: in progress. Items 1 and 2 are deferred (set aside for now); Phase 7 work covers items 3 to 8 plus anything carried over from Phase 6. Built: items 3 and 4 (study planner and progress, migration 0031; web only so far).
 
 1. **School integrations** (Deferred: set aside for now): LTI 1.3 for Canvas, Blackboard, Moodle and Google Classroom. Instructors post recordings and study packs to a class, and students launch from the course page. Each school must register StudyScribe as a tool, so this stays off until one is configured.
 2. **Instructor accounts** (Deferred: set aside for now): a professor records once and the class gets the transcript, notes and flashcards, with each student's progress kept separate.
