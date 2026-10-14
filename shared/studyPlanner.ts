@@ -148,7 +148,7 @@ export function buildDailyPlan(input: {
     groups.set(card.recordingId, group);
   }
 
-  const ranked = [...groups.entries()]
+  const ranked = Array.from(groups.entries())
     .map(([recordingId, group]) => {
       const recording = byRecording.get(recordingId)!;
       const exam = examFor(recording, exams);
@@ -191,7 +191,7 @@ export function buildDailyPlan(input: {
 
 /** Consecutive days with any study, ending today (or yesterday, so a streak survives until the day ends). */
 export function computeStreak(studyDays: string[], today: string): { current: number; longest: number } {
-  const days = [...new Set(studyDays.filter(isIsoDate))].sort();
+  const days = Array.from(new Set(studyDays.filter(isIsoDate))).sort();
   let longest = 0;
   let run = 0;
   let previous: string | null = null;
