@@ -1,5 +1,5 @@
 {
-  "name": "mobile",
+  "name": "studyscribe-mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
@@ -62,11 +62,31 @@
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "export:native": "expo export -p ios -p android --output-dir dist-native",
+    "export:web": "expo export -p web --output-dir dist-web",
+    "preview:web": "node scripts/web-preview.mjs",
+    "doctor": "expo-doctor",
+    "icons": "python3 scripts/make-icons.py"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/src/**/*.test.ts",
+      "<rootDir>/src/**/*.test.tsx"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@shared/(.*)$": "<rootDir>/../shared/$1",
+      "^lucide-react-native$": "<rootDir>/src/test/lucideMock.js"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|native-base|react-native-svg|lucide-react-native|nativewind|react-native-css-interop)"
+    ]
+  }
 }
