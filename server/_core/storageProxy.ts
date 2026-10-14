@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 import { Readable } from "node:stream";
-import { getSessionFromCookie } from "../sessionManager";
+import { getSessionFromRequest } from "../sessionManager";
 import { getRecordingByAudioKey } from "../db";
 import { getRecordingAccess } from "../recordingAccess";
 import { handleUploadPresigned } from "@vercel/blob/client";
@@ -75,7 +75,7 @@ async function serveRangeFromFullBody(
  * ranges also keeps each response under the serverless response size limit
  * for long recordings.
  */
-async function streamStoredAudio(req: import("express").Request, res: import("express").Response, key: string) {
+export async function streamStoredAudio(req: import("express").Request, res: import("express").Response, key: string) {
   const signedUrl = await storageGetSignedUrl(key);
   const rangeHeader = req.headers.range;
   const upstream = await fetch(signedUrl, rangeHeader ? { headers: { Range: rangeHeader } } : undefined);
@@ -115,7 +115,7 @@ async function streamStoredAudio(req: import("express").Request, res: import("ex
 
 export function registerStorageProxy(app: Express) {
   app.post("/api/storage/upload-url", async (req, res) => {
-    const session = getSessionFromCookie(req);
+    const session = getSessionFromRequest(req);
     if (!session) {
       res.status(401).json({ error: "Sign in to upload recordings" });
       return;
@@ -141,7 +141,7 @@ export function registerStorageProxy(app: Express) {
 
   // Token endpoint for the browser's multipart uploader (files too large for a single PUT).
   app.post("/api/storage/upload-presigned", async (req, res) => {
-    const session = getSessionFromCookie(req);
+    const session = getSessionFromRequest(req);
     if (!session) {
       res.status(401).json({ error: "Sign in to upload recordings" });
       return;
@@ -168,7 +168,7 @@ export function registerStorageProxy(app: Express) {
     }
     const key = typeof req.query.key === "string" ? req.query.key : "";
     const shareToken = typeof req.query.token === "string" ? req.query.token : "";
-    const session = getSessionFromCookie(req);
+    const session = getSessionFromRequest(req);
     if (!key) {
       res.status(400).send("Missing storage key");
       return;

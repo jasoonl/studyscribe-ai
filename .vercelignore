@@ -17,3 +17,5 @@ coverage
 pnpm-lock.yaml
 yarn.lock
 package-lock.json
+# The Expo app has its own install and build (EAS); the web deploy never needs it.
+mobile

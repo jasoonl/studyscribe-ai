@@ -7,7 +7,7 @@ import { z } from "zod";
 import { users } from "../drizzle/schema";
 import { getAppSetting, getDb, setAppSetting } from "./db";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendEmailVerificationEmail } from "./email";
-import { getSessionFromCookie } from "./sessionManager";
+import { getSessionFromRequest } from "./sessionManager";
 import { limitsEnforced } from "./usage";
 import { needsEmailConfirmation } from "./emailConfirmation";
 
@@ -144,7 +144,7 @@ export function registerEmailVerificationRoutes(app: Express) {
   });
 
   app.post("/api/auth/resend-verification", resendLimiter, async (req: Request, res: Response) => {
-    const session = getSessionFromCookie(req);
+    const session = getSessionFromRequest(req);
     if (!session) {
       res.status(401).json({ error: "Not signed in" });
       return;

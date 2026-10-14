@@ -21,7 +21,7 @@ export type GoogleSignupDeps = {
   allowFromNetwork: (ip: string) => boolean;
 };
 
-const defaultDeps: GoogleSignupDeps = {
+export const defaultDeps: GoogleSignupDeps = {
   findAccount: findGoogleAccount,
   createAccount: createGoogleUser,
   getInvite: getInviteCodeByCode,
