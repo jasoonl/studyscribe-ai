@@ -33,3 +33,6 @@ pnpm-lock.yaml
 # OS files
 .DS_Store
 Thumbs.db
+
+# Vendored Claude skill (upstream formatting)
+.claude/skills/ui-ux-pro-max/
