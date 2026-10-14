@@ -284,10 +284,11 @@ export default function Dashboard() {
             <Link href="/ask"><Sparkles className="size-4" aria-hidden="true" />Ask StudyScribe</Link>
           </Button>
           {[
+            { href: "/plan", label: "Study plan" },
             { href: "/tasks", label: "Tasks" },
             { href: "/exam-packs", label: "Exam packs" },
             { href: "/knowledge-base", label: "Knowledge Base" },
-            { href: "/analytics", label: "Analytics" },
+            { href: "/progress", label: "Progress" },
             { href: "/groups", label: "Groups" },
             { href: "/shared-with-me", label: "Shared with me" },
             ...(teamName ? [{ href: "/team", label: teamName }] : []),

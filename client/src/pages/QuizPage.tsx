@@ -1,3 +1,4 @@
+import { localIsoDate } from "@shared/actionItems";
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -90,7 +91,7 @@ export default function QuizPage() {
 
   const handleSubmit = () => {
     if (!selectedQuizId) return;
-    submitMutation.mutate({ quizId: selectedQuizId, answers });
+    submitMutation.mutate({ quizId: selectedQuizId, answers, localDate: localIsoDate(new Date()) });
   };
 
   const handleRetry = () => {
