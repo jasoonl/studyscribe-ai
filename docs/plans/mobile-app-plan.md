@@ -1,6 +1,8 @@
 # StudyScribe AI — Mobile App Plan (iOS + Android)
 
-_Last updated: 2026-10-10._
+_Last updated: 2026-10-14._
+
+> **Status (2026-10-14):** built on branch `claude/mobile-app`. Server changes (§4) are in, with migration `0029_mobile_devices` (run `npm run db:migrate` in production). The app is in `mobile/` (Expo SDK 57); see `mobile/README.md` for setup and the owner's store steps, `mobile/STORE.md` for privacy answers, review notes and the payments decision, and CLAUDE.md "Mobile app" for how it works. Checked with unit tests (server and app), iOS and Android bundle exports, expo-doctor, and a Playwright walk of every screen on the web target at 390x844 against local MariaDB. **Not yet done:** running on real phones (the two spikes below), store accounts and submission, share extension, live transcription and Study help while recording, analytics charts, Knowledge Base search screen (Ask covers search), email-draft tone presets beyond the web's, offline upload queue beyond "keep the file and retry", Sentry, Maestro flows.
 
 **Goal:** a native iOS and Android app that does everything the web app does, the same way, against the **same backend and database**, with the same look. The web app stays as it is. Then publish to the App Store and Google Play.
 
@@ -111,33 +113,33 @@ Today `createContext` (`server/_core/context.ts`) reads only the session cookie.
 
 ### Phase 0 — Accounts & setup (week 1)
 - [ ] Apple Developer Program ($99/yr) and Google Play Console ($25 one-time) accounts in the owner's name.
-- [ ] Expo account; `npx create-expo-app mobile` with expo-router + TypeScript; NativeWind; Geist font.
-- [ ] Bundle ids, e.g. `ai.studyscribe.app` (iOS) / `ai.studyscribe.app` (Android). App icon + splash from the existing logo.
+- [x] Expo account; `npx create-expo-app mobile` with expo-router + TypeScript; NativeWind; Geist font.
+- [x] Bundle ids: placeholder `com.studyscribe.app` (set `APP_BUNDLE_ID` once registered). App icon + splash from the existing logo.
 - [ ] Spike: record 60 min with the screen locked on a real iPhone and Android phone; upload a 500MB file. These are the two riskiest parts — prove them first.
 
 ### Phase 1 — Foundation (weeks 2–3)
-- [ ] §4.1 bearer sessions (server) + login/signup/forgot-password screens.
-- [ ] tRPC client with auth header, React Query, error toasts.
-- [ ] Design primitives matching the web (Button, Card, Input, Tabs, Badge, Sheet, Toast, Skeleton).
-- [ ] Tab bar: Dashboard · Record · Knowledge · Settings.
+- [x] §4.1 bearer sessions (server) + login/signup/forgot-password screens.
+- [x] tRPC client with auth header, React Query, error toasts.
+- [x] Design primitives matching the web (Button, Card, Input, Tabs, Badge, Sheet, Toast, Skeleton).
+- [x] Tab bar: Library · Record · Ask · Tasks · Settings (courses, exam packs, shared, trash from Library).
 
 ### Phase 2 — Core loop (weeks 4–6)
-- [ ] Dashboard list + Trash.
-- [ ] Record (background, pause/resume, consent notice) → upload → processing polling.
-- [ ] File/video upload, link import, share extension.
-- [ ] Recording detail: player with lock-screen controls, transcript, edit, language, retry.
-- [ ] §4.2 playback URLs, §4.3 push.
+- [x] Dashboard list + Trash.
+- [x] Record (background, pause/resume, consent notice) → upload → processing polling.
+- [x] File/video upload, link import. Share extension: not yet.
+- [x] Recording detail: player with lock-screen controls, transcript, edit, language, retry.
+- [x] §4.2 playback URLs, §4.3 push.
 
 ### Phase 3 — Study tools (weeks 7–9)
-- [ ] Study notes, flashcards (Learn/Test, review), quizzes, study guides, email drafts, AI tutor chat.
-- [ ] Knowledge Base, sharing (native share sheet), Shared With Me, notifications, analytics, export/delete account.
-- [ ] Google + Apple sign-in (§4.4), deep links (§4.5).
+- [x] Study notes, flashcards (Learn/Test, review), quizzes, study guides, email drafts, AI tutor chat.
+- [x] Sharing (native share sheet), Shared With Me, notifications, export/delete account, plus Ask, tasks, exam packs, courses, chapters, key terms, vocabulary (added since this plan). Knowledge Base screen and analytics charts: not yet.
+- [x] Google + Apple sign-in (§4.4), deep links (§4.5).
 
 ### Phase 4 — Hardening (weeks 10–11)
-- [ ] Offline handling: queue a finished recording locally and upload when back online (never lose a lecture).
-- [ ] Accessibility (Dynamic Type, VoiceOver/TalkBack labels), dark mode, tablets.
+- [x] A finished or crashed recording stays on the phone (document directory + journal) until uploaded; retry is manual. Automatic upload when back online: not yet.
+- [x] Accessibility (Dynamic Type with caps, VoiceOver/TalkBack labels and roles, reduced motion), dark mode. Tablets: content width capped, not tuned.
 - [ ] Crash reporting (Sentry for React Native), analytics events.
-- [ ] Tests: Jest + React Native Testing Library for components; Maestro flows for login → record → transcript.
+- [x] Tests: Jest (jest-expo) unit tests for session/token handling, upload chunking, the recorder state machine and the API client; Playwright walk of the web target. Maestro flows on devices: not yet.
 - [ ] Internal testing: TestFlight (iOS) and Play Internal testing track.
 
 ### Phase 5 — Publish (week 12)
@@ -148,23 +150,23 @@ See §6.
 ## 6. Publishing checklist
 
 ### Both stores
-- [ ] Privacy policy URL (existing `/privacy` — update it to mention the mobile app, microphone, push tokens, and that audio goes to AssemblyAI and text to the LLM provider).
-- [ ] Support URL (`/help`) and contact email.
+- [x] Privacy policy URL (`/privacy` now has a mobile app section and lists Apple and the push services) (existing `/privacy` — update it to mention the mobile app, microphone, push tokens, and that audio goes to AssemblyAI and text to the LLM provider).
+- [x] Support URL (`/help`) and contact email.
 - [ ] **Demo account for reviewers** — signup is invite-gated, so give review teams a pre-made login with a sample recording already transcribed. Without this the app will be rejected.
 - [ ] Screenshots (6.7" and 6.5" iPhone, 13" iPad if tablets supported; Android phone + 7"/10" tablet), short + long description, keywords, feature graphic (Android).
 - [ ] Age rating questionnaires; content: user-generated (shared recordings) → include a report/block mechanism or limit sharing to people you invited.
 
 ### Apple App Store
-- [ ] `NSMicrophoneUsageDescription`: "StudyScribe records lectures and meetings you choose to capture so they can be transcribed."
-- [ ] `UIBackgroundModes: audio` (needed for locked-screen recording; justify in review notes).
-- [ ] Sign in with Apple (4.8), in-app account deletion (5.1.1(v)) — both covered above.
-- [ ] App Privacy "nutrition label": audio data, user content, email, identifiers — linked to user, not used for tracking.
-- [ ] Recording-consent wording visible before first recording (we already have `RecordingConsentNotice`).
+- [x] `NSMicrophoneUsageDescription`: "StudyScribe records lectures and meetings you choose to capture so they can be transcribed."
+- [x] `UIBackgroundModes: audio` (needed for locked-screen recording; justify in review notes).
+- [x] Sign in with Apple (4.8), in-app account deletion (5.1.1(v)) — both covered above.
+- [x] App Privacy "nutrition label" (answers in `mobile/STORE.md`; privacy manifest generated from `app.config.ts`): audio data, user content, email, identifiers — linked to user, not used for tracking.
+- [x] Recording-consent wording visible before first recording (we already have `RecordingConsentNotice`).
 - [ ] Build & submit: `eas build -p ios --profile production` → `eas submit -p ios` → TestFlight → App Review.
 
 ### Google Play
-- [ ] `RECORD_AUDIO`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `POST_NOTIFICATIONS` permissions; foreground-service declaration form in Play Console.
-- [ ] Data safety form (mirrors the Apple label).
+- [x] `RECORD_AUDIO`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `POST_NOTIFICATIONS` permissions; foreground-service declaration form in Play Console.
+- [x] Data safety form answers (in `mobile/STORE.md`; the owner fills the form) (mirrors the Apple label).
 - [ ] New personal developer accounts must run a **closed test with at least 12 testers for 14 days** before production access — plan for this in the timeline.
 - [ ] `eas build -p android --profile production` (AAB) → `eas submit -p android` → internal → closed → production.
 
@@ -175,7 +177,7 @@ See §6.
 
 ---
 
-## 7. Payments (decide before adding paid plans)
+## 7. Payments (decided 2026-10-14: no purchases in the app, see `mobile/STORE.md`)
 If StudyScribe sells subscriptions, Apple and Google require **in-app purchase** for digital features bought inside the app. Plan: RevenueCat SDK in the app + Stripe on the web, both writing to the same `subscriptions` table (from roadmap item F2) via webhooks, so a plan bought on either side unlocks both. Until billing exists, the app ships free with the same invite gating as the web, and the Pricing screen is hidden in the app (showing web prices with an outside purchase link can get the app rejected, depending on region rules).
 
 ---
