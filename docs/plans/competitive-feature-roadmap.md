@@ -193,10 +193,10 @@ Status: planned 2026-10-13.
 
 ### Phase 7 — Students and schools, deeper (planned, not started)
 
-Status: planned only. Nothing in this phase has been built.
+Status: planned only. Nothing in this phase has been built. Items 1 and 2 are deferred (set aside for now); Phase 7 work covers items 3 to 8 plus anything carried over from Phase 6.
 
-1. **School integrations**: LTI 1.3 for Canvas, Blackboard, Moodle and Google Classroom. Instructors post recordings and study packs to a class, and students launch from the course page. Each school must register StudyScribe as a tool, so this stays off until one is configured.
-2. **Instructor accounts**: a professor records once and the class gets the transcript, notes and flashcards, with each student's progress kept separate.
+1. **School integrations** (Deferred: set aside for now): LTI 1.3 for Canvas, Blackboard, Moodle and Google Classroom. Instructors post recordings and study packs to a class, and students launch from the course page. Each school must register StudyScribe as a tool, so this stays off until one is configured.
+2. **Instructor accounts** (Deferred: set aside for now): a professor records once and the class gets the transcript, notes and flashcards, with each student's progress kept separate.
 3. **Personal study planner**: spaced-repetition review across courses, scheduled around exam dates from tasks and calendar, with a daily "what to study today".
 4. **Learning progress dashboard**: mastery by course and topic, weak spots, streaks and time spent.
 5. **Interface localisation**: translate the app UI itself, starting with Spanish, Chinese, French, Korean and Japanese. Today only content can be translated.
