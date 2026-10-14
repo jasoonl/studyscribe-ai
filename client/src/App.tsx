@@ -105,6 +105,8 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   if (!isAuthenticated) {
+    // With no connection the session can't be checked and signing in can't work; offer what is on the device.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return <Redirect to="/offline" />;
     // Come back here after signing in (a group join link, a shared recording, a deep link with ?t=).
     const next = nextFromLocation(window.location.pathname, window.location.search);
     return <Redirect to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} />;

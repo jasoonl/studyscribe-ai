@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Markdown } from "@/components/Markdown";
 import { useOnline } from "@/components/OfflineStatus";
 import { getFlashcardShortcutAction } from "@/lib/flashcardShortcuts";
 import { formatTimestamp, OFFLINE_OWNER_KEY, type OfflinePack } from "@/lib/offlinePack";
@@ -159,7 +158,8 @@ function PackView({ pack }: { pack: OfflinePack }) {
             pack.notes.map((note) => (
               <article key={note.id}>
                 <h2 className="mb-3 text-lg font-semibold">{note.title}</h2>
-                <Markdown>{note.content}</Markdown>
+                {/* Plain text: the Markdown renderer is a large file that may not be on this device offline. */}
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{note.content}</p>
               </article>
             ))
           )}
