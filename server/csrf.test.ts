@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isCrossSiteRequest, rejectCrossSitePosts } from "./_core/csrf";
 import { getSafeApplicationOrigin } from "./email";
-import { publicUser } from "./routers";
+import { publicUser, redactUrlForLog } from "./routers";
 
 const req = (headers: Record<string, string>, method = "POST") => ({ method, headers }) as any;
 
@@ -50,5 +50,12 @@ describe("auth.me", () => {
     expect(shaped).not.toHaveProperty("openId");
     expect(shaped.emailVerified).toBe(true);
     expect(publicUser(null)).toBeNull();
+  });
+});
+
+describe("log redaction", () => {
+  it("drops query strings, which can carry signed tokens", () => {
+    expect(redactUrlForLog("https://s3.example/a.mp3?X-Amz-Signature=abc")).toBe("https://s3.example/a.mp3?…");
+    expect(redactUrlForLog("https://example.com/talk.mp3")).toBe("https://example.com/talk.mp3");
   });
 });

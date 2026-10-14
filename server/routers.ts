@@ -67,6 +67,16 @@ const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTe
 // "auto" (or omitted) lets the provider detect the language.
 const languageInput = z.enum(TRANSCRIPTION_LANGUAGE_CODES).optional();
 
+/** Host and path only: query strings of imported links can carry signed tokens. */
+export function redactUrlForLog(raw: string) {
+  try {
+    const url = new URL(raw);
+    return `${url.origin}${url.pathname}${url.search ? "?…" : ""}`;
+  } catch {
+    return "(invalid url)";
+  }
+}
+
 /** The fields of an account that may leave the server. */
 export function publicUser(user: { id: number; email: string; name: string | null; role: string; loginMethod: string | null; emailVerified: number; createdAt: Date; lastSignedIn: Date } | null) {
   if (!user) return null;
@@ -351,7 +361,7 @@ export const appRouter = router({
         }
 
         const verified = await verifyUploadedAudio(stored.key);
-        console.log(`[Import] Stored ${finalUrl} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
+        console.log(`[Import] Stored ${redactUrlForLog(finalUrl)} as ${stored.key} (${verified.size} bytes, duration ${duration ?? "unknown"}s)`);
 
         const fallbackTitle = sourceTitle?.trim() || decodeURIComponent(new URL(finalUrl).pathname.split("/").pop() || "Imported audio")
           .replace(/\.[^/.]+$/, "")
