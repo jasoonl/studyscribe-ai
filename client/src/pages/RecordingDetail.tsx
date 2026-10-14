@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, BookOpen, Sparkles, MessageSquare, Download, Edit2,
 import { RecordingOrganizer } from "@/components/RecordingOrganizer";
 import { CourseDot } from "@/components/CourseDot";
 import { ShareRecordingDialog } from "@/components/ShareRecordingDialog";
+import { KeepOffline } from "@/components/KeepOffline";
 import { StudyNotesPanel } from "@/components/StudyNotesPanel";
 import { RecordingBookmarks } from "@/components/RecordingBookmarks";
 import { RecordingChapters } from "@/components/RecordingChapters";
@@ -263,10 +264,15 @@ export default function RecordingDetail() {
             </Button>
           </Link>
           <h1 className="text-xl font-bold flex-1 ml-4 truncate">{recording.title}</h1>
+          <div className="flex items-center gap-2">
+          {recording.status === "completed" && (
+            <KeepOffline userId={user?.id} recording={{ id: recording.id, title: recording.title }} transcript={transcript} flashcards={flashcards} notes={studyNotes} />
+          )}
           <Button variant="outline" size="sm" className="gap-2" aria-label="Share" onClick={() => setIsShareDialogOpen(true)}>
             <Share2 className="w-4 h-4" />
             <span className="hidden sm:inline">Share</span>
           </Button>
+          </div>
         </div>
       </header>
       {recordingId && (
