@@ -67,6 +67,12 @@ const NOTE_TEMPLATE_IDS = NOTE_TEMPLATES.map(template => template.id) as [NoteTe
 // "auto" (or omitted) lets the provider detect the language.
 const languageInput = z.enum(TRANSCRIPTION_LANGUAGE_CODES).optional();
 
+/** The fields of an account that may leave the server. */
+export function publicUser(user: { id: number; email: string; name: string | null; role: string; loginMethod: string | null; emailVerified: number; createdAt: Date; lastSignedIn: Date } | null) {
+  if (!user) return null;
+  return { id: user.id, email: user.email, name: user.name, role: user.role, loginMethod: user.loginMethod, emailVerified: user.emailVerified === 1, createdAt: user.createdAt, lastSignedIn: user.lastSignedIn };
+}
+
 /** Files a new recording under a course; a failure (archived, missing table) never loses the recording. */
 async function fileUnderCourseQuietly(userId: number, recordingId: number, courseId: number | undefined) {
   if (!courseId) return;
@@ -95,7 +101,8 @@ export const appRouter = router({
       .query(async ({ input }) => ({ proxyConfigured: isYouTubeProxyConfigured(), relay: await youtubeRelayStatus(), clients: await probeYouTubeClients(input.videoId) })),
   }),
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    // Never the whole row: it holds the password hash and provider ids.
+    me: publicProcedure.query(opts => publicUser(opts.ctx.user)),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
