@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Redirect } from "wouter";
+import { nextFromLocation } from "@shared/safeNext";
 import { lazy, Suspense } from "react";
 import { RecorderProvider } from "./contexts/RecorderContext";
 import { LiveTranscriptProvider } from "./contexts/LiveTranscriptContext";
@@ -90,7 +91,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   if (!isAuthenticated) {
-    return <Redirect to="/login" />;
+    // Come back here after signing in (a group join link, a shared recording, a deep link with ?t=).
+    const next = nextFromLocation(window.location.pathname, window.location.search);
+    return <Redirect to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} />;
   }
 
   return (

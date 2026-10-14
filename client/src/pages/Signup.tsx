@@ -334,7 +334,7 @@ export default function Signup() {
         <div className="text-center mt-6 pt-6 border-t border-border">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <a href="/login" className="text-accent font-medium hover:underline">
+            <a href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-accent font-medium hover:underline">
               Sign in
             </a>
           </p>

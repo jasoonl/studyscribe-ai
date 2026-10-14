@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { inviteCodes } from "../drizzle/schema";
 import { getDb, normalizeAuthEmail } from "./db";
+import { safeNextPath } from "@shared/safeNext";
 
 /**
  * Google sign-up rules.
@@ -79,11 +80,7 @@ export function readOAuthState(state: string, secret = stateSecret(), nowSeconds
 }
 
 /** A same-site path to return to after sign-in ("/team/join/abc"), never another site. */
-export function safeNextPath(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 300) return null;
-  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\") || /[\r\n]/.test(value)) return null;
-  return value;
-}
+export { safeNextPath } from "@shared/safeNext";
 
 type InviteRow = { email: string; isUsed: number; expiresAt: Date };
 
