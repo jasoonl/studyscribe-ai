@@ -1147,3 +1147,50 @@ export const appleIdentities = mysqlTable("appleIdentities", {
 ]);
 
 export type AppleIdentity = typeof appleIdentities.$inferSelect;
+
+/**
+ * Spaced repetition (Phase 7): when each card is next due for its owner. A
+ * separate table from flashcardReviews so the existing review queries never
+ * depend on migration 0031. `dueDate` is the learner's own calendar day.
+ */
+export const flashcardSchedules = mysqlTable("flashcardSchedules", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  flashcardId: int("flashcardId").notNull(),
+  recordingId: int("recordingId").notNull(),
+  dueDate: date("dueDate", { mode: "string" }).notNull(),
+  intervalDays: int("intervalDays").default(1).notNull(),
+  easeX100: int("easeX100").default(250).notNull(),
+  reps: int("reps").default(0).notNull(),
+  lapses: int("lapses").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("flashcardSchedules_user_card_unique").on(table.userId, table.flashcardId),
+  index("flashcardSchedules_user_due_idx").on(table.userId, table.dueDate),
+  index("flashcardSchedules_recording_idx").on(table.recordingId),
+]);
+
+export type FlashcardSchedule = typeof flashcardSchedules.$inferSelect;
+
+/**
+ * One row per piece of study (a card reviewed, a quiz finished), for streaks,
+ * time spent and weak spots on the progress page (Phase 7).
+ */
+export const studyEvents = mysqlTable("studyEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  kind: mysqlEnum("kind", ["flashcard", "quiz"]).notNull(),
+  recordingId: int("recordingId"),
+  flashcardId: int("flashcardId"),
+  quizId: int("quizId"),
+  /** Flashcards: 1 remembered, 0 forgotten. Quizzes: the score in percent. */
+  result: int("result").notNull(),
+  seconds: int("seconds").default(0).notNull(),
+  localDate: date("localDate", { mode: "string" }).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("studyEvents_user_date_idx").on(table.userId, table.localDate),
+  index("studyEvents_recording_idx").on(table.recordingId),
+]);
+
+export type StudyEvent = typeof studyEvents.$inferSelect;

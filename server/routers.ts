@@ -24,6 +24,7 @@ import { accountRouter } from "./accountRouter";
 import { purgeRecordings } from "./purgeRecordings";
 import { sharingRouter } from "./sharingRouter";
 import { MAX_BOOKMARKS_PER_RECORDING, bookmarkInputSchema, bookmarksRouter, saveBookmarks } from "./bookmarks";
+import { plannerRouter, recordCardStudy, recordQuizStudy } from "./planner";
 import { customNotificationInputSchema, dismissNotificationInputSchema } from "./notificationInput";
 import { renameSpeakerInSegments, speakerRenameInputSchema, transcriptUpdateInputSchema } from "./transcriptInput";
 import { desc, and, sql } from "drizzle-orm";
@@ -660,6 +661,10 @@ export const appRouter = router({
         recordingId: z.number(),
         flashcardId: z.number(),
         status: z.enum(["new", "learning", "mastered"]),
+        // Phase 7: time on the card and the browser's calendar date, for the planner. Optional so
+        // older app versions keep working.
+        seconds: z.number().min(0).max(86_400).optional(),
+        localDate: z.string().max(10).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const recording = await getRecordingByIdDb(input.recordingId);
@@ -673,7 +678,18 @@ export const appRouter = router({
           throw new Error("Flashcard not found");
         }
 
-        return recordFlashcardReview({ ...input, userId: ctx.user.id });
+        // Schedule first: it reads the card's previous status, which the review below overwrites.
+        if (input.status !== "new") {
+          await recordCardStudy({
+            userId: ctx.user.id,
+            recordingId: input.recordingId,
+            flashcardId: input.flashcardId,
+            grade: input.status === "mastered" ? "good" : "again",
+            seconds: input.seconds,
+            localDate: input.localDate,
+          });
+        }
+        return recordFlashcardReview({ recordingId: input.recordingId, flashcardId: input.flashcardId, status: input.status, userId: ctx.user.id });
       }),
 
     generateFlashcards: aiProcedure
@@ -881,6 +897,7 @@ export const appRouter = router({
   notifications: notificationsRouter,
   sharing: sharingRouter,
   bookmarks: bookmarksRouter,
+  planner: plannerRouter,
   courses: coursesRouter,
   tags: tagsRouter,
   actionItems: actionItemsRouter,
@@ -1052,6 +1069,7 @@ export const appRouter = router({
       .input(z.object({
         quizId: z.number(),
         answers: z.record(z.string(), z.string()),
+        localDate: z.string().max(10).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const quiz = await getQuizById(input.quizId);
@@ -1070,6 +1088,7 @@ export const appRouter = router({
         }
         const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
         await createQuizAttempt({ quizId: input.quizId, userId: ctx.user.id, answers: input.answers, score });
+        await recordQuizStudy({ userId: ctx.user.id, recordingId: quiz.recordingId, quizId: input.quizId, score, localDate: input.localDate });
         return { score, correct, total: questions.length };
       }),
 
