@@ -1,3 +1,4 @@
+import { sessionIsValid } from "./sessionRevocation";
 import { eq } from "drizzle-orm";
 import type { Request } from "express";
 import { users } from "../drizzle/schema";
@@ -15,5 +16,5 @@ export async function getVerifiedSession(req: Request): Promise<SessionData | nu
   const db = await getDb();
   if (!db) return null;
   const [user] = await db.select({ id: users.id, passwordHash: users.passwordHash }).from(users).where(eq(users.id, session.userId)).limit(1);
-  return user && sessionMatchesUser(session, user) ? session : null;
+  return user && (await sessionIsValid(session, user)) ? session : null;
 }

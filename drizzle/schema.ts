@@ -1221,3 +1221,20 @@ export const referrals = mysqlTable("referrals", {
   uniqueIndex("referrals_referred_unique").on(table.referredUserId),
   index("referrals_referrer_idx").on(table.referrerId),
 ]);
+
+/**
+ * Sessions signed out before they expire (Phase 7). A row with `sid` revokes one
+ * session (sign out); a row without one revokes every session the account made
+ * before `cutoffAt` (sign out everywhere). Rows can go once `expiresAt` passes,
+ * because the sessions they cover have expired by then.
+ */
+export const sessionRevocations = mysqlTable("sessionRevocations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  sid: varchar("sid", { length: 32 }),
+  cutoffAt: timestamp("cutoffAt"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("sessionRevocations_user_idx").on(table.userId),
+]);

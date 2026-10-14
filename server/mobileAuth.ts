@@ -1,3 +1,4 @@
+import { revokeSession, sessionIsValid } from "./sessionRevocation";
 import type { Express, NextFunction, Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { users, type User } from "../drizzle/schema";
@@ -108,7 +109,7 @@ export function registerMobileRoutes(app: Express) {
         return;
       }
       // A token from before a password change must not be refreshed into a valid one.
-      if (!sessionMatchesUser(session, user)) {
+      if (!(await sessionIsValid(session, user))) {
         res.status(401).json({ error: "Not authenticated" });
         return;
       }
@@ -132,6 +133,7 @@ export function registerMobileRoutes(app: Express) {
     } catch (error) {
       console.error("[MobileAuth] could not remove device token", error);
     }
+    await revokeSession(session);
     res.json({ success: true });
   });
 

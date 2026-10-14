@@ -1,3 +1,4 @@
+import { deleteSessionRevocationsForUser } from "./sessionRevocation";
 import { deleteReferralsForUser, exportReferralsForUser } from "./referrals";
 import { deletePlannerDataForUser, exportPlannerDataForUser } from "./planner";
 import { TRPCError } from "@trpc/server";
@@ -194,6 +195,7 @@ export const accountRouter = router({
       await db.delete(flashcardReviews).where(eq(flashcardReviews.userId, userId));
       await deletePlannerDataForUser(userId);
       await deleteReferralsForUser(userId);
+      await deleteSessionRevocationsForUser(userId);
       await db.delete(chatHistory).where(eq(chatHistory.userId, userId));
       await db.delete(studyGuides).where(eq(studyGuides.userId, userId));
       await db.delete(quizAttempts).where(eq(quizAttempts.userId, userId));

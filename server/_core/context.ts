@@ -1,3 +1,4 @@
+import { sessionIsValid } from "../sessionRevocation";
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
@@ -34,7 +35,7 @@ export async function createContext(
           .from(users)
           .where(eq(users.id, session.userId))
           .limit(1);
-        if (dbUser.length > 0 && sessionMatchesUser(session, dbUser[0])) {
+        if (dbUser.length > 0 && (await sessionIsValid(session, dbUser[0]))) {
           user = dbUser[0];
         }
       }

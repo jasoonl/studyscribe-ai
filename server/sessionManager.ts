@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import type { Request } from "express";
 const { sign, verify } = jwt;
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { getJwtSecret } from "./_core/secrets";
 const SESSION_COOKIE_NAME = "studyscribe_session";
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -19,6 +19,8 @@ export interface SessionData {
    * made before Phase 6, which stay valid until they expire.
    */
   pv?: string;
+  /** Session id, so this one session can be signed out (sessionRevocation.ts). Absent before Phase 7. */
+  sid?: string;
   iat?: number;
   exp?: number;
 }
@@ -33,6 +35,7 @@ export function passwordFingerprint(passwordHash: string | null | undefined): st
 export function createSessionToken(data: { userId: number; email: string; role: "admin" | "user"; passwordHash?: string | null }): string {
   const payload: Omit<SessionData, "iat" | "exp"> = { userId: data.userId, email: data.email, role: data.role };
   if (data.passwordHash !== undefined) payload.pv = passwordFingerprint(data.passwordHash);
+  payload.sid = randomBytes(12).toString("base64url");
   return sign(payload, getJwtSecret(), {
     expiresIn: "30d",
   }) as string;
