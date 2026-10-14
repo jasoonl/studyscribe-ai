@@ -187,6 +187,10 @@ Policies live at `/terms`, `/privacy`, `/cookies`, `/refunds` and `/credits`, al
 4. Team billing: create a recurring monthly per-seat price and set `STRIPE_PRICE_TEAM` (needs the rest of Stripe billing); the existing webhook endpoint also handles team subscriptions. Allow quantity changes in the customer portal.
 5. SAML: create a WorkOS project, set `WORKOS_API_KEY` and `WORKOS_CLIENT_ID`, add the redirect URI `https://<domain>/api/auth/sso/callback`, create a WorkOS organisation per customer and paste its id next to the team on the Admin page; the team's owner then opens "Open SSO setup" to connect their identity provider.
 
+### Claude skills
+
+`.claude/skills/ui-ux-pro-max` is a vendored copy of UI UX Pro Max. Don't edit it by hand: update it from upstream as described in `tools/claude-skills/README.md`. `.claude/skills/studyscribe-ui` holds this repo's UI house rules. For any UI change, use both. Where their recommendations conflict, the house rules win, so keep the existing palette and fonts rather than adopting a generated design system.
+
 ### Deployment
 
 Vercel is the active production target: `vercel.json` builds with `npm run build`, routes `/api/*` to the bundled `api/index.mjs` handler, and serves the SPA for everything else. Deploys are automatic on push to `main` via Vercel's GitHub integration — there is no separate deploy step or CI gate to run manually; check deploy status via the GitHub commit status API (`context: "Vercel"`) or the Vercel dashboard. `render.yaml`/`railway.json`/`railway.toml`/`Procfile`/`render-build.sh` exist from an evaluated-but-not-completed migration off Vercel; don't assume they're current.
