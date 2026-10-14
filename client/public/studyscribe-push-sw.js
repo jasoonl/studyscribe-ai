@@ -1,3 +1,85 @@
+// StudyScribe's service worker: browser push (since Phase 1) and offline use (Phase 7).
+// Registered as /studyscribe-push-sw.js?v=<build id> (client/src/lib/serviceWorker.ts);
+// keep the file name, because existing push subscriptions belong to this registration.
+
+const BUILD = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE = `studyscribe-app-${BUILD}`;
+const SHELL = "/";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      // The page shell, then every built JS and CSS file, so any page opens offline.
+      // Best effort: one missing file must not stop the worker installing.
+      await cache.add(new Request(SHELL, { cache: "reload" })).catch(() => {});
+      try {
+        const list = await fetch("/sw-assets.json", { cache: "no-store" });
+        if (list.ok) {
+          const { files } = await list.json();
+          await Promise.all((files || []).map((file) => cache.add(file).catch(() => {})));
+        }
+      } catch {
+        // Development has no asset list; files are cached as they load instead.
+      }
+      await self.skipWaiting();
+    })(),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(names.filter((name) => name.startsWith("studyscribe-app-") && name !== CACHE).map((name) => caches.delete(name)));
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  // Account data, audio and anything private always goes to the network and is never cached here.
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/manus-storage/")) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const response = await fetch(request);
+          if (response.ok) {
+            const cache = await caches.open(CACHE);
+            await cache.put(SHELL, response.clone());
+          }
+          return response;
+        } catch {
+          return (await caches.match(SHELL)) || Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith("/assets/")) {
+    // Built files have a content hash in their name, so a cached copy never goes stale.
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(CACHE);
+          await cache.put(request, response.clone());
+        }
+        return response;
+      })(),
+    );
+  }
+});
+
 self.addEventListener("push", (event) => {
   const fallback = {
     title: "StudyScribe AI",

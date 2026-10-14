@@ -1,3 +1,5 @@
+import { clearOfflineData } from "@/lib/offlineStore";
+import { OFFLINE_OWNER_KEY } from "@/lib/offlinePack";
 /**
  * One `/api/auth/me` request for everything that asks at once. ProtectedRoute,
  * the page and its header each used to ask on mount, three requests in a row
@@ -40,4 +42,11 @@ export function fetchSessionUser(fetcher: typeof fetch = fetch): Promise<Session
 /** After signing in or out, the next check must ask the server again. */
 export function forgetSessionUser() {
   cached = null;
+  // Signing out also removes recordings kept offline, so a shared computer keeps nothing.
+  void clearOfflineData();
+  try {
+    localStorage.removeItem(OFFLINE_OWNER_KEY);
+  } catch {
+    // Storage blocked: nothing was kept.
+  }
 }
