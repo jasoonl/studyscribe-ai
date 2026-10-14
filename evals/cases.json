@@ -1,0 +1,18 @@
+{
+  "_comment": "Recordings and questions from the demo library (scripts/demo-video/v2/seed-library.mjs). Keep the two in step.",
+  "recordings": [
+    "Cell Biology: Mitochondria and ATP",
+    "World History: Causes of World War I",
+    "Organic Chemistry: SN1 vs SN2 Reactions",
+    "Thermodynamics, lecture 4",
+    "Intro to Microeconomics: Supply and Demand"
+  ],
+  "quizQuestions": 10,
+  "ask": [
+    { "question": "What does the acronym MAIN stand for?", "expect": ["militarism", "alliances", "imperialism", "nationalism"], "source": "World History: Causes of World War I" },
+    { "question": "Where does the Krebs cycle run?", "expect": ["matrix", "mitochondri"], "source": "Cell Biology: Mitochondria and ATP" },
+    { "question": "What happens to entropy in an isolated system?", "expect": ["never", "decrease"], "source": "Thermodynamics, lecture 4" },
+    { "question": "Why does SN1 give a racemic mixture?", "expect": ["carbocation", "planar"], "source": "Organic Chemistry: SN1 vs SN2 Reactions" },
+    { "question": "How do I adjust the carburetor on a motorcycle?", "expect": [] }
+  ]
+}
