@@ -209,9 +209,9 @@ Carried over from Phase 6:
 - ~~A server-side session store, so "sign out everywhere" and logout revoke a copied token.~~ Done (migration 0033).
 - ~~Hashing password reset tokens at rest.~~ Done (no migration needed).
 - ~~Consistent outage messages for every AI procedure, and live probes for Resend, Recall.ai and WorkOS on the System health page.~~ Done (`server/aiErrors.ts`).
-- Loading the live transcription and slide capture code only when a recording starts (about 10 KB gzipped still in the app shell).
+- ~~Loading the live transcription and slide capture code only when a recording starts.~~ Done (the app shell is about 4 KB gzipped smaller).
 - ~~Refreshed landing screenshots.~~ Done (`scripts/landing/capture.mjs`).
-- Live text inside the floating recording pill, and Study help on pages other than the record pages (Phase 3 leftovers).
+- ~~Live text inside the floating recording pill.~~ Done. Still open: Study help on pages other than the record pages (Phase 3 leftover).
 
 ---
 
