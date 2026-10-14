@@ -15,6 +15,7 @@ import { NotificationProvider } from "./components/NotificationContainer";
 import { useCustomAuth } from "@/_core/hooks/useCustomAuth";
 import { Loader2 } from "lucide-react";
 import { CalendarReminderWatcher } from "@/components/CalendarReminderWatcher";
+import { OfflineStatus } from "./components/OfflineStatus";
 
 // Route components are code-split per page: eagerly importing every page
 // (including heavy per-page deps like mermaid/streamdown/recharts) bundled
@@ -67,6 +68,7 @@ const CoursePage = lazy(() => import("./pages/CoursePage"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const Progress = lazy(() => import("./pages/Progress"));
+const Offline = lazy(() => import("./pages/Offline"));
 const Templates = lazy(() => import("./pages/Templates"));
 const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
@@ -103,6 +105,8 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
 
   if (!isAuthenticated) {
+    // With no connection the session can't be checked and signing in can't work; offer what is on the device.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return <Redirect to="/offline" />;
     // Come back here after signing in (a group join link, a shared recording, a deep link with ?t=).
     const next = nextFromLocation(window.location.pathname, window.location.search);
     return <Redirect to={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} />;
@@ -163,6 +167,7 @@ function Router() {
         <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
         <Route path="/plan" component={() => <ProtectedRoute component={StudyPlan} />} />
         <Route path="/progress" component={() => <ProtectedRoute component={Progress} />} />
+        <Route path="/offline" component={Offline} />
         <Route path="/templates" component={() => <ProtectedRoute component={Templates} />} />
         <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
         <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />
@@ -208,6 +213,7 @@ function App() {
                 <Toaster />
                 <Router />
                 <RecordingIndicator />
+                <OfflineStatus />
                 <CookieBanner />
               </LiveTranscriptProvider>
             </RecorderProvider>

@@ -1,3 +1,4 @@
+import { registerServiceWorker } from "./serviceWorker";
 type BrowserPushSubscription = {
   endpoint: string;
   expirationTime: number | null;
@@ -16,7 +17,7 @@ export function isBrowserPushSupported() {
 }
 
 export async function createBrowserPushSubscription(publicKey: string): Promise<BrowserPushSubscription> {
-  const registration = await navigator.serviceWorker.register("/studyscribe-push-sw.js");
+  await registerServiceWorker();
   const activeRegistration = await navigator.serviceWorker.ready;
   const subscription = await activeRegistration.pushManager.getSubscription() ?? await activeRegistration.pushManager.subscribe({
     userVisibleOnly: true,

@@ -39,6 +39,9 @@ const COOKIES: Row[] = [
 const BROWSER_STORAGE: Row[] = [
   { name: CONSENT_KEY, purpose: "Remembers whether you accepted or declined analytics.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe-recorder", purpose: "Keeps a copy of a recording in progress on your device, so a crash or closed tab does not lose it (IndexedDB).", lasts: "Until the recording is uploaded or discarded" },
+  { name: "studyscribe-offline", purpose: "Keeps the transcripts, flashcards and notes of recordings you chose to keep offline, and flashcard answers made offline until they are sent (IndexedDB).", lasts: "Until you remove them or sign out" },
+  { name: "studyscribe_offline_user", purpose: "Remembers which account kept recordings offline, so the offline page shows only theirs.", lasts: "Until you sign out" },
+  { name: "studyscribe-app-*", purpose: "A copy of the app's own code (not your data), so StudyScribe opens without a connection (service worker cache).", lasts: "Until the next version of the app replaces it" },
   { name: "studyscribe_onboarding_done", purpose: "Remembers that you have seen the welcome tour.", lasts: "Until you clear site data" },
   { name: "studyscribe_setup_checklist_hidden:*", purpose: "Remembers that you hid the Get set up list on your library.", lasts: "Until you clear site data" },
   { name: "studyscribe_calendar_prompt_hidden", purpose: "Remembers that you chose Not now for connecting Google Calendar on your library.", lasts: "Until you clear site data" },
