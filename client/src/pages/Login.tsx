@@ -52,7 +52,12 @@ export default function Login() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
+        // The team requires single sign-on: open that panel with the address filled in.
+        if (error.sso) {
+          setSsoOpen(true);
+          setSsoEmail(email);
+        }
         throw new Error(error.error || "Login failed");
       }
 

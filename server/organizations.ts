@@ -45,6 +45,7 @@ import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { adminProcedure, protectedProcedure, publicProcedure, router, sessionProcedure } from "./_core/trpc";
 import { CONTACT_EMAIL, OPERATOR_NAME } from "@shared/legal";
 import { describeWorkosConfig, generateSsoPortalLink, isWorkosConfigured } from "./workos";
+import { canRequireSso, isTeamSsoOnly, setTeamSsoOnly } from "./ssoEnforcement";
 
 /**
  * Teams and schools (F3).
@@ -351,6 +352,7 @@ async function deleteOrganization(org: Organization) {
   await db.delete(organizationInvites).where(eq(organizationInvites.orgId, org.id));
   await db.delete(organizationMembers).where(eq(organizationMembers.orgId, org.id));
   await db.delete(organizations).where(eq(organizations.id, org.id));
+  await setTeamSsoOnly(org.id, false).catch(() => undefined);
 }
 
 /** A person leaving (or removed): their courses leave the library with them. */
@@ -387,13 +389,19 @@ export const teamsRouter = router({
           [] as Array<{ id: number; orgName: string; role: string }>,
         )
       : [];
+    const requiredSso = membership ? await isTeamSsoOnly(membership.org.id) : false;
     return {
       available,
       billingConfigured: teamBilling() !== null,
       ssoConfigured: isWorkosConfigured(),
       emailConfigured: isTransactionalEmailConfigured(),
       plan: { name: TEAM_PLAN.name, priceMonthlyUsd: TEAM_PLAN.priceMonthlyUsd, transcriptionMinutesPerMonth: TEAM_PLAN.transcriptionMinutesPerMonth, aiGenerationsPerMonth: TEAM_PLAN.aiGenerationsPerMonth },
-      org: membership ? publicOrg(membership.org, membership.role) : null,
+      org: membership
+        ? (() => {
+            const shaped = publicOrg(membership.org, membership.role);
+            return { ...shaped, sso: { ...shaped.sso, canRequire: canRequireSso(membership.org) && isWorkosConfigured(), required: requiredSso } };
+          })()
+        : null,
       seats: membership ? seatSummary(await seatInput(membership.org)) : null,
       pendingInvites: membership ? [] : pending,
     };
@@ -841,6 +849,20 @@ export const teamsRouter = router({
     if (!isWorkosConfigured()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "SAML sign-in is not set up on this server yet." });
     if (!org.workosOrganizationId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Ask StudyScribe to turn on SAML for your team first." });
     return { url: await generateSsoPortalLink(org.workosOrganizationId) };
+  }),
+
+  /**
+   * Require single sign-on for the team's domain (owner only). Needs a verified
+   * domain and a linked WorkOS organisation; the owner keeps other sign-in
+   * methods as a way back in if the identity provider breaks.
+   */
+  setSsoOnly: sessionProcedure.input(z.object({ required: z.boolean() })).mutation(async ({ ctx, input }) => {
+    const { org } = await requireMembership(ctx.user.id, "manage_sso");
+    if (input.required && !(canRequireSso(org) && isWorkosConfigured())) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Verify your domain and finish SAML setup before requiring single sign-on." });
+    }
+    await setTeamSsoOnly(org.id, input.required);
+    return { required: input.required };
   }),
 
   /** App admins: every team, for the Admin page, and linking a team to its WorkOS organisation. */

@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { SSO_REQUIRED_MESSAGE, ssoRequiredForEmail } from "./ssoEnforcement";
 import { loginWithEmailPassword, registerWithEmailPassword, registerOpenSignup, loginWithGoogleExistingOnly, validateInviteCode, resetPasswordWithToken, createPasswordResetRequest } from "./authService";
 import { createSessionToken, setSessionCookie, clearSessionCookie, getSessionFromCookie } from "./sessionManager";
 import { deletePasswordResetToken, getDb, getPasswordResetTokenByToken } from "./db";
@@ -35,6 +36,12 @@ export function registerAuthRoutes(app: Express) {
 
       if (result.error) {
         res.status(401).json({ error: result.error });
+        return;
+      }
+
+      // A team that requires single sign-on refuses passwords for its domain (owner excepted).
+      if (result.user && (await ssoRequiredForEmail(result.user.email, result.user.id))) {
+        res.status(403).json({ error: SSO_REQUIRED_MESSAGE, sso: true });
         return;
       }
 
@@ -82,6 +89,11 @@ export function registerAuthRoutes(app: Express) {
 
       if (confirmedAge !== true) {
         res.status(400).json({ error: `You must confirm you are at least ${MIN_AGE} years old to create an account` });
+        return;
+      }
+
+      if (typeof email === "string" && (await ssoRequiredForEmail(email))) {
+        res.status(403).json({ error: SSO_REQUIRED_MESSAGE, sso: true });
         return;
       }
 
@@ -307,6 +319,11 @@ export function registerAuthRoutes(app: Express) {
           res.redirect(302, `${origin}/login?error=${encodeURIComponent(`To sign up, confirm you are at least ${MIN_AGE} and accept the Terms on the sign-up page.`)}`);
           return;
         }
+        // Check before an account exists, so a refused sign-up leaves nothing behind.
+        if (await ssoRequiredForEmail(result.user.email)) {
+          res.redirect(302, `${origin}/login?sso=1&error=${encodeURIComponent(SSO_REQUIRED_MESSAGE)}`);
+          return;
+        }
         const outcome = await completeGoogleSignup(result.user, stateData.invite, req.ip ?? "unknown");
         if ("error" in outcome) {
           res.redirect(302, `${origin}/login?error=${encodeURIComponent(outcome.error)}`);
@@ -330,6 +347,11 @@ export function registerAuthRoutes(app: Express) {
 
       if (!user) {
         res.status(500).json({ error: "Failed to create user" });
+        return;
+      }
+
+      if (await ssoRequiredForEmail(user.email, user.id)) {
+        res.redirect(302, `${origin}/login?sso=1&error=${encodeURIComponent(SSO_REQUIRED_MESSAGE)}`);
         return;
       }
 
