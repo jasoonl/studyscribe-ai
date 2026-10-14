@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Linking, Platform, View } from "react-native";
 import { router } from "expo-router";
-import { Bell, BookA, CreditCard, Download, FileText, HelpCircle, LogOut, Shield, Trash2, UserRound } from "lucide-react-native";
+import { Bell, BookA, CreditCard, Download, LogOut, Trash2, UserRound } from "lucide-react-native";
 import { CONTACT_EMAIL } from "@shared/legal";
 import { SectionTitle } from "@/components/ui/Card";
 import { ListGroup, ListRow } from "@/components/ui/misc";
@@ -89,13 +89,13 @@ export default function SettingsScreen() {
 
       <SectionTitle>Help and legal</SectionTitle>
       <ListGroup>
-        <ListRow title="Help" icon={icon(HelpCircle)} onPress={() => openWebPage("/help")} />
-        <ListRow title="Terms of Service" icon={icon(FileText)} onPress={() => openWebPage("/terms")} />
-        <ListRow title="Privacy Policy" icon={icon(Shield)} onPress={() => openWebPage("/privacy")} />
-        <ListRow title="Cookie Policy" icon={icon(FileText)} onPress={() => openWebPage("/cookies")} />
-        <ListRow title="Refund Policy" icon={icon(FileText)} onPress={() => openWebPage("/refunds")} />
-        <ListRow title="Credits and licences" icon={icon(FileText)} onPress={() => openWebPage("/credits")} />
-        <ListRow title="Contact support" subtitle={CONTACT_EMAIL} icon={icon(HelpCircle)} onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} />
+        <ListRow title="Help" onPress={() => openWebPage("/help")} />
+        <ListRow title="Terms of Service" onPress={() => openWebPage("/terms")} />
+        <ListRow title="Privacy Policy" onPress={() => openWebPage("/privacy")} />
+        <ListRow title="Cookie Policy" onPress={() => openWebPage("/cookies")} />
+        <ListRow title="Refund Policy" onPress={() => openWebPage("/refunds")} />
+        <ListRow title="Credits and licences" onPress={() => openWebPage("/credits")} />
+        <ListRow title="Contact support" subtitle={CONTACT_EMAIL} onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} />
       </ListGroup>
 
       <View className="mt-6">

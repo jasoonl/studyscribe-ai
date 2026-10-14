@@ -124,7 +124,7 @@ function RecordPane() {
             accessibilityLabel="Start recording"
             accessibilityHint="Records until you press stop, even with the screen locked"
             onPress={start}
-            className="h-24 w-24 items-center justify-center rounded-full bg-primary active:opacity-85"
+            className="h-24 w-24 items-center justify-center rounded-full bg-primary active:bg-brand-deep"
           >
             <Mic size={36} color={theme.primaryForeground} />
           </Pressable>

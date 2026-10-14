@@ -62,7 +62,7 @@ export default function AskScreen() {
                 accessibilityRole="link"
                 accessibilityLabel={`Source ${citation.n}: ${citation.title}${citation.start !== null ? ` at ${formatTimestamp(citation.start)}` : ""}`}
                 onPress={() => router.push(`/recording/${citation.recordingId}${citation.start !== null ? `?t=${Math.floor(citation.start)}` : ""}` as never)}
-                className="gap-0.5 rounded-lg bg-muted px-3 py-2 active:opacity-80"
+                className="gap-0.5 rounded-lg bg-muted px-3 py-2 active:bg-secondary"
               >
                 <Text variant="caption" className="text-primary">
                   [{citation.n}] {citation.title}

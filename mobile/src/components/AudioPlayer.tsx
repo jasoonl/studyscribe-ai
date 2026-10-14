@@ -158,7 +158,7 @@ export function PlayerControls() {
           accessibilityLabel={playing ? "Pause" : "Play"}
           disabled={!ready}
           onPress={toggle}
-          className="h-14 w-14 items-center justify-center rounded-full bg-primary active:opacity-85"
+          className="h-14 w-14 items-center justify-center rounded-full bg-primary active:bg-brand-deep"
           style={{ opacity: ready ? 1 : 0.5 }}
         >
           {playing ? <Pause size={24} color={theme.primaryForeground} fill={theme.primaryForeground} /> : <Play size={24} color={theme.primaryForeground} fill={theme.primaryForeground} />}

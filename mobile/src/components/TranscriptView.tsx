@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, Share, View } from "react-native";
 import { ChevronDown, ChevronUp, Pencil, Search, Share2 } from "lucide-react-native";
 import { usePlayer } from "@/components/AudioPlayer";
@@ -16,6 +16,49 @@ import { useTheme } from "@/theme/tokens";
 export type { Segment } from "@/lib/transcript";
 
 const SPEAKER_TONES = ["text-course-blue", "text-course-teal", "text-course-violet", "text-course-amber", "text-course-rose", "text-course-green"];
+
+/** One transcript line. Memoised: a long lecture has hundreds and the playing line changes every second. */
+const SegmentRow = memo(function SegmentRow({
+  segment,
+  speakerTone,
+  playing,
+  match,
+  onPlay,
+  onRename,
+}: {
+  segment: Segment;
+  speakerTone: string;
+  playing: boolean;
+  match: boolean;
+  onPlay: (seconds: number) => void;
+  onRename?: (speaker: string) => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${segment.speaker ?? "Speaker"} at ${formatTimestamp(segment.start)}: ${segment.text}`}
+      accessibilityHint={onRename ? "Plays from here. Long press to rename the speaker" : "Plays from here"}
+      accessibilityState={{ selected: playing }}
+      onPress={() => onPlay(segment.start)}
+      onLongPress={onRename && segment.speaker ? () => onRename(segment.speaker!) : undefined}
+      className={cn("gap-1 rounded-lg px-3 py-2.5 active:bg-muted", playing && "bg-annotation/60", match && "border border-ring")}
+    >
+      <View className="flex-row items-center gap-2">
+        {segment.speaker ? (
+          <Text variant="label" className={cn("font-semibold", speakerTone)}>
+            {segment.speaker}
+          </Text>
+        ) : null}
+        <Text variant="caption" style={{ fontVariant: ["tabular-nums"] }}>
+          {formatTimestamp(segment.start)}
+        </Text>
+      </View>
+      <Text variant="body" selectable>
+        {segment.text}
+      </Text>
+    </Pressable>
+  );
+});
 
 /**
  * Transcript with speakers: tap a line to play from there, the playing line
@@ -70,8 +113,17 @@ export function TranscriptView({
   const speakers = useMemo(() => [...new Set(segments.map((segment) => segment.speaker).filter(Boolean) as string[])], [segments]);
   const matches = useMemo(() => findMatches(segments, query), [segments, query]);
   const current = matches.length ? matches[Math.min(matchIndex, matches.length - 1)] : -1;
-  const active = player ? activeSegmentIndex(segments, player.currentTime) : -1;
+  const active = player && (player.playing || player.currentTime > 0) ? activeSegmentIndex(segments, player.currentTime) : -1;
   const edited = segments.length > 0 && segments.map((segment) => segment.text).join(" ").replace(/\s+/g, " ").trim() !== fullText.replace(/\s+/g, " ").trim();
+
+  // Stable callbacks, so only the rows whose highlight changes re-render as playback moves.
+  const playerRef = useRef(player);
+  playerRef.current = player;
+  const play = useCallback((seconds: number) => playerRef.current?.seek(seconds, true), []);
+  const startRename = useCallback((speaker: string) => {
+    setRenaming(speaker);
+    setNewName(speaker);
+  }, []);
 
   function step(direction: 1 | -1) {
     if (!matches.length) return;
@@ -133,35 +185,17 @@ export function TranscriptView({
         </View>
       ) : (
         <View className="gap-1">
-          {segments.map((segment, index) => {
-            const speakerTone = segment.speaker ? SPEAKER_TONES[speakers.indexOf(segment.speaker) % SPEAKER_TONES.length] : "text-muted-foreground";
-            const isMatch = index === current;
-            return (
-              <Pressable
-                key={segment.id ?? index}
-                accessibilityRole="button"
-                accessibilityLabel={`${segment.speaker ?? "Speaker"} at ${formatTimestamp(segment.start)}: ${segment.text}`}
-                accessibilityHint={canEdit ? "Plays from here. Long press to rename the speaker" : "Plays from here"}
-                onPress={() => player?.seek(segment.start, true)}
-                onLongPress={canEdit && segment.speaker ? () => (setRenaming(segment.speaker!), setNewName(segment.speaker!)) : undefined}
-                className={cn("gap-1 rounded-lg px-3 py-2.5 active:bg-muted", index === active && "bg-annotation/60", isMatch && "border border-ring")}
-              >
-                <View className="flex-row items-center gap-2">
-                  {segment.speaker ? (
-                    <Text variant="label" className={cn("font-semibold", speakerTone)}>
-                      {segment.speaker}
-                    </Text>
-                  ) : null}
-                  <Text variant="caption" style={{ fontVariant: ["tabular-nums"] }}>
-                    {formatTimestamp(segment.start)}
-                  </Text>
-                </View>
-                <Text variant="body" selectable>
-                  {segment.text}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {segments.map((segment, index) => (
+            <SegmentRow
+              key={segment.id ?? index}
+              segment={segment}
+              speakerTone={segment.speaker ? SPEAKER_TONES[speakers.indexOf(segment.speaker) % SPEAKER_TONES.length] : "text-muted-foreground"}
+              playing={index === active}
+              match={index === current}
+              onPlay={play}
+              onRename={canEdit ? startRename : undefined}
+            />
+          ))}
         </View>
       )}
 

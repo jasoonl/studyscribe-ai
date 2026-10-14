@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
@@ -25,7 +26,7 @@ export function statusBadge(status: string | null) {
   return null;
 }
 
-export function RecordingRow({ recording, course }: { recording: RecordingListItem; course?: CourseSummary }) {
+export const RecordingRow = memo(function RecordingRow({ recording, course }: { recording: RecordingListItem; course?: CourseSummary }) {
   const theme = useTheme();
   const meta = [formatDate(recording.createdAt), formatRecordingDuration(recording.duration), course?.name].filter(Boolean).join(" · ");
   return (
@@ -50,4 +51,4 @@ export function RecordingRow({ recording, course }: { recording: RecordingListIt
       <ChevronRight size={18} color={theme.mutedForeground} />
     </PressableCard>
   );
-}
+});

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
-import { Check } from "lucide-react-native";
+import { Check, ChevronRight } from "lucide-react-native";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/theme/tokens";
 import { Button } from "./Button";
@@ -115,6 +115,7 @@ export function ListRow({
   destructive?: boolean;
   accessibilityHint?: string;
 }) {
+  const theme = useTheme();
   const content = (
     <>
       {icon ? <View className="h-8 w-8 items-center justify-center rounded-lg bg-secondary">{icon}</View> : null}
@@ -124,7 +125,7 @@ export function ListRow({
         </Text>
         {subtitle ? <Text variant="muted">{subtitle}</Text> : null}
       </View>
-      {trailing}
+      {trailing ?? (onPress ? <ChevronRight size={18} color={theme.mutedForeground} /> : null)}
     </>
   );
   if (!onPress) return <View className="min-h-[52px] flex-row items-center gap-3 px-4 py-3">{content}</View>;

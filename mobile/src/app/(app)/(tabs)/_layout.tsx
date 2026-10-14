@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Tabs } from "expo-router";
 import { CheckSquare, Library, MessageCircleQuestion, Mic, Settings } from "lucide-react-native";
 import { useTheme } from "@/theme/tokens";
@@ -6,6 +7,7 @@ import { isLive } from "@/lib/recorder/machine";
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { state } = useRecorder();
   const live = isLive(state);
   return (
@@ -14,7 +16,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.mutedForeground,
-        tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.border },
+        tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.border, height: 58 + insets.bottom, paddingTop: 6 },
         tabBarLabelStyle: { fontFamily: "Geist_500Medium", fontSize: 11, lineHeight: 14 },
         sceneStyle: { backgroundColor: theme.background },
       }}

@@ -11,7 +11,7 @@ export function AuthFrame({ title, subtitle, children, footer }: { title: string
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="flex-grow justify-center px-6 py-8">
           <View className="w-full max-w-[440px] self-center gap-6">
             <View className="items-center gap-3">
-              <Image source={require("@/assets/images/logo.png")} accessibilityIgnoresInvertColors className="h-16 w-16" accessibilityLabel="StudyScribe" />
+              <Image source={require("@/assets/images/logo.png")} accessibilityIgnoresInvertColors style={{ width: 64, height: 64 }} resizeMode="contain" accessibilityLabel="StudyScribe" />
               <View className="items-center gap-1.5">
                 <Text variant="title" className="text-center">
                   {title}

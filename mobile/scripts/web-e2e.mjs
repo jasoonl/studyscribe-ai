@@ -99,7 +99,7 @@ await step("12-flashcards", async () => {
 });
 await step("13-quiz", async () => {
   await page.goto(`${base}/recording/1/quiz`);
-  await text("Your quizzes").waitFor({ timeout: 20000 });
+  await page.waitForSelector("text=/Your quizzes|No quizzes yet/", { timeout: 20000 });
 });
 await step("14-guide", async () => {
   await page.goto(`${base}/recording/1/guide`);

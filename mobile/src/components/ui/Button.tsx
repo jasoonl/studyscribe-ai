@@ -56,20 +56,35 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
         if (haptic) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
         onPress?.(event);
       }}
-      className={cn("flex-row items-center justify-center gap-2 active:opacity-80", containers[variant], sizes[size], inactive && "opacity-50", className)}
+      android_ripple={{ color: "rgba(0,0,0,0.12)", foreground: true }}
+      className={cn("flex-row items-center justify-center gap-2 overflow-hidden", containers[variant], sizes[size], inactive && "opacity-50", className)}
       {...props}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={variant === "primary" || variant === "destructive" ? theme.primaryForeground : theme.primary} />
-      ) : (
-        icon
+      {({ pressed }) => (
+        <>
+          <PressDim pressed={pressed} />
+          {loading ? (
+            <ActivityIndicator size="small" color={variant === "primary" || variant === "destructive" ? theme.primaryForeground : theme.primary} />
+          ) : (
+            icon
+          )}
+          <Text variant={size === "sm" ? "label" : "subheading"} className={cn(labels[variant], size === "sm" && "font-medium")}>
+            {label}
+          </Text>
+        </>
       )}
-      <Text variant={size === "sm" ? "label" : "subheading"} className={cn(labels[variant], size === "sm" && "font-medium")}>
-        {label}
-      </Text>
     </Pressable>
   );
 });
+
+/**
+ * Press feedback: a slight darkening, like the web Button's brightness change,
+ * rather than fading the whole control. The parent needs overflow-hidden.
+ */
+export function PressDim({ pressed }: { pressed: boolean }) {
+  if (!pressed) return null;
+  return <View pointerEvents="none" className="absolute inset-0 bg-black/10" />;
+}
 
 /** A round icon-only button with a required accessibility label. */
 export function IconButton({ icon, label, onPress, className, disabled }: { icon: ReactNode; label: string; onPress?: () => void; className?: string; disabled?: boolean }) {
