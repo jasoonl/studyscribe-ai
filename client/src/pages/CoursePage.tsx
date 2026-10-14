@@ -8,6 +8,7 @@ import { CourseVocabulary } from "@/components/CourseVocabulary";
 import { CourseDot } from "@/components/CourseDot";
 import { TagFilter } from "@/components/CourseStrip";
 import { RecordingList } from "@/components/RecordingList";
+import { useTrashRecording } from "@/hooks/useTrashRecording";
 import { trpc } from "@/lib/trpc";
 
 export default function CoursePage() {
@@ -24,22 +25,13 @@ export default function CoursePage() {
   const { data: courses } = trpc.courses.list.useQuery();
   const { data: tags } = trpc.tags.list.useQuery();
 
-  const deleteRecording = trpc.recordings.delete.useMutation();
   const archive = trpc.courses.archive.useMutation({
     onError: error => toast.error(error.message || "Could not change the course"),
   });
 
   const refresh = () => Promise.all([utils.courses.list.invalidate(), utils.courses.get.invalidate({ id: courseId }), utils.recordings.list.invalidate()]);
 
-  const handleDelete = async (id: number) => {
-    try {
-      await deleteRecording.mutateAsync({ id });
-      toast.success("Recording moved to trash");
-      await Promise.all([utils.recordings.list.invalidate(), utils.recordings.listDeleted.invalidate(), utils.courses.list.invalidate()]);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete recording");
-    }
-  };
+  const handleDelete = useTrashRecording();
 
   const setArchived = async (archived: boolean) => {
     await archive.mutateAsync({ id: courseId, archived });

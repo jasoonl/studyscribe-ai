@@ -13,6 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RecordingList } from "@/components/RecordingList";
+import { useTrashRecording } from "@/hooks/useTrashRecording";
 import { CourseStrip, TagFilter } from "@/components/CourseStrip";
 import { UpcomingTasks } from "@/components/UpcomingTasks";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
@@ -143,7 +144,6 @@ export default function Dashboard() {
   const { data: recordings, isLoading, refetch } = trpc.recordings.list.useQuery();
   const { data: courses } = trpc.courses.list.useQuery();
   const { data: tags } = trpc.tags.list.useQuery();
-  const deleteRecordingMutation = trpc.recordings.delete.useMutation();
   const utils = trpc.useUtils();  // Must be at component level, not inside callbacks
 
   // Calculate statistics
@@ -193,19 +193,7 @@ export default function Dashboard() {
     return filtered;
   }, [recordings, searchQuery, filterType, sortBy, tagFilter]);
 
-  const handleDeleteRecording = async (id: number) => {
-    try {
-      await deleteRecordingMutation.mutateAsync({ id });
-      toast.success("Recording moved to trash");
-      // Invalidate both active and deleted lists
-      await utils.recordings.list.invalidate();
-      await utils.recordings.listDeleted.invalidate();
-    } catch (error) {
-      console.error("Delete error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to delete recording";
-      toast.error(errorMessage);
-    }
-  };
+  const handleDeleteRecording = useTrashRecording();
 
   // Redirect to login if not authenticated
   if (!authLoading && !user) {
