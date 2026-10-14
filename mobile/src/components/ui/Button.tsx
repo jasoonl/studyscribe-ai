@@ -12,6 +12,9 @@ const containers = {
   outline: "border border-border bg-card",
   ghost: "bg-transparent",
   destructive: "bg-destructive",
+  /** A destructive action that is not the point of the screen (e.g. Empty trash under the list). */
+  destructiveOutline: "border border-destructive/40 bg-card",
+  destructiveGhost: "bg-transparent",
 } as const;
 
 const labels = {
@@ -20,6 +23,8 @@ const labels = {
   outline: "text-foreground",
   ghost: "text-primary",
   destructive: "text-destructive-foreground",
+  destructiveOutline: "text-destructive",
+  destructiveGhost: "text-destructive",
 } as const;
 
 const sizes = {

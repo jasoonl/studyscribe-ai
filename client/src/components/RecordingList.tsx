@@ -1,11 +1,17 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import SwipeRow from "@/components/reactbits/SwipeRow";
-import FuseButton from "@/components/reactbits/FuseButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CourseDot } from "@/components/CourseDot";
 import { RecordingOrganizer } from "@/components/RecordingOrganizer";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { Delete02Icon, MoreHorizontalIcon } from "@hugeicons/core-free-icons";
 
 export type LibraryRecording = {
   id: number;
@@ -46,8 +52,8 @@ export function RecordingList({ recordings, courses, tags, onDelete, showCourse 
             radius={16}
             rowColor="var(--card)"
             textColor="var(--foreground)"
-            drawerColor="#b91c1c"
-            actionColor="#dc2626"
+            drawerColor="var(--destructive)"
+            actionColor="var(--destructive)"
             actions={[{ id: "trash", label: "Trash" }]}
             onCommit={() => onDelete(recording.id)}
             className="rounded-2xl ring-1 ring-border/60"
@@ -82,21 +88,23 @@ export function RecordingList({ recordings, courses, tags, onDelete, showCourse 
               <Link href={`/recording/${recording.id}`} className="hidden sm:block">
                 <Button size="sm" variant="outline">View</Button>
               </Link>
-              <FuseButton
-                label="Delete"
-                undoLabel="Undo"
-                doneLabel="Moved to trash"
-                icon={<HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.8} />}
-                size="sm"
-                radius={18}
-                color="#ffffff"
-                background="var(--destructive)"
-                fuseColor="#fde68a"
-                commitOn="fuseEnd"
-                settle="stay"
-                undoWindow={4000}
-                onCommit={() => onDelete(recording.id)}
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="size-8 shrink-0 text-muted-foreground" aria-label={`More actions for ${recording.title}`}>
+                    <HugeiconsIcon icon={MoreHorizontalIcon} size={18} strokeWidth={1.8} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/recording/${recording.id}`}>Open</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={() => onDelete(recording.id)}>
+                    <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.8} />
+                    Move to trash
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </SwipeRow>
         );

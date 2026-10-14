@@ -53,14 +53,14 @@ export default function TrashScreen() {
                 <Button
                   className="flex-1"
                   size="sm"
-                  variant="ghost"
+                  variant="destructiveGhost"
                   label="Delete forever"
                   onPress={() => confirm("Delete forever?", "The audio, transcript and study tools are removed for good.", () => purge.mutate({ id: item.id }))}
                 />
               </View>
             </Card>
           ))}
-          <Button label="Empty trash" variant="destructive" loading={empty.isPending} onPress={() => confirm("Empty trash?", `${items.length} recordings are removed for good.`, () => empty.mutate())} />
+          <Button label="Empty trash" variant="destructiveOutline" loading={empty.isPending} onPress={() => confirm("Empty trash?", `${items.length} recordings are removed for good.`, () => empty.mutate())} />
         </>
       )}
     </Screen>

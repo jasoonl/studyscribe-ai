@@ -43,7 +43,7 @@ export default function Analytics() {
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1 text-muted-foreground">
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">Dashboard</span>
+            <span className="sr-only sm:not-sr-only">Library</span>
           </Button>
           <div className="h-4 w-px bg-border" />
           <div>

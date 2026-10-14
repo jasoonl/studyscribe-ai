@@ -13,8 +13,13 @@ export async function setupVite(app: Express, server: Server) {
     allowedHosts: true as const,
   };
 
+  // vite.config.ts exports a function (it varies plugins by command), so it
+  // has to be called; spreading the function itself drops `root` and the
+  // aliases, and the dev server then serves index.html for /src/main.tsx.
+  const resolvedConfig =
+    typeof viteConfig === "function" ? await viteConfig({ command: "serve", mode: "development" }) : viteConfig;
   const vite = await createViteServer({
-    ...viteConfig,
+    ...resolvedConfig,
     configFile: false,
     server: {
       ...serverOptions,

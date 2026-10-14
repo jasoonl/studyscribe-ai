@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Mic, FileText, Sparkles, ChevronRight, ChevronLeft, X } from "lucide-react";
+import { Mic, FileText, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
 
 const ONBOARDING_KEY = "studyscribe_onboarding_done";
 
@@ -72,17 +72,8 @@ export function OnboardingModal() {
       <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl">
         {/* Top color band */}
         <div className={`${current.color} px-8 pt-8 pb-6 transition-colors duration-300`}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-white rounded-xl shadow-sm">
-              {current.icon}
-            </div>
-            <button
-              onClick={dismiss}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1"
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div className="mb-4 inline-flex p-3 bg-white rounded-xl shadow-sm">
+            {current.icon}
           </div>
           <DialogTitle className="text-xl font-bold text-foreground mb-2">{current.title}</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground leading-relaxed">{current.description}</DialogDescription>
