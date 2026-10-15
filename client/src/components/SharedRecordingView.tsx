@@ -13,43 +13,42 @@ import { trpc } from "@/lib/trpc";
 import { formatTranscriptTimestamp, type TranscriptSegment } from "@/lib/transcriptSegments";
 import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
 import { roleAllows, type AccessRole } from "@shared/sharing";
+import { t, useI18n } from "@/i18n";
+import type { MessageKey } from "@shared/i18n";
 
-const ROLE_SENTENCE: Record<AccessRole, string> = {
-  view: "Shared with you. You can listen and read.",
-  comment: "Shared with you. You can highlight and comment on the transcript.",
-  edit: "Shared with you. You can comment, correct the transcript and rename speakers.",
-  owner: "This is your recording.",
-};
+const NOTE_TYPES = ["summary", "key_concepts", "action_items", "formulas", "study_guide"];
+const noteTypeLabel = (type: string) => (NOTE_TYPES.includes(type) ? t(`notes.type.${type}` as MessageKey) : type.replace(/_/g, " "));
 
 /** Plain-text transcript editing for people with the edit role (same procedure the owner uses). */
 function TranscriptTextEditor({ recordingId, fullText, onClose }: { recordingId: number; fullText: string; onClose: () => void }) {
+  useI18n();
   const utils = trpc.useUtils();
   const [text, setText] = useState(fullText);
   const update = trpc.transcription.update.useMutation({
     onSuccess: async () => {
       await utils.sharing.getSharedWithMe.invalidate({ recordingId });
-      toast.success("Transcript saved");
+      toast.success(t("shared.view.saved"));
       onClose();
     },
-    onError: error => toast.error(error.message || "Could not save the transcript"),
+    onError: error => toast.error(error.message || t("shared.view.saveFailed")),
   });
   return (
     <div className="space-y-3">
       <textarea
         value={text}
         onChange={event => setText(event.target.value)}
-        aria-label="Transcript text"
+        aria-label={t("shared.view.textLabel")}
         className="h-72 w-full resize-y rounded-lg border border-border bg-background p-3 font-mono text-sm text-foreground"
       />
       <div className="flex gap-2">
         <Button size="sm" disabled={!text.trim() || update.isPending} onClick={() => update.mutate({ recordingId, fullText: text })}>
-          {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
+          {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("shared.view.saveChanges")}
         </Button>
         <Button size="sm" variant="outline" onClick={onClose}>
-          Cancel
+          {t("shared.view.cancel")}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">The owner sees your changes straight away. Timestamps and speaker lines stay as they were.</p>
+      <p className="text-xs text-muted-foreground">{t("shared.view.editorHint")}</p>
     </div>
   );
 }
@@ -85,6 +84,7 @@ type SharedBundle = {
 };
 
 function FlashcardItem({ question, answer }: { question: string; answer: string }) {
+  useI18n();
   const [revealed, setRevealed] = useState(false);
   return (
     <Card
@@ -96,13 +96,14 @@ function FlashcardItem({ question, answer }: { question: string; answer: string 
       {revealed ? (
         <p className="text-sm text-muted-foreground">{answer}</p>
       ) : (
-        <p className="text-xs text-muted-foreground italic">Select to reveal the answer</p>
+        <p className="text-xs text-muted-foreground italic">{t("shared.view.reveal")}</p>
       )}
     </Card>
   );
 }
 
 export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; role?: AccessRole }) {
+  useI18n();
   const { recording, transcript, studyNotes, flashcards, studyGuides, quizzes } = bundle;
   const playerRef = useRef<AudioPlayerHandle>(null);
   // Slides need a signed-in viewer; public links leave them out.
@@ -116,7 +117,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{recording.title}</h1>
         {recording.description && <p className="mt-1 text-muted-foreground">{recording.description}</p>}
-        <p className="mt-2 text-sm text-muted-foreground">{role ? ROLE_SENTENCE[role] : "Shared recording, read only."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{role ? t(`shared.view.role.${role}`) : t("shared.view.readOnly")}</p>
       </div>
 
       <Card className="p-4">
@@ -133,16 +134,16 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
       <Tabs defaultValue="transcript" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
           <TabsTrigger value="transcript" className="gap-1.5 text-xs sm:text-sm">
-            <FileText className="w-4 h-4" /> Transcript
+            <FileText className="w-4 h-4" /> {t("shared.view.tabTranscript")}
           </TabsTrigger>
           <TabsTrigger value="notes" className="gap-1.5 text-xs sm:text-sm">
-            <NotebookPen className="w-4 h-4" /> Notes
+            <NotebookPen className="w-4 h-4" /> {t("shared.view.tabNotes")}
           </TabsTrigger>
           <TabsTrigger value="flashcards" className="gap-1.5 text-xs sm:text-sm">
-            <Layers3 className="w-4 h-4" /> Flashcards
+            <Layers3 className="w-4 h-4" /> {t("shared.view.tabFlashcards")}
           </TabsTrigger>
           <TabsTrigger value="study" className="gap-1.5 text-xs sm:text-sm">
-            <BookOpen className="w-4 h-4" /> Study Guides
+            <BookOpen className="w-4 h-4" /> {t("shared.view.tabStudy")}
           </TabsTrigger>
         </TabsList>
 
@@ -153,7 +154,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
                 {!editing && (
                   <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
                     <Pencil className="h-4 w-4" />
-                    Edit text
+                    {t("shared.view.editText")}
                   </Button>
                 )}
               </div>
@@ -191,18 +192,18 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
             ) : transcript?.fullText ? (
               <p className="text-sm whitespace-pre-wrap">{transcript.fullText}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">No transcript available.</p>
+              <p className="text-sm text-muted-foreground">{t("shared.view.noTranscript")}</p>
             )}
           </Card>
         </TabsContent>
 
         <TabsContent value="notes" className="mt-4 space-y-4">
           {studyNotes.length === 0 ? (
-            <Card className="p-6 text-sm text-muted-foreground">No study notes generated for this recording.</Card>
+            <Card className="p-6 text-sm text-muted-foreground">{t("shared.view.noNotes")}</Card>
           ) : (
             studyNotes.map((note) => (
               <Card key={note.id} className="p-6">
-                <Badge variant="outline" className="mb-3 capitalize">{note.type.replace(/_/g, " ")}</Badge>
+                <Badge variant="outline" className="mb-3 capitalize">{noteTypeLabel(note.type)}</Badge>
                 <div className="text-sm">
                   <Markdown>{note.content}</Markdown>
                 </div>
@@ -213,7 +214,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
 
         <TabsContent value="flashcards" className="mt-4">
           {flashcards.length === 0 ? (
-            <Card className="p-6 text-sm text-muted-foreground">No flashcards generated for this recording.</Card>
+            <Card className="p-6 text-sm text-muted-foreground">{t("shared.view.noCards")}</Card>
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
               {flashcards.map((card) => (
@@ -225,7 +226,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
 
         <TabsContent value="study" className="mt-4 space-y-6">
           {studyGuides.length === 0 && quizzes.length === 0 ? (
-            <Card className="p-6 text-sm text-muted-foreground">No study guides or quizzes generated for this recording.</Card>
+            <Card className="p-6 text-sm text-muted-foreground">{t("shared.view.noGuides")}</Card>
           ) : (
             <>
               {studyGuides.map((guide) => (
@@ -261,7 +262,7 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
                           </ul>
                         )}
                         {!q.options && (
-                          <p className="text-sm text-green-700 font-medium mb-1">Answer: {q.correctAnswer}</p>
+                          <p className="text-sm text-green-700 font-medium mb-1">{t("shared.view.answer", { answer: q.correctAnswer })}</p>
                         )}
                         {q.explanation && (
                           <p className="text-xs text-muted-foreground italic">{q.explanation}</p>

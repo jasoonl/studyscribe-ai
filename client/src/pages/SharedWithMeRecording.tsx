@@ -4,8 +4,10 @@ import { Loader2, ShieldAlert } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { SharedRecordingView } from "@/components/SharedRecordingView";
+import { useI18n } from "@/i18n";
 
 export default function SharedWithMeRecording() {
+  const { t } = useI18n();
   const [, params] = useRoute("/shared-with-me/:id");
   const recordingId = params?.id ? parseInt(params.id) : 0;
 
@@ -26,9 +28,9 @@ export default function SharedWithMeRecording() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-center px-4">
         <ShieldAlert className="w-10 h-10 text-muted-foreground" />
-        <p className="text-lg font-medium">{error?.message || "This recording isn't shared with you"}</p>
+        <p className="text-lg font-medium">{error?.message || t("shared.notShared")}</p>
         <Link href="/shared-with-me">
-          <Button variant="outline">Back to Shared with Me</Button>
+          <Button variant="outline">{t("shared.backTo")}</Button>
         </Link>
       </div>
     );
@@ -39,7 +41,7 @@ export default function SharedWithMeRecording() {
       <div className="border-b border-border bg-background sticky top-0 z-40">
         <div className="container h-14 flex items-center">
           <Link href="/shared-with-me">
-            <Button variant="ghost" size="sm">&larr; Shared with Me</Button>
+            <Button variant="ghost" size="sm">&larr; {t("shared.title")}</Button>
           </Link>
         </div>
       </div>

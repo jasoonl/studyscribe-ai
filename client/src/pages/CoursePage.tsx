@@ -10,8 +10,10 @@ import { TagFilter } from "@/components/CourseStrip";
 import { RecordingList } from "@/components/RecordingList";
 import { useTrashRecording } from "@/hooks/useTrashRecording";
 import { trpc } from "@/lib/trpc";
+import { useI18n } from "@/i18n";
 
 export default function CoursePage() {
+  const { t, tn } = useI18n();
   const [, params] = useRoute("/courses/:id");
   const courseId = params?.id ? Number.parseInt(params.id, 10) : NaN;
   const validId = Number.isInteger(courseId) && courseId > 0;
@@ -26,7 +28,7 @@ export default function CoursePage() {
   const { data: tags } = trpc.tags.list.useQuery();
 
   const archive = trpc.courses.archive.useMutation({
-    onError: error => toast.error(error.message || "Could not change the course"),
+    onError: error => toast.error(error.message || t("course.changeFailed")),
   });
 
   const refresh = () => Promise.all([utils.courses.list.invalidate(), utils.courses.get.invalidate({ id: courseId }), utils.recordings.list.invalidate()]);
@@ -38,17 +40,17 @@ export default function CoursePage() {
     await refresh();
     if (archived) {
       navigate("/dashboard");
-      toast.success("Course archived", {
-        description: "Its recordings are still in your library.",
+      toast.success(t("course.archived"), {
+        description: t("course.archivedHint"),
         action: {
-          label: "Undo",
+          label: t("course.undo"),
           onClick: () => {
             archive.mutate({ id: courseId, archived: false }, { onSuccess: () => void refresh() });
           },
         },
       });
     } else {
-      toast.success("Course restored");
+      toast.success(t("course.restored"));
     }
   };
 
@@ -63,7 +65,7 @@ export default function CoursePage() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">Library</span>
+              <span className="sr-only sm:not-sr-only">{t("common.library")}</span>
             </Button>
           </Link>
           {course && (
@@ -72,26 +74,26 @@ export default function CoursePage() {
                 <Link href={`/record-or-upload?course=${course.id}`}>
                   <Button size="sm" variant="outline" className="gap-2">
                     <Mic className="h-4 w-4" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">Record</span>
+                    <span className="sr-only sm:not-sr-only">{t("course.record")}</span>
                   </Button>
                 </Link>
               )}
               <Link href={`/ask?course=${course.id}`}>
                 <Button size="sm" className="gap-2">
                   <Sparkles className="h-4 w-4" />
-                  <span className="hidden sm:inline">Ask this course</span>
-                  <span className="sm:hidden">Ask</span>
+                  <span className="hidden sm:inline">{t("course.askCourse")}</span>
+                  <span className="sm:hidden">{t("course.ask")}</span>
                 </Button>
               </Link>
               <Link href={`/exam-packs?course=${course.id}`}>
                 <Button size="sm" variant="outline" className="gap-2">
                   <GraduationCap className="h-4 w-4" />
-                  <span className="sr-only sm:not-sr-only">Exam pack</span>
+                  <span className="sr-only sm:not-sr-only">{t("course.examPack")}</span>
                 </Button>
               </Link>
               <Button size="sm" variant="outline" className="gap-2" onClick={() => setEditing(true)}>
                 <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only">Edit</span>
+                <span className="sr-only sm:not-sr-only">{t("course.edit")}</span>
               </Button>
               <Button
                 size="sm"
@@ -101,7 +103,7 @@ export default function CoursePage() {
                 onClick={() => void setArchived(!course.archived)}
               >
                 {course.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                <span className="sr-only sm:not-sr-only">{course.archived ? "Restore" : "Archive"}</span>
+                <span className="sr-only sm:not-sr-only">{course.archived ? t("course.restore") : t("course.archive")}</span>
               </Button>
             </div>
           )}
@@ -115,10 +117,10 @@ export default function CoursePage() {
           </div>
         ) : !course ? (
           <div className="py-24 text-center">
-            <h1 className="mb-2 text-2xl font-bold tracking-tight">Course not found</h1>
-            <p className="mb-6 text-muted-foreground">It may have been removed, or it belongs to another account.</p>
+            <h1 className="mb-2 text-2xl font-bold tracking-tight">{t("course.notFound")}</h1>
+            <p className="mb-6 text-muted-foreground">{t("course.notFoundHint")}</p>
             <Link href="/dashboard">
-              <Button>Back to your library</Button>
+              <Button>{t("course.backToLibrary")}</Button>
             </Link>
           </div>
         ) : (
@@ -126,8 +128,8 @@ export default function CoursePage() {
             <div className="mb-8">
               <div className="mb-3 flex items-center gap-2.5 text-sm text-muted-foreground">
                 <CourseDot color={course.color} className="size-2.5" />
-                <span>{[course.term, `${recordings?.length ?? 0} recording${recordings?.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</span>
-                {course.archived && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">Archived</span>}
+                <span>{[course.term, tn("course.recordings", recordings?.length ?? 0)].filter(Boolean).join(" · ")}</span>
+                {course.archived && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">{t("course.archivedBadge")}</span>}
               </div>
               <h1 className="text-4xl font-bold tracking-[-0.04em] text-foreground sm:text-5xl">{course.name}</h1>
             </div>
@@ -150,18 +152,18 @@ export default function CoursePage() {
               <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
                 <p className="mx-auto max-w-md text-muted-foreground">
                   {recordings && recordings.length > 0
-                    ? "No recordings in this course carry all of those tags."
-                    : "Nothing filed here yet. Use the folder button on any recording in your library to move it into this course."}
+                    ? t("course.noTagMatch")
+                    : t("course.empty")}
                 </p>
                 {(!recordings || recordings.length === 0) && (
                   <Link href="/dashboard">
-                    <Button variant="outline" className="mt-5">Open your library</Button>
+                    <Button variant="outline" className="mt-5">{t("course.openLibrary")}</Button>
                   </Link>
                 )}
               </div>
             ) : (
               <>
-                <h2 className="sr-only">Recordings</h2>
+                <h2 className="sr-only">{t("course.recordingsHeading")}</h2>
                 <RecordingList recordings={sorted} courses={courses} tags={tags} onDelete={handleDelete} showCourse={false} />
               </>
             )}
