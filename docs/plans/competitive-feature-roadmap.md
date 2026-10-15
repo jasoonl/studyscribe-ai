@@ -192,7 +192,7 @@ Status (needs `npm run db:migrate` for migration 0030): all six items are built.
 5. **Reliability**: consistent error states and retry for failed uploads, provider outages (AssemblyAI, LLM, Stripe, Resend) and plan limits; an admin System health page that checks each configured service without exposing secrets.
 6. **Launch content**: landing sections, Pricing, Help and `/developers` updated for Phases 2 to 5; SEO basics (per-route meta tags through a small head manager, `sitemap.xml`, `robots.txt`, SoftwareApplication structured data, a canonical per route).
 
-### Phase 7 — Students and schools, deeper (in progress)
+### Phase 7 — Students and schools, deeper · built 2026-10-15 (items 1 and 2 deferred)
 
 Status: in progress. Items 1 and 2 are deferred (set aside for now); Phase 7 work covers items 3 to 8 plus anything carried over from Phase 6. Built: items 3 and 4 (study planner and progress, migration 0031; web only so far) 6 (install and offline review), 7 (AI quality evals) and 8 (referrals and share pages, migration 0032).
 
@@ -211,7 +211,8 @@ Carried over from Phase 6:
 - ~~Consistent outage messages for every AI procedure, and live probes for Resend, Recall.ai and WorkOS on the System health page.~~ Done (`server/aiErrors.ts`).
 - ~~Loading the live transcription and slide capture code only when a recording starts.~~ Done (the app shell is about 4 KB gzipped smaller).
 - ~~Refreshed landing screenshots.~~ Done (`scripts/landing/capture.mjs`).
-- ~~Live text inside the floating recording pill.~~ Done. Still open: Study help on pages other than the record pages (Phase 3 leftover).
+- ~~Live text inside the floating recording pill.~~ Done.
+- ~~Study help on pages other than the record pages (Phase 3 leftover).~~ Done: the recording pill opens it in a side sheet with the live transcript.
 
 ---
 

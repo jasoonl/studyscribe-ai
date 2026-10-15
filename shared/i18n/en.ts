@@ -2385,6 +2385,14 @@ const en = {
   "help.faq.teams.a": "Start a team from Settings. Members share courses into the team's library, and everyone in the team can open those recordings, transcripts and notes (read only). Owners and admins invite people by email and see each member's usage this month. The owner buys seats on the Team plan (each member then gets the Team allowance), can verify the school's or company's domain so Google Workspace accounts from it join on their own, and can set up SAML single sign-on, after which members use 'Sign in with SSO' on the login page. The owner can then turn on Require single sign-on so passwords and Google sign-in stop working for the team's domain (the owner keeps them as a way back in). Leaving a team takes your courses out of its library; your recordings stay yours.",
   "help.faq.api.q": "Is there an API?",
   "help.faq.api.a": "Yes. Create a personal API key in Settings under API keys, read only or read and write, and see the API page (/developers) for the endpoints and examples. Keys act as you and count toward your plan; they can never change billing, manage keys or delete your account. Revoke a key in Settings if it leaks.",
+
+  // Study help from the recording pill
+  "live.help.open": "Study help",
+  "live.help.openAria": "Open Study help and the live transcript",
+  "live.help.sheetText": "Keep studying on any page while you record. Answers use the live transcript below.",
+  "live.help.kind": "This recording is a",
+  "live.help.kindLecture": "Lecture",
+  "live.help.kindMeeting": "Meeting",
 } as const;
 
 export type MessageKey = keyof typeof en;

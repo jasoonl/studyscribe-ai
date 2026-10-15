@@ -2374,6 +2374,14 @@ const es: Messages = {
   "help.faq.teams.a": "Crea un equipo desde Ajustes. Los miembros comparten asignaturas en la biblioteca del equipo, y todos en el equipo pueden abrir esas grabaciones, transcripciones y apuntes (solo lectura). Los propietarios y administradores invitan a personas por correo y ven el uso de cada miembro este mes. El propietario compra plazas del plan Team (cada miembro recibe entonces los límites de Team), puede verificar el dominio del centro o de la empresa para que las cuentas de Google Workspace de ese dominio se unan solas, y puede configurar el inicio de sesión único SAML; después, los miembros usan «Iniciar sesión con SSO» en la página de inicio de sesión. Luego el propietario puede activar Exigir inicio de sesión único para que las contraseñas y el inicio de sesión con Google dejen de funcionar en el dominio del equipo (el propietario los conserva como vía de acceso). Al salir de un equipo, tus asignaturas salen de su biblioteca; tus grabaciones siguen siendo tuyas.",
   "help.faq.api.q": "¿Hay una API?",
   "help.faq.api.a": "Sí. Crea una clave de API personal en Ajustes, en Claves de API, de solo lectura o de lectura y escritura, y consulta la página de la API (/developers) para ver los endpoints y ejemplos. Las claves actúan en tu nombre y cuentan para tu plan; nunca pueden cambiar la facturación, gestionar claves ni eliminar tu cuenta. Revoca una clave en Ajustes si se filtra.",
+
+  // Study help from the recording pill
+  "live.help.open": "Ayuda para estudiar",
+  "live.help.openAria": "Abrir Ayuda para estudiar y la transcripción en directo",
+  "live.help.sheetText": "Sigue estudiando en cualquier página mientras grabas. Las respuestas usan la transcripción en directo de abajo.",
+  "live.help.kind": "Esta grabación es",
+  "live.help.kindLecture": "Clase",
+  "live.help.kindMeeting": "Reunión",
 };
 
 export default es;

@@ -6,15 +6,7 @@ import { LiveCaptions } from "./LiveCaptions";
 import { LiveTranscriptPanel } from "./LiveTranscriptPanel";
 import { t, useI18n } from "@/i18n";
 
-/** What the record pages show of live text right now. */
-export function useLiveLayout(snapshot: LiveTurn[] | null) {
-  const { enabled, turns, status } = useLiveTranscript();
-  const { status: recorderStatus } = useRecorder();
-  const recording = recorderStatus === "recording" || recorderStatus === "paused";
-  const showTranscript = snapshot !== null ? snapshot.length > 0 : (enabled && recording) || (recorderStatus === "stopped" && turns.length > 0);
-  const showHelp = snapshot === null && enabled && recording && status !== "unavailable" && status !== "unsupported";
-  return { showTranscript, showHelp, wide: showTranscript || showHelp };
-}
+export { useLiveLayout } from "./liveLayout";
 
 /**
  * The live transcript plus its full-screen captions view. With `snapshot`,

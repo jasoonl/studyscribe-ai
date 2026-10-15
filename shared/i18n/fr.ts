@@ -2374,6 +2374,14 @@ const fr: Messages = {
   "help.faq.teams.a": "Créez une équipe depuis Paramètres. Les membres partagent des cours dans la bibliothèque de l’équipe, et tous les membres peuvent ouvrir ces enregistrements, transcriptions et notes (en lecture seule). Les propriétaires et administrateurs invitent des personnes par e-mail et voient l’utilisation de chaque membre ce mois-ci. Le propriétaire achète des places sur l’offre Team (chaque membre reçoit alors les quotas Team), peut vérifier le domaine de l’établissement ou de l’entreprise pour que les comptes Google Workspace de ce domaine rejoignent l’équipe d’eux-mêmes, et peut configurer l’authentification unique SAML, après quoi les membres utilisent « Se connecter avec le SSO » sur la page de connexion. Le propriétaire peut ensuite activer Exiger l’authentification unique pour que les mots de passe et la connexion Google ne fonctionnent plus pour le domaine de l’équipe (le propriétaire les garde comme accès de secours). Quitter une équipe retire vos cours de sa bibliothèque ; vos enregistrements restent à vous.",
   "help.faq.api.q": "Existe-t-il une API ?",
   "help.faq.api.a": "Oui. Créez une clé d’API personnelle dans Paramètres, sous Clés d’API, en lecture seule ou en lecture et écriture, et consultez la page de l’API (/developers) pour les points de terminaison et des exemples. Les clés agissent en votre nom et comptent dans votre offre ; elles ne peuvent jamais modifier la facturation, gérer les clés ni supprimer votre compte. Révoquez une clé dans Paramètres si elle fuite.",
+
+  // Study help from the recording pill
+  "live.help.open": "Aide à l’étude",
+  "live.help.openAria": "Ouvrir l’Aide à l’étude et la transcription en direct",
+  "live.help.sheetText": "Continuez à étudier sur n’importe quelle page pendant l’enregistrement. Les réponses s’appuient sur la transcription en direct ci-dessous.",
+  "live.help.kind": "Cet enregistrement est",
+  "live.help.kindLecture": "Cours",
+  "live.help.kindMeeting": "Réunion",
 };
 
 export default fr;
