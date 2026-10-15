@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatDate, t, tn, useI18n } from "@/i18n";
 import {
   Brain, ArrowLeft, Sparkles, Clock, ChevronRight, CheckCircle2,
   XCircle, Trophy, RotateCcw, ListChecks
@@ -28,6 +29,7 @@ type QuizQuestion = {
 type QuizMode = "list" | "taking" | "results";
 
 export default function QuizPage() {
+  useI18n();
   const { recordingId } = useParams<{ recordingId: string }>();
   const recId = parseInt(recordingId || "0", 10);
 
@@ -50,10 +52,10 @@ export default function QuizPage() {
 
   const generateMutation = trpc.quizzes.generate.useMutation({
     onSuccess: (data) => {
-      toast.success(`Quiz with ${data.questionCount} questions generated!`);
+      toast.success(tn("quiz.generated", data.questionCount));
       refetch();
     },
-    onError: (err) => toast.error(err.message || "Failed to generate quiz"),
+    onError: (err) => toast.error(err.message || t("quiz.generateFailed")),
   });
 
   const submitMutation = trpc.quizzes.submitAttempt.useMutation({
@@ -61,7 +63,7 @@ export default function QuizPage() {
       setResults(data);
       setMode("results");
     },
-    onError: (err) => toast.error(err.message || "Failed to submit quiz"),
+    onError: (err) => toast.error(err.message || t("quiz.submitFailed")),
   });
 
   const questions: QuizQuestion[] = (activeQuiz?.questions as QuizQuestion[]) || [];
@@ -118,7 +120,7 @@ export default function QuizPage() {
               <div className="flex items-center gap-2 min-w-0">
                 <Button variant="ghost" size="sm" onClick={() => setMode("list")} className="gap-1 shrink-0">
                   <ArrowLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Exit</span>
+                  <span className="hidden sm:inline">{t("quiz.exit")}</span>
                 </Button>
                 <span className="text-xs sm:text-sm font-medium truncate">{activeQuiz.title}</span>
               </div>
@@ -139,7 +141,7 @@ export default function QuizPage() {
                 </div>
                 <div className="flex-1">
                   <Badge variant="outline" className="mb-2 text-xs">
-                    {q.type === "multiple-choice" ? "Multiple Choice" : "Short Answer"}
+                    {q.type === "multiple-choice" ? t("cards.multipleChoice") : t("quiz.shortAnswer")}
                   </Badge>
                   <CardTitle className="text-base font-medium leading-relaxed">{q.question}</CardTitle>
                 </div>
@@ -169,7 +171,7 @@ export default function QuizPage() {
                 </RadioGroup>
               ) : (
                 <Textarea
-                  placeholder="Type your answer here…"
+                  placeholder={t("quiz.answerPlaceholder")}
                   value={answers[q.id] || ""}
                   onChange={(e) => handleAnswer(q.id, e.target.value)}
                   className="min-h-[100px] resize-none"
@@ -178,12 +180,12 @@ export default function QuizPage() {
 
               <div className="flex items-center justify-between mt-6">
                 <Button variant="outline" onClick={handlePrev} disabled={currentQ === 0} size="sm">
-                  Previous
+                  {t("cards.previous")}
                 </Button>
                 <div className="flex gap-2">
                   {currentQ < questions.length - 1 ? (
                     <Button onClick={handleNext} size="sm" className="">
-                      Next
+                      {t("cards.next")}
                     </Button>
                   ) : (
                     <Button
@@ -193,7 +195,7 @@ export default function QuizPage() {
                       className="bg-green-600 hover:bg-green-700 text-white gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      {submitMutation.isPending ? "Submitting…" : `Submit (${answeredCount}/${questions.length} answered)`}
+                      {submitMutation.isPending ? t("quiz.submitting") : t("quiz.submitCount", { answered: answeredCount, total: questions.length })}
                     </Button>
                   )}
                 </div>
@@ -234,7 +236,7 @@ export default function QuizPage() {
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => setMode("list")} className="gap-1">
               <ArrowLeft className="w-4 h-4" />
-              Back to Quizzes
+              {t("quiz.backToQuizzes")}
             </Button>
           </div>
         </div>
@@ -245,11 +247,11 @@ export default function QuizPage() {
             <CardContent className="pt-8 pb-6">
               <Trophy className={`w-12 h-12 mx-auto mb-3 ${scoreColor}`} />
               <p className={`text-5xl font-bold mb-1 ${scoreColor}`}>{results.score}%</p>
-              <p className="text-muted-foreground">{results.correct} out of {results.total} correct</p>
+              <p className="text-muted-foreground">{t("quiz.scoreCorrect", { correct: results.correct, total: results.total })}</p>
               <div className="flex gap-3 justify-center mt-6">
                 <Button onClick={handleRetry} variant="outline" className="gap-2">
                   <RotateCcw className="w-4 h-4" />
-                  Retry Quiz
+                  {t("quiz.retry")}
                 </Button>
                 <Button
                   onClick={() => setShowExplanations(!showExplanations)}
@@ -257,7 +259,7 @@ export default function QuizPage() {
                   className="gap-2"
                 >
                   <ListChecks className="w-4 h-4" />
-                  {showExplanations ? "Hide" : "Review"} Answers
+                  {showExplanations ? t("quiz.hideAnswers") : t("quiz.reviewAnswers")}
                 </Button>
               </div>
             </CardContent>
@@ -275,26 +277,26 @@ export default function QuizPage() {
                       ? <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
                       : <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />}
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Question {i + 1}</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t("quiz.questionNumber", { number: i + 1 })}</p>
                       <p className="text-sm font-medium">{q.question}</p>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-2">
                   <div className="text-sm">
-                    <span className="text-muted-foreground">Your answer: </span>
+                    <span className="text-muted-foreground">{t("cards.yourAnswer")} </span>
                     <span className={isCorrect ? "text-green-400" : "text-red-400"}>
-                      {userAnswer || <em className="text-muted-foreground">Not answered</em>}
+                      {userAnswer || <em className="text-muted-foreground">{t("quiz.notAnswered")}</em>}
                     </span>
                   </div>
                   {!isCorrect && (
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Correct answer: </span>
+                      <span className="text-muted-foreground">{t("cards.correctAnswer")} </span>
                       <span className="text-green-400">{q.correctAnswer}</span>
                     </div>
                   )}
                   <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 mt-2">
-                    <span className="font-medium">Explanation: </span>{q.explanation}
+                    <span className="font-medium">{t("quiz.explanation")} </span>{q.explanation}
                   </div>
                 </CardContent>
               </Card>
@@ -313,13 +315,13 @@ export default function QuizPage() {
           <Link href={`/recording/${recId}`}>
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("recording.back")}
             </Button>
           </Link>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Brain className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
-              <h1 className="font-semibold text-sm truncate">Practice Quizzes</h1>
+              <h1 className="font-semibold text-sm truncate">{t("quiz.title")}</h1>
               {recording && <p className="text-xs text-muted-foreground truncate">{recording.title}</p>}
             </div>
           </div>
@@ -330,7 +332,7 @@ export default function QuizPage() {
             className="gap-2 shrink-0"
           >
             <Sparkles className="w-4 h-4" />
-            {generateMutation.isPending ? "Generating…" : "Generate Quiz"}
+            {generateMutation.isPending ? t("quiz.generating") : t("quiz.generate")}
           </Button>
         </div>
       </div>
@@ -343,8 +345,8 @@ export default function QuizPage() {
                 <Sparkles className="w-4 h-4 text-primary animate-pulse" />
               </div>
               <div>
-                <p className="text-sm font-medium">Generating quiz questions…</p>
-                <p className="text-xs text-muted-foreground">AI is creating 10 questions from the transcript.</p>
+                <p className="text-sm font-medium">{t("quiz.progressTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("quiz.progressText", { count: 10 })}</p>
               </div>
             </CardContent>
           </Card>
@@ -358,15 +360,15 @@ export default function QuizPage() {
           <Card className="border-dashed max-w-md mx-auto mt-12">
             <CardContent className="p-8 text-center">
               <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="font-medium mb-1">No quizzes yet</p>
-              <p className="text-sm text-muted-foreground mb-4">Generate a quiz from the transcript to start practicing.</p>
+              <p className="font-medium mb-1">{t("quiz.emptyTitle")}</p>
+              <p className="text-sm text-muted-foreground mb-4">{t("quiz.emptyText")}</p>
               <Button
                 onClick={() => generateMutation.mutate({ recordingId: recId, questionCount: 10 })}
                 disabled={generateMutation.isPending}
                 className="gap-2"
               >
                 <Sparkles className="w-4 h-4" />
-                Generate Quiz
+                {t("quiz.generate")}
               </Button>
             </CardContent>
           </Card>
@@ -380,7 +382,7 @@ export default function QuizPage() {
                     <div className="flex items-start justify-between gap-2">
                       <Brain className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                       <Badge variant="outline" className="text-xs shrink-0">
-                        {qCount} questions
+                        {tn("quiz.questions", qCount)}
                       </Badge>
                     </div>
                     <CardTitle className="text-sm mt-2 leading-snug">{quiz.title}</CardTitle>
@@ -391,7 +393,7 @@ export default function QuizPage() {
                   <CardContent className="pt-0">
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
                       <Clock className="w-3 h-3" />
-                      {new Date(quiz.createdAt).toLocaleDateString()}
+                      {formatDate(quiz.createdAt)}
                     </div>
                     <Button
                       onClick={() => handleStartQuiz(quiz.id)}
@@ -399,7 +401,7 @@ export default function QuizPage() {
                       className="w-full gap-2"
                     >
                       <ChevronRight className="w-4 h-4" />
-                      Start Quiz
+                      {t("quiz.start")}
                     </Button>
                   </CardContent>
                 </Card>

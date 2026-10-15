@@ -1413,6 +1413,9 @@ const fr: Messages = {
   "sendTo.page": "Page",
   "sendTo.choosePage": "Choisissez une page",
   "sendTo.send": "Envoyer",
+
+  // Email drafts
+  "drafts.generatedAt": "Créé le {date}",
 };
 
 export default fr;

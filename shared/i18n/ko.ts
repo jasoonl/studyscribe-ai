@@ -1413,6 +1413,9 @@ const ko: Messages = {
   "sendTo.page": "페이지",
   "sendTo.choosePage": "페이지 선택",
   "sendTo.send": "보내기",
+
+  // Email drafts
+  "drafts.generatedAt": "{date}에 만듦",
 };
 
 export default ko;

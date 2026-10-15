@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { t, useI18n } from "@/i18n";
 
 type Kind = "note" | "guide";
 type Provider = "notion" | "google_drive";
@@ -17,7 +18,7 @@ export function connectIntegrationUrl(provider: Provider | "google_calendar") {
 }
 
 function openResult(url: string | undefined, where: string) {
-  toast.success(`Sent to ${where}`, url ? { action: { label: "Open", onClick: () => window.open(url, "_blank", "noopener,noreferrer") } } : undefined);
+  toast.success(t("sendTo.sent", { app: where }), url ? { action: { label: t("common.open"), onClick: () => window.open(url, "_blank", "noopener,noreferrer") } } : undefined);
 }
 
 /**
@@ -25,6 +26,7 @@ function openResult(url: string | undefined, where: string) {
  * itself when an integration is not set up on the server or not connected yet.
  */
 export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; size?: "sm" | "default" }) {
+  useI18n();
   const { data: status } = trpc.integrations.status.useQuery(undefined, { staleTime: 60_000 });
   const send = trpc.integrations.send.useMutation();
   const [notionOpen, setNotionOpen] = useState(false);
@@ -38,7 +40,7 @@ export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; 
       openResult(result.url, provider === "notion" ? "Notion" : "Google Docs");
       setNotionOpen(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not send it");
+      toast.error(error instanceof Error ? error.message : t("sendTo.failed"));
     }
   };
 
@@ -61,11 +63,11 @@ export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; 
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size={size} className="gap-2" disabled={send.isPending}>
             {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Send to
+            {t("attendees.sendTo")}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Make a copy in</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t("sendTo.makeCopyIn")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => choose("notion")}>Notion</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => choose("google_drive")}>Google Docs</DropdownMenuItem>
@@ -75,24 +77,24 @@ export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; 
       <Dialog open={explain !== null} onOpenChange={open => !open && setExplain(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{explainInfo?.configured && status?.available ? `Connect ${explainName}` : `${explainName} is not set up`}</DialogTitle>
+            <DialogTitle>{explainInfo?.configured && status?.available ? t("sendTo.connect", { app: explainName }) : t("sendTo.notSetUp", { app: explainName })}</DialogTitle>
             <DialogDescription>
               {!status?.available
-                ? "Connected apps are not available on this server yet."
+                ? t("sendTo.unavailable")
                 : !explainInfo?.configured
-                  ? `Sending to ${explainName} needs the site owner to add ${explain === "notion" ? "a Notion integration" : "Google Drive access"} first. Until then you can copy the text or export it from the page.`
+                  ? t(explain === "notion" ? "sendTo.ownerNotion" : "sendTo.ownerGoogle")
                   : explain === "notion"
-                    ? "Connect your Notion workspace once. Notion asks which pages StudyScribe may add to; new notes go under one of them."
-                    : "Connect Google once. StudyScribe can then create documents in your Drive, and can only see the documents it created."}
+                    ? t("sendTo.notionExplain")
+                    : t("sendTo.googleExplain")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setExplain(null)}>
-              Close
+              {t("bots.close")}
             </Button>
             {status?.available && explainInfo?.configured && (
               <Button asChild>
-                <a href={connectIntegrationUrl(explain!)}>Connect {explainName}</a>
+                <a href={connectIntegrationUrl(explain!)}>{t("sendTo.connect", { app: explainName })}</a>
               </Button>
             )}
           </DialogFooter>
@@ -102,8 +104,8 @@ export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; 
       <Dialog open={notionOpen} onOpenChange={setNotionOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Send to Notion</DialogTitle>
-            <DialogDescription>Pick the page to put it under. Only pages you shared with StudyScribe when connecting are listed.</DialogDescription>
+            <DialogTitle>{t("sendTo.notionTitle")}</DialogTitle>
+            <DialogDescription>{t("sendTo.notionText")}</DialogDescription>
           </DialogHeader>
           {pages.isLoading ? (
             <div className="flex justify-center py-6">
@@ -113,14 +115,14 @@ export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; 
             <p className="text-sm text-destructive">{pages.error.message}</p>
           ) : pages.data && pages.data.pages.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              StudyScribe cannot see any pages yet. Reconnect Notion in Settings and tick at least one page.
+              {t("sendTo.noPages")}
             </p>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor={`notion-parent-${kind}-${id}`}>Page</Label>
+              <Label htmlFor={`notion-parent-${kind}-${id}`}>{t("sendTo.page")}</Label>
               <Select value={parentId} onValueChange={setParentId}>
                 <SelectTrigger id={`notion-parent-${kind}-${id}`} className="w-full">
-                  <SelectValue placeholder="Choose a page" />
+                  <SelectValue placeholder={t("sendTo.choosePage")} />
                 </SelectTrigger>
                 <SelectContent>
                   {pages.data?.pages.map(page => (
@@ -134,11 +136,11 @@ export function SendToMenu({ kind, id, size = "sm" }: { kind: Kind; id: number; 
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setNotionOpen(false)}>
-              Cancel
+              {t("bots.cancel")}
             </Button>
             <Button disabled={!parentId || send.isPending} onClick={() => sendNow("notion", parentId)} className="gap-2">
               {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-              Send
+              {t("sendTo.send")}
             </Button>
           </DialogFooter>
         </DialogContent>

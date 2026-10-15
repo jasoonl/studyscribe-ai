@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { formatDate, getUiLanguage, t, useI18n } from "@/i18n";
+import { htmlLangFor, type MessageKey } from "@shared/i18n";
 import { BookOpen, ArrowLeft, Sparkles, Clock, ChevronRight, FileText } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 import { SendToMenu } from "@/components/SendToMenu";
@@ -15,6 +17,7 @@ import { TranslateMenu } from "@/components/TranslateDialog";
 const plainKeyPoint = (text: string) => text.replace(/[*_`#]+/g, "").trim();
 
 export default function StudyGuides() {
+  useI18n();
   const { recordingId } = useParams<{ recordingId: string }>();
   const recId = parseInt(recordingId || "0", 10);
   const [selectedGuideId, setSelectedGuideId] = useState<number | null>(null);
@@ -31,11 +34,11 @@ export default function StudyGuides() {
 
   const generateMutation = trpc.studyGuides.generate.useMutation({
     onSuccess: (data) => {
-      toast.success(`"${data.title}" generated successfully!`);
+      toast.success(t("guides.generated", { title: data.title }));
       refetch();
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to generate study guide");
+      toast.error(err.message || t("guides.generateFailed"));
     },
   });
 
@@ -52,13 +55,13 @@ export default function StudyGuides() {
           <Link href={`/recording/${recId}`}>
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("recording.back")}
             </Button>
           </Link>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <BookOpen className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
-              <h1 className="font-semibold text-sm truncate">Study Guides</h1>
+              <h1 className="font-semibold text-sm truncate">{t("guides.title")}</h1>
               {recording && (
                 <p className="text-xs text-muted-foreground truncate">{recording.title}</p>
               )}
@@ -71,7 +74,7 @@ export default function StudyGuides() {
             className="gap-2 shrink-0"
           >
             <Sparkles className="w-4 h-4" />
-            {generateMutation.isPending ? "Generating…" : "Generate Guide"}
+            {generateMutation.isPending ? t("quiz.generating") : t("guides.generate")}
           </Button>
         </div>
       </div>
@@ -80,7 +83,7 @@ export default function StudyGuides() {
         {/* Sidebar: list of guides */}
         <div className="w-full lg:w-72 shrink-0 space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-            Generated Guides ({guides?.length ?? 0})
+            {t("guides.listHeading", { count: guides?.length ?? 0 })}
           </p>
 
           {isLoading ? (
@@ -91,8 +94,8 @@ export default function StudyGuides() {
             <Card className="border-dashed">
               <CardContent className="p-4 text-center">
                 <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No study guides yet.</p>
-                <p className="text-xs text-muted-foreground mt-1">Click "Generate Guide" to create one.</p>
+                <p className="text-sm text-muted-foreground">{t("guides.empty")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("guides.emptyHint")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -112,7 +115,7 @@ export default function StudyGuides() {
                     <div className="flex items-center gap-1 mt-1">
                       <Clock className="w-3 h-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">
-                        {new Date(guide.createdAt).toLocaleDateString()}
+                        {formatDate(guide.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -141,8 +144,8 @@ export default function StudyGuides() {
                   <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Generating study guide…</p>
-                  <p className="text-xs text-muted-foreground">AI is analyzing the transcript. This may take 15–30 seconds.</p>
+                  <p className="text-sm font-medium">{t("guides.progressTitle")}</p>
+                  <p className="text-xs text-muted-foreground">{t("guides.progressText")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -152,7 +155,7 @@ export default function StudyGuides() {
             <Card className="border-dashed h-64 flex items-center justify-center">
               <CardContent className="text-center p-8">
                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Select a study guide from the list, or generate a new one.</p>
+                <p className="text-muted-foreground">{t("guides.selectPrompt")}</p>
               </CardContent>
             </Card>
           ) : isLoadingGuide ? (
@@ -174,14 +177,14 @@ export default function StudyGuides() {
                   <div>
                     <CardTitle className="text-lg">{selectedGuide.title}</CardTitle>
                     <CardDescription className="mt-1">
-                      Generated {new Date(selectedGuide.createdAt).toLocaleString()}
+                      {t("guides.generatedAt", { date: new Date(selectedGuide.createdAt).toLocaleString(htmlLangFor(getUiLanguage())) })}
                     </CardDescription>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {selectedGuide.status === "completed" && <TranslateMenu kind="guide" id={selectedGuide.id} />}
                     {selectedGuide.status === "completed" && <SendToMenu kind="guide" id={selectedGuide.id} />}
                     <Badge variant="outline" className="shrink-0 border-green-500/50 text-green-400">
-                      {selectedGuide.status}
+                      {selectedGuide.status ? t(`guides.status.${selectedGuide.status}` as MessageKey) : null}
                     </Badge>
                   </div>
                 </div>

@@ -1413,6 +1413,9 @@ const ja: Messages = {
   "sendTo.page": "ページ",
   "sendTo.choosePage": "ページを選択",
   "sendTo.send": "送信",
+
+  // Email drafts
+  "drafts.generatedAt": "{date} に作成",
 };
 
 export default ja;

@@ -1424,6 +1424,9 @@ const en = {
   "sendTo.page": "Page",
   "sendTo.choosePage": "Choose a page",
   "sendTo.send": "Send",
+
+  // Email drafts
+  "drafts.generatedAt": "Generated {date}",
 } as const;
 
 export type MessageKey = keyof typeof en;

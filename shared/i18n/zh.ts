@@ -1413,6 +1413,9 @@ const zh: Messages = {
   "sendTo.page": "页面",
   "sendTo.choosePage": "选择页面",
   "sendTo.send": "发送",
+
+  // Email drafts
+  "drafts.generatedAt": "生成于 {date}",
 };
 
 export default zh;
