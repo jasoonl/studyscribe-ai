@@ -14,14 +14,16 @@ import { CommentsPanel, SelectionToolbar, anchorIsCurrent, readSelection, useTra
 import { splitIntoRuns } from "@shared/annotations";
 import { Fragment } from "react";
 import { SlideViewer, slidesBeforeSegments, type SlideItem } from "@/components/RecordingSlides";
+import { t, useI18n } from "@/i18n";
+import type { MessageKey } from "@shared/i18n";
 
 /** Manual scrolling pauses follow-along for this long, so reading back isn't fought. */
 const FOLLOW_PAUSE_MS = 5000;
 
-const EXPORTS: Array<{ format: TranscriptExportFormat; label: string; hint: string }> = [
-  { format: "txt", label: "Text", hint: ".txt with timestamps and speakers" },
-  { format: "srt", label: "Subtitles", hint: ".srt for video editors and players" },
-  { format: "vtt", label: "Web subtitles", hint: ".vtt for HTML5 video" },
+const EXPORTS: Array<{ format: TranscriptExportFormat; label: MessageKey; hint: MessageKey }> = [
+  { format: "txt", label: "transcript.export.txt", hint: "transcript.export.txtHint" },
+  { format: "srt", label: "transcript.export.srt", hint: "transcript.export.srtHint" },
+  { format: "vtt", label: "transcript.export.vtt", hint: "transcript.export.vttHint" },
 ];
 
 function escapeRegExp(value: string) {
@@ -29,6 +31,7 @@ function escapeRegExp(value: string) {
 }
 
 function SpeakerRename({ recordingId, speaker, speakers, children }: { recordingId: number; speaker: string; speakers: string[]; children: ReactNode }) {
+  useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(speaker);
   const utils = trpc.useUtils();
@@ -37,9 +40,9 @@ function SpeakerRename({ recordingId, speaker, speakers, children }: { recording
       // The owner's page and a shared editor's page read the transcript through different queries.
       await Promise.all([utils.transcription.get.invalidate({ recordingId }), utils.sharing.getSharedWithMe.invalidate({ recordingId })]);
       setOpen(false);
-      toast.success("Speaker renamed");
+      toast.success(t("transcript.speakerRenamed"));
     },
-    onError: error => toast.error(error.message || "Could not rename the speaker"),
+    onError: error => toast.error(error.message || t("transcript.renameFailed")),
   });
   const trimmed = name.trim();
   const mergesInto = trimmed !== speaker && speakers.includes(trimmed);
@@ -56,14 +59,14 @@ function SpeakerRename({ recordingId, speaker, speakers, children }: { recording
             rename.mutate({ recordingId, from: speaker, to: trimmed });
           }}
         >
-          <label className="block text-sm font-medium" htmlFor={`speaker-${speaker}`}>Rename “{speaker}”</label>
+          <label className="block text-sm font-medium" htmlFor={`speaker-${speaker}`}>{t("transcript.renameLabel", { speaker })}</label>
           <Input id={`speaker-${speaker}`} value={name} onChange={event => setName(event.target.value)} maxLength={60} autoFocus />
           <p className="text-xs text-muted-foreground">
-            {mergesInto ? `Both speakers will become “${trimmed}”.` : "Applies to every line by this speaker. Use another speaker's name to merge them."}
+            {mergesInto ? t("transcript.mergeHint", { name: trimmed }) : t("transcript.renameHint")}
           </p>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={!trimmed || rename.isPending}>{mergesInto ? "Merge" : "Save"}</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>{t("transcript.cancel")}</Button>
+            <Button type="submit" size="sm" disabled={!trimmed || rename.isPending}>{mergesInto ? t("transcript.merge") : t("transcript.save")}</Button>
           </div>
         </form>
       </PopoverContent>
@@ -103,6 +106,7 @@ export function TranscriptView({
   /** Slides captured while recording (A6), shown between the lines at their times. */
   slides?: SlideItem[];
 }) {
+  useI18n();
   const [openSlide, setOpenSlide] = useState<number | null>(null);
   const slidePlacement = useMemo(() => slidesBeforeSegments(slides, segments.map(segment => segment.start)), [slides, segments]);
   const slideNumber = (slide: SlideItem) => slides.findIndex(item => item.id === slide.id);
@@ -113,13 +117,13 @@ export function TranscriptView({
         <button
           type="button"
           onClick={() => setOpenSlide(number)}
-          aria-label={`Open slide ${number + 1}, captured at ${formatTranscriptTimestamp(slide.atSeconds)}`}
+          aria-label={t("slides.openCaptured", { number: number + 1, time: formatTranscriptTimestamp(slide.atSeconds) })}
           className="block w-full max-w-64 overflow-hidden rounded-lg border border-border bg-muted transition-colors hover:border-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <img src={slide.url} alt="" loading="lazy" width={slide.width} height={slide.height} className="h-auto w-full" />
         </button>
         <figcaption className="mt-1 text-xs text-muted-foreground">
-          Slide {number + 1} <span className="font-mono tabular-nums">{formatTranscriptTimestamp(slide.atSeconds)}</span>
+          {t("slides.slideNumber", { number: number + 1 })} <span className="font-mono tabular-nums">{formatTranscriptTimestamp(slide.atSeconds)}</span>
         </figcaption>
       </figure>
     );
@@ -223,7 +227,7 @@ export function TranscriptView({
         <mark
           key={run.start}
           data-annotation-ids={run.ids.join(",")}
-          title={isComment ? "Open comment" : "Highlighted"}
+          title={isComment ? t("transcript.openComment") : t("transcript.highlighted")}
           onClick={event => {
             if (window.getSelection()?.toString()) return;
             event.stopPropagation();
@@ -260,18 +264,18 @@ export function TranscriptView({
               if (event.key === "Enter") { event.preventDefault(); step(event.shiftKey ? -1 : 1); }
               if (event.key === "Escape") setQuery("");
             }}
-            placeholder="Search this transcript"
-            aria-label="Search this transcript"
+            placeholder={t("transcript.search")}
+            aria-label={t("transcript.search")}
             className="pl-9 pr-28"
           />
           {trimmedQuery && (
             <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
               <span className="px-1.5 text-xs tabular-nums text-muted-foreground" aria-live="polite">
-                {matchRows.length ? `${Math.min(matchCursor, matchRows.length - 1) + 1} of ${matchRows.length}` : "No matches"}
+                {matchRows.length ? t("transcript.matchPosition", { current: Math.min(matchCursor, matchRows.length - 1) + 1, total: matchRows.length }) : t("transcript.noMatches")}
               </span>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => step(-1)} disabled={!matchRows.length} aria-label="Previous match"><ChevronUp className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => step(1)} disabled={!matchRows.length} aria-label="Next match"><ChevronDown className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setQuery("")} aria-label="Clear search"><X className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => step(-1)} disabled={!matchRows.length} aria-label={t("transcript.previousMatch")}><ChevronUp className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => step(1)} disabled={!matchRows.length} aria-label={t("transcript.nextMatch")}><ChevronDown className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setQuery("")} aria-label={t("transcript.clearSearch")}><X className="h-4 w-4" /></Button>
             </div>
           )}
         </div>
@@ -280,14 +284,14 @@ export function TranscriptView({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" /> Export
+              <Download className="h-4 w-4" /> {t("transcript.export")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {EXPORTS.map(item => (
               <DropdownMenuItem key={item.format} onSelect={() => downloadTranscriptExport({ segments, fullText, title }, item.format)} className="flex flex-col items-start gap-0.5">
-                <span className="font-medium">{item.label}</span>
-                <span className="text-xs text-muted-foreground">{item.hint}</span>
+                <span className="font-medium">{t(item.label)}</span>
+                <span className="text-xs text-muted-foreground">{t(item.hint)}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -299,7 +303,7 @@ export function TranscriptView({
 
       {speakers.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Speakers</span>
+          <span className="text-muted-foreground">{t("transcript.speakers")}</span>
           {speakers.map(speaker =>
             canRenameSpeakers ? (
               <SpeakerRename key={speaker} recordingId={recordingId} speaker={speaker} speakers={speakers}>
@@ -357,7 +361,7 @@ export function TranscriptView({
                 type="button"
                 disabled={!hasAudio}
                 onClick={event => { event.stopPropagation(); onSeek(segment.start); }}
-                aria-label={`Play from ${formatTranscriptTimestamp(segment.start)}`}
+                aria-label={t("transcript.playFrom", { time: formatTranscriptTimestamp(segment.start) })}
                 className={`shrink-0 rounded py-0.5 font-mono text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 ${isActive ? "text-primary-foreground" : "text-primary"}`}
               >
                 {formatTranscriptTimestamp(segment.start)}
@@ -369,7 +373,7 @@ export function TranscriptView({
                       <button
                         type="button"
                         onClick={event => event.stopPropagation()}
-                        title="Rename speaker"
+                        title={t("transcript.renameSpeaker")}
                         className={`mr-2 rounded text-xs font-semibold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isActive ? "text-primary-foreground" : "text-primary"}`}
                       >
                         {segment.speaker}
@@ -389,8 +393,8 @@ export function TranscriptView({
                     event.stopPropagation();
                     commentOnLine(index);
                   }}
-                  aria-label={`Comment on the line at ${formatTranscriptTimestamp(segment.start)}`}
-                  title="Comment on this line"
+                  aria-label={t("transcript.commentOnLineAt", { time: formatTranscriptTimestamp(segment.start) })}
+                  title={t("transcript.commentOnLine")}
                   className={`shrink-0 rounded p-1 opacity-0 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary group-hover/row:opacity-100 [@media(hover:none)]:opacity-100 ${isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
                 >
                   <MessageSquarePlus className="h-4 w-4" />

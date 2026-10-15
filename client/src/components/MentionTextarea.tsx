@@ -2,6 +2,7 @@ import { forwardRef, useId, useImperativeHandle, useMemo, useRef, useState, type
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { t, useI18n } from "@/i18n";
 import { activeMentionQuery, filterCandidates, splitMentions, type MentionCandidate } from "@shared/mentions";
 
 export type MentionPerson = MentionCandidate & { isYou?: boolean };
@@ -44,6 +45,7 @@ type Props = Omit<ComponentProps<typeof Textarea>, "value" | "onChange"> & {
  * textarea sits in). Follows the ARIA combobox pattern with a listbox.
  */
 export const MentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function MentionTextarea({ value, onValueChange, people, onSubmitShortcut, onKeyDown, className, ...rest }, ref) {
+  useI18n();
   const inner = useRef<HTMLTextAreaElement>(null);
   useImperativeHandle(ref, () => inner.current as HTMLTextAreaElement);
   const listId = useId();
@@ -120,7 +122,7 @@ export const MentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function M
         {...rest}
       />
       {open && (
-        <ul id={listId} role="listbox" aria-label="People to mention" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg">
+        <ul id={listId} role="listbox" aria-label={t("transcript.mentionList")} className="absolute left-0 right-0 top-full z-30 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg">
           {choices.map((person, index) => (
             <li
               key={person.id}

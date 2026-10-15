@@ -8,10 +8,25 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { formatTranscriptTimestamp } from "@/lib/transcriptSegments";
 import { trpc } from "@/lib/trpc";
 import { TRANSCRIPTION_LANGUAGES } from "@shared/languages";
+import { getUiLanguage, t, useI18n } from "@/i18n";
+import { htmlLangFor } from "@shared/i18n";
 
 export type TranslatableKind = "transcript" | "guide" | "note";
 
-const LANGUAGES = TRANSCRIPTION_LANGUAGES.map((language) => ({ code: language.code, label: language.label.replace(/ \(.*\)/, "") }));
+/** A language's name in the interface language, falling back to the English label. */
+function languageName(code: string, fallback: string) {
+  const locale = htmlLangFor(getUiLanguage());
+  try {
+    const name = new Intl.DisplayNames([locale], { type: "language" }).of(code);
+    if (name && name !== code) return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+  } catch {
+    // Older browsers without Intl.DisplayNames keep the English name.
+  }
+  return fallback;
+}
+
+const languageOptions = () =>
+  TRANSCRIPTION_LANGUAGES.map((language) => ({ code: language.code, label: languageName(language.code, language.label.replace(/ \(.*\)/, "")) }));
 
 type Chunk = {
   index: number;
@@ -36,7 +51,8 @@ function chunkAsText(chunk: Chunk) {
 }
 
 /** A "Translate" button with the language list; opens the translation for the chosen language. */
-export function TranslateMenu({ kind, id, label = "Translate", size = "sm", variant = "ghost" }: { kind: TranslatableKind; id: number; label?: string; size?: "sm" | "default"; variant?: "ghost" | "outline" }) {
+export function TranslateMenu({ kind, id, label, size = "sm", variant = "ghost" }: { kind: TranslatableKind; id: number; label?: string; size?: "sm" | "default"; variant?: "ghost" | "outline" }) {
+  useI18n();
   const [language, setLanguage] = useState<{ code: string; label: string } | null>(null);
   return (
     <>
@@ -44,11 +60,11 @@ export function TranslateMenu({ kind, id, label = "Translate", size = "sm", vari
         <DropdownMenuTrigger asChild>
           <Button variant={variant} size={size} className="gap-2">
             <Languages className="h-4 w-4" />
-            {label}
+            {label ?? t("translate.button")}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
-          {LANGUAGES.map((option) => (
+          {languageOptions().map((option) => (
             <DropdownMenuItem key={option.code} onSelect={() => setLanguage(option)}>
               {option.label}
             </DropdownMenuItem>
@@ -67,6 +83,7 @@ export function TranslateMenu({ kind, id, label = "Translate", size = "sm", vari
  * opening it again continues where it left off.
  */
 export function TranslateDialog({ kind, id, language, onClose }: { kind: TranslatableKind; id: number; language: { code: string; label: string }; onClose: () => void }) {
+  useI18n();
   const query = trpc.translations.get.useQuery({ kind, id, language: language.code }, { refetchOnWindowFocus: false, retry: false });
   const translate = trpc.translations.translateChunk.useMutation();
   const [chunks, setChunks] = useState<Chunk[] | null>(null);
@@ -91,7 +108,7 @@ export function TranslateDialog({ kind, id, language, onClose }: { kind: Transla
           if (cancelled.current) break;
           setChunks((current) => current?.map((item) => (item.index === result.index ? result : item)) ?? null);
         } catch (error) {
-          if (!cancelled.current) setFailedAt({ index: chunk.index, message: error instanceof Error ? error.message : "This part could not be translated." });
+          if (!cancelled.current) setFailedAt({ index: chunk.index, message: error instanceof Error ? error.message : t("translate.partFailed") });
           break;
         }
       }
@@ -122,29 +139,29 @@ export function TranslateDialog({ kind, id, language, onClose }: { kind: Transla
   const copy = async () => {
     try {
       await navigator.clipboard.writeText((chunks ?? []).filter(isDone).map(chunkAsText).join("\n\n"));
-      toast.success("Translation copied");
+      toast.success(t("translate.copied"));
     } catch {
-      toast.error("Copy failed. Select the text and copy it instead.");
+      toast.error(t("translate.copyFailed"));
     }
   };
 
-  const title = query.data?.title ?? (kind === "transcript" ? "Transcript" : kind === "guide" ? "Study guide" : "Notes");
+  const title = query.data?.title ?? (kind === "transcript" ? t("translate.kind.transcript") : kind === "guide" ? t("translate.kind.guide") : t("translate.kind.note"));
 
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent className="flex max-h-[88vh] flex-col gap-4 overflow-hidden sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="pr-6">
-            {title} in {language.label}
+            {t("translate.title", { title, language: language.label })}
           </DialogTitle>
           <DialogDescription>
-            Machine translation, saved so it opens instantly next time.{" "}
-            {total > 1 && (running ? `Translating part ${Math.min(done + 1, total)} of ${total}.` : done < total ? `${done} of ${total} parts translated.` : `All ${total} parts translated.`)}
+            {t("translate.description")}{" "}
+            {total > 1 && (running ? t("translate.translatingPart", { current: Math.min(done + 1, total), total }) : done < total ? t("translate.partsDone", { done, total }) : t("translate.allDone", { total }))}
           </DialogDescription>
         </DialogHeader>
 
         {total > 1 && (
-          <div className="h-1.5 shrink-0 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Translation progress" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
+          <div className="h-1.5 shrink-0 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("translate.progress")} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
             <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
         )}
@@ -182,14 +199,14 @@ export function TranslateDialog({ kind, id, language, onClose }: { kind: Transla
               {running && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {done === 0 ? "Translating the first part" : "Translating the next part"}
+                  {done === 0 ? t("translate.first") : t("translate.next")}
                 </p>
               )}
               {failedAt && (
                 <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <span>{failedAt.message}</span>
                   <Button size="sm" variant="outline" onClick={() => chunks && run(chunks)} className="shrink-0">
-                    Try again
+                    {t("translate.tryAgain")}
                   </Button>
                 </div>
               )}
@@ -200,15 +217,15 @@ export function TranslateDialog({ kind, id, language, onClose }: { kind: Transla
         <div className="flex shrink-0 justify-end gap-2 border-t border-border pt-4">
           {running ? (
             <Button variant="ghost" onClick={() => (cancelled.current = true)}>
-              Stop
+              {t("translate.stop")}
             </Button>
           ) : chunks && done < total && !failedAt ? (
             <Button variant="ghost" onClick={() => run(chunks)}>
-              Continue
+              {t("common.continue")}
             </Button>
           ) : null}
           <Button variant="outline" className="gap-2" onClick={copy} disabled={done === 0}>
-            <Copy className="h-4 w-4" /> Copy
+            <Copy className="h-4 w-4" /> {t("translate.copy")}
           </Button>
         </div>
       </DialogContent>

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
 import { Check, Highlighter, Loader2, MessageSquare, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,8 @@ import { MentionText, MentionTextarea, useMentionCandidates, type MentionPerson 
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { formatTranscriptTimestamp, type TranscriptSegment } from "@/lib/transcriptSegments";
+import { getUiLanguage, t, useI18n } from "@/i18n";
+import { htmlLangFor } from "@shared/i18n";
 
 /**
  * Transcript comments and highlights (B7): the data hook, the toolbar that
@@ -103,6 +104,7 @@ export function SelectionToolbar({
   selection: PendingSelection;
   onDone: () => void;
 }) {
+  useI18n();
   const utils = trpc.useUtils();
   const [writing, setWriting] = useState(false);
   const [body, setBody] = useState("");
@@ -111,10 +113,10 @@ export function SelectionToolbar({
   const create = trpc.annotations.create.useMutation({
     onSuccess: async (_data, variables) => {
       await utils.annotations.list.invalidate({ recordingId });
-      toast.success(variables.kind === "comment" ? "Comment added" : "Highlighted");
+      toast.success(variables.kind === "comment" ? t("transcript.commentAdded") : t("transcript.highlighted"));
       onDone();
     },
-    onError: error => toast.error(error.message || "Could not save that"),
+    onError: error => toast.error(error.message || t("transcript.saveFailed")),
   });
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export function SelectionToolbar({
   return (
     <div
       role="dialog"
-      aria-label="Highlight or comment on the selected words"
+      aria-label={t("transcript.selectionDialog")}
       className="absolute z-20 -translate-x-1/2 -translate-y-full"
       style={{ top: selection.top - 8, left: selection.left }}
       onMouseDown={event => event.stopPropagation()}
@@ -168,18 +170,18 @@ export function SelectionToolbar({
             onSubmitShortcut={() => {
               if (body.trim()) save("comment");
             }}
-            placeholder="Add a comment, @ to mention"
-            aria-label="Comment"
+            placeholder={t("transcript.commentPlaceholder")}
+            aria-label={t("transcript.comment")}
             rows={3}
             maxLength={4000}
             className="resize-none text-sm"
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onDone}>
-              Cancel
+              {t("transcript.cancel")}
             </Button>
             <Button type="submit" size="sm" disabled={!body.trim() || create.isPending}>
-              {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Comment"}
+              {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("transcript.comment")}
             </Button>
           </div>
         </form>
@@ -187,11 +189,11 @@ export function SelectionToolbar({
         <div className="flex items-center gap-0.5 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
           <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" disabled={create.isPending} onClick={() => save("highlight")}>
             <Highlighter className="h-4 w-4" />
-            Highlight
+            {t("transcript.highlight")}
           </Button>
           <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => setWriting(true)}>
             <MessageSquare className="h-4 w-4" />
-            Comment
+            {t("transcript.comment")}
           </Button>
         </div>
       )}
@@ -199,8 +201,13 @@ export function SelectionToolbar({
   );
 }
 
+/** "5 minutes ago" in the interface language. */
 function when(value: string | Date) {
-  return formatDistanceToNow(new Date(value), { addSuffix: true });
+  const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
+  const format = new Intl.RelativeTimeFormat(htmlLangFor(getUiLanguage()), { numeric: "auto" });
+  const steps: Array<[Intl.RelativeTimeFormatUnit, number]> = [["year", 31_536_000], ["month", 2_592_000], ["week", 604_800], ["day", 86_400], ["hour", 3_600], ["minute", 60]];
+  for (const [unit, size] of steps) if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+  return format.format(0, "minute");
 }
 
 function ThreadCard({
@@ -226,10 +233,11 @@ function ThreadCard({
   onGoTo: () => void;
   registerRef: (element: HTMLLIElement | null) => void;
 }) {
+  useI18n();
   const utils = trpc.useUtils();
   const [reply, setReply] = useState("");
   const refresh = () => utils.annotations.list.invalidate({ recordingId });
-  const onError = (error: { message: string }) => toast.error(error.message || "That did not work");
+  const onError = (error: { message: string }) => toast.error(error.message || t("transcript.actionFailed"));
   const sendReply = trpc.annotations.reply.useMutation({ onSuccess: async () => { setReply(""); await refresh(); }, onError });
   const setResolved = trpc.annotations.setResolved.useMutation({ onSuccess: refresh, onError });
   const remove = trpc.annotations.remove.useMutation({ onSuccess: refresh, onError });
@@ -253,7 +261,7 @@ function ThreadCard({
           <span className="line-clamp-2">
             <mark className="rounded-sm bg-annotation px-0.5 text-foreground">{thread.quote}</mark>
           </span>
-          {stale && <span className="mt-1 block">The transcript has changed since this was added.</span>}
+          {stale && <span className="mt-1 block">{t("transcript.changedSince")}</span>}
         </button>
         <div className="flex shrink-0 items-center">
           {thread.kind === "comment" && canResolve && (
@@ -264,8 +272,8 @@ function ThreadCard({
               className="h-8 w-8"
               disabled={setResolved.isPending}
               onClick={() => setResolved.mutate({ id: thread.id, resolved: !thread.resolved })}
-              aria-label={thread.resolved ? "Reopen thread" : "Resolve thread"}
-              title={thread.resolved ? "Reopen" : "Resolve"}
+              aria-label={thread.resolved ? t("transcript.reopenThread") : t("transcript.resolveThread")}
+              title={thread.resolved ? t("transcript.reopen") : t("transcript.resolve")}
             >
               {thread.resolved ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
             </Button>
@@ -278,8 +286,8 @@ function ThreadCard({
               className="h-8 w-8 text-muted-foreground hover:text-destructive"
               disabled={remove.isPending}
               onClick={() => remove.mutate({ id: thread.id })}
-              aria-label={thread.kind === "highlight" ? "Remove highlight" : "Delete thread"}
-              title={thread.kind === "highlight" ? "Remove highlight" : "Delete"}
+              aria-label={thread.kind === "highlight" ? t("transcript.removeHighlight") : t("transcript.deleteThread")}
+              title={thread.kind === "highlight" ? t("transcript.removeHighlight") : t("transcript.delete")}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -290,10 +298,13 @@ function ThreadCard({
       <div className="mt-2 space-y-3">
         <div>
           <p className="text-sm">
-            <span className="font-semibold">{thread.authorId === me ? "You" : thread.authorName}</span>{" "}
+            <span className="font-semibold">{thread.authorId === me ? t("transcript.you") : thread.authorName}</span>{" "}
             <span className="text-xs text-muted-foreground">
-              {thread.kind === "highlight" ? "highlighted this" : ""} {when(thread.createdAt)}
-              {thread.resolved && ", resolved"}
+              {thread.kind === "highlight"
+                ? t(thread.resolved ? "transcript.highlightedAtResolved" : "transcript.highlightedAt", { time: when(thread.createdAt) })
+                : thread.resolved
+                  ? t("transcript.timeResolved", { time: when(thread.createdAt) })
+                  : when(thread.createdAt)}
             </span>
           </p>
           {thread.body && <MentionText body={thread.body} people={people} className="mt-1 whitespace-pre-wrap text-sm leading-relaxed" />}
@@ -302,7 +313,7 @@ function ThreadCard({
           <div key={item.id} className="flex items-start justify-between gap-2 pl-4">
             <div className="min-w-0">
               <p className="text-sm">
-                <span className="font-semibold">{item.authorId === me ? "You" : item.authorName}</span> <span className="text-xs text-muted-foreground">{when(item.createdAt)}</span>
+                <span className="font-semibold">{item.authorId === me ? t("transcript.you") : item.authorName}</span> <span className="text-xs text-muted-foreground">{when(item.createdAt)}</span>
               </p>
               <MentionText body={item.body ?? ""} people={people} className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed" />
             </div>
@@ -313,7 +324,7 @@ function ThreadCard({
                 size="icon"
                 className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                 onClick={() => remove.mutate({ id: item.id })}
-                aria-label="Delete reply"
+                aria-label={t("transcript.deleteReply")}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -335,14 +346,14 @@ function ThreadCard({
               onSubmitShortcut={() => {
                 if (reply.trim()) sendReply.mutate({ parentId: thread.id, body: reply.trim() });
               }}
-              placeholder="Reply"
-              aria-label={`Reply to ${thread.authorName}`}
+              placeholder={t("transcript.reply")}
+              aria-label={t("transcript.replyTo", { name: thread.authorName })}
               rows={1}
               maxLength={4000}
               className="min-h-9 resize-none text-sm"
             />
             <Button type="submit" size="sm" variant="outline" disabled={!reply.trim() || sendReply.isPending}>
-              Reply
+              {t("transcript.reply")}
             </Button>
           </form>
         )}
@@ -368,6 +379,7 @@ export function CommentsPanel({
   hasAudio: boolean;
   onGoTo: (thread: AnnotationThread) => void;
 }) {
+  useI18n();
   const [showResolved, setShowResolved] = useState(false);
   const people = useMentionCandidates(recordingId, permissions.canSee && threads.length > 0);
   const refs = useRef(new Map<number, HTMLLIElement>());
@@ -387,24 +399,24 @@ export function CommentsPanel({
     <section aria-labelledby="transcript-comments-heading" className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 id="transcript-comments-heading" className="font-semibold">
-          Comments and highlights
+          {t("transcript.commentsHeading")}
         </h4>
-        <div className="flex items-center gap-1 text-sm" role="group" aria-label="Show">
+        <div className="flex items-center gap-1 text-sm" role="group" aria-label={t("transcript.show")}>
           <Button type="button" size="sm" variant={showResolved ? "ghost" : "secondary"} className="h-7 px-2.5 text-xs" aria-pressed={!showResolved} onClick={() => setShowResolved(false)}>
-            Open {open.length}
+            {t("transcript.openCount", { count: open.length })}
           </Button>
           <Button type="button" size="sm" variant={showResolved ? "secondary" : "ghost"} className="h-7 px-2.5 text-xs" aria-pressed={showResolved} onClick={() => setShowResolved(true)}>
-            Resolved {resolved.length}
+            {t("transcript.resolvedCount", { count: resolved.length })}
           </Button>
         </div>
       </div>
       {shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
           {showResolved
-            ? "Nothing resolved yet."
+            ? t("transcript.noneResolved")
             : permissions.canComment
-              ? "Select words in the transcript to highlight them or start a comment."
-              : "No comments yet."}
+              ? t("transcript.selectToComment")
+              : t("transcript.noComments")}
         </p>
       ) : (
         <ul className="space-y-3">

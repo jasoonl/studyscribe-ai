@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { chapterMarkPositions } from "@/lib/chapterMarks";
 import { getSkipSilenceEnabled, setSkipSilenceEnabled } from "@/lib/preferences";
+import { t, tn, useI18n } from "@/i18n";
 import { computeSilentGaps, skipTargetAt, totalSilence, type TimedSegment } from "@shared/silence";
 
 interface AudioPlayerProps {
@@ -24,8 +25,8 @@ interface AudioPlayerProps {
 
 function formatSkipped(seconds: number) {
   const whole = Math.round(seconds);
-  if (whole < 60) return `${whole}s`;
-  return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, "0")}s`;
+  if (whole < 60) return t("player.seconds", { s: whole });
+  return t("player.minutesSeconds", { m: Math.floor(whole / 60), s: String(whole % 60).padStart(2, "0") });
 }
 
 export interface AudioPlayerHandle {
@@ -37,10 +38,10 @@ async function probeSource(src: string): Promise<string | null> {
   try {
     const response = await fetch(src, { headers: { Range: "bytes=0-0" }, credentials: "include" });
     if (response.ok || response.status === 206) {
-      return `server returned ${response.status}, type ${response.headers.get("content-type") || "unknown"}`;
+      return t("player.probeOk", { status: response.status, type: response.headers.get("content-type") || t("player.probeUnknownType") });
     }
     const body = await response.text().catch(() => "");
-    return `server returned ${response.status}${body ? `: ${body.slice(0, 120)}` : ""}`;
+    return body ? t("player.probeStatusBody", { status: response.status, body: body.slice(0, 120) }) : t("player.probeStatus", { status: response.status });
   } catch {
     return null;
   }
@@ -50,19 +51,21 @@ function describeMediaError(error: MediaError | null): string | null {
   if (!error) return null;
   switch (error.code) {
     case MediaError.MEDIA_ERR_ABORTED:
-      return "Playback was cancelled before the recording finished loading.";
+      return t("player.errAborted");
     case MediaError.MEDIA_ERR_NETWORK:
-      return "The recording could not be downloaded. Check your connection and try again.";
+      return t("player.errNetwork");
     case MediaError.MEDIA_ERR_DECODE:
-      return "The recording is corrupted or incomplete and could not be decoded.";
+      return t("player.errDecode");
     case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-      return "The recording is missing from storage or is in a format this browser cannot play.";
+      return t("player.errUnsupported");
     default:
-      return error.message || "This recording could not be played.";
+      return error.message || t("player.errGeneric");
   }
 }
 
-export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title = "Recording", onTimeUpdate, fallbackDuration, startAt, segments, chapters }: AudioPlayerProps, ref) {
+export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({ src, title: titleProp, onTimeUpdate, fallbackDuration, startAt, segments, chapters }: AudioPlayerProps, ref) {
+  useI18n();
+  const title = titleProp ?? t("player.recording");
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -163,7 +166,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       // problem, not an unplayable file, and saying so turns an unactionable
       // "cannot play" into something diagnosable.
       void probeSource(src).then((detail) => {
-        if (detail) setLoadError((current) => (current ? `${current} (${detail})` : detail));
+        if (detail) setLoadError((current) => (current ? t("player.errorWithDetail", { error: current, detail }) : detail));
       });
     };
 
@@ -205,7 +208,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
       setIsPlaying(false);
       setLoadError(
         describeMediaError(audio.error) ||
-          (error instanceof Error ? error.message : "This recording could not be played."),
+          (error instanceof Error ? error.message : t("player.errGeneric")),
       );
     }
   };
@@ -261,12 +264,12 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
           {isPlaying ? (
             <>
               <Pause className="w-4 h-4" />
-              Pause
+              {t("player.pause")}
             </>
           ) : (
             <>
               <Play className="w-4 h-4" />
-              Play
+              {t("player.play")}
             </>
           )}
         </Button>
@@ -284,8 +287,8 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
           step={0.1}
           onValueChange={handleSeek}
           className="w-full"
-          thumbLabel={`Seek in ${title}`}
-          thumbValueText={`${formatTime(currentTime)} of ${formatTime(shownDuration)}`}
+          thumbLabel={t("player.seekIn", { title })}
+          thumbValueText={t("player.positionOf", { current: formatTime(currentTime), total: formatTime(shownDuration) })}
         />
         {chapterMarks.length > 0 && (
           <div className="pointer-events-none absolute inset-x-0 top-1/2 h-3 -translate-y-1/2" aria-hidden="true">
@@ -314,15 +317,15 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(funct
               }}
             />
             <Label htmlFor={skipId} className="text-sm font-medium">
-              Skip silence
+              {t("player.skipSilence")}
             </Label>
           </div>
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {gaps.length === 0
-              ? "No long pauses in this recording"
+              ? t("player.noPauses")
               : skipSilence && skippedTotal > 0
-                ? `Skipped ${formatSkipped(skippedTotal)} so far`
-                : `Jumps ${gaps.length} pause${gaps.length === 1 ? "" : "s"} of 2s or more, ${formatSkipped(totalSilence(gaps))} in all`}
+                ? t("player.skippedSoFar", { time: formatSkipped(skippedTotal) })
+                : tn("player.jumpsPauses", gaps.length, { total: formatSkipped(totalSilence(gaps)) })}
           </p>
         </div>
       )}

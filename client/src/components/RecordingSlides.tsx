@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { trpc } from "@/lib/trpc";
 import { formatTranscriptTimestamp } from "@/lib/transcriptSegments";
 import { cn } from "@/lib/utils";
+import { t, useI18n } from "@/i18n";
 import { slideAt } from "@shared/slides";
 export { slidesBeforeSegments } from "@shared/slides";
 
@@ -30,6 +31,7 @@ export function SlideViewer({
   onClose: () => void;
   onSeek?: (seconds: number) => void;
 }) {
+  useI18n();
   const slide = index !== null ? slides[index] : null;
   useEffect(() => {
     if (index === null) return;
@@ -47,22 +49,22 @@ export function SlideViewer({
         {slide && index !== null && (
           <>
             <div>
-              <DialogTitle className="text-base">Slide {index + 1} of {slides.length}</DialogTitle>
-              <DialogDescription>Captured at {formatTranscriptTimestamp(slide.atSeconds)}</DialogDescription>
+              <DialogTitle className="text-base">{t("slides.ofTotal", { number: index + 1, total: slides.length })}</DialogTitle>
+              <DialogDescription>{t("slides.capturedAt", { time: formatTranscriptTimestamp(slide.atSeconds) })}</DialogDescription>
             </div>
             <img
               src={slide.url}
-              alt={`Slide ${index + 1}, captured at ${formatTranscriptTimestamp(slide.atSeconds)}`}
+              alt={t("slides.alt", { number: index + 1, time: formatTranscriptTimestamp(slide.atSeconds) })}
               width={slide.width}
               height={slide.height}
               className="h-auto max-h-[70vh] w-full rounded-lg border border-border bg-muted object-contain"
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" disabled={index === 0} onClick={() => onIndexChange(index - 1)} aria-label="Previous slide">
+                <Button type="button" variant="outline" size="sm" disabled={index === 0} onClick={() => onIndexChange(index - 1)} aria-label={t("slides.previous")}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button type="button" variant="outline" size="sm" disabled={index === slides.length - 1} onClick={() => onIndexChange(index + 1)} aria-label="Next slide">
+                <Button type="button" variant="outline" size="sm" disabled={index === slides.length - 1} onClick={() => onIndexChange(index + 1)} aria-label={t("slides.next")}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -77,7 +79,7 @@ export function SlideViewer({
                   }}
                 >
                   <Play className="h-3.5 w-3.5" />
-                  Play from {formatTranscriptTimestamp(slide.atSeconds)}
+                  {t("transcript.playFrom", { time: formatTranscriptTimestamp(slide.atSeconds) })}
                 </Button>
               )}
             </div>
@@ -93,6 +95,7 @@ export function SlideViewer({
  * on screen at the current playback time marked. Hidden when there are none.
  */
 export function RecordingSlides({ slides, playbackTime, onSeek }: { slides: SlideItem[]; playbackTime: number; onSeek?: (seconds: number) => void }) {
+  useI18n();
   const [open, setOpen] = useState<number | null>(null);
   if (slides.length === 0) return null;
   const current = playbackTime > 0 ? slideAt(slides, playbackTime) : null;
@@ -100,7 +103,7 @@ export function RecordingSlides({ slides, playbackTime, onSeek }: { slides: Slid
   return (
     <section aria-labelledby="recording-slides" className="mt-5 border-t border-border pt-4">
       <h3 id="recording-slides" className="mb-2 text-sm font-semibold text-muted-foreground">
-        Slides<span className="ml-1.5 font-normal tabular-nums">{slides.length}</span>
+        {t("slides.heading")}<span className="ml-1.5 font-normal tabular-nums">{slides.length}</span>
       </h3>
       <ol className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
         {slides.map((slide, index) => {
@@ -110,7 +113,7 @@ export function RecordingSlides({ slides, playbackTime, onSeek }: { slides: Slid
               <button
                 type="button"
                 onClick={() => setOpen(index)}
-                aria-label={`Open slide ${index + 1}, at ${formatTranscriptTimestamp(slide.atSeconds)}`}
+                aria-label={t("slides.openAt", { number: index + 1, time: formatTranscriptTimestamp(slide.atSeconds) })}
                 aria-current={isCurrent ? "true" : undefined}
                 className={cn(
                   "block w-full overflow-hidden rounded-lg border bg-muted text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
