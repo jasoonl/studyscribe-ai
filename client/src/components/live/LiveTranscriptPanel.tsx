@@ -6,6 +6,7 @@ import { formatClockTime } from "@/lib/recordingClock";
 import { cn } from "@/lib/utils";
 import { LiveStatusLabel } from "./LiveStatusLabel";
 import type { LiveStatus } from "@/lib/liveTranscription";
+import { t, useI18n } from "@/i18n";
 
 const FOLLOW_PAUSE_MS = 5000;
 
@@ -29,6 +30,7 @@ export function LiveTranscriptPanel({
   footnote?: string;
   className?: string;
 }) {
+  useI18n();
   const { finals, partial } = useMemo(() => splitLiveText(turns), [turns]);
   const paragraphs = useMemo(() => groupParagraphs(finals), [finals]);
   const showSpeakers = useMemo(() => hasSeveralSpeakers(finals), [finals]);
@@ -59,13 +61,13 @@ export function LiveTranscriptPanel({
     <section aria-labelledby="live-transcript-heading" className={cn("flex min-h-0 flex-col rounded-xl border border-border bg-card shadow-sm", className)}>
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <h2 id="live-transcript-heading" className="text-base font-semibold">Live transcript</h2>
+          <h2 id="live-transcript-heading" className="text-base font-semibold">{t("live.transcript.title")}</h2>
           {status && <LiveStatusLabel status={status} />}
         </div>
         {onOpenCaptions && (
           <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={event => onOpenCaptions(event.currentTarget)}>
             <Captions className="h-4 w-4" aria-hidden="true" />
-            Captions
+            {t("live.transcript.captions")}
           </Button>
         )}
       </header>
@@ -78,12 +80,12 @@ export function LiveTranscriptPanel({
           if (!programmatic.current) userScrolledAt.current = Date.now();
         }}
         tabIndex={0}
-        aria-label="Live transcript text"
+        aria-label={t("live.transcript.textLabel")}
         className="max-h-[26rem] min-h-40 flex-1 overflow-y-auto px-4 py-4 sm:px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
         {empty ? (
           <p className="text-base text-muted-foreground">
-            {status === "live" ? "Listening. Words appear here as they're spoken." : status === "connecting" || status === "reconnecting" ? "Connecting to live transcription." : "No live text yet."}
+            {status === "live" ? t("live.transcript.emptyListening") : status === "connecting" || status === "reconnecting" ? t("live.transcript.emptyConnecting") : t("live.transcript.emptyNone")}
           </p>
         ) : (
           <div className="space-y-4 text-base leading-relaxed sm:text-lg">
@@ -93,7 +95,7 @@ export function LiveTranscriptPanel({
                   <span className="pt-1.5 font-mono text-xs tabular-nums text-muted-foreground">{formatClockTime(Math.floor(paragraph.startAt))}</span>
                   <span>
                     {showSpeakers && paragraph.speaker && (
-                      <span className="mr-2 text-sm font-medium text-muted-foreground">Speaker {paragraph.speaker}</span>
+                      <span className="mr-2 text-sm font-medium text-muted-foreground">{t("live.transcript.speaker", { name: paragraph.speaker })}</span>
                     )}
                     {paragraph.turns.map(turn => turn.text).join(" ")}
                   </span>

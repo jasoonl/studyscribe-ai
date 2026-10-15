@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useRecorder } from "@/contexts/RecorderContext";
 import { formatClockTime } from "@/lib/recordingClock";
+import { useI18n } from "@/i18n";
 
 function isTyping(target: EventTarget | null) {
   const element = target as HTMLElement | null;
@@ -14,11 +15,12 @@ function isTyping(target: EventTarget | null) {
 /** "Mark moment" during a recording, with the B key as a shortcut. */
 export function MarkMoment() {
   const { status, bookmarks, addBookmark } = useRecorder();
+  const { t, tn } = useI18n();
   const live = status === "recording" || status === "paused";
 
   const mark = () => {
     const at = addBookmark();
-    if (at !== null) toast.success(`Marked ${formatClockTime(at)}`, { duration: 1500 });
+    if (at !== null) toast.success(t("record.mark.toast", { time: formatClockTime(at) }), { duration: 1500 });
   };
 
   useEffect(() => {
@@ -39,13 +41,13 @@ export function MarkMoment() {
       {live && (
         <Button type="button" variant="outline" size="lg" onClick={mark} className="gap-2">
           <Bookmark className="h-5 w-5" />
-          Mark moment
+          {t("record.mark.button")}
           <Kbd className="ml-1 hidden sm:inline-flex">B</Kbd>
         </Button>
       )}
       {bookmarks.length > 0 && (
         <p className="text-center text-sm text-muted-foreground">
-          {bookmarks.length === 1 ? "1 moment marked" : `${bookmarks.length} moments marked`}:{" "}
+          {tn("record.mark.count", bookmarks.length)}{" "}
           <span className="font-mono tabular-nums text-foreground">{bookmarks.map(formatClockTime).join(", ")}</span>
         </p>
       )}

@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 /**
  * Formats a recording's stored duration (whole seconds) for display.
  *
@@ -8,16 +10,16 @@
  * "Unknown" instead of the more alarming "N/A".
  */
 export function formatRecordingDuration(seconds: number | null | undefined): string {
-  if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return "Unknown";
+  if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return t("duration.unknown");
 
   const whole = Math.round(seconds);
-  if (whole < 60) return `${whole}s`;
+  if (whole < 60) return t("duration.seconds", { s: whole });
 
   const minutes = Math.floor(whole / 60);
   const remainingSeconds = whole % 60;
-  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+  if (minutes < 60) return t("duration.minutes", { m: minutes, s: remainingSeconds });
 
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return `${hours}h ${remainingMinutes}m`;
+  return t("duration.hours", { h: hours, m: remainingMinutes });
 }

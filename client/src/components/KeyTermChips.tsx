@@ -3,17 +3,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { t, useI18n } from "@/i18n";
 
 /**
  * Key terms for a recording (B6). Each chip searches the transcript for that
  * term; choosing the active chip again clears the search.
  */
 export function KeyTermChips({ recordingId, query, onPick }: { recordingId: number; query: string; onPick: (term: string) => void }) {
+  useI18n();
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.insights.get.useQuery({ recordingId }, { enabled: recordingId > 0 });
   const generate = trpc.insights.generateKeyTerms.useMutation({
     onSuccess: () => utils.insights.get.invalidate({ recordingId }),
-    onError: error => toast.error(error.message || "Could not find key terms"),
+    onError: error => toast.error(error.message || t("transcript.keyTermsFailed")),
   });
 
   if (isLoading) return null;
@@ -22,11 +24,11 @@ export function KeyTermChips({ recordingId, query, onPick }: { recordingId: numb
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-sm">
-      <span className="mr-1 text-muted-foreground">Key terms</span>
+      <span className="mr-1 text-muted-foreground">{t("transcript.keyTerms")}</span>
       {terms.length === 0 ? (
         <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-xs" disabled={generate.isPending} onClick={() => generate.mutate({ recordingId })}>
           {generate.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {generate.isPending ? "Reading the transcript" : "Find key terms"}
+          {generate.isPending ? t("transcript.readingTranscript") : t("transcript.findKeyTerms")}
         </Button>
       ) : (
         <>
@@ -56,8 +58,8 @@ export function KeyTermChips({ recordingId, query, onPick }: { recordingId: numb
             className="h-7 w-7 text-muted-foreground"
             disabled={generate.isPending}
             onClick={() => generate.mutate({ recordingId })}
-            aria-label="Find key terms again"
-            title="Find key terms again"
+            aria-label={t("transcript.findKeyTermsAgain")}
+            title={t("transcript.findKeyTermsAgain")}
           >
             {generate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
           </Button>

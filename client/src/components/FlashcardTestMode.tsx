@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTestQuestions, scoreMasteryTest } from "@/lib/masteryModes";
+import { Trans, useI18n } from "@/i18n";
 
 type Flashcard = {
   id: number;
@@ -17,6 +18,7 @@ interface FlashcardTestModeProps {
 }
 
 export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
+  const { t, tn } = useI18n();
   const questions = useMemo(() => buildTestQuestions(cards), [cards]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -35,12 +37,12 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
       <div className="space-y-4">
         <Card className="border-2 border-primary/20 bg-primary/5 p-6 text-center dark:bg-primary/15">
           <Target className="mx-auto h-8 w-8 text-primary" />
-          <p className="mt-3 text-sm font-medium text-muted-foreground">Mastery Test result</p>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">{t("cards.testResult")}</p>
           <p className="mt-1 text-5xl font-bold tracking-tight">{score.percentage}%</p>
-          <p className="mt-2 text-sm text-muted-foreground">{score.correct} of {score.total} answers correct</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("cards.testScore", { correct: score.correct, total: score.total })}</p>
           <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
-            <Button variant="outline" onClick={onExit}><ArrowLeft className="mr-2 h-4 w-4" /> Study modes</Button>
-            <Button onClick={resetTest}><RotateCcw className="mr-2 h-4 w-4" /> Take again</Button>
+            <Button variant="outline" onClick={onExit}><ArrowLeft className="mr-2 h-4 w-4" /> {t("cards.studyModes")}</Button>
+            <Button onClick={resetTest}><RotateCcw className="mr-2 h-4 w-4" /> {t("cards.takeAgain")}</Button>
           </div>
         </Card>
 
@@ -53,8 +55,8 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
                   {result?.correct ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /> : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />}
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{index + 1}. {question.card.question}</p>
-                    <p className="mt-2 text-sm"><span className="font-medium">Your answer:</span> {answers[question.card.id] || "No answer"}</p>
-                    {!result?.correct && <p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground">Correct answer:</span> {question.card.answer}</p>}
+                    <p className="mt-2 text-sm"><span className="font-medium">{t("cards.yourAnswer")}</span> {answers[question.card.id] || t("cards.noAnswer")}</p>
+                    {!result?.correct && <p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground">{t("cards.correctAnswer")}</span> {question.card.answer}</p>}
                   </div>
                 </div>
               </Card>
@@ -70,12 +72,12 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
       <Card className="border-2 border-primary/20 bg-primary/5 p-4 dark:bg-primary/15 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4 text-primary" /> Test Mode</div>
-            <p className="mt-1 text-sm text-muted-foreground">A mixed-format practice test created from this recording’s flashcards. Answers are shown only after you submit.</p>
+            <div className="flex items-center gap-2 font-semibold"><ClipboardCheck className="h-4 w-4 text-primary" /> {t("cards.testTitle")}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{t("cards.testIntro")}</p>
           </div>
-          <Button size="sm" variant="outline" className="shrink-0" onClick={onExit}><ArrowLeft className="mr-1 h-4 w-4" /> Study modes</Button>
+          <Button size="sm" variant="outline" className="shrink-0" onClick={onExit}><ArrowLeft className="mr-1 h-4 w-4" /> {t("cards.studyModes")}</Button>
         </div>
-        <p className="mt-4 text-xs font-medium text-muted-foreground">{questions.length} questions · multiple choice and written recall</p>
+        <p className="mt-4 text-xs font-medium text-muted-foreground">{tn("cards.testSummary", questions.length)}</p>
       </Card>
 
       <div className="space-y-4">
@@ -84,7 +86,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
             <div className="mb-4 flex gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
               <div>
-                <span className="text-xs font-medium text-muted-foreground">{question.type === "written" ? "Written recall" : "Multiple choice"}</span>
+                <span className="text-xs font-medium text-muted-foreground">{question.type === "written" ? t("cards.written") : t("cards.multipleChoice")}</span>
                 <h3 className="mt-1 font-semibold leading-relaxed">{question.card.question}</h3>
               </div>
             </div>
@@ -105,7 +107,7 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
               <Textarea
                 value={answers[question.card.id] ?? ""}
                 onChange={(event) => setAnswers((current) => ({ ...current, [question.card.id]: event.target.value }))}
-                placeholder="Write your answer from memory…"
+                placeholder={t("cards.writePlaceholder")}
                 className="min-h-24 resize-none"
               />
             )}
@@ -115,8 +117,8 @@ export function FlashcardTestMode({ cards, onExit }: FlashcardTestModeProps) {
 
       <Card className="sticky bottom-3 border-2 border-border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">{answeredCount}/{questions.length}</span> questions answered</p>
-          <Button onClick={() => setIsSubmitted(true)} disabled={answeredCount === 0}><ClipboardCheck className="mr-2 h-4 w-4" /> Submit test</Button>
+          <p className="text-sm text-muted-foreground"><Trans k="cards.answered" vars={{ answered: answeredCount, total: questions.length }} parts={{ b: text => <span className="font-semibold text-foreground">{text}</span> }} /></p>
+          <Button onClick={() => setIsSubmitted(true)} disabled={answeredCount === 0}><ClipboardCheck className="mr-2 h-4 w-4" /> {t("cards.submit")}</Button>
         </div>
       </Card>
     </div>

@@ -24,6 +24,7 @@
  * - An unexpected close reconnects with backoff, giving up after a few
  *   consecutive failures.
  */
+import { t } from "@/i18n";
 import { applyTurnMessage, settleSession, type LiveTurn, type StreamingTurnMessage } from "./liveTurns";
 
 export type LiveStatus = "idle" | "connecting" | "live" | "reconnecting" | "paused" | "error" | "unavailable";
@@ -80,13 +81,13 @@ type Session = {
 /** Words for a close the person can act on, or null to just retry. */
 export function describeClose(code: number, providerMessage: string | null): { retry: boolean; message: string | null } {
   if (code === 1008 || code === 4001 || code === 4003) {
-    return { retry: false, message: "The live transcription service refused the connection. Recording continues." };
+    return { retry: false, message: t("record.live.refused") };
   }
   if (code === 3009) {
-    return { retry: true, message: "Too many live sessions are open right now. Retrying." };
+    return { retry: true, message: t("record.live.tooMany") };
   }
   if (code === 3007) {
-    return { retry: true, message: providerMessage ? `Live audio was rejected (${providerMessage}). Retrying.` : null };
+    return { retry: true, message: providerMessage ? t("record.live.rejected", { reason: providerMessage }) : null };
   }
   return { retry: true, message: null };
 }
@@ -356,7 +357,7 @@ export class LiveTranscriber {
     this.failures += 1;
     if (this.failures > RETRY_DELAYS_MS.length) {
       this.wanted = "stopped";
-      this.setStatus("error", "Live text stopped after several failed attempts. Recording continues.");
+      this.setStatus("error", t("record.live.gaveUp"));
       return;
     }
     this.setStatus("reconnecting", message);

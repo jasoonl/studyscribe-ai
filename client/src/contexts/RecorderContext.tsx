@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { t } from "@/i18n";
 import {
   appendChunk,
   deleteSession,
@@ -357,7 +358,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     const onShareEnded = () => {
       if (displayStreamRef.current !== stream) return;
       releaseTabAudio();
-      if (isLive()) toast.info("Sharing stopped. The microphone recording continues.");
+      if (isLive()) toast.info(t("record.mic.sharingStopped"));
     };
     audioTracks.forEach(track => {
       track.onended = onShareEnded;
@@ -398,7 +399,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       }
       attachMicrophone(stream);
       clearReconnect();
-      toast.success("Microphone reconnected. Still recording.");
+      toast.success(t("record.mic.reconnected"));
     } catch {
       if (isLive() && reconnectingRef.current) {
         reconnectTimerRef.current = setTimeout(() => void tryReconnect(), RECONNECT_RETRY_MS);
@@ -411,7 +412,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     releaseMicrophone();
     reconnectingRef.current = true;
     setMicReconnecting(true);
-    toast.warning("Microphone disconnected. Recording continues and will pick up as soon as a microphone is available.");
+    toast.warning(t("record.mic.disconnected"));
     void tryReconnect();
   };
 
@@ -447,7 +448,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     if (statusRef.current !== "idle") {
       updateStatus("stopped");
       if (!wasUserStop) {
-        toast.error("The microphone stopped, so the recording ended. Everything recorded so far is kept: add a title and save it.");
+        toast.error(t("record.mic.ended"));
       }
     }
     const resolvers = stopResolversRef.current;
@@ -458,7 +459,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
   const start = useCallback<RecorderContextValue["start"]>(async ({ userId, returnPath: path, tabAudio }) => {
     if (statusRef.current === "recording" || statusRef.current === "paused") return true;
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      toast.error("This browser can't record audio. Try the latest Chrome, Edge, Safari or Firefox.");
+      toast.error(t("record.mic.browserUnsupported"));
       return false;
     }
 
@@ -478,14 +479,14 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     if (tabAudio) {
       if (!context || !tabAudioSupported) {
         void context?.close().catch(() => {});
-        toast.error("This browser can't record a tab's audio. Use Chrome or Edge on a computer.");
+        toast.error(t("record.mic.tabUnsupported"));
         return false;
       }
       try {
         displayStream = await navigator.mediaDevices.getDisplayMedia(DISPLAY_CONSTRAINTS);
       } catch {
         void context.close().catch(() => {});
-        toast.info("Sharing was cancelled, so recording didn't start.");
+        toast.info(t("record.mic.shareCancelled"));
         return false;
       }
     }
@@ -496,7 +497,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     } catch {
       displayStream?.getTracks().forEach(track => track.stop());
       void context?.close().catch(() => {});
-      toast.error("Unable to access the microphone. Please check permissions.");
+      toast.error(t("record.mic.noAccess"));
       return false;
     }
 
@@ -538,9 +539,9 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     if (displayStream) {
       const kept = attachTabAudio(displayStream);
       if (!kept.audio && kept.slides) {
-        toast.info("That share has no audio, so slides are captured and only the microphone is recorded.");
+        toast.info(t("record.mic.noShareAudioSlides"));
       } else if (!kept.audio) {
-        toast.warning("That share has no audio, so only the microphone is recorded. To include a tab's sound, pick a Chrome tab and turn on \"Also share tab audio\".");
+        toast.warning(t("record.mic.noShareAudioStart"));
       }
     }
 
@@ -550,7 +551,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
     } catch {
       releaseAudioGraph();
-      toast.error("Recording isn't supported in this browser.");
+      toast.error(t("record.mic.recorderUnsupported"));
       return false;
     }
 
@@ -576,7 +577,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       if (recorderRef.current === recorder) finishStop();
     };
     recorder.onerror = () => {
-      toast.error("The recorder hit an error. Everything recorded so far is kept.");
+      toast.error(t("record.mic.recorderError"));
     };
 
     await saveSession({
@@ -600,7 +601,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
 
   const addTabAudio = useCallback(async () => {
     if (!isLive() || !audioContextRef.current || !mixRef.current || !tabAudioSupported) {
-      toast.error("Tab audio can only be added while recording in Chrome or Edge on a computer.");
+      toast.error(t("record.mic.tabOnlyWhileRecording"));
       return false;
     }
     let stream: MediaStream;
@@ -615,21 +616,21 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     }
     const kept = attachTabAudio(stream);
     if (!kept.audio && !kept.slides) {
-      toast.warning("That share has no audio. Pick a Chrome tab and turn on \"Also share tab audio\", or share the entire screen with system audio.");
+      toast.warning(t("record.mic.noShareAudioAdd"));
       return false;
     }
     if (!kept.audio) {
-      toast.info("That share has no audio. Capturing its slides; the microphone recording continues.");
+      toast.info(t("record.mic.noShareAudioSlidesAdded"));
       return true;
     }
-    toast.success(kept.slides ? "Tab audio added, and capturing slides." : "Tab audio added. Recording the tab and your microphone together.");
+    toast.success(kept.slides ? t("record.mic.tabAddedSlides") : t("record.mic.tabAdded"));
     return true;
   }, [attachTabAudio, tabAudioSupported]);
 
   const stopTabAudio = useCallback(() => {
     if (!displayStreamRef.current) return;
     releaseTabAudio();
-    toast.info("Sharing stopped. The microphone recording continues.");
+    toast.info(t("record.mic.sharingStopped"));
   }, [releaseTabAudio]);
 
   const setCaptureSlides = useCallback((value: boolean) => {
@@ -766,7 +767,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       setElapsedSeconds(backup.elapsedSeconds);
       setRecovered(true);
       updateStatus("stopped");
-      toast.info(`Recovered an unsaved recording (${formatClockTime(backup.elapsedSeconds)}). Add a title to save it, or discard it.`);
+      toast.info(t("record.mic.recovered", { time: formatClockTime(backup.elapsedSeconds) }));
     } finally {
       restoringRef.current = false;
     }

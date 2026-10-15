@@ -35,13 +35,15 @@ import { Link, useRoute, useSearch } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { formatDate, t, useI18n } from "@/i18n";
 
 function DetailTags({ tagIds }: { tagIds: number[] }) {
+  useI18n();
   const { data: tags } = trpc.tags.list.useQuery();
   const own = (tags ?? []).filter(tag => tagIds.includes(tag.id));
   if (own.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
+    <ul className="flex flex-wrap gap-1.5" aria-label={t("recording.tags")}>
       {own.map(tag => (
         <li key={tag.id} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-0.5 text-xs">
           <CourseDot color={tag.color} className="size-1.5" />
@@ -59,6 +61,7 @@ export default function RecordingDetail() {
   const startParam = new URLSearchParams(useSearch()).get("t");
   const startAt = startParam && /^\d+(\.\d+)?$/.test(startParam) ? Number(startParam) : undefined;
   const { user } = useAuth();
+  useI18n();
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [editedTranscript, setEditedTranscript] = useState("");
   const [isReviewingFlashcards, setIsReviewingFlashcards] = useState(false);
@@ -136,10 +139,10 @@ export default function RecordingDetail() {
   const { data: storedVocabulary } = trpc.vocabulary.get.useQuery({ recordingId: recordingId || 0 }, { enabled: !!recordingId && needsRetry });
   const retryTranscription = trpc.recordings.retryTranscription.useMutation({
     onSuccess: () => {
-      toast.success("Transcription restarted");
+      toast.success(t("recording.retryStarted"));
       utils.recordings.get.invalidate();
     },
-    onError: (error) => toast.error(error.message || "Could not restart transcription"),
+    onError: (error) => toast.error(error.message || t("recording.retryFailed")),
   });
 
   // Initialize messages from chat history
@@ -166,7 +169,7 @@ export default function RecordingDetail() {
     onError: (error) => {
       console.error('Chat failed:', error);
       setIsLoadingChat(false);
-      toast.error('Failed to get AI response');
+      toast.error(t("recording.chatFailed"));
     },
   });
 
@@ -174,10 +177,10 @@ export default function RecordingDetail() {
   const getContextualQuestions = () => {
     if (!transcript?.fullText) {
       return [
-        "Give me a 60-second concept check",
-        "What should I review first?",
-        "Test my understanding with 3 questions",
-        "Create a 15-minute review plan"
+        t("recording.q.conceptCheck"),
+        t("recording.q.reviewFirst"),
+        t("recording.q.threeQuestions"),
+        t("recording.q.reviewPlan")
       ];
     }
 
@@ -186,38 +189,38 @@ export default function RecordingDetail() {
 
     // Detect keywords and suggest relevant questions
     if (text.includes('definition') || text.includes('define')) {
-      questions.push("What are the key definitions?");
+      questions.push(t("recording.q.definitions"));
     }
     if (text.includes('formula') || text.includes('equation')) {
-      questions.push("Can you explain the formulas?");
+      questions.push(t("recording.q.formulas"));
     }
     if (text.includes('example') || text.includes('case study')) {
-      questions.push("Can you walk through an example?");
+      questions.push(t("recording.q.example"));
     }
     if (text.includes('process') || text.includes('step')) {
-      questions.push("What are the steps involved?");
+      questions.push(t("recording.q.steps"));
     }
     if (text.includes('why') || text.includes('reason')) {
-      questions.push("Why is this important?");
+      questions.push(t("recording.q.why"));
     }
     if (text.includes('compare') || text.includes('difference')) {
-      questions.push("What's the difference between these concepts?");
+      questions.push(t("recording.q.difference"));
     }
 
     // Add default questions if not enough specific ones
     if (questions.length === 0) {
-      questions.push("Explain the main concepts");
-      questions.push("What are the key takeaways?");
+      questions.push(t("recording.q.mainConcepts"));
+      questions.push(t("recording.q.takeaways"));
     }
 
     // Add more generic questions to reach 4 total
     if (questions.length < 4) {
       const generic = [
-        "Give me a 60-second concept check",
-        "Test my understanding with 3 questions",
-        "What should I review first?",
-        "Create a 15-minute review plan",
-        "What are common misconceptions?"
+        t("recording.q.conceptCheck"),
+        t("recording.q.threeQuestions"),
+        t("recording.q.reviewFirst"),
+        t("recording.q.reviewPlan"),
+        t("recording.q.misconceptions")
       ];
       for (const q of generic) {
         if (questions.length < 4 && !questions.includes(q)) {
@@ -241,9 +244,9 @@ export default function RecordingDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Recording not found</h1>
+          <h1 className="text-2xl font-bold mb-4">{t("recording.notFound")}</h1>
           <Link href="/dashboard">
-            <Button>Back to library</Button>
+            <Button>{t("recording.backToLibrary")}</Button>
           </Link>
         </div>
       </div>
@@ -260,7 +263,7 @@ export default function RecordingDetail() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("recording.back")}
             </Button>
           </Link>
           <h1 className="text-xl font-bold flex-1 ml-4 truncate">{recording.title}</h1>
@@ -268,9 +271,9 @@ export default function RecordingDetail() {
           {recording.status === "completed" && (
             <KeepOffline userId={user?.id} recording={{ id: recording.id, title: recording.title }} transcript={transcript} flashcards={flashcards} notes={studyNotes} />
           )}
-          <Button variant="outline" size="sm" className="gap-2" aria-label="Share" onClick={() => setIsShareDialogOpen(true)}>
+          <Button variant="outline" size="sm" className="gap-2" aria-label={t("recording.share")} onClick={() => setIsShareDialogOpen(true)}>
             <Share2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Share</span>
+            <span className="hidden sm:inline">{t("recording.share")}</span>
           </Button>
           </div>
         </div>
@@ -293,29 +296,29 @@ export default function RecordingDetail() {
               <div className="space-y-4">
                 <div>
                   <h2 className="font-semibold text-sm text-muted-foreground mb-1">
-                    Recording Details
+                    {t("recording.details")}
                   </h2>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <span className="font-medium">Duration:</span>{" "}
+                      <span className="font-medium">{t("recording.duration")}</span>{" "}
                       {formatRecordingDuration(recording.duration)}
                     </p>
                     <p>
-                      <span className="font-medium">Audience:</span>{" "}
-                      {recording.audience === "student" ? "Student" : "Professional"}
+                      <span className="font-medium">{t("recording.audience")}</span>{" "}
+                      {recording.audience === "student" ? t("recording.audienceStudent") : t("recording.audienceProfessional")}
                     </p>
                     <p>
-                      <span className="font-medium">Status:</span>{" "}
+                      <span className="font-medium">{t("recording.status")}</span>{" "}
                       <span className="capitalize px-2 py-1 rounded-full bg-secondary text-xs">
-                        {recording.status}
+                        {recording.status === "completed" ? t("recording.statusCompleted") : recording.status === "failed" ? t("recording.statusFailed") : recording.status === "processing" ? t("recording.statusProcessing") : recording.status}
                       </span>
                     </p>
                     <p>
-                      <span className="font-medium">Created:</span>{" "}
-                      {new Date(recording.createdAt).toLocaleDateString()}
+                      <span className="font-medium">{t("recording.created")}</span>{" "}
+                      {formatDate(recording.createdAt, { dateStyle: "short" })}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-                      <span className="font-medium">Filed under:</span>
+                      <span className="font-medium">{t("recording.filedUnder")}</span>
                       <RecordingOrganizer recordingId={recording.id} courseId={recording.courseId} tagIds={recording.tagIds} variant="field" className="-ml-1" />
                       <DetailTags tagIds={recording.tagIds} />
                     </div>
@@ -334,12 +337,11 @@ export default function RecordingDetail() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>
-                      {recording.status === "failed" ? "Transcription failed" : "Transcription never started"}
+                      {recording.status === "failed" ? t("retry.failedTitle") : t("retry.neverStartedTitle")}
                     </AlertTitle>
                     <AlertDescription className="space-y-3">
                       <p className="text-xs leading-relaxed">
-                        The audio is still stored, so this can be retried without re-uploading.
-                        {recording.status === "failed" && " Check your notifications for the reason the provider gave."}
+                        {recording.status === "failed" ? t("retry.stillStoredFailed") : t("retry.stillStored")}
                       </p>
                       <LanguageSelect value={retryLanguage} onChange={setRetryLanguage} id="retry-language" />
                       <VocabularyField
@@ -360,7 +362,7 @@ export default function RecordingDetail() {
                           })
                         }
                       >
-                        {retryTranscription.isPending ? "Retrying…" : "Retry transcription"}
+                        {retryTranscription.isPending ? t("retry.retrying") : t("retry.button")}
                       </Button>
                     </AlertDescription>
                   </Alert>
@@ -370,9 +372,9 @@ export default function RecordingDetail() {
                 {recording.audioUrl && (
                   <div>
                     <h2 className="font-semibold text-sm text-muted-foreground mb-2">
-                      Play Recording
+                      {t("recording.play")}
                     </h2>
-                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title="Recording Audio" onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} chapters={insights?.chapters} />
+                    <AudioPlayer ref={audioPlayerRef} src={recording.audioUrl} title={t("recording.audioTitle")} onTimeUpdate={setPlaybackTime} fallbackDuration={recording.duration ?? undefined} startAt={startAt} segments={Array.isArray(transcript?.segments) ? (transcript.segments as TranscriptSegment[]) : undefined} chapters={insights?.chapters} />
                     <RecordingBookmarks
                       recordingId={recordingId || 0}
                       playbackTime={playbackTime}
@@ -402,33 +404,33 @@ export default function RecordingDetail() {
               <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-none bg-transparent p-0 sm:grid-cols-3">
                 <TabsTrigger value="transcript" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <FileText className="h-5 w-5" />
-                  <span>Transcript</span>
-                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Source material</span>
+                  <span>{t("recording.tabTranscript")}</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">{t("recording.tabTranscriptHint")}</span>
                 </TabsTrigger>
                 <TabsTrigger value="notes" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <NotebookPen className="h-5 w-5" />
-                  <span>Study Notes</span>
-                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Understand</span>
+                  <span>{t("recording.tabNotes")}</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">{t("recording.tabNotesHint")}</span>
                 </TabsTrigger>
                 <TabsTrigger value="flashcards" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <Layers3 className="h-5 w-5" />
-                  <span>Flashcards</span>
-                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Recall</span>
+                  <span>{t("recording.tabFlashcards")}</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">{t("recording.tabFlashcardsHint")}</span>
                 </TabsTrigger>
                 <TabsTrigger value="learn" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <Brain className="h-5 w-5" />
-                  <span>Learn</span>
-                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Build mastery</span>
+                  <span>{t("recording.tabLearn")}</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">{t("recording.tabLearnHint")}</span>
                 </TabsTrigger>
                 <TabsTrigger value="test" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <ClipboardCheck className="h-5 w-5" />
-                  <span>Test</span>
-                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Check mastery</span>
+                  <span>{t("recording.tabTest")}</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">{t("recording.tabTestHint")}</span>
                 </TabsTrigger>
                 <TabsTrigger value="tutor" className="h-auto min-h-20 flex-col whitespace-normal rounded-xl border border-border bg-card px-2 py-3 text-xs shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg sm:min-h-24 sm:px-3 sm:text-sm">
                   <MessageSquare className="h-5 w-5" />
-                  <span>AI Assistant</span>
-                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">Ask questions</span>
+                  <span>{t("recording.tabTutor")}</span>
+                  <span className="hidden text-[11px] font-normal opacity-90 sm:block">{t("recording.tabTutorHint")}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -442,7 +444,7 @@ export default function RecordingDetail() {
                   ) : transcript ? (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold">Full Transcript</h3>
+                        <h3 className="font-semibold">{t("recording.fullTranscript")}</h3>
                         <div className="flex gap-2">
                           {!isEditingTranscript && (
                             <Button
@@ -452,18 +454,18 @@ export default function RecordingDetail() {
                               className="gap-2"
                             >
                               <Edit2 className="w-4 h-4" />
-                              Edit
+                              {t("recording.edit")}
                             </Button>
                           )}
                           {!(Array.isArray(transcript.segments) && transcript.segments.length > 0) && (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => downloadTranscriptExport({ segments: [], fullText: transcript.fullText, title: recording?.title || "Transcript" }, "txt")}
+                              onClick={() => downloadTranscriptExport({ segments: [], fullText: transcript.fullText, title: recording?.title || t("recording.transcriptFileName") }, "txt")}
                               className="gap-2"
                             >
                               <Download className="w-4 h-4" />
-                              Export
+                              {t("recording.export")}
                             </Button>
                           )}
                         </div>
@@ -474,7 +476,7 @@ export default function RecordingDetail() {
                             value={editedTranscript}
                             onChange={(e) => setEditedTranscript(e.target.value)}
                             className="w-full h-64 p-3 border border-border rounded-lg bg-background text-foreground font-mono text-sm resize-none"
-                            placeholder="Edit transcript..."
+                            placeholder={t("recording.editPlaceholder")}
                           />
                           <div className="flex gap-2">
                             <Button
@@ -483,7 +485,7 @@ export default function RecordingDetail() {
                               disabled={updateTranscriptMutation.isPending}
                               onClick={async () => {
                                 if (!editedTranscript.trim()) {
-                                  toast.error("Transcript cannot be empty");
+                                  toast.error(t("recording.transcriptEmpty"));
                                   return;
                                 }
 
@@ -494,15 +496,15 @@ export default function RecordingDetail() {
                                   });
                                   await utils.transcription.get.invalidate({ recordingId: recordingId || 0 });
                                   setIsEditingTranscript(false);
-                                  toast.success("Transcript changes saved");
+                                  toast.success(t("recording.transcriptSaved"));
                                 } catch (error) {
-                                  const message = error instanceof Error ? error.message : "Unable to save transcript";
+                                  const message = error instanceof Error ? error.message : t("recording.transcriptSaveFailed");
                                   toast.error(message);
                                 }
                               }}
                             >
                               {updateTranscriptMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                              {updateTranscriptMutation.isPending ? "Saving..." : "Save Changes"}
+                              {updateTranscriptMutation.isPending ? t("recording.saving") : t("recording.saveChanges")}
                             </Button>
                             <Button
                               variant="outline"
@@ -514,7 +516,7 @@ export default function RecordingDetail() {
                               className="gap-2"
                             >
                               <X className="w-4 h-4" />
-                              Cancel
+                              {t("recording.cancel")}
                             </Button>
                           </div>
                         </div>
@@ -552,7 +554,7 @@ export default function RecordingDetail() {
                     </div>
                   ) : (
                     <div className="text-center py-12 text-muted-foreground">
-                      <p>Transcript not yet available</p>
+                      <p>{t("recording.transcriptPending")}</p>
                     </div>
                   )}
                 </Card>
@@ -574,8 +576,8 @@ export default function RecordingDetail() {
                 <div className="space-y-4">
                   <AIProgressBar
                     isLoading={generateFlashcardsMutation.isPending}
-                    title="Generating Flashcards"
-                    description="Creating interactive flashcards from your transcript..."
+                    title={t("recording.generatingFlashcards")}
+                    description={t("recording.generatingFlashcardsText")}
                   />
                   {flashcards && flashcards.length > 0 ? (
                     isReviewingFlashcards ? (
@@ -590,8 +592,8 @@ export default function RecordingDetail() {
                         <Card className="border-2 border-primary/20 bg-primary/5 p-5 dark:bg-primary/15">
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <h3 className="font-bold">Ready to actively recall?</h3>
-                              <p className="mt-1 text-sm text-muted-foreground">Study one card at a time, reveal only when ready, and track what you have mastered.</p>
+                              <h3 className="font-bold">{t("recording.recallTitle")}</h3>
+                              <p className="mt-1 text-sm text-muted-foreground">{t("recording.recallText")}</p>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadFlashcardExport(flashcards, "tsv", recording.title)}>
@@ -601,7 +603,7 @@ export default function RecordingDetail() {
                                 <Download className="h-4 w-4" /> Notion Markdown
                               </Button>
                               <Button className="shrink-0 gap-2" onClick={() => setIsReviewingFlashcards(true)}>
-                                <Brain className="h-4 w-4" /> Start review
+                                <Brain className="h-4 w-4" /> {t("recording.startReview")}
                               </Button>
                             </div>
                           </div>
@@ -612,19 +614,19 @@ export default function RecordingDetail() {
                               <div className="space-y-3">
                                 <div>
                                   <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                                    Question
+                                    {t("recording.question")}
                                   </h4>
                                   <p className="text-sm font-medium">{card.question}</p>
                                 </div>
                                 <div>
                                   <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                                    Answer
+                                    {t("recording.answer")}
                                   </h4>
                                   <p className="text-sm text-muted-foreground">{card.answer}</p>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs px-2 py-1 rounded-full bg-secondary capitalize">
-                                    {card.difficulty}
+                                    {card.difficulty === "easy" ? t("recording.difficultyEasy") : card.difficulty === "hard" ? t("recording.difficultyHard") : card.difficulty === "medium" ? t("recording.difficultyMedium") : card.difficulty}
                                   </span>
                                 </div>
                               </div>
@@ -637,7 +639,7 @@ export default function RecordingDetail() {
                     <Card className="p-6 border-2 border-border text-center">
                       <BookOpen className="w-8 h-8 mx-auto mb-3 text-muted-foreground opacity-50" />
                       <p className="text-muted-foreground mb-4">
-                        No flashcards generated yet
+                        {t("recording.noFlashcards")}
                       </p>
                       <Button
                         className="bg-accent hover:bg-accent/90 text-primary"
@@ -647,11 +649,11 @@ export default function RecordingDetail() {
                               recordingId: recordingId || 0,
                             });
                             await utils.ai.getFlashcards.invalidate({ recordingId: recordingId || 0 });
-                            toast.success("Flashcards generated successfully!");
+                            toast.success(t("recording.flashcardsGenerated"));
                           } catch (error) {
                             console.error("Failed to generate flashcards:", error);
-                            const errorMsg = error instanceof Error ? error.message : "Unknown error";
-                            toast.error(`Failed to generate flashcards: ${errorMsg}`);
+                            const errorMsg = error instanceof Error ? error.message : t("recording.unknownError");
+                            toast.error(t("recording.flashcardsFailed", { error: errorMsg }));
                           }
                         }}
                         disabled={generateFlashcardsMutation.isPending}
@@ -661,7 +663,7 @@ export default function RecordingDetail() {
                         ) : (
                           <Sparkles className="w-4 h-4 mr-2" />
                         )}
-                        {generateFlashcardsMutation.isPending ? "Generating..." : "Generate Flashcards"}
+                        {generateFlashcardsMutation.isPending ? t("recording.generating") : t("recording.generateFlashcards")}
                       </Button>
                     </Card>
                   )}
@@ -680,8 +682,8 @@ export default function RecordingDetail() {
                 ) : (
                   <Card className="border-2 border-border p-8 text-center">
                     <Brain className="mx-auto mb-3 h-9 w-9 text-muted-foreground/60" />
-                    <h3 className="font-bold">Learn from your flashcards</h3>
-                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Generate flashcards first, then Learn Mode will adapt practice from recognition to written recall.</p>
+                    <h3 className="font-bold">{t("recording.learnEmptyTitle")}</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t("recording.learnEmptyText")}</p>
                   </Card>
                 )}
               </TabsContent>
@@ -696,8 +698,8 @@ export default function RecordingDetail() {
                 ) : (
                   <Card className="border-2 border-border p-8 text-center">
                     <BookOpen className="mx-auto mb-3 h-9 w-9 text-muted-foreground/60" />
-                    <h3 className="font-bold">Test your mastery</h3>
-                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Generate flashcards first, then take a mixed-format practice test on this recording.</p>
+                    <h3 className="font-bold">{t("recording.testEmptyTitle")}</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t("recording.testEmptyText")}</p>
                   </Card>
                 )}
               </TabsContent>
@@ -707,7 +709,7 @@ export default function RecordingDetail() {
                 <Card className="p-6 border-2 border-border">
                   <h3 className="font-bold mb-4 flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-accent" />
-                    AI Tutor - Ask questions about this lecture
+                    {t("recording.tutorTitle")}
                   </h3>
                   <AIChatBox
                     messages={messages}
@@ -726,7 +728,7 @@ export default function RecordingDetail() {
                       });
                     }}
                     isLoading={isLoadingChat}
-                    placeholder="Ask the AI Assistant a question about this lecture..."
+                    placeholder={t("recording.tutorPlaceholder")}
                     suggestedPrompts={getContextualQuestions()}
                   />
                 </Card>
@@ -752,8 +754,8 @@ export default function RecordingDetail() {
               }}
             />
             <div className="flex items-center justify-between pt-2">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">AI Study Tools</h3>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Requires transcript</span>
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">{t("recording.aiTools")}</h3>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{t("recording.requiresTranscript")}</span>
             </div>
 
             <Link href={`/recordings/${recordingId}/study-guides`}>
@@ -763,13 +765,13 @@ export default function RecordingDetail() {
                     <BookOpen className="w-5 h-5 text-primary/70" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Study Guides</p>
-                    <p className="text-xs text-muted-foreground">AI-generated comprehensive notes with key concepts & formulas</p>
+                    <p className="font-medium text-sm">{t("recording.studyGuides")}</p>
+                    <p className="text-xs text-muted-foreground">{t("recording.studyGuidesText")}</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-primary/50 mt-1">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Open Study Guides
+                  {t("recording.openStudyGuides")}
                 </Button>
               </div>
             </Link>
@@ -781,13 +783,13 @@ export default function RecordingDetail() {
                     <Brain className="w-5 h-5 text-primary/70" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Practice Quizzes</p>
-                    <p className="text-xs text-muted-foreground">10 AI-generated questions with instant scoring & explanations</p>
+                    <p className="font-medium text-sm">{t("recording.quizzes")}</p>
+                    <p className="text-xs text-muted-foreground">{t("recording.quizzesText")}</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-primary/50 mt-1">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Open Quizzes
+                  {t("recording.openQuizzes")}
                 </Button>
               </div>
             </Link>
@@ -799,13 +801,13 @@ export default function RecordingDetail() {
                     <Mail className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Email Drafts</p>
-                    <p className="text-xs text-muted-foreground">Generate emails, documents & reports in your chosen tone</p>
+                    <p className="font-medium text-sm">{t("recording.emailDrafts")}</p>
+                    <p className="text-xs text-muted-foreground">{t("recording.emailDraftsText")}</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-blue-400/50 mt-1">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Open Email Drafts
+                  {t("recording.openEmailDrafts")}
                 </Button>
               </div>
             </Link>

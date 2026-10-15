@@ -6,6 +6,7 @@ import { Loader2, Send, User, Sparkles } from "lucide-react";
 import LatticeLoader from "@/components/reactbits/LatticeLoader";
 import { useState, useEffect, useRef } from "react";
 import { Markdown } from "@/components/Markdown";
+import { useI18n } from "@/i18n";
 
 /**
  * Message type matching server-side LLM Message interface
@@ -121,13 +122,16 @@ export function AIChatBox({
   messages,
   onSendMessage,
   isLoading = false,
-  placeholder = "Type your message...",
+  placeholder,
   className,
   height = "600px",
-  emptyStateMessage = "Start a conversation with AI",
+  emptyStateMessage,
   suggestedPrompts,
   renderMessageExtra,
 }: AIChatBoxProps) {
+  const { t } = useI18n();
+  placeholder ??= t("chat.placeholder");
+  emptyStateMessage ??= t("chat.empty");
   const [input, setInput] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -304,7 +308,7 @@ export function AIChatBox({
                     <Sparkles className="size-4 text-primary" />
                   </div>
                   <div className="rounded-2xl bg-muted px-4 py-2.5 text-muted-foreground">
-                    <LatticeLoader label="Thinking" status="working" pattern="orbit" cellSize={5} fontSize={13} color="var(--primary)" />
+                    <LatticeLoader label={t("chat.thinking")} status="working" pattern="orbit" cellSize={5} fontSize={13} color="var(--primary)" />
                   </div>
                 </div>
               )}
@@ -333,7 +337,7 @@ export function AIChatBox({
           size="icon"
           disabled={!input.trim() || isLoading}
           className="shrink-0 h-[38px] w-[38px]"
-          aria-label={isLoading ? "Sending" : "Send"}
+          aria-label={isLoading ? t("chat.sending") : t("chat.send")}
         >
           {isLoading ? (
             <Loader2 className="size-4 animate-spin" />

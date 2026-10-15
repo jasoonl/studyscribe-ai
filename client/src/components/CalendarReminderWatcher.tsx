@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import type { useRecorder } from "@/contexts/RecorderContext";
 import { trpc } from "@/lib/trpc";
+import { t } from "@/i18n";
 
 const POLL_MS = 30_000;
 
@@ -30,11 +31,11 @@ export function CalendarReminderWatcher() {
         const { reminders } = await claimRef.current();
         if (stopped || reminders.length === 0) return;
         for (const reminder of reminders) {
-          toast(`${reminder.title} is starting`, {
+          toast(t("record.calendar.starting", { title: reminder.title }), {
             id: `calendar-${reminder.id}`,
-            description: "Press Record and the recording will be named after it.",
+            description: t("record.calendar.startingHelp"),
             duration: 60_000,
-            action: { label: "Record", onClick: () => navigate("/record") },
+            action: { label: t("record.calendar.record"), onClick: () => navigate("/record") },
           });
         }
         void utils.userNotifications.invalidate();
@@ -79,7 +80,7 @@ export function useCalendarTitle(recorder: ReturnType<typeof useRecorder>, title
     setTitle(event.title);
   }, [event, startedAt, title, setTitle]);
 
-  return event && title === event.title ? `Named after "${event.title}" in your calendar.` : null;
+  return event && title === event.title ? t("record.calendar.namedAfter", { title: event.title }) : null;
 }
 
 /** The calendar event a recording belongs to, and when it started, for linking it on save (D4). */
