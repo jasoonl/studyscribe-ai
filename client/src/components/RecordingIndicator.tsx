@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useRecorder } from "@/contexts/RecorderContext";
 import { useLiveTranscript } from "@/contexts/LiveTranscriptContext";
-import { LiveTranscriptSection, useLiveLayout } from "@/components/live/LiveTranscriptSection";
-import { StudyHelpPanel } from "@/components/live/StudyHelpPanel";
+import { useLiveLayout } from "@/components/live/liveLayout";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatClockTime } from "@/lib/recordingClock";
 import { cn } from "@/lib/utils";
-import { Mic, MicOff, Sparkles } from "lucide-react";
+import { Loader2, Mic, MicOff, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { t, useI18n } from "@/i18n";
 
@@ -17,13 +16,15 @@ import { t, useI18n } from "@/i18n";
  * following along from another page, and opens Study help in a side sheet next to
  * the live transcript, so help never relies on text the person can't see.
  */
+// The sheet's contents (live transcript, captions, Study help) load only when it is opened, keeping them out of the app shell.
+const StudyHelpSheetBody = lazy(() => import("@/components/live/StudyHelpSheetBody"));
+
 export default function RecordingIndicator() {
   const { status, elapsedSeconds, micReconnecting, returnPath, recorderOnScreen } = useRecorder();
   const [, navigate] = useLocation();
   const live = useLiveTranscript();
   const { showHelp } = useLiveLayout(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [audience, setAudience] = useState<"student" | "professional">("student");
   useI18n();
 
   if (status === "idle" || recorderOnScreen) return null;
@@ -89,28 +90,11 @@ export default function RecordingIndicator() {
             <SheetTitle>{t("live.help.title")}</SheetTitle>
             <SheetDescription>{t("live.help.sheetText")}</SheetDescription>
           </SheetHeader>
-          <div className="shrink-0 space-y-4 px-4 pb-6">
-            <fieldset className="flex flex-wrap items-center gap-2 text-sm">
-              <legend className="sr-only">{t("live.help.kind")}</legend>
-              <span aria-hidden="true" className="text-muted-foreground">{t("live.help.kind")}</span>
-              {(["student", "professional"] as const).map(kind => (
-                <button
-                  key={kind}
-                  type="button"
-                  aria-pressed={audience === kind}
-                  onClick={() => setAudience(kind)}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    audience === kind ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-secondary",
-                  )}
-                >
-                  {t(kind === "student" ? "live.help.kindLecture" : "live.help.kindMeeting")}
-                </button>
-              ))}
-            </fieldset>
-            <LiveTranscriptSection snapshot={null} />
-            <StudyHelpPanel audience={audience} />
-          </div>
+          {helpOpen && (
+            <Suspense fallback={<div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" /></div>}>
+              <StudyHelpSheetBody />
+            </Suspense>
+          )}
         </SheetContent>
       </Sheet>
     </>
