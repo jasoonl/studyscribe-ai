@@ -1,26 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { t, useI18n } from "@/i18n";
+import type { MessageKey } from "@shared/i18n";
 
-type Slide = { image: string; title: string; caption: string };
+/** `title` and `caption` are message keys; the walkthrough reads them in the interface language. */
+type Slide = { image: string; title: MessageKey; caption: MessageKey };
 
 /**
  * Screens are shown in this order. Each image lives at client/public/demo/<name>.jpg;
  * a slide whose file is missing is skipped, so the walkthrough works with any subset.
  */
 export const DEMO_SLIDES: Slide[] = [
-  { image: "/demo/add-recording.jpg", title: "Add a lecture your way", caption: "Record live, upload an audio or video file, or paste a link to a talk. Transcription starts automatically." },
-  { image: "/demo/transcript.jpg", title: "Accurate, timestamped transcripts", caption: "Every word is transcribed with speaker labels. Click any timestamp to jump to that moment in the audio." },
-  { image: "/demo/study-notes.jpg", title: "Study notes in seconds", caption: "Key concepts and summaries are generated from the transcript, ready to review." },
-  { image: "/demo/flashcards.jpg", title: "Flashcards, made for you", caption: "Question and answer cards are created automatically, and can be exported to Quizlet, Anki or Notion." },
-  { image: "/demo/learn-mode.jpg", title: "Learn mode", caption: "Start with recognition, then graduate to written recall as you build confidence." },
-  { image: "/demo/test-mode.jpg", title: "Practice tests", caption: "A mixed-format test built from your flashcards, with answers shown only after you submit." },
-  { image: "/demo/quiz.jpg", title: "Practice quizzes", caption: "Ten AI-written questions with instant scoring and explanations." },
-  { image: "/demo/study-guide.jpg", title: "Study guides", caption: "A structured guide with an overview, key concepts, and the details that matter." },
-  { image: "/demo/ai-tutor.jpg", title: "AI tutor", caption: "Ask questions about your lecture and get answers grounded in what was actually said." },
-  { image: "/demo/email-drafts.jpg", title: "Emails and documents", caption: "Turn a lecture into a summary email, a document, or a formal report in the tone you choose." },
-  { image: "/demo/dashboard.jpg", title: "Your whole library", caption: "Search, sort and revisit every recording in one place." },
-  { image: "/demo/analytics.jpg", title: "Track your progress", caption: "See your recordings, transcripts, flashcards and quizzes at a glance." },
+  { image: "/demo/add-recording.jpg", title: "demo.slide.add.title", caption: "demo.slide.add.caption" },
+  { image: "/demo/transcript.jpg", title: "demo.slide.transcript.title", caption: "demo.slide.transcript.caption" },
+  { image: "/demo/study-notes.jpg", title: "demo.slide.notes.title", caption: "demo.slide.notes.caption" },
+  { image: "/demo/flashcards.jpg", title: "landing.features.flashcards.title", caption: "demo.slide.flashcards.caption" },
+  { image: "/demo/learn-mode.jpg", title: "demo.slide.learn.title", caption: "demo.slide.learn.caption" },
+  { image: "/demo/test-mode.jpg", title: "demo.slide.test.title", caption: "demo.slide.test.caption" },
+  { image: "/demo/quiz.jpg", title: "landing.features.quiz.title", caption: "demo.slide.quiz.caption" },
+  { image: "/demo/study-guide.jpg", title: "demo.slide.guide.title", caption: "demo.slide.guide.caption" },
+  { image: "/demo/ai-tutor.jpg", title: "nav.tutor.title", caption: "demo.slide.tutor.caption" },
+  { image: "/demo/email-drafts.jpg", title: "demo.slide.email.title", caption: "demo.slide.email.caption" },
+  { image: "/demo/dashboard.jpg", title: "demo.slide.library.title", caption: "demo.slide.library.caption" },
+  { image: "/demo/analytics.jpg", title: "demo.slide.progress.title", caption: "demo.slide.progress.caption" },
 ];
 
 /** Rendered by scripts/demo-video/v2 (see CLAUDE.md). */
@@ -43,6 +46,7 @@ export default function DemoWalkthrough() {
   const [held, setHeld] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const regionRef = useRef<HTMLDivElement>(null);
+  useI18n();
 
   // Missing files fall through to the SPA's index.html, so check the type, not just the status.
   useEffect(() => {
@@ -104,7 +108,7 @@ export default function DemoWalkthrough() {
   }, [elapsed, index, go]);
 
   if (hasVideo === null || slides === null) {
-    return <div className="aspect-video animate-pulse rounded-lg bg-muted" aria-label="Loading demo" />;
+    return <div className="aspect-video animate-pulse rounded-lg bg-muted" aria-label={t("demo.loading")} />;
   }
 
   if (hasVideo) {
@@ -117,7 +121,7 @@ export default function DemoWalkthrough() {
         preload="metadata"
         className="aspect-[1600/1080] w-full rounded-lg border border-border bg-black"
       >
-        Your browser does not support the video tag.
+        {t("demo.noVideo")}
       </video>
     );
   }
@@ -127,8 +131,8 @@ export default function DemoWalkthrough() {
       <div className="grid gap-4 sm:grid-cols-2">
         {DEMO_SLIDES.slice(0, 8).map((slide) => (
           <div key={slide.title} className="rounded-lg border border-border p-4">
-            <h3 className="font-semibold">{slide.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{slide.caption}</p>
+            <h3 className="font-semibold">{t(slide.title)}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t(slide.caption)}</p>
           </div>
         ))}
       </div>
@@ -143,7 +147,7 @@ export default function DemoWalkthrough() {
       ref={regionRef}
       role="region"
       aria-roledescription="carousel"
-      aria-label="StudyScribe AI product walkthrough"
+      aria-label={t("demo.carousel")}
       tabIndex={0}
       onKeyDown={(event) => {
         if (event.key === "ArrowRight") go(index + 1);
@@ -163,7 +167,7 @@ export default function DemoWalkthrough() {
         <img
           key={slide.image}
           src={slide.image}
-          alt={`${slide.title}: ${slide.caption}`}
+          alt={t("demo.slideAlt", { title: t(slide.title), caption: t(slide.caption) })}
           className="aspect-[3420/2042] w-full object-contain object-top"
           draggable={false}
         />
@@ -177,25 +181,25 @@ export default function DemoWalkthrough() {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0" aria-live="polite">
           <p className="text-xs font-medium text-muted-foreground">
-            {index + 1} of {count}
+            {t("demo.slideOf", { current: index + 1, total: count })}
           </p>
-          <h3 className="text-lg font-semibold">{slide.title}</h3>
-          <p className="text-sm text-muted-foreground">{slide.caption}</p>
+          <h3 className="text-lg font-semibold">{t(slide.title)}</h3>
+          <p className="text-sm text-muted-foreground">{t(slide.caption)}</p>
         </div>
         {count > 1 && (
           <div className="flex shrink-0 items-center gap-1">
-            <Button variant="outline" size="icon" aria-label="Previous slide" onClick={() => go(index - 1)}>
+            <Button variant="outline" size="icon" aria-label={t("demo.previous")} onClick={() => go(index - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              aria-label={playing ? "Pause walkthrough" : "Play walkthrough"}
+              aria-label={playing ? t("demo.pause") : t("demo.play")}
               onClick={() => setPlaying((value) => !value)}
             >
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
-            <Button variant="outline" size="icon" aria-label="Next slide" onClick={() => go(index + 1)}>
+            <Button variant="outline" size="icon" aria-label={t("demo.next")} onClick={() => go(index + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -203,14 +207,14 @@ export default function DemoWalkthrough() {
       </div>
 
       {count > 1 && (
-        <div className="flex flex-wrap justify-center gap-1.5" role="tablist" aria-label="Choose a slide">
+        <div className="flex flex-wrap justify-center gap-1.5" role="tablist" aria-label={t("demo.chooseSlide")}>
           {slides.map((item, position) => (
             <button
               key={item.image}
               type="button"
               role="tab"
               aria-selected={position === index}
-              aria-label={`Go to ${item.title}`}
+              aria-label={t("demo.goTo", { title: t(item.title) })}
               onClick={() => go(position)}
               className={`h-2 rounded-full transition-all ${position === index ? "w-6 bg-primary" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"}`}
             />

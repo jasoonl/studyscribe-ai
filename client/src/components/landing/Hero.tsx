@@ -1,18 +1,20 @@
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { useSignupMode } from "@/lib/signupMode";
+import { Trans, useI18n } from "@/i18n";
 
 export default function Hero() {
   const signup = useSignupMode();
+  const { t } = useI18n();
   return (
     <section className="relative pb-24 pt-36 sm:pt-44">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-balance text-5xl font-bold leading-[1.03] tracking-[-0.04em] sm:text-7xl lg:text-8xl">
-            Record the lecture. <span className="text-primary">Keep the knowledge.</span>
+            <Trans k="landing.hero.title" parts={{ accent: (text) => <span className="text-primary">{text}</span> }} />
           </h1>
           <p className="mx-auto mt-8 max-w-2xl text-pretty text-xl leading-snug text-muted-foreground sm:text-2xl">
-            StudyScribe turns recordings into transcripts, flashcards, quizzes, and study guides, then tutors you on what you missed.
+            {t("landing.hero.text")}
           </p>
           <div className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -26,7 +28,7 @@ export default function Hero() {
               href="/demo"
               className="inline-flex items-center gap-2 whitespace-nowrap rounded-md px-5 py-3.5 text-base font-medium text-primary hover:underline"
             >
-              Watch the demo
+              {t("landing.watchDemo")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -39,7 +41,7 @@ export default function Hero() {
               <span className="h-2.5 w-2.5 rounded-full bg-border" />
               <span className="h-2.5 w-2.5 rounded-full bg-border" />
             </div>
-            <img src="/landing/dashboard.jpg" alt="The StudyScribe dashboard showing a library of recordings" className="block w-full" width={1600} height={896} fetchPriority="high" />
+            <img src="/landing/dashboard.jpg" alt={t("landing.hero.alt")} className="block w-full" width={1600} height={896} fetchPriority="high" />
           </div>
         </div>
       </div>

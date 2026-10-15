@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { useI18n } from "@/i18n";
 
 /**
  * Where "Get started" should go. With open sign-up on (an admin switch), it is
@@ -8,10 +9,11 @@ import { trpc } from "@/lib/trpc";
  */
 export function useSignupMode() {
   const { data } = trpc.signup.mode.useQuery(undefined, { staleTime: 5 * 60_000, retry: false, refetchOnWindowFocus: false });
+  const { t } = useI18n();
   const open = data?.openSignup ?? false;
   return {
     open,
     href: open ? "/signup" : "/request-access",
-    label: open ? "Sign up free" : "Request access",
+    label: open ? t("nav.signUpFree") : t("nav.requestAccess"),
   };
 }

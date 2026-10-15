@@ -1,25 +1,31 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
-const STEPS = [
-  { title: "Record or upload", text: "Record live in your browser, upload an audio or video file, or paste a link. Transcription starts on its own.", image: "/landing/dashboard.jpg", alt: "A library of recorded lectures and meetings" },
-  { title: "Read the transcript", text: "Every word comes with timestamps and speaker labels. Click any line to jump to that moment in the audio.", image: "/landing/transcript.jpg", alt: "A timestamped transcript with speaker labels" },
-  { title: "Study with AI", text: "Generate notes, flashcards, practice quizzes and study guides, then ask the tutor about anything in your lecture.", image: "/landing/study-notes.jpg", alt: "AI-generated study notes" },
-];
+import { t, useI18n } from "@/i18n";
+
+function steps() {
+  return [
+    { title: t("nav.record.title"), text: t("landing.how.step1Text"), image: "/landing/dashboard.jpg", alt: t("landing.how.step1Alt") },
+    { title: t("landing.how.step2Title"), text: t("landing.how.step2Text"), image: "/landing/transcript.jpg", alt: t("landing.how.step2Alt") },
+    { title: t("landing.how.step3Title"), text: t("landing.how.step3Text"), image: "/landing/study-notes.jpg", alt: t("landing.how.step3Alt") },
+  ];
+}
 
 export default function HowItWorks() {
   const reduce = useReducedMotion();
   const [active, setActive] = useState(0);
+  useI18n();
+  const STEPS = steps();
 
   return (
     <section id="how" className="scroll-mt-24 bg-brand-mist/50 py-32">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
         <div>
-          <h2 className="max-w-md text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">From a recording to a study plan in minutes</h2>
+          <h2 className="max-w-md text-balance text-4xl font-bold tracking-[-0.035em] sm:text-6xl">{t("landing.how.title")}</h2>
           <ol className="mt-10 space-y-8 lg:space-y-3">
             {STEPS.map((step, i) => (
               <motion.li
-                key={step.title}
+                key={step.image}
                 onViewportEnter={() => setActive(i)}
                 viewport={{ amount: 0.9, margin: "-30% 0px -30% 0px" }}
                 className="lg:min-h-[34vh]"
