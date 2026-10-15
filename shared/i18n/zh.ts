@@ -2374,6 +2374,14 @@ const zh: Messages = {
   "help.faq.teams.a": "在“设置”中创建团队。成员把课程共享到团队资料库后，团队中的每个人都可以打开这些录音、转写和笔记（只读）。所有者和管理员可以通过邮箱邀请成员，并查看每位成员本月的用量。所有者可以购买 Team 方案的席位（之后每位成员都获得 Team 额度），可以验证学校或公司的域名，让该域名的 Google Workspace 账户自动加入，还可以设置 SAML 单点登录，之后成员在登录页面使用“使用 SSO 登录”。然后所有者可以开启“要求单点登录”，让团队域名的密码登录和 Google 登录失效（所有者保留这些方式以便进入）。离开团队会把你的课程从团队资料库中移除；你的录音仍归你所有。",
   "help.faq.api.q": "有 API 吗？",
   "help.faq.api.a": "有。在“设置”的“API 密钥”中创建个人 API 密钥（只读或读写），并在 API 页面（/developers）查看端点和示例。密钥以你的身份操作并计入你的方案；它们永远无法更改账单、管理密钥或删除你的账户。如果密钥泄露，请在“设置”中吊销。",
+
+  // Study help from the recording pill
+  "live.help.open": "学习帮助",
+  "live.help.openAria": "打开学习帮助和实时转写",
+  "live.help.sheetText": "录音时在任何页面都能继续学习。回答基于下方的实时转写。",
+  "live.help.kind": "这段录音是",
+  "live.help.kindLecture": "课堂",
+  "live.help.kindMeeting": "会议",
 };
 
 export default zh;
