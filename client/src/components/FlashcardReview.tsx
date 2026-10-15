@@ -7,6 +7,8 @@ import { trpc } from "@/lib/trpc";
 import { buildFlashcardReviewSummary, type FlashcardReviewState } from "@/lib/flashcardReview";
 import { getFlashcardShortcutAction } from "@/lib/flashcardShortcuts";
 import { toast } from "sonner";
+import { useI18n } from "@/i18n";
+import type { MessageKey } from "@shared/i18n";
 
 type Flashcard = {
   id: number;
@@ -23,6 +25,7 @@ interface FlashcardReviewProps {
 }
 
 export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: FlashcardReviewProps) {
+  const { t, tn } = useI18n();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
   const [includeMastered, setIncludeMastered] = useState(false);
@@ -44,7 +47,7 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
       await utils.ai.getFlashcardReviews.invalidate({ recordingId });
     },
     onError: (error) => {
-      toast.error(error.message || "Unable to save your review. Please try again.");
+      toast.error(error.message || t("cards.saveFailed"));
     },
   });
 
@@ -114,14 +117,14 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
     return (
       <Card className="border-2 border-border p-8 text-center">
         <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-500" />
-        <h3 className="text-lg font-bold">You’ve mastered this set</h3>
+        <h3 className="text-lg font-bold">{t("cards.masteredTitle")}</h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          All {cards.length} cards are marked as known. Review them again anytime to keep the concepts fresh.
+          {tn("cards.masteredText", cards.length)}
         </p>
         <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
-          <Button variant="outline" onClick={onExit}>Browse cards</Button>
+          <Button variant="outline" onClick={onExit}>{t("cards.browse")}</Button>
           <Button className="gap-2" onClick={() => setIncludeMastered(true)}>
-            <RotateCcw className="h-4 w-4" /> Review mastered cards
+            <RotateCcw className="h-4 w-4" /> {t("cards.reviewMastered")}
           </Button>
         </div>
       </Card>
@@ -135,44 +138,44 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Brain className="h-4 w-4 text-primary" />
-              Flashcard Review
+              {t("cards.reviewTitle")}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Recall the answer before you reveal it, then tell StudyScribe what you know.</p>
-            <p className="mt-2 text-xs font-medium text-primary">Space: flip · ←: review again · →: I know this</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("cards.reviewIntro")}</p>
+            <p className="mt-2 text-xs font-medium text-primary">{t("cards.shortcuts")}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={onExit}>Browse cards</Button>
+          <Button variant="outline" size="sm" onClick={onExit}>{t("cards.browse")}</Button>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary" aria-label={`${Math.round(progress)}% through review set`}>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary" aria-label={t("cards.progressLabel", { percent: Math.round(progress) })}>
           <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-xl bg-slate-100 px-2 py-2 dark:bg-slate-800"><span className="font-bold">{counts.new}</span><span className="ml-1 text-muted-foreground">new</span></div>
-          <div className="rounded-xl bg-amber-50 px-2 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><span className="font-bold">{counts.learning}</span><span className="ml-1 opacity-80">learning</span></div>
-          <div className="rounded-xl bg-emerald-50 px-2 py-2 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"><span className="font-bold">{counts.mastered}</span><span className="ml-1 opacity-80">mastered</span></div>
+          <div className="rounded-xl bg-slate-100 px-2 py-2 dark:bg-slate-800"><span className="font-bold">{counts.new}</span><span className="ml-1 text-muted-foreground">{t("cards.countNew")}</span></div>
+          <div className="rounded-xl bg-amber-50 px-2 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><span className="font-bold">{counts.learning}</span><span className="ml-1 opacity-80">{t("cards.countLearning")}</span></div>
+          <div className="rounded-xl bg-emerald-50 px-2 py-2 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"><span className="font-bold">{counts.mastered}</span><span className="ml-1 opacity-80">{t("cards.countMastered")}</span></div>
         </div>
       </Card>
 
       <Card className="overflow-hidden border-2 border-border">
         <div className="border-b border-border bg-muted/40 px-5 py-3 text-xs font-medium text-muted-foreground sm:px-7">
-          Card {activeIndex + 1} of {reviewQueue.length} {includeMastered ? "· all cards" : "· cards to review"}
+          {t(includeMastered ? "cards.positionAll" : "cards.positionDue", { current: activeIndex + 1, total: reviewQueue.length })}
         </div>
         <button
           type="button"
           onClick={() => setIsRevealed((revealed) => !revealed)}
           className="block min-h-72 w-full p-6 text-left transition-colors hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary sm:min-h-80 sm:p-8"
-          aria-label={isRevealed ? "Hide flashcard answer" : "Reveal flashcard answer"}
+          aria-label={isRevealed ? t("cards.hideAnswer") : t("cards.revealAnswerLabel")}
         >
           <div className="flex h-full flex-col justify-between gap-8">
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{isRevealed ? "Answer" : "Question"}</span>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs capitalize text-muted-foreground">{currentCard.difficulty ?? "medium"}</span>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{isRevealed ? t("cards.answer") : t("cards.question")}</span>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">{t(`cards.difficulty.${currentCard.difficulty ?? "medium"}` as MessageKey)}</span>
               </div>
               <p className="text-xl font-semibold leading-relaxed sm:text-2xl">{isRevealed ? currentCard.answer : currentCard.question}</p>
             </div>
             <div className="flex items-center gap-2 text-sm font-medium text-primary">
               <Sparkles className="h-4 w-4" />
-              {isRevealed ? "Tap the card to hide the answer" : "Think of your answer, then tap to reveal"}
+              {isRevealed ? t("cards.tapToHide") : t("cards.tapToReveal")}
             </div>
           </div>
         </button>
@@ -187,7 +190,7 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
             disabled={reviewMutation.isPending}
           >
             <RotateCcw className="h-5 w-5 shrink-0 text-amber-600" />
-            <span><span className="block font-semibold">Review again</span><span className="block text-xs font-normal text-muted-foreground">Keep this card in your learning queue.</span></span>
+            <span><span className="block font-semibold">{t("cards.reviewAgain")}</span><span className="block text-xs font-normal text-muted-foreground">{t("cards.reviewAgainHint")}</span></span>
           </Button>
           <Button
             className="h-auto min-h-14 justify-start gap-3 bg-emerald-600 px-4 py-3 text-left hover:bg-emerald-700"
@@ -195,19 +198,19 @@ export function FlashcardReview({ recordingId, cards, reviews = [], onExit }: Fl
             disabled={reviewMutation.isPending}
           >
             <CheckCircle2 className="h-5 w-5 shrink-0" />
-            <span><span className="block font-semibold">I know this</span><span className="block text-xs font-normal text-emerald-50">Mark it mastered and move on.</span></span>
+            <span><span className="block font-semibold">{t("cards.know")}</span><span className="block text-xs font-normal text-emerald-50">{t("cards.knowHint")}</span></span>
           </Button>
         </div>
       ) : (
-        <Button className="w-full" onClick={() => setIsRevealed(true)}>Reveal answer</Button>
+        <Button className="w-full" onClick={() => setIsRevealed(true)}>{t("cards.revealAnswer")}</Button>
       )}
 
       <div className="flex items-center justify-between gap-3">
         <Button variant="ghost" size="sm" className="gap-1" onClick={() => selectCard((activeIndex - 1 + reviewQueue.length) % reviewQueue.length)} disabled={reviewQueue.length < 2}>
-          <ChevronLeft className="h-4 w-4" /> Previous
+          <ChevronLeft className="h-4 w-4" /> {t("cards.previous")}
         </Button>
         <Button variant="ghost" size="sm" className="gap-1" onClick={() => selectCard((activeIndex + 1) % reviewQueue.length)} disabled={reviewQueue.length < 2}>
-          Next <ChevronRight className="h-4 w-4" />
+          {t("cards.next")} <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>
