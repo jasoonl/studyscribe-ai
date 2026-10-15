@@ -1561,7 +1561,7 @@ const es: Messages = {
   "landing.faq.youtube.q": "¿Puedo importar un enlace de YouTube?",
   "landing.faq.youtube.a": "Sí, si el vídeo se publicó con una licencia Creative Commons, que permite reutilizarlo. Los demás vídeos no se pueden importar por enlace; en su lugar, sube un archivo de audio que tengas derecho a usar.",
   "landing.faq.languages.q": "¿Qué idiomas se admiten?",
-  "landing.faq.languages.a": "Muchos. El idioma se detecta automáticamente, o puedes elegirlo. Consulta la lista completa más arriba.",
+  "landing.faq.languages.a": "Muchos. El idioma se detecta automáticamente, o puedes elegirlo.",
   "landing.faq.free.q": "¿Hay un plan gratuito?",
   "landing.faq.free.a": "Sí. El plan Free te deja probar todas las funciones, con dos horas de transcripción y 60 generaciones con IA al mes. La página de precios detalla lo que añade cada plan de pago.",
   "landing.cta.title": "Tu próxima clase merece mejores apuntes",

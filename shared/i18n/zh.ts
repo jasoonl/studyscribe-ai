@@ -1561,7 +1561,7 @@ const zh: Messages = {
   "landing.faq.youtube.q": "可以导入 YouTube 链接吗？",
   "landing.faq.youtube.a": "可以，前提是视频以允许再利用的知识共享（Creative Commons）许可发布。其他视频无法通过链接导入，请改为上传你有权使用的音频文件。",
   "landing.faq.languages.q": "支持哪些语言？",
-  "landing.faq.languages.a": "很多。系统会自动识别语言，你也可以手动选择。完整列表见上文。",
+  "landing.faq.languages.a": "很多。系统会自动识别语言，你也可以手动选择。",
   "landing.faq.free.q": "有免费方案吗？",
   "landing.faq.free.a": "有。Free 方案可试用全部功能，每月包含两小时转写和 60 次 AI 生成。价格页面列出了各付费方案的额外内容。",
   "landing.cta.title": "你的下一节课，值得更好的笔记",

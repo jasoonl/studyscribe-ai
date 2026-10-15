@@ -1561,7 +1561,7 @@ const ko: Messages = {
   "landing.faq.youtube.q": "YouTube 링크를 가져올 수 있나요?",
   "landing.faq.youtube.a": "네, 재사용을 허용하는 크리에이티브 커먼즈 라이선스로 게시된 동영상이라면 가능해요. 다른 동영상은 링크로 가져올 수 없으니, 사용할 권리가 있는 오디오 파일을 올려 주세요.",
   "landing.faq.languages.q": "어떤 언어를 지원하나요?",
-  "landing.faq.languages.a": "여러 언어를 지원해요. 언어는 자동으로 감지되며, 직접 고를 수도 있어요. 전체 목록은 위에서 확인하세요.",
+  "landing.faq.languages.a": "여러 언어를 지원해요. 언어는 자동으로 감지되며, 직접 고를 수도 있어요.",
   "landing.faq.free.q": "무료 요금제가 있나요?",
   "landing.faq.free.a": "네. Free 요금제로 모든 기능을 써 볼 수 있고, 매달 받아쓰기 2시간과 AI 생성 60회가 제공돼요. 유료 요금제별 추가 혜택은 요금제 페이지에 나와 있어요.",
   "landing.cta.title": "다음 강의에는 더 좋은 노트를",

@@ -1561,7 +1561,7 @@ const fr: Messages = {
   "landing.faq.youtube.q": "Puis-je importer un lien YouTube ?",
   "landing.faq.youtube.a": "Oui, pour les vidéos publiées sous licence Creative Commons, qui autorise leur réutilisation. Les autres vidéos ne peuvent pas être importées par lien : importez plutôt un fichier audio que vous avez le droit d’utiliser.",
   "landing.faq.languages.q": "Quelles langues sont prises en charge ?",
-  "landing.faq.languages.a": "Beaucoup. La langue est détectée automatiquement, ou vous pouvez la choisir. La liste complète figure plus haut.",
+  "landing.faq.languages.a": "Beaucoup. La langue est détectée automatiquement, ou vous pouvez la choisir.",
   "landing.faq.free.q": "Existe-t-il une offre gratuite ?",
   "landing.faq.free.a": "Oui. L’offre Free vous permet d’essayer toutes les fonctionnalités, avec deux heures de transcription et 60 générations par l’IA par mois. La page Tarifs détaille ce qu’apporte chaque offre payante.",
   "landing.cta.title": "Votre prochain cours mérite de meilleures notes",

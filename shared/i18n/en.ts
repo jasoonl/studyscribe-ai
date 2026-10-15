@@ -1572,7 +1572,7 @@ const en = {
   "landing.faq.youtube.q": "Can I import a YouTube link?",
   "landing.faq.youtube.a": "Yes, for videos published under a Creative Commons licence, which allows reuse. Other videos cannot be imported by link, so upload an audio file you have the right to use instead.",
   "landing.faq.languages.q": "Which languages are supported?",
-  "landing.faq.languages.a": "Many. Language is detected automatically, or you can choose one. See the full list above.",
+  "landing.faq.languages.a": "Many. Language is detected automatically, or you can choose one.",
   "landing.faq.free.q": "Is there a free plan?",
   "landing.faq.free.a": "Yes. The Free plan lets you try every feature, with two hours of transcription and 60 AI generations a month. The Pricing page lists what each paid plan adds.",
   "landing.cta.title": "Your next lecture deserves better notes",
