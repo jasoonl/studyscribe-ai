@@ -200,7 +200,7 @@ Status: in progress. Items 1 and 2 are deferred (set aside for now); Phase 7 wor
 2. **Instructor accounts** (Deferred: set aside for now): a professor records once and the class gets the transcript, notes and flashcards, with each student's progress kept separate.
 3. **Personal study planner**: spaced-repetition review across courses, scheduled around exam dates from tasks and calendar, with a daily "what to study today".
 4. **Learning progress dashboard**: mastery by course and topic, weak spots, streaks and time spent.
-5. **Interface localisation**: translate the app UI itself, starting with Spanish, Chinese, French, Korean and Japanese. Today only content can be translated. *In progress (Phase 7): the setup, sign-in, sign-up, library, trash, Settings, recording and the recording page are translated; other pages follow.*
+5. **Interface localisation**: translate the app UI itself, starting with Spanish, Chinese, French, Korean and Japanese. Today only content can be translated. *Done (Phase 7): every page people use is translated into these five languages; admin pages, the API docs and the legal pages stay English. Translations still need a native-speaker review.*
 6. **Offline and installable**: a PWA install, plus offline review of flashcards and transcripts.
 7. **AI quality evals**: a test suite that scores notes, flashcards, quizzes and Ask answers against the transcript, so prompt changes can't quietly make results worse.
 8. **Growth**: referral credits, and share pages that introduce StudyScribe to new visitors.
