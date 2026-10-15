@@ -8,27 +8,31 @@ import { CourseDot } from "@/components/CourseDot";
 import { trpc } from "@/lib/trpc";
 import { getFlashcardShortcutAction } from "@/lib/flashcardShortcuts";
 import { localIsoDate } from "@shared/actionItems";
+import { Trans, formatNumber, t, tn, useI18n } from "@/i18n";
 
 const SECONDS_PER_CARD = 30;
 /** One sitting at most; a backlog bigger than this is finished in the next session. */
 const SESSION_LIMIT = 200;
 
-function plural(n: number, one: string, many = `${one}s`) {
-  return `${n} ${n === 1 ? one : many}`;
+function examLabel(days: number) {
+  return days === 0 ? t("plan.examToday") : days === 1 ? t("plan.examTomorrow") : tn("plan.examInDays", days);
 }
 
-function examLabel(days: number) {
-  return days === 0 ? "Exam today" : days === 1 ? "Exam tomorrow" : `Exam in ${days} days`;
+/** "3 to review, 5 new." with whichever parts apply. */
+function countsLabel(due: number, fresh: number) {
+  if (due > 0 && fresh > 0) return t("plan.dueAndFresh", { due: formatNumber(due), fresh: formatNumber(fresh) });
+  return due > 0 ? t("plan.dueOnly", { count: formatNumber(due) }) : t("plan.freshOnly", { count: formatNumber(fresh) });
 }
 
 /** Today's spaced-repetition plan across every recording, and one review session for all of it (Phase 7). */
 export default function StudyPlan() {
+  const { t, tn, formatDate } = useI18n();
   const today = localIsoDate(new Date());
   const { data: plan, isLoading } = trpc.planner.today.useQuery({ today });
   const { data: courses } = trpc.courses.list.useQuery();
   const [session, setSession] = useState<number[] | null>(null);
   const courseById = new Map((courses ?? []).map(course => [course.id, course]));
-  const dateLabel = new Date(`${today}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const dateLabel = formatDate(`${today}T12:00:00`, { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,18 +41,18 @@ export default function StudyPlan() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Library
+              {t("common.library")}
             </Button>
           </Link>
         </div>
       </header>
 
       <main id="main-content" className="container max-w-3xl pb-20 pt-10" tabIndex={-1}>
-        <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">Study plan</h1>
+        <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">{t("library.plan")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{dateLabel}</p>
 
         {isLoading || !plan ? (
-          <div className="flex justify-center py-20" role="status" aria-label="Loading your plan">
+          <div className="flex justify-center py-20" role="status" aria-label={t("plan.loading")}>
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : session ? (
@@ -59,13 +63,13 @@ export default function StudyPlan() {
 
             {plan.exams.length > 0 && (
               <section aria-labelledby="exams-heading" className="mt-10">
-                <h2 id="exams-heading" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Coming up</h2>
+                <h2 id="exams-heading" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("plan.comingUp")}</h2>
                 <ul className="mt-3 divide-y divide-border rounded-xl border border-border bg-card">
                   {plan.exams.slice(0, 5).map(exam => (
                     <li key={`${exam.recordingId}-${exam.date}-${exam.text}`} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
                       <span className="min-w-0 truncate">{exam.text}</span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">
-                        {exam.inDays === 0 ? "Today" : exam.inDays === 1 ? "Tomorrow" : `In ${exam.inDays} days`}
+                        {exam.inDays === 0 ? t("calendar.today") : exam.inDays === 1 ? t("calendar.tomorrow") : tn("plan.inDays", exam.inDays)}
                       </span>
                     </li>
                   ))}
@@ -75,7 +79,7 @@ export default function StudyPlan() {
 
             {plan.items.length > 0 && (
               <section aria-labelledby="by-recording-heading" className="mt-10">
-                <h2 id="by-recording-heading" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">By recording</h2>
+                <h2 id="by-recording-heading" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("plan.byRecording")}</h2>
                 <ul className="mt-3 space-y-2">
                   {plan.items.map(item => {
                     const course = item.courseId !== null ? courseById.get(item.courseId) : undefined;
@@ -96,7 +100,7 @@ export default function StudyPlan() {
                                   </span>
                                 )}
                                 <span>
-                                  {[item.due > 0 && `${item.due} to review`, item.fresh > 0 && `${item.fresh} new`].filter(Boolean).join(" · ")}
+                                  {[item.due > 0 && t("plan.toReview", { count: formatNumber(item.due) }), item.fresh > 0 && t("plan.fresh", { count: formatNumber(item.fresh) })].filter(Boolean).join(" · ")}
                                 </span>
                               </span>
                             </span>
@@ -113,9 +117,13 @@ export default function StudyPlan() {
             )}
 
             <p className="mt-10 text-sm text-muted-foreground">
-              Cards you remember come back after longer and longer gaps; cards you miss come back tomorrow. Before an exam found in your{" "}
-              <Link href="/tasks" className="text-primary underline underline-offset-4">tasks</Link>, every card comes back at least once in time.{" "}
-              <Link href="/progress" className="text-primary underline underline-offset-4">See your progress</Link>.
+              <Trans
+                k="plan.howItWorks"
+                parts={{
+                  tasks: text => <Link href="/tasks" className="text-primary underline underline-offset-4">{text}</Link>,
+                  progress: text => <Link href="/progress" className="text-primary underline underline-offset-4">{text}</Link>,
+                }}
+              />
             </p>
           </>
         )}
@@ -125,16 +133,17 @@ export default function StudyPlan() {
 }
 
 function Summary({ plan, onStart }: { plan: { totalDue: number; totalFresh: number; queue: number[]; totalCards: number }; onStart: () => void }) {
+  const { t, tn } = useI18n();
   const total = plan.queue.length;
   if (plan.totalCards === 0) {
     return (
       <Card className="mt-8 p-6">
-        <h2 className="text-lg font-semibold">No flashcards yet</h2>
+        <h2 className="text-lg font-semibold">{t("plan.noCardsTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Open a recording and make flashcards from it. They show up here on the days they are due.
+          {t("plan.noCardsBody")}
         </p>
         <Button asChild variant="outline" className="mt-4 w-fit">
-          <Link href="/dashboard">Open your library</Link>
+          <Link href="/dashboard">{t("plan.openLibrary")}</Link>
         </Button>
       </Card>
     );
@@ -142,28 +151,28 @@ function Summary({ plan, onStart }: { plan: { totalDue: number; totalFresh: numb
   if (total === 0) {
     return (
       <Card className="mt-8 p-6">
-        <h2 className="text-lg font-semibold">Nothing due today</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Every card you have learned is spaced out to a later day. Come back tomorrow.</p>
+        <h2 className="text-lg font-semibold">{t("plan.nothingDueTitle")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("plan.nothingDueBody")}</p>
       </Card>
     );
   }
   const minutes = Math.max(1, Math.round((total * SECONDS_PER_CARD) / 60));
   return (
     <Card className="mt-8 gap-0 p-6">
-      <h2 className="text-2xl font-semibold tracking-[-0.02em] tabular-nums">{plural(total, "card")} today</h2>
+      <h2 className="text-2xl font-semibold tracking-[-0.02em] tabular-nums">{tn("plan.cardsToday", total)}</h2>
       <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-        {[plan.totalDue > 0 && `${plan.totalDue} to review`, plan.totalFresh > 0 && `${plan.totalFresh} new`].filter(Boolean).join(", ")}. About{" "}
-        {plural(minutes, "minute")}.
+        {countsLabel(plan.totalDue, plan.totalFresh)} {tn("plan.aboutMinutes", minutes)}
       </p>
-      <Button className="mt-5 w-fit" size="lg" onClick={onStart}>Start review</Button>
+      <Button className="mt-5 w-fit" size="lg" onClick={onStart}>{t("plan.startReview")}</Button>
       {total > SESSION_LIMIT && (
-        <p className="mt-3 text-sm text-muted-foreground">A session takes the first {SESSION_LIMIT}; start another for the rest.</p>
+        <p className="mt-3 text-sm text-muted-foreground">{t("plan.sessionLimit", { count: formatNumber(SESSION_LIMIT) })}</p>
       )}
     </Card>
   );
 }
 
 function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; onExit: () => void }) {
+  const { t, tn } = useI18n();
   const utils = trpc.useUtils();
   const { data: cards, isLoading } = trpc.planner.sessionCards.useQuery({ ids });
   const review = trpc.ai.reviewFlashcard.useMutation();
@@ -205,7 +214,7 @@ function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; o
       setPosition(p => p + 1);
       setRevealed(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save that review. Try again.");
+      toast.error(error instanceof Error ? error.message : t("plan.saveFailed"));
     } finally {
       saving.current = false;
     }
@@ -230,7 +239,7 @@ function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; o
 
   if (isLoading || !order) {
     return (
-      <div className="flex justify-center py-20" role="status" aria-label="Loading cards">
+      <div className="flex justify-center py-20" role="status" aria-label={t("plan.loadingCards")}>
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -239,15 +248,14 @@ function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; o
   if (!current) {
     return (
       <Card className="mt-8 p-6" role="status">
-        <h2 className="text-2xl font-semibold tracking-[-0.02em]">Done for today</h2>
+        <h2 className="text-2xl font-semibold tracking-[-0.02em]">{t("plan.doneTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-          You knew {plural(tally.knew, "card")}
-          {tally.again > 0 ? ` and marked ${tally.again} to see again` : ""}.
+          {tally.again > 0 ? tn("plan.doneKnewAgain", tally.knew, { again: formatNumber(tally.again) }) : tn("plan.doneKnew", tally.knew)}
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button onClick={finish}>Back to the plan</Button>
+          <Button onClick={finish}>{t("plan.backToPlan")}</Button>
           <Button asChild variant="outline">
-            <Link href="/progress">See your progress</Link>
+            <Link href="/progress">{t("plan.seeProgress")}</Link>
           </Button>
         </div>
       </Card>
@@ -258,9 +266,9 @@ function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; o
     <div className="mt-8 space-y-4">
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span className="tabular-nums" aria-live="polite">
-          Card {position + 1} of {order.length}
+          {t("plan.cardOf", { position: formatNumber(position + 1), total: formatNumber(order.length) })}
         </span>
-        <Button variant="ghost" size="sm" onClick={finish}>End session</Button>
+        <Button variant="ghost" size="sm" onClick={finish}>{t("plan.endSession")}</Button>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
         <div className="h-full rounded-full bg-primary" style={{ width: `${(position / order.length) * 100}%` }} />
@@ -270,10 +278,10 @@ function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; o
         <button
           type="button"
           onClick={() => setRevealed(r => !r)}
-          aria-label={revealed ? "Hide the answer" : "Reveal the answer"}
+          aria-label={revealed ? t("plan.hideAnswer") : t("plan.revealAnswerLabel")}
           className="block min-h-64 w-full p-6 text-left hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:p-8"
         >
-          <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">{revealed ? "Answer" : "Question"}</span>
+          <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">{revealed ? t("cards.answer") : t("cards.question")}</span>
           <span className="mt-3 block text-xl font-semibold leading-relaxed sm:text-2xl">{revealed ? current.answer : current.question}</span>
         </button>
       </Card>
@@ -281,16 +289,16 @@ function ReviewSession({ ids, today, onExit }: { ids: number[]; today: string; o
       {revealed ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Button variant="outline" size="lg" onClick={() => grade("learning")} disabled={review.isPending}>
-            Still learning
+            {t("plan.stillLearning")}
           </Button>
           <Button size="lg" onClick={() => grade("mastered")} disabled={review.isPending}>
-            I knew it
+            {t("plan.knewIt")}
           </Button>
         </div>
       ) : (
-        <Button size="lg" className="w-full" onClick={() => setRevealed(true)}>Reveal answer</Button>
+        <Button size="lg" className="w-full" onClick={() => setRevealed(true)}>{t("cards.revealAnswer")}</Button>
       )}
-      <p className="hidden text-center text-xs text-muted-foreground sm:block">Space to reveal · ← still learning · → I knew it</p>
+      <p className="hidden text-center text-xs text-muted-foreground sm:block">{t("plan.shortcuts")}</p>
     </div>
   );
 }

@@ -8,10 +8,12 @@ import { Switch } from "@/components/ui/switch";
 import { CourseDot } from "@/components/CourseDot";
 import { TaskItem } from "@/components/TaskItem";
 import { trpc } from "@/lib/trpc";
-import { DUE_GROUP_LABELS, groupActionItems, localIsoDate } from "@shared/actionItems";
+import { groupActionItems, localIsoDate } from "@shared/actionItems";
+import { useI18n } from "@/i18n";
 
 /** Every task and deadline across the library, by when it is due (C3). */
 export default function Tasks() {
+  const { t, formatNumber } = useI18n();
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.actionItems.listAll.useQuery();
   const { data: courses } = trpc.courses.list.useQuery();
@@ -37,7 +39,7 @@ export default function Tasks() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Library
+              {t("common.library")}
             </Button>
           </Link>
         </div>
@@ -46,33 +48,33 @@ export default function Tasks() {
       <main id="main-content" className="container max-w-3xl pb-20 pt-10" tabIndex={-1}>
         <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">Tasks</h1>
+            <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">{t("library.tasks")}</h1>
             <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              Homework, readings, exam dates and action items found in your recordings, in the order they are due.
+              {t("tasksPage.subtitle")}
             </p>
           </div>
           {items.length > 0 && (
             <div className="flex flex-wrap items-end gap-4">
               {(courses?.length ?? 0) > 0 && (
                 <div className="w-48">
-                  <Label htmlFor="tasks-course" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Course</Label>
+                  <Label htmlFor="tasks-course" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("fields.course.label")}</Label>
                   <Select value={course} onValueChange={setCourse}>
                     <SelectTrigger id="tasks-course" className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All courses</SelectItem>
+                      <SelectItem value="all">{t("tasksPage.allCourses")}</SelectItem>
                       {courses!.map(entry => (
                         <SelectItem key={entry.id} value={String(entry.id)}>
                           <span className="flex items-center gap-2"><CourseDot color={entry.color} />{entry.name}</span>
                         </SelectItem>
                       ))}
-                      <SelectItem value="none">Not in a course</SelectItem>
+                      <SelectItem value="none">{t("tasksPage.noCourse")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
               <div className="flex h-9 items-center gap-2">
                 <Switch id="tasks-done" checked={showDone} onCheckedChange={setShowDone} />
-                <Label htmlFor="tasks-done" className="text-sm">Show done{doneCount > 0 && <span className="ml-1 tabular-nums text-muted-foreground">{doneCount}</span>}</Label>
+                <Label htmlFor="tasks-done" className="text-sm">{t("tasksPage.showDone")}{doneCount > 0 && <span className="ml-1 tabular-nums text-muted-foreground">{formatNumber(doneCount)}</span>}</Label>
               </div>
             </div>
           )}
@@ -81,27 +83,27 @@ export default function Tasks() {
         {isLoading ? (
           <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-accent" /></div>
         ) : data && !data.available ? (
-          <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-muted-foreground">Tasks are not available on this server yet.</p>
+          <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-muted-foreground">{t("tasksPage.unavailable")}</p>
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
             <p className="mx-auto max-w-md text-muted-foreground">
-              Nothing here yet. Open a recording and choose Find tasks, and anything you were asked to do will be listed here with its due date.
+              {t("tasksPage.empty")}
             </p>
             <Link href="/dashboard">
-              <Button variant="outline" className="mt-5">Open your library</Button>
+              <Button variant="outline" className="mt-5">{t("plan.openLibrary")}</Button>
             </Link>
           </div>
         ) : groups.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-muted-foreground">
-            {openCount === 0 && doneCount > 0 ? "All done. Turn on Show done to see what you finished." : "No tasks match this course."}
+            {openCount === 0 && doneCount > 0 ? t("tasksPage.allDone") : t("tasksPage.noMatch")}
           </p>
         ) : (
           <div className="space-y-8">
             {groups.map(group => (
               <section key={group.id} aria-labelledby={`group-${group.id}`}>
                 <h2 id={`group-${group.id}`} className={`mb-1 flex items-baseline gap-2 text-sm font-semibold ${group.id === "overdue" ? "text-destructive" : "text-foreground"}`}>
-                  {DUE_GROUP_LABELS[group.id]}
-                  <span className="font-normal tabular-nums text-muted-foreground">{group.items.length}</span>
+                  {t(`tasksPage.group.${group.id}`)}
+                  <span className="font-normal tabular-nums text-muted-foreground">{formatNumber(group.items.length)}</span>
                 </h2>
                 <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4 shadow-sm">
                   {group.items.map(item => {
