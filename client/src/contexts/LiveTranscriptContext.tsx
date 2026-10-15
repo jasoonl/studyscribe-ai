@@ -6,6 +6,7 @@ import type { LiveStatus, LiveTranscriber } from "@/lib/liveTranscription";
 import type { LiveTurn } from "@/lib/liveTurns";
 import { getLiveTranscriptEnabled, setLiveTranscriptEnabled } from "@/lib/preferences";
 import { trpc } from "@/lib/trpc";
+import { t } from "@/i18n";
 import { useRecorder, type AudioTap } from "./RecorderContext";
 import type { LiveAssistAction } from "@shared/liveAssist";
 
@@ -134,7 +135,7 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
     }
     if (!audioTap || typeof AudioWorkletNode === "undefined" || !audioTap.context.audioWorklet) {
       setStatus("unsupported");
-      setMessage("Live text isn't available in this browser. Recording works as usual.");
+      setMessage(t("record.live.unsupported"));
       return;
     }
     if (recorderStatus === "paused") {
@@ -152,7 +153,7 @@ export function LiveTranscriptProvider({ children }: { children: ReactNode }) {
         console.warn("[live] could not start the audio tap:", error);
         if (!cancelled) {
           setStatus("unsupported");
-          setMessage("Live text couldn't start in this browser. Recording works as usual.");
+          setMessage(t("record.live.couldNotStart"));
         }
       });
     return () => {

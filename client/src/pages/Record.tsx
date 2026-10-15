@@ -35,10 +35,12 @@ import {
   useLiveLayout,
 } from "@/components/live/LiveTranscriptSection";
 import { StudyHelpPanel } from "@/components/live/StudyHelpPanel";
+import { useI18n } from "@/i18n";
 
 export default function Record() {
   // ALL hooks at the top — no early returns before hooks
   const { user, loading: authLoading } = useAuth();
+  const { t } = useI18n();
   const [, navigate] = useLocation();
   // Recording state lives in RecorderProvider so it survives leaving this page.
   const recorder = useRecorder();
@@ -97,42 +99,40 @@ export default function Record() {
       tabAudio: withTabAudio,
     });
     if (started)
-      toast.success(
-        "Recording started. It keeps going if you switch tabs or windows."
-      );
+      toast.success(t("record.toast.started"));
   };
 
   const pauseRecording = () => {
     recorder.pause();
-    toast.info("Recording paused");
+    toast.info(t("live.captions.recordingPaused"));
   };
 
   const resumeRecording = () => {
     recorder.resume();
-    toast.info("Recording resumed");
+    toast.info(t("record.toast.resumed"));
   };
 
   const stopRecording = async () => {
     await recorder.stop();
-    toast.info("Recording stopped. Add a title and save.");
+    toast.info(t("record.toast.stopped"));
   };
 
   const readBlobAsBase64 = (blob: Blob): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read audio"));
+      reader.onerror = () => reject(new Error(t("record.error.readAudio")));
       reader.readAsDataURL(blob);
     });
 
   const saveRecording = async () => {
     if (!recordingTitle.trim()) {
-      toast.error("Please enter a recording title");
+      toast.error(t("record.error.titleRequired"));
       return;
     }
     const finished = recorder.getRecording();
     if (!finished) {
-      toast.error("No audio recorded");
+      toast.error(t("record.error.noAudio"));
       return;
     }
 
@@ -173,13 +173,13 @@ export default function Record() {
       if (live.turns.length > 0) setLiveSnapshot(live.turns);
       recorder.discard();
       saveSlides(recording.id, finished.slides);
-      toast.success("Recording uploaded! Waiting for transcription...");
+      toast.success(t("record.toast.recordingUploaded"));
 
       // Fallback redirect after 90s
       setTimeout(() => navigate(`/recording/${recording.id}`), 90000);
     } catch (error) {
       const msg =
-        error instanceof Error ? error.message : "Failed to save recording";
+        error instanceof Error ? error.message : t("record.error.saveFailed");
       toast.error(msg);
       setUploadProgress(0);
     } finally {
@@ -201,10 +201,10 @@ export default function Record() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">
-            Please sign in to continue
+            {t("library.signInFirst")}
           </p>
           <Link href="/">
-            <Button>Go to Home</Button>
+            <Button>{t("library.goHome")}</Button>
           </Link>
         </div>
       </div>
@@ -233,15 +233,14 @@ export default function Record() {
                 />
                 <span className="text-sm font-medium">
                   {recorder.micReconnecting
-                    ? "Microphone disconnected, reconnecting..."
+                    ? t("record.status.micReconnecting")
                     : isPaused
-                      ? "Paused"
-                      : "Recording..."}
+                      ? t("record.status.paused")
+                      : t("record.status.recording")}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Keeps recording when you switch tabs, windows or pages, until
-                you press Stop. Keep this tab open.
+                {t("record.keepsRecording")}
               </p>
             </div>
           )}
@@ -250,8 +249,8 @@ export default function Record() {
               <CheckCircle className="w-5 h-5 text-primary" />
               <span className="text-sm font-medium">
                 {recorder.recovered
-                  ? "Recovered unsaved recording"
-                  : "Recording stopped"}
+                  ? t("record.recoveredUnsaved")
+                  : t("record.stopped")}
               </span>
             </div>
           )}
@@ -261,7 +260,7 @@ export default function Record() {
         <div className={cn("flex gap-3 justify-center flex-wrap", !ready && !isRecording && "hidden")}>
           {ready && (
             <Button onClick={startRecording} size="lg" className="gap-2">
-              <Mic className="w-5 h-5" /> Start Recording
+              <Mic className="w-5 h-5" /> {t("record.startRecording")}
             </Button>
           )}
           {isRecording && (
@@ -274,11 +273,11 @@ export default function Record() {
               >
                 {isPaused ? (
                   <>
-                    <Play className="w-5 h-5" /> Resume
+                    <Play className="w-5 h-5" /> {t("record.resume")}
                   </>
                 ) : (
                   <>
-                    <Pause className="w-5 h-5" /> Pause
+                    <Pause className="w-5 h-5" /> {t("record.pause")}
                   </>
                 )}
               </Button>
@@ -288,7 +287,7 @@ export default function Record() {
                 size="lg"
                 className="gap-2"
               >
-                <Square className="w-5 h-5" /> Stop
+                <Square className="w-5 h-5" /> {t("record.stop")}
               </Button>
             </>
           )}
@@ -318,8 +317,8 @@ export default function Record() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-semibold">
                 {uploadComplete
-                  ? "Transcribing your recording..."
-                  : "Uploading..."}
+                  ? t("record.progress.transcribing")
+                  : t("record.uploading")}
               </span>
               <span className="text-sm text-muted-foreground tabular-nums">
                 {uploadProgress}%
@@ -338,7 +337,7 @@ export default function Record() {
             </div>
             {uploadComplete && (
               <p className="text-xs text-muted-foreground text-center">
-                You'll be redirected automatically when transcription completes.
+                {t("record.progress.redirect")}
               </p>
             )}
           </div>
@@ -348,7 +347,7 @@ export default function Record() {
         {uploadComplete && (
           <div className="flex flex-col items-center gap-3">
             <CheckCircle className="w-12 h-12 text-primary" />
-            <p className="text-sm font-medium">Recording uploaded!</p>
+            <p className="text-sm font-medium">{t("record.uploadedTitle")}</p>
             <Button
               variant="outline"
               size="sm"
@@ -356,7 +355,7 @@ export default function Record() {
                 recordingId && navigate(`/recording/${recordingId}`)
               }
             >
-              Go to Recording Now
+              {t("record.goToRecording")}
             </Button>
           </div>
         )}
@@ -369,11 +368,11 @@ export default function Record() {
                 htmlFor="record-title"
                 className="block text-sm font-semibold mb-2"
               >
-                Recording Title *
+                {t("record.titleLabel")}
               </label>
               <Input
                 id="record-title"
-                placeholder="e.g., Biology 101 - Lecture 5"
+                placeholder={t("record.titlePlaceholder")}
                 value={recordingTitle}
                 onChange={e => setRecordingTitle(e.target.value)}
                 disabled={isUploading}
@@ -383,7 +382,7 @@ export default function Record() {
 
             <fieldset>
               <legend className="block text-sm font-semibold mb-2">
-                Recording Type
+                {t("record.contentType")}
               </legend>
               <div className="flex flex-col sm:flex-row gap-3">
                 {(["student", "professional"] as const).map(val => (
@@ -401,8 +400,8 @@ export default function Record() {
                     />
                     <span className="text-sm">
                       {val === "student"
-                        ? "Student Lecture"
-                        : "Professional Meeting"}
+                        ? t("record.audience.student")
+                        : t("record.audience.professional")}
                     </span>
                   </label>
                 ))}
@@ -418,7 +417,7 @@ export default function Record() {
                 }}
                 disabled={isUploading}
               >
-                Discard
+                {t("record.discard")}
               </Button>
               <Button
                 onClick={saveRecording}
@@ -427,10 +426,10 @@ export default function Record() {
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t("recording.saving")}
                   </>
                 ) : (
-                  "Save & Transcribe"
+                  t("record.saveAndTranscribe")
                 )}
               </Button>
             </div>
@@ -447,10 +446,10 @@ export default function Record() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("record.back")}
             </Button>
           </Link>
-          <h1 className="text-xl font-bold">Record Lecture</h1>
+          <h1 className="text-xl font-bold">{t("record.recordLectureTitle")}</h1>
           <div className="w-20" />
         </div>
       </header>

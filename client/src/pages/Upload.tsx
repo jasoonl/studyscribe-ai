@@ -10,10 +10,12 @@ import { uploadAudioDirectly } from "@/lib/directAudioUpload";
 import { probeAudioDuration } from "@/lib/probeAudioDuration";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
 import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
+import { useI18n } from "@/i18n";
 
 export default function Upload() {
   // ALL hooks must be called unconditionally at the top
   const { user, loading: authLoading } = useAuth();
+  const { t } = useI18n();
   const [, navigate] = useLocation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -53,17 +55,17 @@ export default function Upload() {
     const ext = file.name.split(".").pop()?.toLowerCase();
     const validExts = ["mp3", "wav", "ogg", "mp4", "webm", "m4a", "mov"];
     if (!validTypes.includes(file.type) && !validExts.includes(ext || "")) {
-      toast.error("Please select a valid audio file (MP3, WAV, OGG, MP4, MOV, or WebM)");
+      toast.error(t("record.error.invalidFile"));
       return;
     }
     const maxSize = MAX_UPLOAD_BYTES;
     if (file.size > maxSize) {
-      toast.error(`File size must be less than ${MAX_UPLOAD_LABEL}`);
+      toast.error(t("record.error.fileTooLarge", { size: MAX_UPLOAD_LABEL }));
       return;
     }
     setSelectedFile(file);
     setTitle(file.name.replace(/\.[^/.]+$/, ""));
-  }, []);
+  }, [t]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,13 +88,13 @@ export default function Upload() {
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.onerror = () => reject(new Error(t("record.error.readFile")));
       reader.readAsDataURL(file);
     });
 
   const handleUpload = async () => {
-    if (!selectedFile) { toast.error("Please select a file"); return; }
-    if (!title.trim()) { toast.error("Please enter a title"); return; }
+    if (!selectedFile) { toast.error(t("record.error.noFile")); return; }
+    if (!title.trim()) { toast.error(t("record.error.titleRequired")); return; }
 
     setIsUploading(true);
     setUploadPhase("uploading");
@@ -120,7 +122,7 @@ export default function Upload() {
       setRecordingId(recording.id);
       setUploadComplete(true);
       setUploadProgress(100);
-      toast.success("File uploaded! Waiting for transcription...");
+      toast.success(t("record.toast.fileUploaded"));
 
       // Fallback redirect after 90 seconds if polling doesn't catch it
       setTimeout(() => {
@@ -128,7 +130,7 @@ export default function Upload() {
       }, 90000);
     } catch (error) {
       console.error("Upload failed:", error);
-      const msg = error instanceof Error ? error.message : "Failed to upload file";
+      const msg = error instanceof Error ? error.message : t("record.error.uploadFileFailed");
       toast.error(msg);
       setSelectedFile(null);
       setUploadProgress(0);
@@ -152,8 +154,8 @@ export default function Upload() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">Please sign in to continue</p>
-          <Link href="/"><Button>Go to Home</Button></Link>
+          <p className="text-muted-foreground mb-4">{t("library.signInFirst")}</p>
+          <Link href="/"><Button>{t("library.goHome")}</Button></Link>
         </div>
       </div>
     );
@@ -167,10 +169,10 @@ export default function Upload() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("record.back")}
             </Button>
           </Link>
-          <h1 className="text-xl font-bold flex-1 ml-4">Upload Audio File</h1>
+          <h1 className="text-xl font-bold flex-1 ml-4">{t("record.upload.pageTitle")}</h1>
         </div>
       </header>
 
@@ -181,10 +183,10 @@ export default function Upload() {
 
               {/* Title Input */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Recording Title</label>
+                <label className="block text-sm font-semibold mb-2">{t("record.titleLabel")}</label>
                 <input
                   type="text"
-                  placeholder="e.g., Biology 101 - Lecture 5"
+                  placeholder={t("record.titlePlaceholder")}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={isUploading || uploadComplete}
@@ -194,7 +196,7 @@ export default function Upload() {
 
               {/* Audience Selection */}
               <div>
-                <label className="block text-sm font-semibold mb-2">Recording Type</label>
+                <label className="block text-sm font-semibold mb-2">{t("record.contentType")}</label>
                 <div className="flex flex-col sm:flex-row gap-3">
                   {(["student", "professional"] as const).map((val) => (
                     <label key={val} className="flex items-center gap-2 cursor-pointer">
@@ -206,7 +208,7 @@ export default function Upload() {
                         disabled={isUploading || uploadComplete}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">{val === "student" ? "Student Lecture" : "Professional Meeting"}</span>
+                      <span className="text-sm">{val === "student" ? t("record.audience.student") : t("record.audience.professional")}</span>
                     </label>
                   ))}
                 </div>
@@ -214,17 +216,17 @@ export default function Upload() {
 
               {/* File Drop Zone */}
               <div>
-                <label className="block text-sm font-semibold mb-3">Audio File</label>
+                <label className="block text-sm font-semibold mb-3">{t("record.upload.audioFile")}</label>
                 {selectedFile ? (
                   <div className="p-4 rounded-lg border-2 border-accent bg-accent/5 flex items-center gap-3">
                     <FileAudio className="w-6 h-6 text-accent flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{selectedFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      <p className="text-xs text-muted-foreground">{t("record.upload.fileSize", { size: (selectedFile.size / (1024 * 1024)).toFixed(2) })}</p>
                     </div>
                     {!isUploading && !uploadComplete && (
                       <Button variant="ghost" size="sm" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
-                        Change
+                        {t("record.upload.change")}
                       </Button>
                     )}
                   </div>
@@ -236,9 +238,9 @@ export default function Upload() {
                     className={`p-8 rounded-lg border-2 border-dashed border-border hover:border-accent hover:bg-accent/5 transition-colors cursor-pointer text-center ${PRESSABLE_FOCUS}`}
                   >
                     <UploadCloud className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-                    <p className="font-medium mb-1">Click to select file</p>
-                    <p className="text-sm text-muted-foreground">or drag and drop an audio file</p>
-                    <p className="text-xs text-muted-foreground mt-2">MP3, WAV, OGG, MP4, MOV, or WebM • Max {MAX_UPLOAD_LABEL}</p>
+                    <p className="font-medium mb-1">{t("record.upload.clickToSelect")}</p>
+                    <p className="text-sm text-muted-foreground">{t("record.upload.orDrag")}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t("record.upload.formats", { size: MAX_UPLOAD_LABEL })}</p>
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept="audio/*,video/mp4,video/webm,video/quicktime,.mov" onChange={handleFileSelect} className="hidden" disabled={isUploading || uploadComplete} />
@@ -250,10 +252,10 @@ export default function Upload() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-semibold">
                       {uploadComplete
-                        ? "Transcribing your audio..."
+                        ? t("record.progress.transcribingAudio")
                         : uploadPhase === "uploading"
-                        ? "Reading file..."
-                        : "Uploading to server..."}
+                        ? t("record.progress.readingFile")
+                        : t("record.progress.uploadingToServer")}
                     </span>
                     <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
                   </div>
@@ -265,7 +267,7 @@ export default function Upload() {
                   </div>
                   {uploadComplete && (
                     <p className="text-xs text-muted-foreground text-center">
-                      Transcription in progress. You'll be redirected automatically when it's done.
+                      {t("record.progress.redirectWhenDone")}
                     </p>
                   )}
                 </div>
@@ -276,16 +278,16 @@ export default function Upload() {
                 {uploadComplete ? (
                   <div className="flex flex-col items-center gap-3">
                     <CheckCircle className="w-12 h-12 text-green-500" />
-                    <p className="text-sm font-medium">Uploaded successfully!</p>
-                    <p className="text-xs text-muted-foreground">Waiting for transcription to complete...</p>
+                    <p className="text-sm font-medium">{t("record.upload.success")}</p>
+                    <p className="text-xs text-muted-foreground">{t("record.upload.waiting")}</p>
                     <Button variant="outline" size="sm" onClick={() => recordingId && navigate(`/recording/${recordingId}`)}>
-                      Go to Recording Now
+                      {t("record.goToRecording")}
                     </Button>
                   </div>
                 ) : isUploading ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                    <p className="text-sm text-muted-foreground">Processing...</p>
+                    <p className="text-sm text-muted-foreground">{t("record.processing")}</p>
                   </div>
                 ) : (
                   <Button
@@ -295,21 +297,21 @@ export default function Upload() {
                     className="bg-accent hover:bg-accent/90 text-primary gap-2"
                   >
                     <UploadCloud className="w-5 h-5" />
-                    Upload & Transcribe
+                    {t("record.upload.submit")}
                   </Button>
                 )}
               </div>
 
               {/* Info */}
               <div className="p-4 rounded-lg bg-secondary/50 border border-border text-sm text-muted-foreground">
-                Your file will be automatically transcribed. This usually takes 1–3 minutes depending on file length.
+                {t("record.upload.info")}
               </div>
             </div>
           </Card>
 
           <Card className="mt-6 p-6 border-2 border-border">
-            <h3 className="font-bold mb-3">Supported Formats</h3>
-            <p className="text-sm text-muted-foreground">MP3, WAV, OGG, M4A, WebM, MP4 or MOV, up to {MAX_UPLOAD_LABEL}</p>
+            <h3 className="font-bold mb-3">{t("record.upload.supportedTitle")}</h3>
+            <p className="text-sm text-muted-foreground">{t("record.upload.supportedList", { size: MAX_UPLOAD_LABEL })}</p>
           </Card>
         </div>
       </main>
