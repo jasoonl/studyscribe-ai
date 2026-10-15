@@ -5,9 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Lock, Loader2, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useI18n, t } from "@/i18n";
 
 export default function ResetPassword() {
   const [, navigate] = useLocation();
+  useI18n();
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
@@ -26,7 +28,7 @@ export default function ResetPassword() {
     const resetToken = params.get("token");
 
     if (!resetToken) {
-      toast.error("No reset token provided");
+      toast.error(t("password.noToken"));
       navigate("/login");
       return;
     }
@@ -41,10 +43,10 @@ export default function ResetPassword() {
           setIsValidToken(true);
         } else {
           const error = await response.json();
-          throw new Error(error.error || "Invalid or expired token");
+          throw new Error(error.error || t("password.invalidToken"));
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Token validation failed";
+        const message = error instanceof Error ? error.message : t("password.checkFailed");
         toast.error(message);
         navigate("/login");
       } finally {
@@ -61,11 +63,11 @@ export default function ResetPassword() {
 
     try {
       if (formData.password !== formData.confirmPassword) {
-        throw new Error("Passwords do not match");
+        throw new Error(t("signup.mismatch"));
       }
 
       if (formData.password.length < 8) {
-        throw new Error("Password must be at least 8 characters");
+        throw new Error(t("signup.tooShort"));
       }
 
       const response = await fetch("/api/auth/reset-password", {
@@ -79,14 +81,14 @@ export default function ResetPassword() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to reset password");
+        throw new Error(error.error || t("password.resetFailed"));
       }
 
       setResetSuccess(true);
-      toast.success("Password reset successful!");
+      toast.success(t("password.resetDone"));
       setTimeout(() => navigate("/login"), 2000);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Password reset failed";
+      const message = error instanceof Error ? error.message : t("password.resetFailed");
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -98,7 +100,7 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md p-8 shadow-lg text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Validating reset link...</p>
+          <p className="text-muted-foreground">{t("password.checking")}</p>
         </Card>
       </div>
     );
@@ -111,12 +113,12 @@ export default function ResetPassword() {
           <div className="flex justify-center mb-4">
             <AlertCircle className="w-12 h-12 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground text-center mb-2">Invalid Link</h1>
+          <h1 className="text-2xl font-bold text-foreground text-center mb-2">{t("password.invalidTitle")}</h1>
           <p className="text-muted-foreground text-center mb-6">
-            This password reset link is invalid or has expired. Please request a new one.
+            {t("password.invalidText")}
           </p>
           <Button onClick={() => navigate("/forgot-password")} className="w-full">
-            Request New Link
+            {t("password.requestNew")}
           </Button>
         </Card>
       </div>
@@ -130,12 +132,12 @@ export default function ResetPassword() {
           <div className="flex justify-center mb-4">
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Password Reset!</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">{t("password.doneTitle")}</h1>
           <p className="text-muted-foreground mb-6">
-            Your password has been successfully reset. Redirecting to login...
+            {t("password.doneText")}
           </p>
           <Button onClick={() => navigate("/login")} className="w-full">
-            Go to Login
+            {t("password.goToLogin")}
           </Button>
         </Card>
       </div>
@@ -147,8 +149,8 @@ export default function ResetPassword() {
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Set New Password</h1>
-          <p className="text-muted-foreground">Enter your new password below</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{t("password.setTitle")}</h1>
+          <p className="text-muted-foreground">{t("password.setSubtitle")}</p>
         </div>
 
         {/* Form */}
@@ -156,7 +158,7 @@ export default function ResetPassword() {
           {/* Password */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-              New Password
+              {t("password.new")}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
@@ -173,18 +175,19 @@ export default function ResetPassword() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? t("password.hide") : t("password.show")}
                 className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">At least 8 characters</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("password.minLength")}</p>
           </div>
 
           {/* Confirm Password */}
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-2">
-              Confirm Password
+              {t("password.confirm")}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
@@ -201,6 +204,7 @@ export default function ResetPassword() {
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
+                aria-label={showConfirm ? t("password.hide") : t("password.show")}
                 className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
               >
                 {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -212,10 +216,10 @@ export default function ResetPassword() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Resetting...
+                {t("password.resetting")}
               </>
             ) : (
-              "Reset Password"
+              t("password.reset")
             )}
           </Button>
         </form>
@@ -226,7 +230,7 @@ export default function ResetPassword() {
             onClick={() => navigate("/login")}
             className="text-sm text-primary hover:underline"
           >
-            ← Back to Login
+            ← {t("password.backToLogin")}
           </button>
         </div>
       </Card>

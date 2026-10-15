@@ -2,6 +2,8 @@ import { PRESSABLE_FOCUS, pressable } from "@/lib/pressable";
 import { trpc } from "@/lib/trpc";
 import { formatRecordingDuration } from "@/lib/formatDuration";
 import { useLocation } from "wouter";
+import { useI18n } from "@/i18n";
+import { relativeTime } from "@/lib/relativeTime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,30 +12,20 @@ import {
   MessageSquare, TrendingUp, ArrowLeft, Clock, CheckCircle, AlertCircle
 } from "lucide-react";
 
-function timeAgo(date: Date): string {
-  const diff = Date.now() - new Date(date).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
 export default function Analytics() {
   const [, navigate] = useLocation();
   const { data, isLoading } = trpc.analytics.overview.useQuery();
+  const { t, formatNumber } = useI18n();
 
   const stats = [
-    { label: "Recordings", value: data?.totalRecordings ?? 0, icon: Mic, color: "text-primary", bg: "bg-primary/15" },
-    { label: "Transcripts", value: data?.totalTranscripts ?? 0, icon: FileText, color: "text-green-500", bg: "bg-green-50" },
-    { label: "Flashcards", value: data?.totalFlashcards ?? 0, icon: Zap, color: "text-yellow-500", bg: "bg-yellow-50" },
-    { label: "Study Guides", value: data?.totalStudyGuides ?? 0, icon: BookOpen, color: "text-primary", bg: "bg-primary/15" },
-    { label: "Quizzes", value: data?.totalQuizzes ?? 0, icon: HelpCircle, color: "text-orange-500", bg: "bg-orange-50" },
-    { label: "Email Drafts", value: data?.totalEmailDrafts ?? 0, icon: Mail, color: "text-pink-500", bg: "bg-pink-50" },
-    { label: "AI Conversations", value: data?.totalChatMessages ?? 0, icon: MessageSquare, color: "text-primary", bg: "bg-primary/15" },
-    { label: "Recordings (30d)", value: data?.recentRecordings ?? 0, icon: TrendingUp, color: "text-teal-500", bg: "bg-teal-50" },
+    { label: t("analytics.recordings"), value: data?.totalRecordings ?? 0, icon: Mic, color: "text-primary", bg: "bg-primary/15" },
+    { label: t("analytics.transcripts"), value: data?.totalTranscripts ?? 0, icon: FileText, color: "text-green-500", bg: "bg-green-50" },
+    { label: t("analytics.flashcards"), value: data?.totalFlashcards ?? 0, icon: Zap, color: "text-yellow-500", bg: "bg-yellow-50" },
+    { label: t("analytics.studyGuides"), value: data?.totalStudyGuides ?? 0, icon: BookOpen, color: "text-primary", bg: "bg-primary/15" },
+    { label: t("analytics.quizzes"), value: data?.totalQuizzes ?? 0, icon: HelpCircle, color: "text-orange-500", bg: "bg-orange-50" },
+    { label: t("analytics.emailDrafts"), value: data?.totalEmailDrafts ?? 0, icon: Mail, color: "text-pink-500", bg: "bg-pink-50" },
+    { label: t("analytics.conversations"), value: data?.totalChatMessages ?? 0, icon: MessageSquare, color: "text-primary", bg: "bg-primary/15" },
+    { label: t("analytics.recent30"), value: data?.recentRecordings ?? 0, icon: TrendingUp, color: "text-teal-500", bg: "bg-teal-50" },
   ];
 
   return (
@@ -43,12 +35,12 @@ export default function Analytics() {
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-1 text-muted-foreground">
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">Library</span>
+            <span className="sr-only sm:not-sr-only">{t("common.library")}</span>
           </Button>
           <div className="h-4 w-px bg-border" />
           <div>
-            <h1 className="text-lg font-semibold">Analytics</h1>
-            <p className="text-xs text-muted-foreground">Your StudyScribe AI usage overview</p>
+            <h1 className="text-lg font-semibold">{t("analytics.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("analytics.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -56,7 +48,7 @@ export default function Analytics() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Stats Grid */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">All Time</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">{t("analytics.allTime")}</h2>
           {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -71,7 +63,7 @@ export default function Analytics() {
                     <div className={`w-9 h-9 rounded-2xl ${stat.bg} flex items-center justify-center mb-3`}>
                       <stat.icon className={`w-5 h-5 ${stat.color}`} />
                     </div>
-                    <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">{formatNumber(stat.value)}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
                   </CardContent>
                 </Card>
@@ -82,7 +74,7 @@ export default function Analytics() {
 
         {/* Recent Activity */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">Recent Recordings</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">{t("analytics.recentRecordings")}</h2>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
               {isLoading ? (
@@ -94,7 +86,7 @@ export default function Analytics() {
               ) : !data?.recentActivity?.length ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <Mic className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No recordings yet. Start by recording or uploading audio.</p>
+                  <p className="text-sm">{t("analytics.none")}</p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -115,11 +107,11 @@ export default function Analytics() {
                             {formatRecordingDuration(r.duration)}
                           </span>
                           <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">{timeAgo(r.createdAt)}</span>
+                          <span className="text-xs text-muted-foreground">{relativeTime(r.createdAt)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="outline" className="text-xs capitalize">{r.audience}</Badge>
+                        <Badge variant="outline" className="text-xs">{r.audience === "professional" ? t("analytics.audience.professional") : t("analytics.audience.student")}</Badge>
                         {r.status === "completed" ? (
                           <CheckCircle className="w-4 h-4 text-green-500" />
                         ) : r.status === "failed" ? (
@@ -138,12 +130,12 @@ export default function Analytics() {
 
         {/* Usage Tips */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">Tips to Get More Value</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">{t("analytics.tips")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { icon: Zap, title: "Generate Flashcards", desc: "Open any recording and use the Flashcards tab to auto-generate study cards.", color: "text-yellow-500" },
-              { icon: HelpCircle, title: "Take Practice Quizzes", desc: "Use the AI Study Tools sidebar to create and take quizzes from your transcripts.", color: "text-orange-500" },
-              { icon: BookOpen, title: "Search Knowledge Base", desc: "Use the Knowledge Base to search across all your recordings at once.", color: "text-primary" },
+              { icon: Zap, title: t("analytics.tip1Title"), desc: t("analytics.tip1"), color: "text-yellow-500" },
+              { icon: HelpCircle, title: t("analytics.tip2Title"), desc: t("analytics.tip2"), color: "text-orange-500" },
+              { icon: BookOpen, title: t("analytics.tip3Title"), desc: t("analytics.tip3"), color: "text-primary" },
             ].map((tip) => (
               <Card key={tip.title} className="border-0 shadow-sm">
                 <CardContent className="p-4">

@@ -5,9 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Mail, Loader2, ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useI18n, Trans, t } from "@/i18n";
 
 export default function ForgotPassword() {
   const [, navigate] = useLocation();
+  useI18n();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -27,13 +29,13 @@ export default function ForgotPassword() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to send reset link");
+        throw new Error(error.error || t("password.sendFailed"));
       }
 
       setSubmitted(true);
-      toast.success("If an eligible account exists, a reset link has been sent.");
+      toast.success(t("password.sentToast"));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to send reset link";
+      const message = error instanceof Error ? error.message : t("password.sendFailed");
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -49,14 +51,14 @@ export default function ForgotPassword() {
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="w-6 h-6 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-2">{t("password.checkEmail")}</h1>
             <p className="text-muted-foreground">
-              If an eligible account exists for <strong>{email}</strong>, a password reset link has been sent.
+              <Trans k="password.sentText" vars={{ email }} parts={{ email: text => <strong>{text}</strong> }} />
             </p>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-800">
-            The link will expire in 30 minutes. If you don't see the email, check your spam folder.
+            {t("password.expires")}
           </div>
 
           <Button
@@ -65,7 +67,7 @@ export default function ForgotPassword() {
             className="w-full"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Login
+            {t("password.backToLogin")}
           </Button>
         </Card>
       </div>
@@ -77,8 +79,8 @@ export default function ForgotPassword() {
       <Card className="w-full max-w-md p-8 shadow-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Reset Password</h1>
-          <p className="text-muted-foreground">Enter your email to receive a reset link</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{t("password.forgotTitle")}</h1>
+          <p className="text-muted-foreground">{t("password.forgotSubtitle")}</p>
         </div>
 
         {errorMessage && (
@@ -91,7 +93,7 @@ export default function ForgotPassword() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-              Email Address
+              {t("common.emailAddress")}
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
@@ -112,10 +114,10 @@ export default function ForgotPassword() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sending...
+                {t("password.sending")}
               </>
             ) : (
-              "Send Reset Link"
+              t("password.sendLink")
             )}
           </Button>
         </form>
@@ -126,7 +128,7 @@ export default function ForgotPassword() {
             onClick={() => navigate("/login")}
             className="text-sm text-primary hover:underline"
           >
-            ← Back to Login
+            ← {t("password.backToLogin")}
           </button>
         </div>
       </Card>
