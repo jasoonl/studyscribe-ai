@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Ticket, CheckCircle, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useSignupMode } from "@/lib/signupMode";
+import { useI18n, Trans } from "@/i18n";
 
 export default function Invite() {
   const [code, setCode] = useState("");
@@ -12,11 +13,12 @@ export default function Invite() {
   const [isValid, setIsValid] = useState(false);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
   const signup = useSignupMode();
+  const { t } = useI18n();
 
   const handleValidate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
-      toast.error("Please enter an invite code");
+      toast.error(t("invite.enterCode"));
       return;
     }
 
@@ -31,19 +33,19 @@ export default function Invite() {
       const data = await response.json();
 
       if (!response.ok || !data.valid) {
-        throw new Error(data.error || "Invalid invite code. Please check and try again.");
+        throw new Error(data.error || t("invite.invalid"));
       }
 
       setIsValid(true);
       if (data.email) setInviteEmail(data.email);
-      toast.success("Invite code verified! Redirecting to sign up...");
+      toast.success(t("invite.verifiedToast"));
 
       // Redirect to signup with the validated code
       setTimeout(() => {
         window.location.href = `/signup?code=${encodeURIComponent(code.trim())}`;
       }, 1200);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Invalid invite code";
+      const message = error instanceof Error ? error.message : t("invite.invalid");
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -58,9 +60,9 @@ export default function Invite() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-4">
             <Ticket className="w-8 h-8 text-accent" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">You're Invited</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{t("invite.title")}</h1>
           <p className="text-muted-foreground">
-            StudyScribe AI is currently invite-only. Enter your invite code below to create your account.
+            {t("invite.intro")}
           </p>
         </div>
 
@@ -68,26 +70,27 @@ export default function Invite() {
           {isValid ? (
             <div className="text-center py-4 space-y-3">
               <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
-              <p className="font-semibold text-foreground">Invite code verified!</p>
+              <p className="font-semibold text-foreground">{t("invite.verified")}</p>
               {inviteEmail && (
                 <p className="text-sm text-muted-foreground">
-                  Signing you up as <span className="font-medium">{inviteEmail}</span>
+                  <Trans k="invite.signingUpAs" vars={{ email: inviteEmail }} parts={{ email: text => <span className="font-medium">{text}</span> }} />
                 </p>
               )}
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Redirecting to sign up...</span>
+                <span>{t("invite.redirecting")}</span>
               </div>
             </div>
           ) : (
             <form onSubmit={handleValidate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Invite Code
+                <label htmlFor="invite-code" className="block text-sm font-medium text-foreground mb-2">
+                  {t("invite.code")}
                 </label>
                 <Input
+                  id="invite-code"
                   type="text"
-                  placeholder="Enter your invite code"
+                  placeholder={t("invite.codePlaceholder")}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   className="font-mono tracking-widest text-center text-lg h-12"
@@ -104,11 +107,11 @@ export default function Invite() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Verifying...
+                    {t("invite.verifying")}
                   </>
                 ) : (
                   <>
-                    Continue
+                    {t("common.continue")}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
@@ -119,17 +122,17 @@ export default function Invite() {
 
         {/* Already have account */}
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("signup.haveAccount")}{" "}
           <a href="/login" className="text-accent font-medium hover:underline">
-            Sign in
+            {t("common.signIn")}
           </a>
         </p>
 
         {/* No invite? */}
         <p className="text-center text-sm text-muted-foreground">
-          Don't have an invite code?{" "}
+          {t("invite.noCode")}{" "}
           <a href={signup.open ? "/signup" : "/request-access"} className="text-accent font-medium hover:underline">
-            {signup.open ? "Sign up free without one" : "Request access"}
+            {signup.open ? t("invite.signUpWithout") : t("invite.requestAccess")}
           </a>
         </p>
       </div>
