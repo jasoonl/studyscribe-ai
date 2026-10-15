@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CourseDot } from "@/components/CourseDot";
 import { trpc } from "@/lib/trpc";
+import { formatDate, t, tn, Trans, useI18n } from "@/i18n";
 
 /** Must match MAX_PACK_RECORDINGS on the server. */
 const MAX_RECORDINGS = 12;
@@ -29,6 +30,7 @@ export function ExamPackDialog({
   onOpenChange: (open: boolean) => void;
   initialCourseId?: number;
 }) {
+  useI18n();
   const [, navigate] = useLocation();
   const { data: courses } = trpc.courses.list.useQuery(undefined, { enabled: open });
   const { data: recordings } = trpc.recordings.list.useQuery(undefined, { enabled: open });
@@ -55,10 +57,10 @@ export function ExamPackDialog({
   const create = trpc.examPacks.create.useMutation({
     onSuccess: result => {
       onOpenChange(false);
-      if (result.skipped > 0) toast.message(`Built from the ${result.used} most recent recordings with finished transcripts.`);
+      if (result.skipped > 0) toast.message(tn("examPack.dialog.usedRecent", result.used));
       navigate(`/exam-packs/${result.id}?new=1`);
     },
-    onError: error => toast.error(error.message || "Could not make the exam pack"),
+    onError: error => toast.error(error.message || t("examPack.dialog.createFailed")),
   });
 
   const canSubmit = mode === "course" ? !!selectedCourse : picked.length > 0;
@@ -78,15 +80,15 @@ export function ExamPackDialog({
     <Dialog open={open} onOpenChange={next => { if (!create.isPending) onOpenChange(next); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New exam pack</DialogTitle>
-          <DialogDescription>One study guide and one practice exam covering several recordings at once.</DialogDescription>
+          <DialogTitle>{t("examPack.newPack")}</DialogTitle>
+          <DialogDescription>{t("examPack.dialog.description")}</DialogDescription>
         </DialogHeader>
 
         {create.isPending ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center" role="status">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="font-medium">Writing the study guide</p>
-            <p className="max-w-xs text-sm text-muted-foreground">Reading every transcript in the pack and organising it by topic. This usually takes under a minute.</p>
+            <p className="font-medium">{t("examPack.dialog.writingGuide")}</p>
+            <p className="max-w-xs text-sm text-muted-foreground">{t("examPack.dialog.writingGuideText")}</p>
           </div>
         ) : (
           <form
@@ -98,14 +100,14 @@ export function ExamPackDialog({
           >
             <Tabs value={mode} onValueChange={value => setMode(value as "course" | "pick")}>
               <TabsList className="w-full">
-                <TabsTrigger value="course" disabled={usableCourses.length === 0}>A whole course</TabsTrigger>
-                <TabsTrigger value="pick">Pick recordings</TabsTrigger>
+                <TabsTrigger value="course" disabled={usableCourses.length === 0}>{t("examPack.dialog.wholeCourse")}</TabsTrigger>
+                <TabsTrigger value="pick">{t("examPack.dialog.pick")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="course" className="pt-3">
-                <Label htmlFor="pack-course" className="mb-1.5 block">Course</Label>
+                <Label htmlFor="pack-course" className="mb-1.5 block">{t("fields.course.label")}</Label>
                 <Select value={courseId} onValueChange={setCourseId}>
-                  <SelectTrigger id="pack-course" className="w-full"><SelectValue placeholder="Choose a course" /></SelectTrigger>
+                  <SelectTrigger id="pack-course" className="w-full"><SelectValue placeholder={t("examPack.dialog.chooseCourse")} /></SelectTrigger>
                   <SelectContent>
                     {usableCourses.map(course => (
                       <SelectItem key={course.id} value={String(course.id)}>
@@ -118,19 +120,19 @@ export function ExamPackDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="mt-2 text-xs text-muted-foreground">Uses the course's finished transcripts, up to its {MAX_RECORDINGS} most recent recordings.</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t("examPack.dialog.courseHint", { max: MAX_RECORDINGS })}</p>
               </TabsContent>
 
               <TabsContent value="pick" className="pt-3">
                 {ready.length === 0 ? (
-                  <p className="rounded-xl bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">No recordings with finished transcripts yet.</p>
+                  <p className="rounded-xl bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">{t("examPack.dialog.noReady")}</p>
                 ) : (
                   <>
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input value={filter} onChange={event => setFilter(event.target.value)} placeholder="Filter by title" aria-label="Filter recordings by title" className="pl-9" />
+                      <Input value={filter} onChange={event => setFilter(event.target.value)} placeholder={t("examPack.dialog.filterPlaceholder")} aria-label={t("examPack.dialog.filterLabel")} className="pl-9" />
                     </div>
-                    <ul className="mt-2 max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-border" aria-label="Recordings">
+                    <ul className="mt-2 max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-border" aria-label={t("examPack.dialog.recordings")}>
                       {visible.map(recording => {
                         const checked = picked.includes(recording.id);
                         const id = `pack-recording-${recording.id}`;
@@ -144,15 +146,15 @@ export function ExamPackDialog({
                             />
                             <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
                               <span className="block truncate text-sm font-medium">{recording.title}</span>
-                              <span className="block text-xs text-muted-foreground">{new Date(recording.createdAt).toLocaleDateString()}</span>
+                              <span className="block text-xs text-muted-foreground">{formatDate(recording.createdAt)}</span>
                             </label>
                           </li>
                         );
                       })}
-                      {visible.length === 0 && <li className="px-3 py-4 text-center text-sm text-muted-foreground">No titles match.</li>}
+                      {visible.length === 0 && <li className="px-3 py-4 text-center text-sm text-muted-foreground">{t("examPack.dialog.noMatch")}</li>}
                     </ul>
                     <p className="mt-2 text-xs tabular-nums text-muted-foreground" aria-live="polite">
-                      {picked.length} of up to {MAX_RECORDINGS} selected
+                      {t("examPack.dialog.selected", { count: picked.length, max: MAX_RECORDINGS })}
                     </p>
                   </>
                 )}
@@ -160,19 +162,19 @@ export function ExamPackDialog({
             </Tabs>
 
             <div className="space-y-1.5">
-              <Label htmlFor="pack-title">Name <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Label htmlFor="pack-title"><Trans k="examPack.dialog.name" parts={{ muted: text => <span className="font-normal text-muted-foreground">{text}</span> }} /></Label>
               <Input
                 id="pack-title"
                 value={title}
                 onChange={event => setTitle(event.target.value)}
                 maxLength={200}
-                placeholder={mode === "course" && selectedCourse ? `${selectedCourse.name} exam pack` : "Midterm revision"}
+                placeholder={mode === "course" && selectedCourse ? t("examPack.dialog.namePlaceholderCourse", { course: selectedCourse.name }) : t("examPack.dialog.namePlaceholder")}
               />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={!canSubmit}>Make exam pack</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("bots.cancel")}</Button>
+              <Button type="submit" disabled={!canSubmit}>{t("examPack.dialog.submit")}</Button>
             </DialogFooter>
           </form>
         )}

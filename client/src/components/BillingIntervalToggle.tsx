@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import { bestYearlySavingsPercent, type BillingInterval } from "@shared/plans";
 
 /**
@@ -6,9 +7,10 @@ import { bestYearlySavingsPercent, type BillingInterval } from "@shared/plans";
  * has yearly Stripe prices (`billing.plans.yearlyEnabled`).
  */
 export function BillingIntervalToggle({ value, onChange, className, inverted = false }: { value: BillingInterval; onChange: (value: BillingInterval) => void; className?: string; inverted?: boolean }) {
+  const { t, formatNumber } = useI18n();
   const saving = bestYearlySavingsPercent();
   return (
-    <div role="group" aria-label="Billing period" className={cn("inline-flex rounded-lg border border-border bg-muted p-0.5", className)}>
+    <div role="group" aria-label={t("billing.period")} className={cn("inline-flex rounded-lg border border-border bg-muted p-0.5", className)}>
       {(["month", "year"] as const).map(option => (
         <button
           key={option}
@@ -20,7 +22,7 @@ export function BillingIntervalToggle({ value, onChange, className, inverted = f
             value === option ? "bg-background text-foreground shadow-sm" : inverted ? "text-foreground/70 hover:text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {option === "month" ? "Monthly" : saving > 0 ? `Yearly, save ${saving}%` : "Yearly"}
+          {option === "month" ? t("billing.monthly") : saving > 0 ? t("billing.yearlySave", { percent: formatNumber(saving) }) : t("billing.yearly")}
         </button>
       ))}
     </div>

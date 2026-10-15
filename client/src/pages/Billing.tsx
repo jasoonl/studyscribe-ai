@@ -9,9 +9,21 @@ import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatMinutes, formatPlanPrice, intervalSuffix, isPaidPlanId, type BillingInterval, type PaidPlanId } from "@shared/plans";
+import { useI18n, t, tn, formatNumber } from "@/i18n";
+import { isPaidPlanId, type BillingInterval, type PaidPlanId, type Plan } from "@shared/plans";
+
+function planPrice(plan: Plan, interval: BillingInterval = "month") {
+  const amount = interval === "year" ? plan.priceYearlyUsd : plan.priceMonthlyUsd;
+  return formatNumber(amount, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+function allowanceMinutes(minutes: number) {
+  if (minutes >= 120 && minutes % 60 === 0) return t("billing.hours", { hours: formatNumber(minutes / 60) });
+  return tn("billing.minutes", minutes);
+}
 
 export default function Billing() {
+  useI18n();
   const { user } = useAuth();
   const plansQuery = trpc.billing.plans.useQuery();
   const [waitingForStripe, setWaitingForStripe] = useState(false);
@@ -34,13 +46,13 @@ export default function Billing() {
     handledParams.current = true;
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success") {
-      toast.success("Payment received. Your plan will show here in a moment.");
+      toast.success(t("billing.checkoutSuccess"));
       setWaitingForStripe(true);
       window.setTimeout(() => setWaitingForStripe(false), 30_000);
     } else if (params.get("checkout") === "cancelled") {
-      toast("Checkout cancelled. Nothing was charged.");
+      toast(t("billing.checkoutCancelled"));
     } else if (params.get("cancelled") === "1") {
-      toast.success("Your plan is cancelled. You keep it until the end of the period you paid for.");
+      toast.success(t("billing.cancelled"));
       setWaitingForStripe(true);
       window.setTimeout(() => setWaitingForStripe(false), 15_000);
     }
@@ -59,7 +71,7 @@ export default function Billing() {
       const { url } = await checkout.mutateAsync({ plan, interval });
       window.location.assign(url);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not start checkout");
+      toast.error(error instanceof Error ? error.message : t("billing.checkoutFailed"));
       setPendingPlan(null);
     }
   };
@@ -69,7 +81,7 @@ export default function Billing() {
       const { url } = await portal.mutateAsync({ intent });
       window.location.assign(url);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not open the billing portal");
+      toast.error(error instanceof Error ? error.message : t("billing.portalFailed"));
     }
   };
 
@@ -86,9 +98,9 @@ export default function Billing() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4">
           <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />Library</Button>
+            <Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />{t("common.library")}</Button>
           </Link>
-          <h1 className="text-lg font-semibold">Billing</h1>
+          <h1 className="text-lg font-semibold">{t("billing.title")}</h1>
         </div>
       </header>
 
@@ -96,18 +108,18 @@ export default function Billing() {
         {status.isLoading || plansQuery.isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : !data ? (
-          <Card className="p-6"><p className="text-sm text-muted-foreground">Billing could not be loaded. Refresh the page to try again.</p></Card>
+          <Card className="p-6"><p className="text-sm text-muted-foreground">{t("billing.loadFailed")}</p></Card>
         ) : (
           <>
             <Card className="gap-0 p-6">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                <h2 className="text-lg font-semibold">{data.plan.name} plan</h2>
+                <h2 className="text-lg font-semibold">{t("billing.planName", { plan: data.plan.name })}</h2>
                 <p className="text-sm text-muted-foreground">
                   {data.plan.priceMonthlyUsd === 0
-                    ? "$0, no payment details needed"
+                    ? t("billing.freePrice", { price: planPrice(data.plan) })
                     : data.subscription?.interval === "year"
-                      ? `${formatPlanPrice(data.plan, "year")} a year, plus any tax`
-                      : `${formatPlanPrice(data.plan)} a month, plus any tax`}
+                      ? t("billing.pricePerYearTax", { price: planPrice(data.plan, "year") })
+                      : t("billing.pricePerMonthTax", { price: planPrice(data.plan) })}
                 </p>
               </div>
               {data.subscription?.description && (
@@ -116,23 +128,23 @@ export default function Billing() {
                 </p>
               )}
               {waitingForStripe && (
-                <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Checking with Stripe</p>
+                <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("billing.checkingStripe")}</p>
               )}
 
               <div className="mt-6 border-t border-border pt-6">
-                <h3 className="sr-only">This month</h3>
+                <h3 className="sr-only">{t("billing.thisMonth")}</h3>
                 <UsageMeters usage={data.usage} isAdmin={user?.role === "admin"} />
               </div>
 
               {data.subscription && billingEnabled && (
                 <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6 sm:flex-row">
                   <Button variant="outline" onClick={() => openPortal("manage")} disabled={portal.isPending} className="gap-2">
-                    {live ? "Change plan or card" : "Invoices and payment details"}
+                    {live ? t("billing.changePlan") : t("billing.invoices")}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                   {live && !data.subscription.cancelAtPeriodEnd && (
                     <Button variant="outline" onClick={() => openPortal("cancel")} disabled={portal.isPending}>
-                      Cancel plan
+                      {t("billing.cancelPlan")}
                     </Button>
                   )}
                 </div>
@@ -141,7 +153,7 @@ export default function Billing() {
 
             <section aria-labelledby="plans-heading">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 id="plans-heading" className="text-sm font-semibold">Plans</h2>
+                <h2 id="plans-heading" className="text-sm font-semibold">{t("billing.plans")}</h2>
                 {yearlyEnabled && !live && <BillingIntervalToggle value={interval} onChange={setChosenInterval} />}
               </div>
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -154,25 +166,25 @@ export default function Billing() {
                         <p className="flex items-baseline gap-2">
                           <span className="font-semibold">{plan.name}</span>
                           <span className="text-sm tabular-nums text-muted-foreground">
-                            {formatPlanPrice(plan, paid ? interval : "month")} {intervalSuffix(paid ? interval : "month")}
+                            {t(paid && interval === "year" ? "billing.priceYear" : "billing.priceMonth", { price: planPrice(plan, paid ? interval : "month") })}
                           </span>
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {formatMinutes(plan.transcriptionMinutesPerMonth)} of transcription and {plan.aiGenerationsPerMonth.toLocaleString("en-US")} AI generations a month
+                          {t("billing.allowance", { minutes: allowanceMinutes(plan.transcriptionMinutesPerMonth), generations: formatNumber(plan.aiGenerationsPerMonth) })}
                         </p>
                       </div>
                       <div className="shrink-0">
                         {current ? (
-                          <span className="text-sm font-medium text-muted-foreground">Current plan</span>
+                          <span className="text-sm font-medium text-muted-foreground">{t("billing.currentPlan")}</span>
                         ) : !paid ? null : !plan.purchasable ? (
-                          <span className="text-sm text-muted-foreground">Coming soon</span>
+                          <span className="text-sm text-muted-foreground">{t("billing.comingSoon")}</span>
                         ) : live ? (
                           <Button variant="outline" size="sm" onClick={() => openPortal("manage")} disabled={portal.isPending}>
-                            Switch to {plan.name}
+                            {t("billing.switchTo", { plan: plan.name })}
                           </Button>
                         ) : (
                           <Button size="sm" onClick={() => paid && startCheckout(plan.id as PaidPlanId)} disabled={checkout.isPending}>
-                            {pendingPlan === plan.id ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Opening checkout</> : `Choose ${plan.name}`}
+                            {pendingPlan === plan.id ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("billing.openingCheckout")}</> : t("billing.choose", { plan: plan.name })}
                           </Button>
                         )}
                       </div>
@@ -182,9 +194,9 @@ export default function Billing() {
               </ul>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 {billingEnabled
-                  ? `Prices are in US dollars. Checkout, run by Stripe, shows the full price including any tax before you pay. Plans renew every ${yearlyEnabled ? "month or year, as you chose," : "month"} until you cancel; allowances reset monthly either way. You can cancel here at any time and keep the plan until the end of the period you paid for. When you switch plans, Stripe shows what changes before you confirm.`
-                  : "Paid plans are not on sale yet. Everyone is on the Free plan in the meantime."}{" "}
-                <Link href="/refunds" className="font-medium text-primary underline-offset-2 hover:underline">Refund Policy</Link>
+                  ? t(yearlyEnabled ? "billing.termsYearly" : "billing.termsMonthly")
+                  : t("billing.notOnSale")}{" "}
+                <Link href="/refunds" className="font-medium text-primary underline-offset-2 hover:underline">{t("billing.refundPolicy")}</Link>
               </p>
             </section>
           </>

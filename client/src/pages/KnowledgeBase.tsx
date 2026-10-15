@@ -11,13 +11,14 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { formatRecordingDuration } from "@/lib/formatDuration";
 import { formatTranscriptTimestamp } from "@/lib/transcriptSegments";
 import { cn } from "@/lib/utils";
+import { Trans, formatDate as formatUiDate, t, useI18n } from "@/i18n";
 
 type SearchMode = "keyword" | "smart";
 const MODE_KEY = "studyscribe_kb_mode";
 
 function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "Unknown date";
-  return new Date(date).toLocaleDateString("en-US", {
+  if (!date) return t("kb.unknownDate");
+  return formatUiDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -37,6 +38,15 @@ function highlightMatch(text: string, query: string) {
   );
 }
 
+/** The transcript status badge; an unknown value from the server shows as it came. */
+function statusLabel(status: string | null | undefined) {
+  if (!status || status === "pending") return t("kb.statusPending");
+  if (status === "completed") return t("recording.statusCompleted");
+  if (status === "processing") return t("recording.statusProcessing");
+  if (status === "failed") return t("recording.statusFailed");
+  return status;
+}
+
 function readMode(): SearchMode {
   try {
     return window.localStorage.getItem(MODE_KEY) === "smart" ? "smart" : "keyword";
@@ -51,6 +61,7 @@ function readMode(): SearchMode {
  * embeddings configured. Smart results link to the moment in the recording.
  */
 export default function KnowledgeBase() {
+  const { t, tn, formatNumber } = useI18n();
   const [inputValue, setInputValue] = useState("");
   const [preferredMode, setPreferredMode] = useState<SearchMode>(readMode);
   const debouncedQuery = useDebounce(inputValue, 400);
@@ -68,9 +79,9 @@ export default function KnowledgeBase() {
     onSuccess: async result => {
       await utils.smartSearch.status.invalidate();
       if (result.failed) toast.error(result.failed);
-      else toast.success(result.remaining > 0 ? `Indexed ${result.indexed}. ${result.remaining} to go.` : "Every transcript is indexed.");
+      else toast.success(result.remaining > 0 ? t("kb.indexedProgress", { indexed: formatNumber(result.indexed), remaining: formatNumber(result.remaining) }) : t("kb.allIndexed"));
     },
-    onError: error => toast.error(error.message || "Could not index right now"),
+    onError: error => toast.error(error.message || t("kb.indexFailed")),
   });
 
   const setMode = (next: SearchMode) => {
@@ -94,27 +105,27 @@ export default function KnowledgeBase() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Library
+              {t("common.library")}
             </Button>
           </Link>
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" aria-hidden="true" />
-            <h1 className="text-lg font-semibold text-foreground">Knowledge Base</h1>
+            <h1 className="text-lg font-semibold text-foreground">{t("library.knowledgeBase")}</h1>
           </div>
         </div>
       </header>
 
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-8 focus:outline-none">
         <div className="mb-8 text-center">
-          <h2 className="mb-2 text-2xl font-bold text-foreground">Search your transcripts</h2>
+          <h2 className="mb-2 text-2xl font-bold text-foreground">{t("kb.heading")}</h2>
           <p className="text-sm text-muted-foreground">
-            {mode === "smart" ? "Smart search finds passages by meaning, even when the words differ." : "Search across all your recordings and transcripts in one place."}
+            {mode === "smart" ? t("kb.smartIntro") : t("kb.keywordIntro")}
           </p>
         </div>
 
         {smartAvailable && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-lg border border-border bg-muted p-0.5" role="group" aria-label="Search mode">
+            <div className="inline-flex rounded-lg border border-border bg-muted p-0.5" role="group" aria-label={t("kb.searchMode")}>
               {(["keyword", "smart"] as const).map(option => (
                 <button
                   key={option}
@@ -126,18 +137,18 @@ export default function KnowledgeBase() {
                     mode === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {option === "keyword" ? "Keywords" : "Smart search"}
+                  {option === "keyword" ? t("kb.keywords") : t("kb.smartSearch")}
                 </button>
               ))}
             </div>
             {mode === "smart" && smartStatus && (
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>
-                  {smartStatus.indexed} of {smartStatus.total} transcript{smartStatus.total === 1 ? "" : "s"} indexed
+                  {tn("kb.indexedCount", smartStatus.total, { indexed: formatNumber(smartStatus.indexed) })}
                 </span>
                 {unindexed > 0 && (
                   <Button type="button" size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled={indexNext.isPending} onClick={() => indexNext.mutate()}>
-                    {indexNext.isPending ? "Indexing…" : "Index the rest"}
+                    {indexNext.isPending ? t("ask.indexing") : t("kb.indexRest")}
                   </Button>
                 )}
               </p>
@@ -151,8 +162,8 @@ export default function KnowledgeBase() {
             type="search"
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
-            placeholder={mode === "smart" ? "Ask in your own words, e.g. how cells make energy" : "Search recordings, topics, keywords"}
-            aria-label={mode === "smart" ? "Smart search" : "Search transcripts"}
+            placeholder={mode === "smart" ? t("kb.smartPlaceholder") : t("kb.keywordPlaceholder")}
+            aria-label={mode === "smart" ? t("kb.smartSearch") : t("kb.searchTranscripts")}
             className="h-12 rounded-xl border-2 pl-12 pr-12 text-base shadow-sm focus-visible:border-primary"
             autoFocus
           />
@@ -160,7 +171,7 @@ export default function KnowledgeBase() {
             <button
               type="button"
               onClick={handleClear}
-              aria-label="Clear search"
+              aria-label={t("transcript.clearSearch")}
               className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -172,15 +183,15 @@ export default function KnowledgeBase() {
           {!hasQuery && (
             <div className="py-16 text-center text-muted-foreground">
               <Search className="mx-auto mb-4 h-12 w-12 opacity-30" aria-hidden="true" />
-              <p className="text-base font-medium">Type at least 2 characters to search</p>
-              <p className="mt-1 text-sm">Your recordings and transcripts will appear here</p>
+              <p className="text-base font-medium">{t("kb.minChars")}</p>
+              <p className="mt-1 text-sm">{t("kb.minCharsHint")}</p>
             </div>
           )}
 
           {showLoading && (
             <div className="flex items-center justify-center gap-3 py-16 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-              <span>Searching…</span>
+              <span>{t("kb.searching")}</span>
             </div>
           )}
 
@@ -189,11 +200,11 @@ export default function KnowledgeBase() {
               <p className="font-medium">{active.error.message}</p>
               <div className="mt-4 flex justify-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => void active.refetch()}>
-                  Try again
+                  {t("translate.tryAgain")}
                 </Button>
                 {mode === "smart" && (
                   <Button type="button" variant="ghost" size="sm" onClick={() => setMode("keyword")}>
-                    Use keyword search
+                    {t("kb.useKeyword")}
                   </Button>
                 )}
               </div>
@@ -206,7 +217,11 @@ export default function KnowledgeBase() {
             ) : (
               <div className="space-y-3">
                 <p className="mb-4 text-sm text-muted-foreground">
-                  {keyword.data.length} result{keyword.data.length !== 1 ? "s" : ""} for <span className="font-medium text-foreground">"{query}"</span>
+                  <Trans
+                    k={keyword.data.length === 1 ? "kb.results_one" : "kb.results_other"}
+                    vars={{ count: formatNumber(keyword.data.length), query }}
+                    parts={{ q: text => <span className="font-medium text-foreground">{text}</span> }}
+                  />
                 </p>
                 {keyword.data.map(result => (
                   <Link key={result.recordingId} href={`/recording/${result.recordingId}`} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -221,12 +236,12 @@ export default function KnowledgeBase() {
                             {result.snippet ? (
                               <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">{highlightMatch(result.snippet, query)}</p>
                             ) : (
-                              <p className="text-xs italic text-muted-foreground sm:text-sm">Title match. Open it to see the transcript.</p>
+                              <p className="text-xs italic text-muted-foreground sm:text-sm">{t("kb.titleMatch")}</p>
                             )}
                           </div>
                           <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end sm:gap-1.5">
                             <Badge variant={result.transcriptStatus === "completed" ? "default" : "secondary"} className="text-xs">
-                              {result.transcriptStatus ?? "pending"}
+                              {statusLabel(result.transcriptStatus)}
                             </Badge>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" aria-hidden="true" />
@@ -247,8 +262,8 @@ export default function KnowledgeBase() {
             smart.data.length === 0 ? (
               <div className="py-16 text-center text-muted-foreground">
                 <FileText className="mx-auto mb-4 h-12 w-12 opacity-30" aria-hidden="true" />
-                <p className="text-base font-medium">{smartStatus && smartStatus.indexed === 0 ? "Nothing is indexed for smart search yet" : `Nothing close to "${query}"`}</p>
-                <p className="mt-1 text-sm">{smartStatus && smartStatus.indexed === 0 ? "Index your transcripts above, then search again." : "Try describing it another way, or use keywords."}</p>
+                <p className="text-base font-medium">{smartStatus && smartStatus.indexed === 0 ? t("kb.nothingIndexed") : t("kb.nothingClose", { query })}</p>
+                <p className="mt-1 text-sm">{smartStatus && smartStatus.indexed === 0 ? t("kb.indexAbove") : t("kb.tryAnother")}</p>
               </div>
             ) : (
               <ol className="space-y-3">
@@ -279,14 +294,15 @@ export default function KnowledgeBase() {
 }
 
 function EmptyResults({ query, smartAvailable, onSmart }: { query: string; smartAvailable: boolean; onSmart: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="py-16 text-center text-muted-foreground">
       <FileText className="mx-auto mb-4 h-12 w-12 opacity-30" aria-hidden="true" />
-      <p className="text-base font-medium">No results found for "{query}"</p>
-      <p className="mt-1 text-sm">Try different keywords or check your spelling.</p>
+      <p className="text-base font-medium">{t("kb.noResults", { query })}</p>
+      <p className="mt-1 text-sm">{t("kb.tryDifferent")}</p>
       {smartAvailable && (
         <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onSmart}>
-          Try smart search
+          {t("kb.trySmart")}
         </Button>
       )}
     </div>

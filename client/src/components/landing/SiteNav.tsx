@@ -4,66 +4,63 @@ import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScro
 import { Menu, X } from "lucide-react";
 import { PLANS } from "@shared/plans";
 import { useSignupMode } from "@/lib/signupMode";
+import { formatNumber, t, useI18n } from "@/i18n";
 
 const LOGO = "/logo.webp";
 
 const LOWEST_PAID_PRICE = Math.min(...PLANS.filter((plan) => plan.priceMonthlyUsd > 0).map((plan) => plan.priceMonthlyUsd));
 
 type Item = { title: string; text: string; href: string };
-/** A menu with `href` is also a link: hovering or focusing opens its panel, clicking goes to the page. */
-const MENUS: Record<string, { label: string; href?: string; items: Item[] }> = {
-  product: {
-    label: "Product",
-    items: [
-      { title: "Record or upload", text: "Live, from a file, or a link.", href: "/#how" },
-      { title: "Transcripts", text: "Speaker labels and timestamps.", href: "/#features" },
-      { title: "Study tools", text: "Flashcards, quizzes and guides.", href: "/#features" },
-      { title: "AI tutor", text: "Ask about your own lecture.", href: "/#features" },
-    ],
-  },
-  who: {
-    label: "Use cases",
-    items: [
-      { title: "Students", text: "From lecture to exam prep.", href: "/#use-cases" },
-      { title: "Professionals", text: "Meetings to action items.", href: "/#use-cases" },
-      { title: "Languages", text: "Transcribe in many languages.", href: "/#languages" },
-    ],
-  },
-  pricing: {
-    label: "Pricing",
-    href: "/pricing",
-    items: [
-      { title: "Free plan", text: "$0, with every feature included.", href: "/pricing#plans" },
-      { title: "Paid plans", text: `More recordings from $${LOWEST_PAID_PRICE} a month. Coming soon.`, href: "/pricing#plans" },
-      { title: "Questions", text: "Accuracy, privacy and your data.", href: "/pricing#faq" },
-      { title: "Refund Policy", text: "How cancelling and refunds work.", href: "/refunds" },
-    ],
-  },
-  demo: {
-    label: "Demo",
-    href: "/demo",
-    items: [
-      { title: "Watch the demo", text: "A narrated tour of the real app.", href: "/demo" },
-      { title: "What it covers", text: "Each step, lecture to study guide.", href: "/demo#tour" },
-      { title: "How it works", text: "Record, transcribe, then study.", href: "/#how" },
-    ],
-  },
-};
+type Menu = { label: string; href?: string; items: Item[] };
+const money = (amount: number) => formatNumber(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-export default function SiteNav() {
-  const signup = useSignupMode();
-  const menus: typeof MENUS = {
-    ...MENUS,
-    demo: {
-      ...MENUS.demo,
+/** A menu with `href` is also a link: hovering or focusing opens its panel, clicking goes to the page. */
+function buildMenus(signupOpen: boolean, signupHref: string): Record<string, Menu> {
+  return {
+    product: {
+      label: t("nav.product"),
       items: [
-        ...MENUS.demo.items,
-        signup.open
-          ? { title: "Try it yourself", text: "Sign up free and record your lecture.", href: signup.href }
-          : { title: "Try it yourself", text: "Request an invite for your lecture.", href: signup.href },
+        { title: t("nav.record.title"), text: t("nav.record.text"), href: "/#how" },
+        { title: t("nav.transcripts.title"), text: t("nav.transcripts.text"), href: "/#features" },
+        { title: t("nav.tools.title"), text: t("nav.tools.text"), href: "/#features" },
+        { title: t("nav.tutor.title"), text: t("nav.tutor.text"), href: "/#features" },
+      ],
+    },
+    who: {
+      label: t("nav.useCases"),
+      items: [
+        { title: t("nav.students.title"), text: t("nav.students.text"), href: "/#use-cases" },
+        { title: t("nav.professionals.title"), text: t("nav.professionals.text"), href: "/#use-cases" },
+        { title: t("nav.languages.title"), text: t("nav.languages.text"), href: "/#languages" },
+      ],
+    },
+    pricing: {
+      label: t("nav.pricing"),
+      href: "/pricing",
+      items: [
+        { title: t("nav.free.title"), text: t("nav.free.text", { price: money(0) }), href: "/pricing#plans" },
+        { title: t("nav.paid.title"), text: t("nav.paid.text", { price: money(LOWEST_PAID_PRICE) }), href: "/pricing#plans" },
+        { title: t("nav.questions.title"), text: t("nav.questions.text"), href: "/pricing#faq" },
+        { title: t("footer.refunds"), text: t("nav.refunds.text"), href: "/refunds" },
+      ],
+    },
+    demo: {
+      label: t("nav.demo"),
+      href: "/demo",
+      items: [
+        { title: t("landing.watchDemo"), text: t("nav.watch.text"), href: "/demo" },
+        { title: t("nav.covers.title"), text: t("nav.covers.text"), href: "/demo#tour" },
+        { title: t("nav.how.title"), text: t("nav.how.text"), href: "/#how" },
+        { title: t("nav.try.title"), text: signupOpen ? t("nav.try.open") : t("nav.try.closed"), href: signupHref },
       ],
     },
   };
+}
+
+export default function SiteNav() {
+  const signup = useSignupMode();
+  useI18n();
+  const menus = buildMenus(signup.open, signup.href);
   const reduce = useReducedMotion();
   const { scrollY } = useScroll();
   const [stuck, setStuck] = useState(false);
@@ -74,7 +71,7 @@ export default function SiteNav() {
   return (
     <header className="fixed inset-x-0 top-3 z-50 flex justify-center px-3 sm:top-4" onMouseLeave={() => setOpen(null)}>
       <motion.nav
-        aria-label="Main"
+        aria-label={t("nav.main")}
         initial={reduce ? false : { y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 20 }}
@@ -121,7 +118,7 @@ export default function SiteNav() {
 
           <div className="ml-auto flex items-center gap-1.5">
             <Link href="/login" className="hidden rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground sm:block">
-              Sign in
+              {t("common.signIn")}
             </Link>
             <Link
               href={signup.href}
@@ -131,7 +128,7 @@ export default function SiteNav() {
             </Link>
             <button
               type="button"
-              aria-label={mobile ? "Close menu" : "Open menu"}
+              aria-label={mobile ? t("nav.closeMenu") : t("nav.openMenu")}
               aria-expanded={mobile}
               onClick={() => setMobile((v) => !v)}
               className="grid h-9 w-9 place-items-center rounded-md text-foreground md:hidden"
@@ -174,7 +171,7 @@ export default function SiteNav() {
               className="overflow-hidden md:hidden"
             >
               <ul className="space-y-1 px-3 pb-4 pt-1 text-sm font-medium">
-                {[["Product", "/#features"], ["Use cases", "/#use-cases"], ["Pricing", "/pricing"], ["Demo", "/demo"], ["Sign in", "/login"]].map(([label, href]) => (
+                {[[t("nav.product"), "/#features"], [t("nav.useCases"), "/#use-cases"], [t("nav.pricing"), "/pricing"], [t("nav.demo"), "/demo"], [t("common.signIn"), "/login"]].map(([label, href]) => (
                   <li key={label}>
                     <a href={href} onClick={() => setMobile(false)} className="block rounded-xl px-3 py-2.5 hover:bg-secondary">
                       {label}

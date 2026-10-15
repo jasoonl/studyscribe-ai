@@ -3,6 +3,7 @@ import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { Markdown } from "@/components/Markdown";
 import { ArrowLeft, Check, Download, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate, t, tn, useI18n } from "@/i18n";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -49,6 +50,7 @@ function PracticeExam({
   onRegenerate: () => void;
   regenerating: boolean;
 }) {
+  useI18n();
   const utils = trpc.useUtils();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<Result | null>(null);
@@ -59,7 +61,7 @@ function PracticeExam({
       void utils.examPacks.list.invalidate();
       requestAnimationFrame(() => summaryRef.current?.focus());
     },
-    onError: error => toast.error(error.message || "Could not check your answers"),
+    onError: error => toast.error(error.message || t("examPack.checkFailed")),
   });
 
   useEffect(() => {
@@ -76,13 +78,13 @@ function PracticeExam({
         <div ref={summaryRef} tabIndex={-1} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm outline-none sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-3xl font-bold tracking-tight tabular-nums">{result.score}%</p>
-            <p className="text-sm text-muted-foreground">{result.correct} of {result.total} correct. Read the explanations below for the ones you missed.</p>
+            <p className="text-sm text-muted-foreground">{t("examPack.resultText", { correct: result.correct, total: result.total })}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="gap-2" onClick={() => { setAnswers({}); setResult(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-              <RotateCcw className="h-4 w-4" /> Try again
+              <RotateCcw className="h-4 w-4" /> {t("translate.tryAgain")}
             </Button>
-            <Button variant="outline" disabled={regenerating} onClick={onRegenerate}>New questions</Button>
+            <Button variant="outline" disabled={regenerating} onClick={onRegenerate}>{t("examPack.newQuestions")}</Button>
           </div>
         </div>
       )}
@@ -116,8 +118,8 @@ function PracticeExam({
                           >
                             <RadioGroupItem value={option} id={id} />
                             <span className="flex-1">{option}</span>
-                            {isAnswer && <Check className="h-4 w-4 text-primary" aria-label="Correct answer" />}
-                            {isWrongPick && <X className="h-4 w-4 text-destructive" aria-label="Your answer, incorrect" />}
+                            {isAnswer && <Check className="h-4 w-4 text-primary" aria-label={t("examPack.correctAnswer")} />}
+                            {isWrongPick && <X className="h-4 w-4 text-destructive" aria-label={t("examPack.wrongPick")} />}
                           </Label>
                         );
                       })}
@@ -126,8 +128,8 @@ function PracticeExam({
                     <Input
                       value={answers[question.id] ?? ""}
                       onChange={event => setAnswers(current => ({ ...current, [question.id]: event.target.value }))}
-                      placeholder="Your answer"
-                      aria-label={`Answer to question ${index + 1}`}
+                      placeholder={t("examPack.answerPlaceholder")}
+                      aria-label={t("examPack.answerLabel", { number: index + 1 })}
                       maxLength={500}
                     />
                   )}
@@ -135,13 +137,13 @@ function PracticeExam({
                   {result && (
                     <div className="mt-3 space-y-1 text-sm">
                       <p className={cn("font-medium", state ? "text-primary" : "text-destructive")}>
-                        {state ? "Correct" : answers[question.id]?.trim() ? "Not quite" : "Not answered"}
-                        {!state && question.type === "short-answer" && <span className="font-normal text-foreground">. Answer: {question.correctAnswer}</span>}
+                        {state ? t("examPack.correct") : answers[question.id]?.trim() ? t("examPack.notQuite") : t("quiz.notAnswered")}
+                        {!state && question.type === "short-answer" && <span className="font-normal text-foreground">{t("examPack.answerReveal", { answer: question.correctAnswer })}</span>}
                       </p>
                       {question.explanation && <p className="text-muted-foreground">{question.explanation}</p>}
                       {source && question.recordingId && (
                         <Link href={`/recording/${question.recordingId}`} className="inline-block text-xs text-primary underline-offset-4 hover:underline">
-                          From {source}
+                          {t("examPack.from", { title: source })}
                         </Link>
                       )}
                     </div>
@@ -155,10 +157,10 @@ function PracticeExam({
 
       {!result && (
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">{answered} of {questions.length} answered</p>
+          <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">{t("examPack.answeredCount", { answered, total: questions.length })}</p>
           <Button disabled={answered === 0 || submit.isPending} className="gap-2" onClick={() => submit.mutate({ id: packId, answers })}>
             {submit.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Check answers
+            {t("examPack.check")}
           </Button>
         </div>
       )}
@@ -170,6 +172,7 @@ export default function ExamPack() {
   const [, params] = useRoute("/exam-packs/:id");
   const id = params?.id ? Number.parseInt(params.id, 10) : NaN;
   const valid = Number.isInteger(id) && id > 0;
+  useI18n();
   const isNew = new URLSearchParams(useSearch()).get("new") === "1";
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
@@ -181,17 +184,17 @@ export default function ExamPack() {
   const generateQuiz = trpc.examPacks.generateQuiz.useMutation({
     onSuccess: async result => {
       await Promise.all([utils.examPacks.get.invalidate({ id }), utils.examPacks.list.invalidate()]);
-      toast.success(`Practice exam ready: ${result.questionCount} questions`);
+      toast.success(tn("examPack.examReady", result.questionCount));
     },
-    onError: err => toast.error(err.message || "Could not write the practice exam"),
+    onError: err => toast.error(err.message || t("examPack.writeFailed")),
   });
   const remove = trpc.examPacks.remove.useMutation({
     onSuccess: async () => {
       await utils.examPacks.list.invalidate();
       navigate("/exam-packs");
-      toast.success("Exam pack deleted");
+      toast.success(t("examPack.deleted"));
     },
-    onError: err => toast.error(err.message || "Could not delete the pack"),
+    onError: err => toast.error(err.message || t("examPack.deleteFailed")),
   });
 
   const questions = (pack?.questions ?? []) as Question[];
@@ -213,7 +216,7 @@ export default function ExamPack() {
           <Link href="/exam-packs">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Exam packs
+              {t("examPack.packs")}
             </Button>
           </Link>
           {pack && (
@@ -221,12 +224,12 @@ export default function ExamPack() {
               {pack.guide && (
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadMarkdown(pack.title, pack.guide!)}>
                   <Download className="h-4 w-4" />
-                  <span className="sr-only sm:not-sr-only">Download guide</span>
+                  <span className="sr-only sm:not-sr-only">{t("examPack.downloadGuide")}</span>
                 </Button>
               )}
               <Button variant="outline" size="sm" className="gap-2" onClick={() => setConfirmDelete(true)}>
                 <Trash2 className="h-4 w-4" />
-                <span className="sr-only sm:not-sr-only">Delete</span>
+                <span className="sr-only sm:not-sr-only">{t("transcript.delete")}</span>
               </Button>
             </div>
           )}
@@ -238,18 +241,18 @@ export default function ExamPack() {
           <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>
         ) : !pack ? (
           <div className="py-24 text-center">
-            <h1 className="mb-2 text-2xl font-bold tracking-tight">Exam pack not found</h1>
-            <p className="mb-6 text-muted-foreground">{error?.message && error.message !== "Exam pack not found" ? error.message : "It may have been deleted."}</p>
-            <Link href="/exam-packs"><Button>Back to exam packs</Button></Link>
+            <h1 className="mb-2 text-2xl font-bold tracking-tight">{t("examPack.notFound")}</h1>
+            <p className="mb-6 text-muted-foreground">{error?.message && error.message !== "Exam pack not found" ? error.message : t("examPack.maybeDeleted")}</p>
+            <Link href="/exam-packs"><Button>{t("examPack.backToPacks")}</Button></Link>
           </div>
         ) : (
           <>
             <p className="mb-3 text-sm text-muted-foreground">
-              {[`${pack.sources.length} recording${pack.sources.length === 1 ? "" : "s"}`, new Date(pack.createdAt).toLocaleDateString(), pack.lastScore !== null ? `last score ${pack.lastScore}%` : null].filter(Boolean).join(" · ")}
+              {[tn("library.recordings", pack.sources.length), formatDate(pack.createdAt), pack.lastScore !== null ? t("examPack.lastScoreInline", { score: pack.lastScore }) : null].filter(Boolean).join(" · ")}
             </p>
             <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">{pack.title}</h1>
 
-            <section aria-label="Recordings in this pack" className="mt-5">
+            <section aria-label={t("examPack.sourcesLabel")} className="mt-5">
               <ul className="flex flex-wrap gap-2">
                 {pack.sources.map(source => (
                   <li key={source.id} className="min-w-0 max-w-full">
@@ -267,9 +270,9 @@ export default function ExamPack() {
 
             <Tabs value={tab} onValueChange={setTab} className="mt-8">
               <TabsList className="w-full sm:w-auto">
-                <TabsTrigger value="guide" className="px-4">Study guide</TabsTrigger>
+                <TabsTrigger value="guide" className="px-4">{t("notes.type.study_guide")}</TabsTrigger>
                 <TabsTrigger value="exam" className="px-4">
-                  Practice exam{questions.length > 0 && <span className="tabular-nums text-muted-foreground">{questions.length}</span>}
+                  {t("examPack.examTab")}{questions.length > 0 && <span className="tabular-nums text-muted-foreground">{questions.length}</span>}
                 </TabsTrigger>
               </TabsList>
 
@@ -279,7 +282,7 @@ export default function ExamPack() {
                     <Markdown>{pack.guide}</Markdown>
                   </article>
                 ) : (
-                  <p className="text-muted-foreground">This pack has no study guide.</p>
+                  <p className="text-muted-foreground">{t("examPack.noGuide")}</p>
                 )}
               </TabsContent>
 
@@ -287,8 +290,8 @@ export default function ExamPack() {
                 {generateQuiz.isPending ? (
                   <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card py-14 text-center shadow-sm" role="status">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <p className="font-medium">Writing the practice exam</p>
-                    <p className="max-w-xs text-sm text-muted-foreground">Questions are spread across every recording in the pack. You can read the guide meanwhile.</p>
+                    <p className="font-medium">{t("examPack.writingExam")}</p>
+                    <p className="max-w-xs text-sm text-muted-foreground">{t("examPack.writingExamText")}</p>
                   </div>
                 ) : questions.length > 0 ? (
                   <PracticeExam
@@ -300,8 +303,8 @@ export default function ExamPack() {
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
-                    <p className="mx-auto max-w-sm text-muted-foreground">Fifteen questions drawn from all the recordings in this pack, checked when you finish.</p>
-                    <Button className="mt-5" onClick={() => generateQuiz.mutate({ id: pack.id })}>Write practice exam</Button>
+                    <p className="mx-auto max-w-sm text-muted-foreground">{t("examPack.emptyExam")}</p>
+                    <Button className="mt-5" onClick={() => generateQuiz.mutate({ id: pack.id })}>{t("examPack.writeExam")}</Button>
                   </div>
                 )}
               </TabsContent>
@@ -313,12 +316,12 @@ export default function ExamPack() {
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this exam pack?</AlertDialogTitle>
-            <AlertDialogDescription>The study guide and practice exam are removed. The recordings stay in your library.</AlertDialogDescription>
+            <AlertDialogTitle>{t("examPack.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("examPack.deleteText")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
-            <AlertDialogAction onClick={() => remove.mutate({ id })}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t("examPack.keep")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => remove.mutate({ id })}>{t("transcript.delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

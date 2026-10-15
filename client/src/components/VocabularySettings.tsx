@@ -6,9 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { useI18n, t, tn } from "@/i18n";
 
 /** The standing custom vocabulary sent with every transcription (B2). */
 export function VocabularySettings() {
+  const { formatNumber } = useI18n();
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.vocabulary.get.useQuery();
   const [value, setValue] = useState("");
@@ -20,11 +22,11 @@ export function VocabularySettings() {
       void utils.vocabulary.get.invalidate();
       toast.success(
         result.terms.length
-          ? `Saved ${result.terms.length} term${result.terms.length === 1 ? "" : "s"}`
-          : "List cleared"
+          ? tn("settingsCards.vocab.saved", result.terms.length)
+          : t("settingsCards.vocab.cleared")
       );
     },
-    onError: error => toast.error(error.message || "Could not save the list"),
+    onError: error => toast.error(error.message || t("settingsCards.vocab.saveFailed")),
   });
 
   useEffect(() => {
@@ -40,13 +42,10 @@ export function VocabularySettings() {
     <Card className="p-6">
       <div>
         <Label htmlFor="vocabulary" className="text-lg font-semibold">
-          Names and terms to listen for
+          {t("settingsCards.vocab.title")}
         </Label>
         <p className="mt-1 text-sm text-muted-foreground">
-          Lecturers' names, course jargon and anything else transcription tends
-          to mishear. Sent with every recording you add; you can add more for a
-          single upload when you make it. Applies to new transcriptions, not
-          ones already done.
+          {t("settingsCards.vocab.help")}
         </p>
       </div>
       <div>
@@ -58,14 +57,13 @@ export function VocabularySettings() {
             setValue(event.target.value);
             setDirty(true);
           }}
-          placeholder={"Prof. Okafor\nKrebs cycle\nATP synthase"}
+          placeholder={t("settingsCards.vocab.placeholder")}
           rows={6}
           className="resize-y text-sm"
         />
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            One per line, up to six words each.{" "}
-            <span className="tabular-nums">{count}</span> of {data?.max ?? 200}.
+            {t("settingsCards.vocab.count", { count: formatNumber(count), max: formatNumber(data?.max ?? 200) })}
           </p>
           <Button
             onClick={() => save.mutate({ terms: value })}
@@ -73,7 +71,7 @@ export function VocabularySettings() {
             className="gap-2"
           >
             {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save list
+            {t("settingsCards.vocab.save")}
           </Button>
         </div>
       </div>

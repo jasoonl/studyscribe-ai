@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { useSignupMode } from "@/lib/signupMode";
+import { useI18n, Trans } from "@/i18n";
 
 export default function RequestAccess() {
   const [name, setName] = useState("");
@@ -15,6 +16,7 @@ export default function RequestAccess() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const signup = useSignupMode();
+  const { t } = useI18n();
 
   const requestInvite = trpc.customAuth.requestInvite.useMutation({
     onSuccess: () => {
@@ -22,7 +24,7 @@ export default function RequestAccess() {
       setError("");
     },
     onError: (err) => {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(err.message || t("requestAccess.failed"));
     },
   });
 
@@ -52,39 +54,38 @@ export default function RequestAccess() {
             <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Request Received!</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("requestAccess.receivedTitle")}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Thanks, <strong>{name}</strong>. We've received your request and will review it.
-              If approved, you'll receive an invite code at <strong>{email}</strong>.
+              <Trans k="requestAccess.receivedText" vars={{ name, email }} parts={{ b: text => <strong>{text}</strong> }} />
             </p>
             <p className="text-muted-foreground text-xs">
-              Check your inbox, and your spam folder, for the code.
+              {t("requestAccess.checkInbox")}
             </p>
             <Link href="/login">
               <Button variant="outline" className="mt-2 gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                Back to Sign In
+                {t("requestAccess.backToSignIn")}
               </Button>
             </Link>
           </div>
         ) : signup.open ? (
           /* Open sign-up: no invite needed, so send people straight to the form. */
           <div className="flex flex-col gap-4">
-            <h1 className="text-2xl font-bold text-foreground">Sign up free</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("requestAccess.openTitle")}</h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              StudyScribe is open to everyone. Create an account and you start on the Free plan, with every feature included. No invite or payment details needed.
+              {t("requestAccess.openText")}
             </p>
             <Button asChild className="w-full">
-              <Link href="/signup">Create a free account</Link>
+              <Link href="/signup">{t("requestAccess.createFree")}</Link>
             </Button>
             <div className="mt-2 flex flex-col gap-2 border-t border-border pt-5 text-center text-sm text-muted-foreground">
               <p>
-                Have an invite code?{" "}
-                <Link href="/invite" className="font-medium text-primary hover:underline">Enter it here</Link>
+                {t("requestAccess.haveCode")}{" "}
+                <Link href="/invite" className="font-medium text-primary hover:underline">{t("requestAccess.enterIt")}</Link>
               </p>
               <p>
-                Already have an account?{" "}
-                <Link href="/login" className="font-medium text-primary hover:underline">Sign in</Link>
+                {t("signup.haveAccount")}{" "}
+                <Link href="/login" className="font-medium text-primary hover:underline">{t("common.signIn")}</Link>
               </p>
             </div>
           </div>
@@ -93,20 +94,20 @@ export default function RequestAccess() {
           <>
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-bold text-foreground">Request access</h1>
+                <h1 className="text-2xl font-bold text-foreground">{t("requestAccess.title")}</h1>
               </div>
               <p className="text-muted-foreground text-sm">
-                StudyScribe AI is currently invite-only. Fill in the form below and we'll send you an invite code when a spot opens up.
+                {t("requestAccess.intro")}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">{t("requestAccess.name")}</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Jane"
+                  placeholder={t("requestAccess.namePlaceholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -115,11 +116,11 @@ export default function RequestAccess() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("common.emailAddress")}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="jane@example.com"
+                  placeholder={t("requestAccess.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -129,12 +130,12 @@ export default function RequestAccess() {
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="reason">
-                  Why do you want access?{" "}
-                  <span className="text-muted-foreground font-normal">(optional)</span>
+                  {t("requestAccess.reason")}{" "}
+                  <span className="text-muted-foreground font-normal">{t("requestAccess.optional")}</span>
                 </Label>
                 <Textarea
                   id="reason"
-                  placeholder="I'm a college student who wants to turn my lecture recordings into study notes..."
+                  placeholder={t("requestAccess.reasonPlaceholder")}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
@@ -159,29 +160,28 @@ export default function RequestAccess() {
                 {requestInvite.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Submitting...
+                    {t("requestAccess.submitting")}
                   </>
                 ) : (
-                  "Request Invite"
+                  t("requestAccess.submit")
                 )}
               </Button>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                We use these details only to review your request and email you an invite. See our{" "}
-                <Link href="/privacy" className="text-primary underline">Privacy Policy</Link>.
+                <Trans k="requestAccess.privacy" parts={{ privacy: text => <Link href="/privacy" className="text-primary underline">{text}</Link> }} />
               </p>
             </form>
 
             <div className="mt-6 pt-5 border-t border-border flex flex-col gap-2 text-center text-sm text-muted-foreground">
               <p>
-                Already have an invite code?{" "}
+                {t("requestAccess.alreadyHaveCode")}{" "}
                 <Link href="/invite" className="text-primary hover:underline font-medium">
-                  Enter it here
+                  {t("requestAccess.enterIt")}
                 </Link>
               </p>
               <p>
-                Already have an account?{" "}
+                {t("signup.haveAccount")}{" "}
                 <Link href="/login" className="text-primary hover:underline font-medium">
-                  Sign in
+                  {t("common.signIn")}
                 </Link>
               </p>
             </div>

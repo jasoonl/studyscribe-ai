@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useI18n, t, tn } from "@/i18n";
 import { isNetworkFailure, OFFLINE_OWNER_KEY } from "@/lib/offlinePack";
 import { listQueuedReviews, offlineStorageAvailable, onOfflineChange, removeQueuedReview } from "@/lib/offlineStore";
 
@@ -35,6 +36,7 @@ function ownerId(): number | null {
  */
 export function OfflineStatus() {
   const online = useOnline();
+  useI18n();
   const [location] = useLocation();
   const utils = trpc.useUtils();
 
@@ -69,7 +71,7 @@ export function OfflineStatus() {
         running = false;
       }
       if (sent > 0) {
-        toast.success(`Saved ${sent} ${sent === 1 ? "review" : "reviews"} you made offline`);
+        toast.success(tn("offline.savedReviews", sent));
         void utils.planner.invalidate();
       }
     };
@@ -81,8 +83,8 @@ export function OfflineStatus() {
   return (
     <div role="status" className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
       <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-border bg-card px-4 py-2 text-sm shadow-md">
-        <span>You are offline.</span>
-        <Link href="/offline" className="font-medium text-primary underline underline-offset-4">Open recordings kept offline</Link>
+        <span>{t("offline.youAreOffline")}</span>
+        <Link href="/offline" className="font-medium text-primary underline underline-offset-4">{t("offline.openKept")}</Link>
       </p>
     </div>
   );

@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { CourseDot } from "@/components/CourseDot";
 import { ExamPackDialog } from "@/components/ExamPackDialog";
 import { trpc } from "@/lib/trpc";
+import { formatDate, t, tn, useI18n } from "@/i18n";
 
 /** Exam packs (C8): combined study guide and practice exam across recordings. */
 export default function ExamPacks() {
+  useI18n();
   const search = useSearch();
   const [, navigate] = useLocation();
   const courseParam = new URLSearchParams(search).get("course");
@@ -25,35 +27,35 @@ export default function ExamPacks() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Library
+              {t("common.library")}
             </Button>
           </Link>
           {data?.available !== false && (
             <Button size="sm" className="gap-2" onClick={() => setCreating(true)}>
               <Plus className="h-4 w-4" />
-              New exam pack
+              {t("examPack.newPack")}
             </Button>
           )}
         </div>
       </header>
 
       <main id="main-content" className="container max-w-3xl pb-20 pt-10" tabIndex={-1}>
-        <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">Exam packs</h1>
+        <h1 className="text-4xl font-bold tracking-[-0.04em] sm:text-5xl">{t("examPack.packs")}</h1>
         <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-          Pick a course or a handful of lectures and get one revision guide organised by topic, plus a practice exam drawn from all of them.
+          {t("examPack.intro")}
         </p>
 
         <div className="mt-8">
           {isLoading ? (
             <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-accent" /></div>
           ) : data && !data.available ? (
-            <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-muted-foreground">Exam packs are not available on this server yet.</p>
+            <p className="rounded-xl border border-dashed border-border px-6 py-12 text-center text-muted-foreground">{t("examPack.unavailable")}</p>
           ) : packs.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-              <p className="mx-auto max-w-md text-muted-foreground">No exam packs yet. Make one from a course before a test, or from the lectures a test covers.</p>
+              <p className="mx-auto max-w-md text-muted-foreground">{t("examPack.empty")}</p>
               <Button variant="outline" className="mt-5 gap-2" onClick={() => setCreating(true)}>
                 <Plus className="h-4 w-4" />
-                New exam pack
+                {t("examPack.newPack")}
               </Button>
             </div>
           ) : (
@@ -75,15 +77,15 @@ export default function ExamPacks() {
                               {course.name}
                             </span>
                           )}
-                          <span>{pack.recordingCount} recording{pack.recordingCount === 1 ? "" : "s"}</span>
-                          <span>{pack.questionCount ? `${pack.questionCount} questions` : "No practice exam yet"}</span>
-                          <span>{new Date(pack.createdAt).toLocaleDateString()}</span>
+                          <span>{tn("library.recordings", pack.recordingCount)}</span>
+                          <span>{pack.questionCount ? tn("quiz.questions", pack.questionCount) : t("examPack.noExamYet")}</span>
+                          <span>{formatDate(pack.createdAt)}</span>
                         </p>
                       </div>
                       {pack.lastScore !== null && (
                         <div className="shrink-0 text-right">
                           <p className="text-lg font-semibold tabular-nums">{pack.lastScore}%</p>
-                          <p className="text-xs text-muted-foreground">last score</p>
+                          <p className="text-xs text-muted-foreground">{t("examPack.lastScore")}</p>
                         </div>
                       )}
                     </Link>

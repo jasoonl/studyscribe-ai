@@ -4,8 +4,10 @@ import { roleLabel } from "@/components/RoleSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Users2, Mic } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 export default function SharedWithMe() {
+  const { t, formatDate } = useI18n();
   const { data: shared, isLoading } = trpc.sharing.sharedWithMe.useQuery();
 
   return (
@@ -15,11 +17,11 @@ export default function SharedWithMe() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("shared.back")}
             </Button>
           </Link>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <Users2 className="w-5 h-5" /> Shared with Me
+            <Users2 className="w-5 h-5" /> {t("shared.title")}
           </h1>
         </div>
       </header>
@@ -32,7 +34,7 @@ export default function SharedWithMe() {
         ) : !shared || shared.length === 0 ? (
           <Card className="p-12 text-center">
             <Users2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No one has shared a recording with you yet.</p>
+            <p className="text-muted-foreground">{t("shared.empty")}</p>
           </Card>
         ) : (
           <div className="space-y-3">
@@ -44,8 +46,8 @@ export default function SharedWithMe() {
                     <div className="min-w-0">
                       <h4 className="font-semibold truncate">{item.title}</h4>
                       <p className="text-xs text-muted-foreground">
-                        Shared {new Date(item.sharedAt).toLocaleDateString()} · {roleLabel(item.role)}
-                        {item.viaGroups.length > 0 && ` · through ${item.viaGroups.join(", ")}`}
+                        {t("shared.sharedOn", { date: formatDate(item.sharedAt) })} · {roleLabel(item.role)}
+                        {item.viaGroups.length > 0 && ` · ${t("shared.through", { groups: item.viaGroups.join(", ") })}`}
                       </p>
                     </div>
                   </div>
