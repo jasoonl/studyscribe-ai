@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Starting a new session? Read `docs/HANDOFF.md` first:** current status, what the owner still has to do, the proposed next phase and how the owner likes work done.
+
 ## What this is
 
 StudyScribe AI is a full-stack app: a React SPA + Express/tRPC API for recording, uploading, or importing-by-link lectures/meetings, transcribing them (AssemblyAI, with speaker diarization), and generating AI study tools (flashcards, study guides, quizzes, email drafts, an AI tutor chat) from the transcript. Auth is custom (invite-gated email/password + Google OAuth), backed by a TiDB Cloud (MySQL-compatible) database via Drizzle ORM.
