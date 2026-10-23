@@ -6,7 +6,7 @@ Read this first in a new chat, then `CLAUDE.md` (how the code works) and `docs/p
 
 - Phases 1 to 7 of the roadmap are built and merged to `main`, and Vercel deploys `main` automatically. Phase 7's two school items (LTI school integrations and instructor accounts) were deliberately set aside.
 - The roadmap has nothing left. **Phase 8 is only a proposal (section 4), waiting for the owner to choose.** Don't build Phase 8 until the owner picks items.
-- No pull requests are open. The last merged was #33.
+- The last feature PR merged was #33. One PR is open, #34, from Dependabot (GitHub's automatic dependency updates). It removes `decode-uri-component` from the phone app's packages and hasn't been reviewed yet. Check it with `npm install`, `npm run typecheck` and `npm test` inside `mobile/` before merging.
 - Much of what's built stays switched off until the owner runs the database updates and adds the service keys in section 3.
 
 ## 2. What the last sessions built (PRs #22 to #33)
