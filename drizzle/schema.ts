@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, customType, date, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, customType, date, index, int, json, mysqlEnum, mysqlTable, text, timestamp, tinyint, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /** MEDIUMTEXT (16MB): webhook payload snapshots can outgrow TEXT's 64KB. */
 const mediumText = customType<{ data: string }>({
@@ -1238,3 +1238,89 @@ export const sessionRevocations = mysqlTable("sessionRevocations", {
 }, (table) => [
   index("sessionRevocations_user_idx").on(table.userId),
 ]);
+
+/**
+ * Study sources (Phase 8): a student's PDFs, slides and notes. The file stays
+ * in Blob under a neutral key and is never served back; the text is extracted
+ * per unit (a page, a slide or a section) and everything else hangs off that.
+ * No foreign keys, like the rest of the schema; `courseId` is a plain int.
+ */
+export const studySources = mysqlTable("studySources", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  courseId: int("courseId"),
+  title: varchar("title", { length: 200 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  kind: mysqlEnum("kind", ["pdf", "pptx", "docx", "text"]).notNull(),
+  storageKey: varchar("storageKey", { length: 300 }).notNull(),
+  sizeBytes: int("sizeBytes").notNull(),
+  status: mysqlEnum("status", ["uploaded", "extracting", "extracted", "analyzing", "ready", "failed"]).default("uploaded").notNull(),
+  unitCount: int("unitCount").default(0).notNull(),
+  charCount: int("charCount").default(0).notNull(),
+  partCount: int("partCount").default(0).notNull(),
+  partsDone: int("partsDone").default(0).notNull(),
+  errorMessage: varchar("errorMessage", { length: 300 }),
+  summary: mediumText("summary"),
+  contentHash: varchar("contentHash", { length: 64 }),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  index("studySources_user_course_idx").on(table.userId, table.courseId),
+  uniqueIndex("studySources_storageKey_unique").on(table.storageKey),
+]);
+
+export type StudySource = typeof studySources.$inferSelect;
+
+/** One page, slide or section of a source, in reading order. `unitIndex` is 0-based and is the location key citations use. */
+export const studySourceUnits = mysqlTable("studySourceUnits", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceId: int("sourceId").notNull(),
+  userId: int("userId").notNull(),
+  unitIndex: int("unitIndex").notNull(),
+  label: varchar("label", { length: 80 }).notNull(),
+  text: mediumText("text").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("studySourceUnits_source_unit_unique").on(table.sourceId, table.unitIndex),
+  index("studySourceUnits_user_idx").on(table.userId),
+]);
+
+export type StudySourceUnit = typeof studySourceUnits.$inferSelect;
+
+/** The resume and idempotency record of one analysed part (a run of units), like the chunks of `translations`. `ideas` is a JSON string array. */
+export const studySourceParts = mysqlTable("studySourceParts", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceId: int("sourceId").notNull(),
+  userId: int("userId").notNull(),
+  partIndex: int("partIndex").notNull(),
+  unitStart: int("unitStart").notNull(),
+  unitEnd: int("unitEnd").notNull(),
+  inputHash: varchar("inputHash", { length: 64 }).notNull(),
+  ideas: mediumText("ideas").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("studySourceParts_source_part_unique").on(table.sourceId, table.partIndex),
+  index("studySourceParts_user_idx").on(table.userId),
+]);
+
+export type StudySourcePart = typeof studySourceParts.$inferSelect;
+
+/** Test-relevant details the model found, each tied to a unit. */
+export const studySourceFlags = mysqlTable("studySourceFlags", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceId: int("sourceId").notNull(),
+  userId: int("userId").notNull(),
+  partIndex: int("partIndex").notNull(),
+  unitIndex: int("unitIndex").notNull(),
+  label: varchar("label", { length: 80 }).notNull(),
+  kind: mysqlEnum("kind", ["definition", "formula", "date", "example", "exam_point"]).notNull(),
+  text: varchar("text", { length: 400 }).notNull(),
+  quote: varchar("quote", { length: 240 }),
+  importance: tinyint("importance").notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("studySourceFlags_source_idx").on(table.sourceId),
+  index("studySourceFlags_user_idx").on(table.userId),
+]);
+
+export type StudySourceFlag = typeof studySourceFlags.$inferSelect;
