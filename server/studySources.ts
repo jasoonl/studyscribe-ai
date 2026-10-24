@@ -18,8 +18,8 @@ import {
   PDF_BUDGET_MS, SourceExtractError, extractSource, maxBytesForKind,
 } from "./sourceExtract";
 import {
-  ANALYSIS_RESPONSE_FORMAT, FLAG_KINDS, MAX_FLAGS_PER_SOURCE, buildAnalysisMessages, buildAnalysisRetryMessages,
-  buildSummaryMessages, cleanSummary, fallbackSummary, parseAnalysis,
+  ANALYSIS_RESPONSE_FORMAT, FLAG_KINDS, MAX_FLAGS_PER_PART, MAX_FLAGS_PER_SOURCE, buildAnalysisMessages, buildAnalysisRetryMessages,
+  buildSummaryMessages, capFlags, cleanSummary, fallbackSummary, parseAnalysis,
 } from "./sourceFlags";
 import { planParts } from "./sourceParts";
 import { parseJsonContent } from "./studyExtraction";
@@ -49,6 +49,9 @@ const TEN_MINUTES = 10 * 60 * 1000;
 const EXTRACT_STALE_MS = 2 * 60 * 1000;
 const PART_TIMEOUT_MS = 40_000;
 const SUMMARY_TIMEOUT_MS = 30_000;
+/** Time one analyzePart may spend on model calls, and the least worth starting a retry with. */
+const PART_BUDGET_MS = 52_000;
+const MIN_RETRY_MS = 8_000;
 
 const idInput = z.object({ id: z.number().int().positive() });
 
@@ -59,11 +62,15 @@ async function requireDb() {
 }
 type Db = Awaited<ReturnType<typeof requireDb>>;
 
-function limit(bucket: "upload" | "extract" | "analyze", userId: number, max: number) {
+function limit(bucket: "upload" | "register" | "extract" | "analyze", userId: number, max: number) {
   if (!checkTrpcRateLimit(`source-${bucket}:${userId}`, TEN_MINUTES, max)) {
     throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "That is a lot of uploads in a short time. Give it a few minutes." });
   }
 }
+
+// Ten minutes per person. A file takes one register, one extract and up to ~60 analyzePart calls, so each step
+// has its own bucket and a batch of files cannot starve a later step of an earlier file.
+const LIMITS = { upload: 20, register: 40, extract: 40, analyze: 400 };
 
 /** The list and detail shape the app shows. Never includes the storage key or the content hash. */
 function publicSource(row: StudySource) {
@@ -142,7 +149,7 @@ async function loadUnits(db: Db, userId: number, sourceId: number) {
     .orderBy(asc(studySourceUnits.unitIndex));
 }
 
-async function countParts(db: Db, sourceId: number) {
+async function countParts(db: Pick<Db, "select">, sourceId: number) {
   const [row] = await db.select({ count: sql<string>`COUNT(*)` }).from(studySourceParts).where(eq(studySourceParts.sourceId, sourceId));
   return Number(row?.count ?? 0);
 }
@@ -201,6 +208,7 @@ async function runExtraction(db: Db, source: StudySource) {
 
 /** One analysis call with a single retry as plain text when the structured answer is unusable. */
 async function analyzeText(partText: string, units: Parameters<typeof parseAnalysis>[1], maxFlags: number) {
+  const started = Date.now();
   const first = await completeJson({
     messages: buildAnalysisMessages(partText),
     responseFormat: ANALYSIS_RESPONSE_FORMAT,
@@ -215,9 +223,13 @@ async function analyzeText(partText: string, units: Parameters<typeof parseAnaly
   const parsed = parseAnalysis(first, units, { maxFlags });
   if (parsed.valid) return parsed;
 
-  const text = await completeText({ messages: buildAnalysisRetryMessages(partText), maxTokens: 1100, timeoutMs: PART_TIMEOUT_MS, what: "analysis of this file" });
+  // The whole request has to end inside the 60s function limit, so the retry gets what is left of the budget.
+  const unreadable = () => new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The assistant's analysis of this file came back unreadable. Try again." });
+  const remaining = Math.min(PART_TIMEOUT_MS, PART_BUDGET_MS - (Date.now() - started));
+  if (remaining < MIN_RETRY_MS) throw unreadable();
+  const text = await completeText({ messages: buildAnalysisRetryMessages(partText), maxTokens: 1100, timeoutMs: remaining, what: "analysis of this file" });
   const retried = parseAnalysis(parseJsonContent(text), units, { maxFlags });
-  if (!retried.valid) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The assistant's analysis of this file came back unreadable. Try again." });
+  if (!retried.valid) throw unreadable();
   return retried;
 }
 
@@ -347,7 +359,7 @@ export const sourcesRouter = router({
   prepareUpload: protectedProcedure
     .input(z.object({ fileName: z.string().trim().min(1).max(255), size: z.number().int().positive(), courseId: z.number().int().positive().optional() }))
     .mutation(async ({ ctx, input }) => {
-      limit("upload", ctx.user.id, 20);
+      limit("upload", ctx.user.id, LIMITS.upload);
       if (/\.(doc|ppt)$/i.test(input.fileName)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Old .doc and .ppt files are not supported. Save it as .docx or .pptx and upload that." });
       }
@@ -377,11 +389,23 @@ export const sourcesRouter = router({
       title: z.string().trim().min(1).max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      limit("extract", ctx.user.id, 30);
+      limit("register", ctx.user.id, LIMITS.register);
       const keyMatch = KEY_PATTERN.exec(input.key);
       if (!keyMatch || Number(keyMatch[1]) !== ctx.user.id || !input.key.startsWith(`${ctx.user.id}/sources/`)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "That upload does not belong to you." });
       }
+      const db = await requireDb();
+      // A client that lost the response retries with the same key: answer with the row that owns it, and never
+      // touch its file (the quota check below would count that row again, and a failure would delete its blob).
+      const owned = async () => {
+        const [existing] = await explainMissingSchema(FEATURE_NAME, () =>
+          db.select({ id: studySources.id }).from(studySources).where(and(eq(studySources.storageKey, input.key), eq(studySources.userId, ctx.user.id))).limit(1),
+        );
+        return existing ? { id: existing.id } : null;
+      };
+      const already = await owned();
+      if (already) return already;
+
       const kind = sourceKindForFileName(input.fileName);
       const discard = () => deleteStoredAudio([input.key]).catch(() => undefined);
       if (!kind || kind !== keyMatch[2]) {
@@ -397,7 +421,6 @@ export const sourcesRouter = router({
       try {
         if (size > maxBytesForKind(kind)) throw new TRPCError({ code: "BAD_REQUEST", message: "That file is larger than the size limit." });
         if (input.courseId !== undefined) await requireOwnCourse(ctx.user.id, input.courseId);
-        const db = await requireDb();
         await assertQuota(db, ctx.user.id, input.courseId ?? null, size);
         try {
           const [result] = await explainMissingSchema(FEATURE_NAME, () =>
@@ -414,19 +437,23 @@ export const sourcesRouter = router({
           );
           return { id: Number((result as { insertId: number }).insertId) };
         } catch (error) {
-          if (isDuplicateKey(error)) throw new TRPCError({ code: "CONFLICT", message: "That upload was already added." });
+          // Two requests raced on the same key: the other one's row owns the file.
+          if (isDuplicateKey(error)) {
+            const winner = await owned();
+            if (winner) return winner;
+          }
           throw error;
         }
       } catch (error) {
-        // A file that will never get a row must not keep counting against storage.
-        if (!(error instanceof TRPCError && error.code === "CONFLICT")) await discard();
+        // A file that will never get a row must not keep counting against storage, unless a row owns it.
+        if (!(await owned().catch(() => null))) await discard();
         throw error;
       }
     }),
 
   /** Step 3: read the file and store its text. A failure is recorded on the source (and can be retried), not thrown. */
   extract: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-    limit("extract", ctx.user.id, 30);
+    limit("extract", ctx.user.id, LIMITS.extract);
     const db = await requireDb();
     const source = await loadOwned(db, ctx.user.id, input.id);
     if (source.status === "extracting" && Date.now() - new Date(source.updatedAt).getTime() < EXTRACT_STALE_MS) return publicSource(source);
@@ -436,7 +463,15 @@ export const sourcesRouter = router({
     const [claim] = await db
       .update(studySources)
       .set({ status: "extracting", errorMessage: null, updatedAt: new Date() })
-      .where(and(eq(studySources.id, source.id), eq(studySources.userId, ctx.user.id), eq(studySources.status, source.status)));
+      .where(
+        and(
+          eq(studySources.id, source.id),
+          eq(studySources.userId, ctx.user.id),
+          eq(studySources.status, source.status),
+          // A stale "extracting" row can be reclaimed by one request only: the winner changes updatedAt.
+          eq(studySources.updatedAt, source.updatedAt),
+        ),
+      );
     if (Number((claim as { affectedRows?: number } | undefined)?.affectedRows ?? 1) === 0) return publicSource(await loadOwned(db, ctx.user.id, source.id));
 
     try {
@@ -451,7 +486,7 @@ export const sourcesRouter = router({
 
   /** Step 4 (once per part): summarise one part and flag its test-relevant details. Safe to repeat. */
   analyzePart: protectedProcedure.input(z.object({ id: z.number().int().positive(), index: z.number().int().min(0) })).mutation(async ({ ctx, input }) => {
-    limit("analyze", ctx.user.id, 200);
+    limit("analyze", ctx.user.id, LIMITS.analyze);
     const db = await requireDb();
     const source = await loadOwned(db, ctx.user.id, input.id);
     if (source.status === "uploaded" || source.status === "extracting" || source.status === "failed") {
@@ -479,49 +514,51 @@ export const sourcesRouter = router({
       await db.update(studySources).set({ status: "analyzing" }).where(and(eq(studySources.id, source.id), eq(studySources.status, "extracted")));
     }
 
-    const [others] = await db
-      .select({ count: sql<string>`COUNT(*)` })
-      .from(studySourceFlags)
-      .where(and(eq(studySourceFlags.sourceId, source.id), sql`${studySourceFlags.partIndex} <> ${part.index}`));
-    const room = Math.max(0, MAX_FLAGS_PER_SOURCE - Number(others?.count ?? 0));
-
     let analysis;
     try {
-      analysis = await analyzeText(part.text, part.units, room);
+      analysis = await analyzeText(part.text, part.units, MAX_FLAGS_PER_PART);
     } catch (error) {
       explainAiFailure(error);
     }
 
-    await db.delete(studySourceFlags).where(and(eq(studySourceFlags.sourceId, source.id), eq(studySourceFlags.partIndex, part.index)));
-    if (analysis.flags.length) {
-      await db.insert(studySourceFlags).values(
-        analysis.flags.map(flag => ({
-          sourceId: source.id,
-          userId: ctx.user.id,
-          partIndex: part.index,
-          unitIndex: flag.unitIndex,
-          label: flag.label,
-          kind: flag.kind,
-          text: flag.text,
-          quote: flag.quote,
-          importance: flag.importance,
-        })),
-      );
-    }
-    const ideas = JSON.stringify(analysis.ideas);
-    await db
-      .insert(studySourceParts)
-      .values({ sourceId: source.id, userId: ctx.user.id, partIndex: part.index, unitStart: part.unitStart, unitEnd: part.unitEnd, inputHash: part.hash, ideas })
-      .onDuplicateKeyUpdate({ set: { inputHash: part.hash, ideas, unitStart: part.unitStart, unitEnd: part.unitEnd, userId: ctx.user.id } });
-    const partsDone = await countParts(db, source.id);
-    await db.update(studySources).set({ partsDone }).where(eq(studySources.id, source.id));
+    // Replace the part's flags and record it in one transaction, holding the source row so parts of one source
+    // (and a repeat of the same part) take turns: no duplicate flags, and the per-source cap counts what is really there.
+    const partsDone = await db.transaction(async tx => {
+      await tx.select({ id: studySources.id }).from(studySources).where(eq(studySources.id, source.id)).for("update");
+      await tx.delete(studySourceFlags).where(and(eq(studySourceFlags.sourceId, source.id), eq(studySourceFlags.partIndex, part.index)));
+      const [others] = await tx.select({ count: sql<string>`COUNT(*)` }).from(studySourceFlags).where(eq(studySourceFlags.sourceId, source.id));
+      const flags = capFlags(analysis.flags, MAX_FLAGS_PER_SOURCE - Number(others?.count ?? 0));
+      if (flags.length) {
+        await tx.insert(studySourceFlags).values(
+          flags.map(flag => ({
+            sourceId: source.id,
+            userId: ctx.user.id,
+            partIndex: part.index,
+            unitIndex: flag.unitIndex,
+            label: flag.label,
+            kind: flag.kind,
+            text: flag.text,
+            quote: flag.quote,
+            importance: flag.importance,
+          })),
+        );
+      }
+      const ideas = JSON.stringify(analysis.ideas);
+      await tx
+        .insert(studySourceParts)
+        .values({ sourceId: source.id, userId: ctx.user.id, partIndex: part.index, unitStart: part.unitStart, unitEnd: part.unitEnd, inputHash: part.hash, ideas })
+        .onDuplicateKeyUpdate({ set: { inputHash: part.hash, ideas, unitStart: part.unitStart, unitEnd: part.unitEnd, userId: ctx.user.id } });
+      const done = await countParts(tx, source.id);
+      await tx.update(studySources).set({ partsDone: done }).where(eq(studySources.id, source.id));
+      return done;
+    });
     if (!charged) await recordUsage({ userId: ctx.user.id, kind: "ai_generation", units: 1, dedupeKey });
     return { index: part.index, done: true as const, partsDone, partCount: plan.length };
   }),
 
   /** Step 5: once every part is analysed, write the "Main ideas" summary and mark the source ready. */
   finalize: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-    limit("analyze", ctx.user.id, 200);
+    limit("analyze", ctx.user.id, LIMITS.analyze);
     const db = await requireDb();
     const source = await loadOwned(db, ctx.user.id, input.id);
     if (source.status === "ready") return publicSource(source);
@@ -606,7 +643,7 @@ export const sourcesRouter = router({
 
   /** A failed source goes back to `uploaded` with its parts and flags cleared, ready for `extract`. */
   retry: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-    limit("extract", ctx.user.id, 30);
+    limit("extract", ctx.user.id, LIMITS.extract);
     const db = await requireDb();
     const source = await loadOwned(db, ctx.user.id, input.id);
     if (source.status !== "failed") throw new TRPCError({ code: "BAD_REQUEST", message: "Only a file that failed can be retried." });

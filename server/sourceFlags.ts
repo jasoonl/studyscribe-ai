@@ -111,6 +111,20 @@ function sharesContent(flagText: string, unitText: string): boolean {
   return shared >= 2;
 }
 
+/** At most `cap` flags: the most important kept, in their original order. */
+export function capFlags<T extends { importance: number }>(flags: T[], cap: number): T[] {
+  const limit = Math.max(0, cap);
+  if (flags.length <= limit) return flags;
+  const winners = new Set(
+    flags
+      .map((flag, position) => ({ flag, position }))
+      .sort((a, b) => b.flag.importance - a.flag.importance || a.position - b.position)
+      .slice(0, limit)
+      .map(item => item.position),
+  );
+  return flags.filter((_, position) => winners.has(position));
+}
+
 /**
  * Turns the model's output into stored-ready ideas and flags. Anything that
  * cannot be tied to the unit text it was shown is corrected or dropped.
@@ -162,19 +176,7 @@ export function parseAnalysis(raw: unknown, units: PlanUnit[], options: { maxFla
     flags.push({ unitIndex: unit.unitIndex, label: unit.label, kind, text, quote, importance });
   }
 
-  const cap = Math.max(0, Math.min(MAX_FLAGS_PER_PART, options.maxFlags ?? MAX_FLAGS_PER_PART));
-  let kept = flags;
-  if (flags.length > cap) {
-    // Keep the most important, in their original order.
-    const winners = new Set(
-      flags
-        .map((flag, position) => ({ flag, position }))
-        .sort((a, b) => b.flag.importance - a.flag.importance || a.position - b.position)
-        .slice(0, cap)
-        .map(item => item.position),
-    );
-    kept = flags.filter((_, position) => winners.has(position));
-  }
+  const kept = capFlags(flags, Math.min(MAX_FLAGS_PER_PART, options.maxFlags ?? MAX_FLAGS_PER_PART));
   return { ideas, flags: kept, valid: true };
 }
 

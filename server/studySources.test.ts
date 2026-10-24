@@ -1,5 +1,5 @@
 import { getTableName } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_SOURCES_PER_USER } from "@shared/const";
 import { planParts } from "./sourceParts";
 
@@ -36,7 +36,21 @@ const op = (name: string) => (table: any) => {
   log.push(key);
   return chain(key);
 };
-vi.mock("./db", () => ({ getDb: async () => ({ select: () => ({ from: op("select") }), insert: op("insert"), update: op("update"), delete: op("delete") }) }));
+const fakeDb: any = {
+  select: () => ({ from: op("select") }),
+  insert: op("insert"),
+  update: op("update"),
+  delete: op("delete"),
+  transaction: async (work: (tx: unknown) => Promise<unknown>) => {
+    log.push("tx:begin");
+    try {
+      return await work(fakeDb);
+    } finally {
+      log.push("tx:end");
+    }
+  },
+};
+vi.mock("./db", () => ({ getDb: async () => fakeDb }));
 
 const storage = vi.hoisted(() => ({
   deleteStoredAudio: vi.fn(),
@@ -192,16 +206,16 @@ describe("register", () => {
   });
 
   it("refuses past the per-user cap and deletes the uploaded file", async () => {
-    script = { "studySources:select": [[{ count: String(MAX_SOURCES_PER_USER), bytes: "10" }]] };
+    script = { "studySources:select": [[], [{ count: String(MAX_SOURCES_PER_USER), bytes: "10" }]] };
     await expect(caller().register({ key: keyFor(nextUser), fileName: "a.pdf" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: /up to 60/ });
     expect(storage.deleteStoredAudio).toHaveBeenCalledWith([keyFor(nextUser)]);
     expect(inserted).toEqual([]);
   });
 
   it("refuses past the storage and per-course caps", async () => {
-    script = { "studySources:select": [[{ count: "1", bytes: String(250 * 1024 * 1024) }]] };
+    script = { "studySources:select": [[], [{ count: "1", bytes: String(250 * 1024 * 1024) }]] };
     await expect(caller().register({ key: keyFor(nextUser), fileName: "a.pdf" })).rejects.toMatchObject({ message: /storage limit/ });
-    script = { "studySources:select": [[{ count: "1", bytes: "0" }], [{ count: "25" }]] };
+    script = { "studySources:select": [[], [{ count: "1", bytes: "0" }], [{ count: "25" }]] };
     await expect(caller().register({ key: keyFor(nextUser), fileName: "a.pdf", courseId: 5 })).rejects.toMatchObject({ message: /course can hold/ });
   });
 
@@ -212,11 +226,70 @@ describe("register", () => {
 
   it("creates the row with the size storage reported and a title from the file name", async () => {
     storage.verifyUploadedSource.mockResolvedValue({ size: 4321 });
-    script = { "studySources:select": [[{ count: "0", bytes: "0" }]], "studySources:insert": [[{ insertId: 42 }]] };
+    script = { "studySources:select": [[], [{ count: "0", bytes: "0" }]], "studySources:insert": [[{ insertId: 42 }]] };
     await expect(caller().register({ key: keyFor(nextUser), fileName: "Cell_biology notes.pdf" })).resolves.toEqual({ id: 42 });
     expect(inserted[0].values).toMatchObject({ userId: nextUser, title: "Cell biology notes", kind: "pdf", sizeBytes: 4321, status: "uploaded", courseId: null, storageKey: keyFor(nextUser) });
     expect(storage.deleteStoredAudio).not.toHaveBeenCalled();
   });
+});
+
+describe("register after a lost response", () => {
+  it("returns the existing row for the same key without counting it again or deleting its file", async () => {
+    script = { "studySources:select": [[{ id: 42 }]] };
+    await expect(caller().register({ key: keyFor(nextUser), fileName: "a.pdf" })).resolves.toEqual({ id: 42 });
+    expect(storage.deleteStoredAudio).not.toHaveBeenCalled();
+    expect(storage.verifyUploadedSource).not.toHaveBeenCalled();
+    expect(inserted).toEqual([]);
+    // Only the lookup ran; the quota counts were never taken.
+    expect(log).toEqual(["studySources:select"]);
+  });
+
+  it("returns the winner when two requests race on the same key", async () => {
+    failures = { "studySources:insert": { code: "ER_DUP_ENTRY", errno: 1062, message: "dup" } };
+    script = { "studySources:select": [[], [{ count: "0", bytes: "0" }], [{ id: 43 }]] };
+    await expect(caller().register({ key: keyFor(nextUser), fileName: "a.pdf" })).resolves.toEqual({ id: 43 });
+    expect(storage.deleteStoredAudio).not.toHaveBeenCalled();
+  });
+
+  it("does not delete the file when a row owns it even if the retry fails after the lookup", async () => {
+    // First lookup finds nothing, the quota check fails, but by then a concurrent request registered the key.
+    script = { "studySources:select": [[], [{ count: String(MAX_SOURCES_PER_USER), bytes: "0" }], [{ id: 44 }]] };
+    await expect(caller().register({ key: keyFor(nextUser), fileName: "a.pdf" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(storage.deleteStoredAudio).not.toHaveBeenCalled();
+  });
+});
+
+describe("rate limits", () => {
+  it("gives register, extract and analyze their own buckets", async () => {
+    const api = caller();
+    // 40 registers use up only the register bucket.
+    for (let i = 0; i < 40; i++) {
+      script = { "studySources:select": [[{ id: i + 1 }]] };
+      await api.register({ key: keyFor(nextUser), fileName: "a.pdf" });
+    }
+    await expect(api.register({ key: keyFor(nextUser), fileName: "a.pdf" })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    // Extract still works for all the files just registered (40 of them), and then stops.
+    for (let i = 0; i < 40; i++) {
+      script = { "studySources:select": [[own({ status: "ready" })]] };
+      await expect(api.extract({ id: 1 })).resolves.toMatchObject({ status: "ready" });
+    }
+    script = { "studySources:select": [[own({ status: "ready" })]] };
+    await expect(api.extract({ id: 1 })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    // Retry shares extract's bucket; analyze and finalize are untouched by both.
+    script = { "studySources:select": [[]] };
+    await expect(api.retry({ id: 1 })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    await expect(api.finalize({ id: 1 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  }, 20_000);
+
+  it("lets several large sources be analysed within ten minutes", async () => {
+    const api = caller();
+    for (let i = 0; i < 400; i++) {
+      script = { "studySources:select": [[]] };
+      await expect(api.analyzePart({ id: 1, index: 0 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+    script = { "studySources:select": [[]] };
+    await expect(api.analyzePart({ id: 1, index: 0 })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+  }, 20_000);
 });
 
 describe("analyzePart", () => {
@@ -311,6 +384,125 @@ describe("analyzePart", () => {
     script = { "studySources:select": [[own()]], "studySourceUnits:select": [unitRows], "studySourceParts:select": [[]] };
     await expect(caller().analyzePart({ id: 1, index: 0 })).rejects.toThrow("limit");
     expect(llm.completeJson).not.toHaveBeenCalled();
+  });
+});
+
+describe("analyzePart time budget, transaction and flag cap", () => {
+  const unitRows = [{ unitIndex: 0, label: "Slide 1: Cells", text: "Photosynthesis is the process by which plants convert light energy into chemical energy. The exam will cover it." }];
+  const good = { ideas: ["Plants turn light into sugar."], flags: [{ unit: 0, kind: "definition", text: "Photosynthesis converts light energy into chemical energy", quote: "Photosynthesis is the process by which plants convert light energy", importance: 3 }] };
+  const base = () => ({ "studySources:select": [own()], "studySourceUnits:select": [unitRows], "studySourceParts:select": [[], [{ count: "1" }]], "studySourceFlags:select": [[{ count: "0" }]] });
+  const scriptFor = (flagCount = "0") => {
+    const b = base();
+    script = { "studySources:select": [[b["studySources:select"][0]]], "studySourceUnits:select": [unitRows], "studySourceParts:select": [[], [{ count: "1" }]], "studySourceFlags:select": [[{ count: flagCount }]] };
+  };
+
+  afterEach(() => vi.useRealTimers());
+
+  it("gives the retry only what is left of the budget", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    llm.completeJson.mockImplementation(async () => {
+      vi.setSystemTime(Date.now() + 30_000);
+      return { nonsense: true };
+    });
+    llm.completeText.mockResolvedValue(JSON.stringify(good));
+    scriptFor();
+    await caller().analyzePart({ id: 1, index: 0 });
+    expect(llm.completeText.mock.calls[0][0].timeoutMs).toBe(22_000);
+  });
+
+  it("skips the retry and reports an unreadable answer when too little time is left", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    llm.completeJson.mockImplementation(async () => {
+      vi.setSystemTime(Date.now() + 45_000);
+      return { nonsense: true };
+    });
+    scriptFor();
+    await expect(caller().analyzePart({ id: 1, index: 0 })).rejects.toMatchObject({ message: /unreadable/ });
+    expect(llm.completeText).not.toHaveBeenCalled();
+    expect(inserted).toEqual([]);
+  });
+
+  it("replaces a part's flags and writes the part inside one transaction", async () => {
+    llm.completeJson.mockImplementation(async () => (log.push("llm"), good));
+    scriptFor();
+    await caller().analyzePart({ id: 1, index: 0 });
+    const begin = log.indexOf("tx:begin");
+    const end = log.indexOf("tx:end");
+    expect(begin).toBeGreaterThan(-1);
+    for (const entry of ["studySourceFlags:delete", "studySourceFlags:insert", "studySourceParts:insert", "studySources:update"]) {
+      const at = log.indexOf(entry, begin);
+      expect(at).toBeGreaterThan(begin);
+      expect(at).toBeLessThan(end);
+    }
+    // The model call happens before the transaction, so the source row is not locked while it runs.
+    expect(log.indexOf("llm")).toBeLessThan(begin);
+  });
+
+  it("keeps the per-source flag cap by counting inside the transaction", async () => {
+    const three = { ideas: [], flags: [0, 1, 2].map(i => ({ unit: 0, kind: "exam_point", text: `Photosynthesis converts light energy variant ${i}`, quote: null, importance: i === 2 ? 3 : 1 })) };
+    llm.completeJson.mockResolvedValue(three);
+    scriptFor("58");
+    await caller().analyzePart({ id: 1, index: 0 });
+    const flags = inserted.find(item => item.table === "studySourceFlags")!.values;
+    expect(flags).toHaveLength(2);
+    expect(flags.map((flag: any) => flag.importance)).toContain(3);
+  });
+
+  it("inserts no flags when the source is already at its cap", async () => {
+    llm.completeJson.mockResolvedValue(good);
+    scriptFor("60");
+    await caller().analyzePart({ id: 1, index: 0 });
+    expect(inserted.find(item => item.table === "studySourceFlags")).toBeUndefined();
+    expect(inserted.find(item => item.table === "studySourceParts")).toBeDefined();
+  });
+
+  it("runs two calls for the same part one transaction at a time", async () => {
+    llm.completeJson.mockResolvedValue(good);
+    const api = caller();
+    const order: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => (release = resolve));
+    const realTransaction = fakeDb.transaction;
+    let held = false;
+    fakeDb.transaction = async (work: any) => {
+      // A real database makes the second transaction wait on the source row lock; model that with a queue.
+      while (held) await gate;
+      held = true;
+      order.push("begin");
+      try {
+        return await realTransaction(work);
+      } finally {
+        order.push("end");
+        held = false;
+        release();
+      }
+    };
+    try {
+      script = {
+        "studySources:select": [[own()], [own()]],
+        "studySourceUnits:select": [unitRows, unitRows],
+        "studySourceParts:select": [[], [], [{ count: "1" }], [{ count: "1" }]],
+        "studySourceFlags:select": [[{ count: "0" }], [{ count: "0" }]],
+      };
+      await Promise.all([api.analyzePart({ id: 1, index: 0 }), api.analyzePart({ id: 1, index: 0 })]);
+    } finally {
+      fakeDb.transaction = realTransaction;
+    }
+    expect(order).toEqual(["begin", "end", "begin", "end"]);
+    // Each transaction deleted the part's flags before inserting its own, so a repeat cannot leave duplicates.
+    const deletes = log.filter(entry => entry === "studySourceFlags:delete").length;
+    const inserts = log.filter(entry => entry === "studySourceFlags:insert").length;
+    expect(deletes).toBe(2);
+    expect(inserts).toBe(2);
+  });
+});
+
+describe("extract claim", () => {
+  it("does nothing when another request reclaimed the stale row first", async () => {
+    script = { "studySources:select": [[own({ status: "extracting", updatedAt: new Date(Date.now() - 10 * 60 * 1000) })], [own({ status: "extracting" })]], "studySources:update": [[{ affectedRows: 0 }]] };
+    await expect(caller().extract({ id: 1 })).resolves.toMatchObject({ status: "extracting" });
+    expect(storage.storageGetSignedUrl).not.toHaveBeenCalled();
+    expect(sets.some(item => item.values.status === "failed")).toBe(false);
   });
 });
 

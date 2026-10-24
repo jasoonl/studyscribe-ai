@@ -2,7 +2,7 @@ import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { MAX_SOURCE_CHARS, MAX_SOURCE_UNITS } from "@shared/const";
 import {
-  MAX_UNIT_CHARS, SourceExtractError, decodeText, detectKind, extractDocx, extractPdf, extractPlainText, extractPptx, extractSource,
+  MAX_UNIT_CHARS, MAX_XML_CHARS, SourceExtractError, scanElements, decodeText, detectKind, extractDocx, extractPdf, extractPlainText, extractPptx, extractSource,
   finalizeUnits, readZip,
 } from "./sourceExtract";
 
@@ -199,6 +199,22 @@ describe("zip limits", () => {
     await expect(extractPptx(zipSync(files, { level: 9 }))).rejects.toThrow(/too large once unpacked/);
   }, 30_000);
 
+  it("stops a bomb whose headers lie about its size while it inflates, not after", async () => {
+    const bomb = zipSync({ "word/document.xml": new Uint8Array(120 * 1024 * 1024) }, { level: 9 });
+    const view = new DataView(bomb.buffer, bomb.byteOffset, bomb.byteLength);
+    // Local header (PK 03 04) uncompressed size at 22 and central directory (PK 01 02) at 24: claim 1000 bytes.
+    view.setUint32(22, 1000, true);
+    for (let i = bomb.length - 22; i >= 0; i--) {
+      if (view.getUint32(i, true) === 0x02014b50) {
+        view.setUint32(i + 24, 1000, true);
+        break;
+      }
+    }
+    const started = Date.now();
+    await expect(extractDocx(bomb)).rejects.toThrow(/too large once unpacked/);
+    expect(Date.now() - started).toBeLessThan(3_000);
+  }, 20_000);
+
   it("only reads the entries it asks for", async () => {
     const entries = await readZip(zipSync({ "a.txt": strToU8("a"), "b.txt": strToU8("b") }), name => name === "a.txt");
     expect(Array.from(entries.keys())).toEqual(["a.txt"]);
@@ -207,6 +223,30 @@ describe("zip limits", () => {
   it("reports a damaged archive plainly", async () => {
     const broken = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4, 5, 6, 7, 8]);
     await expect(extractDocx(broken)).rejects.toBeInstanceOf(SourceExtractError);
+  });
+});
+
+describe("hostile XML", () => {
+  it("scans unclosed and nested tags in linear time", async () => {
+    const started = Date.now();
+    const hostile = ["<a:p>", "<a:p><a:t>", "<w:p>", "<w:p><w:t>", "<a:p ", "<Relationship ", "<w:pStyle "].map(piece => piece.repeat(400_000));
+    for (const piece of hostile) {
+      expect(scanElements(piece, ["a:p", "a:t", "w:p", "w:t", "Relationship", "w:pStyle"]).length).toBeGreaterThanOrEqual(0);
+    }
+    const docx = makeDocx("<w:p>".repeat(400_000));
+    const pptx = zipSync({ "ppt/slides/slide1.xml": strToU8("<a:p><a:t>".repeat(400_000)) });
+    await expect(extractDocx(docx)).resolves.toEqual([]);
+    await expect(extractPptx(pptx)).resolves.toEqual([{ label: "Slide 1", text: "" }]);
+    expect(Date.now() - started).toBeLessThan(3_000);
+  });
+
+  it("still finds elements around lookalikes", () => {
+    const found = scanElements('<a:pPr/><a:p x="1"><a:t>one</a:t><a:t/></a:p><a:p>two</a:p><a:p>open', ["a:p"]);
+    expect(found.map(element => element.inner)).toEqual(["<a:t>one</a:t><a:t/>", "two"]);
+  });
+
+  it("refuses an XML part over the size cap", async () => {
+    expect(() => scanElements("x".repeat(MAX_XML_CHARS + 1), ["a:p"])).toThrow(/too large/);
   });
 });
 

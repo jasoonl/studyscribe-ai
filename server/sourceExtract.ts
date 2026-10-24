@@ -25,6 +25,9 @@ export class SourceExtractError extends Error {
 export const MAX_ZIP_ENTRY_BYTES = 20 * 1024 * 1024;
 export const MAX_ZIP_TOTAL_BYTES = 100 * 1024 * 1024;
 const MAX_ZIP_ENTRIES = 5_000;
+const ZIP_SLICE_BYTES = 16 * 1024;
+/** Largest XML part (as text) that is searched; real documents are far smaller. */
+export const MAX_XML_CHARS = 8_000_000;
 /** A PDF with less text than this is treated as scanned. */
 export const MIN_PDF_CHARS = 200;
 /** Units longer than this are split so a prompt part always has room for them. */
@@ -152,14 +155,51 @@ export function finalizeUnits(units: ExtractedUnit[]): ExtractedUnit[] {
 
 // ------------------------------------------------------------ XML helpers
 
-/** Every match of a global regex (the project targets ES5, which cannot iterate matchAll). */
-function allMatches(pattern: RegExp, text: string): RegExpExecArray[] {
-  const regex = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
-  const found: RegExpExecArray[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    found.push(match);
-    if (match[0] === "") regex.lastIndex += 1;
+type XmlElement = { name: string; open: string; inner: string };
+
+const isNameChar = (code: number) => (code >= 48 && code <= 58) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 45 || code === 46 || code === 95;
+
+/**
+ * The elements called one of `names`, in document order, found with indexOf. Regexes with lazy
+ * `[\s\S]*?` bodies go quadratic on unclosed tags ("<a:p>" repeated), and the documents are
+ * untrusted; every step here moves forward, so the time is linear in the input. A matched element
+ * is not searched inside (call again on `inner`); one with no closing tag is skipped.
+ */
+export function scanElements(xml: string, names: string[]): XmlElement[] {
+  if (xml.length > MAX_XML_CHARS) throw new SourceExtractError("This file is too large to read safely.");
+  const found: XmlElement[] = [];
+  const unclosed = new Set<string>();
+  const length = xml.length;
+  let position = 0;
+  let gt = -1; // the first ">" at or after the end of the last name read
+  while (true) {
+    const start = xml.indexOf("<", position);
+    if (start < 0) break;
+    let end = start + 1;
+    while (end < length && isNameChar(xml.charCodeAt(end))) end += 1;
+    const name = xml.slice(start + 1, end);
+    if (!names.includes(name)) {
+      position = start + 1;
+      continue;
+    }
+    if (gt < end) {
+      gt = xml.indexOf(">", end);
+      if (gt < 0) break;
+    }
+    const open = xml.slice(start, gt + 1);
+    position = gt + 1;
+    if (xml.charCodeAt(gt - 1) === 47) {
+      found.push({ name, open, inner: "" });
+      continue;
+    }
+    if (unclosed.has(name)) continue;
+    const close = xml.indexOf(`</${name}>`, position);
+    if (close < 0) {
+      unclosed.add(name);
+      continue;
+    }
+    found.push({ name, open, inner: xml.slice(position, close) });
+    position = close + name.length + 3;
   }
   return found;
 }
@@ -191,10 +231,10 @@ type Relationship = { id: string; target: string; type: string };
 function parseRelationships(xml: string | undefined): Relationship[] {
   if (!xml) return [];
   const result: Relationship[] = [];
-  for (const match of allMatches(/<Relationship\b[^>]*>/gi, xml)) {
-    const id = attribute(match[0], "Id");
-    const target = attribute(match[0], "Target");
-    if (id && target) result.push({ id, target, type: attribute(match[0], "Type") ?? "" });
+  for (const element of scanElements(xml, ["Relationship"])) {
+    const id = attribute(element.open, "Id");
+    const target = attribute(element.open, "Target");
+    if (id && target) result.push({ id, target, type: attribute(element.open, "Type") ?? "" });
   }
   return result;
 }
@@ -262,7 +302,13 @@ export async function readZip(bytes: Uint8Array, wanted: (name: string) => boole
     file.start();
   };
   try {
-    unzip.push(bytes, true);
+    // Fed in slices so the limits above fire while an entry is inflating, not after a whole bomb is in memory
+    // (a local header can claim any size, and one push inflates everything it is given).
+    for (let offset = 0; offset < bytes.length; offset += ZIP_SLICE_BYTES) {
+      const end = Math.min(bytes.length, offset + ZIP_SLICE_BYTES);
+      unzip.push(bytes.subarray(offset, end), end === bytes.length);
+    }
+    if (bytes.length === 0) unzip.push(new Uint8Array(), true);
   } catch (error) {
     if (failure) throw failure;
     if (error instanceof SourceExtractError) throw error;
@@ -279,11 +325,10 @@ const utf8 = (bytes: Uint8Array | undefined) => (bytes ? new TextDecoder("utf-8"
 /** Text of a DrawingML part: one string per `a:p` paragraph, runs joined, line breaks kept. */
 export function drawingParagraphs(xml: string): string[] {
   const paragraphs: string[] = [];
-  for (const block of allMatches(/<a:p(?:\s[^>]*)?>([\s\S]*?)<\/a:p>/g, xml)) {
+  for (const block of scanElements(xml, ["a:p"])) {
     let line = "";
-    for (const token of allMatches(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>|<a:br\s*\/?>|<a:t\s*\/>/g, block[1])) {
-      if (token[0].startsWith("<a:br")) line += "\n";
-      else if (token[1] !== undefined) line += decodeXmlEntities(token[1]);
+    for (const token of scanElements(block.inner, ["a:t", "a:br"])) {
+      line += token.name === "a:br" ? "\n" : decodeXmlEntities(token.inner);
     }
     const clean = line.trim();
     if (clean) paragraphs.push(clean);
@@ -301,8 +346,8 @@ export async function extractPptx(bytes: Uint8Array): Promise<ExtractedUnit[]> {
   const presentation = utf8(entries.get("ppt/presentation.xml"));
   if (presentation) {
     const relationships = new Map(parseRelationships(utf8(entries.get("ppt/_rels/presentation.xml.rels"))).map(rel => [rel.id, rel.target]));
-    for (const match of allMatches(/<p:sldId\b[^>]*>/g, presentation)) {
-      const target = relationships.get(attribute(match[0], "r:id") ?? "");
+    for (const element of scanElements(presentation, ["p:sldId"])) {
+      const target = relationships.get(attribute(element.open, "r:id") ?? "");
       const path = target ? resolveTarget("ppt", target) : null;
       if (path && entries.has(path)) ordered.push(path);
     }
@@ -326,7 +371,8 @@ export async function extractPptx(bytes: Uint8Array): Promise<ExtractedUnit[]> {
 // ------------------------------------------------------------ docx
 
 function docxHeadingLevel(paragraphXml: string): number {
-  const style = /<w:pStyle\b[^>]*\bw:val="([^"]*)"/i.exec(paragraphXml)?.[1] ?? "";
+  const open = scanElements(paragraphXml, ["w:pStyle"])[0]?.open;
+  const style = (open ? attribute(open, "w:val") : null) ?? "";
   const match = /^heading\s?([12])$/i.exec(style);
   if (match) return Number(match[1]);
   return /^title$/i.test(style) ? 1 : 0;
@@ -344,15 +390,15 @@ export async function extractDocx(bytes: Uint8Array): Promise<ExtractedUnit[]> {
     current = null;
   };
 
-  for (const block of allMatches(/<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g, xml)) {
+  for (const block of scanElements(xml, ["w:p"])) {
     let text = "";
-    for (const token of allMatches(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/?>|<w:br\s*\/?>|<w:cr\s*\/?>/g, block[1])) {
-      if (token[1] !== undefined) text += decodeXmlEntities(token[1]);
-      else text += token[0].startsWith("<w:tab") ? "\t" : "\n";
+    for (const token of scanElements(block.inner, ["w:t", "w:tab", "w:br", "w:cr"])) {
+      if (token.name === "w:t") text += decodeXmlEntities(token.inner);
+      else text += token.name === "w:tab" ? "\t" : "\n";
     }
     text = text.trim();
     if (!text) continue;
-    if (docxHeadingLevel(block[1]) > 0) {
+    if (docxHeadingLevel(block.inner) > 0) {
       flush();
       current = { heading: text.replace(/\s+/g, " ").slice(0, 60), paragraphs: [text], length: text.length };
       continue;
