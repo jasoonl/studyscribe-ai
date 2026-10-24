@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
-import { ArchiveRestore, ArrowLeft, Archive, GraduationCap, Loader2, Mic, Pencil, Sparkles } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, Archive, FileText, GraduationCap, Loader2, Mic, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CourseDialog } from "@/components/CourseDialog";
 import { CourseVocabulary } from "@/components/CourseVocabulary";
 import { CourseDot } from "@/components/CourseDot";
 import { TagFilter } from "@/components/CourseStrip";
+import { SourceStatusBadge } from "@/components/sources/SourceStatusBadge";
 import { RecordingList } from "@/components/RecordingList";
 import { useTrashRecording } from "@/hooks/useTrashRecording";
 import { trpc } from "@/lib/trpc";
@@ -25,6 +26,7 @@ export default function CoursePage() {
   const { data: course, isLoading: courseLoading } = trpc.courses.get.useQuery({ id: courseId }, { enabled: validId, retry: false });
   const { data: recordings, isLoading: recordingsLoading } = trpc.recordings.list.useQuery({ courseId }, { enabled: validId });
   const { data: courses } = trpc.courses.list.useQuery();
+  const { data: sourceList } = trpc.sources.list.useQuery({ courseId }, { enabled: validId });
   const { data: tags } = trpc.tags.list.useQuery();
 
   const archive = trpc.courses.archive.useMutation({
@@ -85,6 +87,14 @@ export default function CoursePage() {
                   <span className="sm:hidden">{t("course.ask")}</span>
                 </Button>
               </Link>
+              {sourceList?.available !== false && (
+                <Link href={`/courses/${course.id}/sources`}>
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <FileText className="h-4 w-4" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">{t("course.sources")}</span>
+                  </Button>
+                </Link>
+              )}
               <Link href={`/exam-packs?course=${course.id}`}>
                 <Button size="sm" variant="outline" className="gap-2">
                   <GraduationCap className="h-4 w-4" />
@@ -166,6 +176,33 @@ export default function CoursePage() {
                 <h2 className="sr-only">{t("course.recordingsHeading")}</h2>
                 <RecordingList recordings={sorted} courses={courses} tags={tags} onDelete={handleDelete} showCourse={false} />
               </>
+            )}
+
+            {sourceList?.available && (
+              <section aria-labelledby="course-sources-heading" className="mt-10">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 id="course-sources-heading" className="text-lg font-semibold tracking-tight">
+                    {t("course.sources")}
+                  </h2>
+                  <Link href={`/courses/${course.id}/sources`} className="text-sm font-medium text-primary underline underline-offset-2">
+                    {sourceList.sources.length > 0 ? t("sources.seeAll") : t("sources.addSources")}
+                  </Link>
+                </div>
+                {sourceList.sources.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-border px-5 py-6 text-sm text-muted-foreground">{t("sources.empty.course")}</p>
+                ) : (
+                  <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
+                    {sourceList.sources.slice(0, 3).map(source => (
+                      <li key={source.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                        <Link href={`/sources/${source.id}`} className="min-w-0 truncate text-sm font-medium hover:underline">
+                          {source.title}
+                        </Link>
+                        <SourceStatusBadge status={source.status} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             )}
 
             <CourseVocabulary courseId={course.id} />

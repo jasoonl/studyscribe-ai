@@ -5,6 +5,7 @@ import { nextFromLocation } from "@shared/safeNext";
 import { lazy, Suspense } from "react";
 import { RecorderProvider } from "./contexts/RecorderContext";
 import { LiveTranscriptProvider } from "./contexts/LiveTranscriptContext";
+import { SourceUploadsProvider } from "./contexts/SourceUploadsContext";
 import RecordingIndicator from "./components/RecordingIndicator";
 import CookieBanner from "./components/CookieBanner";
 import SkipLink from "./components/SkipLink";
@@ -66,6 +67,8 @@ const Analytics = lazy(() => import("./pages/Analytics"));
 const Help = lazy(() => import("./pages/Help"));
 const Ask = lazy(() => import("./pages/Ask"));
 const CoursePage = lazy(() => import("./pages/CoursePage"));
+const SourceLibrary = lazy(() => import("./pages/SourceLibrary"));
+const SourceDetail = lazy(() => import("./pages/SourceDetail"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const Progress = lazy(() => import("./pages/Progress"));
@@ -166,6 +169,8 @@ function Router() {
         <Route path="/recordings/:recordingId/email-drafts" component={() => <ProtectedRoute component={EmailDrafts} />} />
         <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
         <Route path="/ask" component={() => <ProtectedRoute component={Ask} />} />
+        <Route path="/courses/:id/sources" component={() => <ProtectedRoute component={SourceLibrary} />} />
+        <Route path="/sources/:id" component={() => <ProtectedRoute component={SourceDetail} />} />
         <Route path="/courses/:id" component={() => <ProtectedRoute component={CoursePage} />} />
         <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
         <Route path="/plan" component={() => <ProtectedRoute component={StudyPlan} />} />
@@ -212,6 +217,7 @@ function App() {
           <TooltipProvider>
             <RecorderProvider>
               <LiveTranscriptProvider>
+                <SourceUploadsProvider>
                 <SkipLink />
                 <RouteMeta />
                 <Toaster />
@@ -219,6 +225,7 @@ function App() {
                 <RecordingIndicator />
                 <OfflineStatus />
                 <CookieBanner />
+                </SourceUploadsProvider>
               </LiveTranscriptProvider>
             </RecorderProvider>
           </TooltipProvider>

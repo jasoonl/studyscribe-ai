@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { recordings, transcriptChunks, transcripts } from "../drizzle/schema";
-import { type AskSource, type Passage, buildPassages } from "./askRetrieval";
+import { type AskSource, type Passage, buildPassages, passageOwner } from "./askRetrieval";
 import { getDb } from "./db";
 import { tolerateMissingSchema } from "./schemaTolerance";
 import { TRPCError } from "@trpc/server";
@@ -108,8 +108,8 @@ export function rankBySimilarity(
     .slice(0, limit);
 }
 
-const passageKey = (passage: Pick<Passage, "recordingId" | "start" | "text">) =>
-  `${passage.recordingId}:${passage.start === null ? "x" : Math.floor(passage.start)}:${passage.text.trim().slice(0, 80)}`;
+const passageKey = (passage: Pick<Passage, "recordingId" | "start" | "text" | "sourceId" | "location">) =>
+  `${passage.sourceId ? `s${passage.sourceId}` : passage.recordingId}${passage.location ? `@${passage.location}` : ""}:${passage.start === null ? "x" : Math.floor(passage.start)}:${passage.text.trim().slice(0, 80)}`;
 
 /**
  * Reciprocal rank fusion of keyword-ranked and embedding-ranked passages.
@@ -131,12 +131,13 @@ export function fuseRankings(keyword: Passage[], semantic: Passage[], options: {
   add(keyword, 1);
   add(semantic, 1);
   const sorted = Array.from(scores.values()).sort((a, b) => b.score - a.score || a.firstSeen - b.firstSeen);
-  const taken = new Map<number, number>();
+  const taken = new Map<string, number>();
   const result: Passage[] = [];
   for (const item of sorted) {
-    const used = taken.get(item.passage.recordingId) ?? 0;
+    const owner = passageOwner(item.passage);
+    const used = taken.get(owner) ?? 0;
     if (used >= options.perRecording) continue;
-    taken.set(item.passage.recordingId, used + 1);
+    taken.set(owner, used + 1);
     result.push(item.passage);
     if (result.length >= options.limit) break;
   }
@@ -337,13 +338,14 @@ export async function semanticPassages(userId: number, question: string, restric
 }
 
 /** Keeps at most `perRecording` hits from each recording, best first, up to `limit`. */
-export function capPerRecording<T extends { recordingId: number }>(ranked: T[], perRecording: number, limit: number): T[] {
-  const counts = new Map<number, number>();
+export function capPerRecording<T extends { recordingId: number; sourceId?: number }>(ranked: T[], perRecording: number, limit: number): T[] {
+  const counts = new Map<string, number>();
   const kept: T[] = [];
   for (const item of ranked) {
-    const count = counts.get(item.recordingId) ?? 0;
+    const owner = passageOwner(item);
+    const count = counts.get(owner) ?? 0;
     if (count >= perRecording) continue;
-    counts.set(item.recordingId, count + 1);
+    counts.set(owner, count + 1);
     kept.push(item);
     if (kept.length >= limit) break;
   }

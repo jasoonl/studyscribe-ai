@@ -130,6 +130,14 @@ export async function recordUsage(entry: { userId: number; kind: "transcription"
   }
 }
 
+/** Whether a charge with this dedupe key was already recorded (work that is billed once, however many requests it takes). */
+export async function hasUsage(dedupeKey: string) {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await tolerateMissingSchema("usage", () => db.select({ id: usageEvents.id }).from(usageEvents).where(eq(usageEvents.dedupeKey, dedupeKey)).limit(1), []);
+  return rows.length > 0;
+}
+
 /** A recording's transcription is charged once, when it first completes. */
 export function recordTranscriptionUsage(userId: number, recordingId: number, seconds: number) {
   return recordUsage({ userId, kind: "transcription", units: seconds, recordingId, dedupeKey: `transcription:${recordingId}` });
