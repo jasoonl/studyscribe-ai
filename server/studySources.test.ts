@@ -654,8 +654,12 @@ describe("export and account deletion", () => {
     expect(log.filter(entry => entry.endsWith(":delete"))).toEqual([]);
   });
 
-  it("unfiles sources from a course", async () => {
+  it("unfiles sources from a course and drops the explanations that quote them", async () => {
+    script = { "studySources:select": [[{ id: 4 }]], "questionExplanations:select": [[
+      { id: 1, citations: [{ n: 1, recordingId: 0, sourceId: 4 }] },
+      { id: 2, citations: [{ n: 1, recordingId: 9 }] },
+    ]] };
     await detachSourcesFromCourse(7, 3);
-    expect(log).toEqual(["studySources:update"]);
+    expect(log).toEqual(["studySources:select", "studySources:update", "questionExplanations:select", "questionExplanations:delete"]);
   });
 });

@@ -55,6 +55,8 @@ const BROWSER_STORAGE: Row[] = [
   { name: "studyscribe_note_template_student, studyscribe_note_template_professional", purpose: "Remember the default notes template you picked for classes and for meetings.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_kb_mode", purpose: "Remembers whether the Knowledge Base uses keyword or smart search.", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_capture_slides", purpose: "Remembers whether you chose Capture slides when recording a shared tab or screen.", lasts: "Until you change it or clear site data" },
+  { name: "studyscribe_exam_timer_hidden", purpose: "Remembers that you chose to hide the countdown during a timed practice exam.", lasts: "Until you change it or clear site data" },
+  { name: "studyscribe_practice_draft:*", purpose: "Keeps your answers to a practice exam on this device while you work, so a reload or lost connection does not lose them.", lasts: "Until the exam is submitted or you clear site data" },
   { name: "sidebar-width", purpose: "Remembers how wide you made the app sidebar.", lasts: "Until you clear site data" },
 ];
 

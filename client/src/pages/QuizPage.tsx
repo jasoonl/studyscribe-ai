@@ -12,6 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatDate, t, tn, useI18n } from "@/i18n";
+import { MissedQuestionReview } from "@/components/practice/MissedQuestionReview";
+import { PracticeMissedButton } from "@/components/practice/PracticeMissedButton";
+import { PracticeStartButton } from "@/components/practice/PracticeSetup";
+import { usePracticeCapabilities } from "@/hooks/usePracticeCapabilities";
+import { missedItems, parseAttempt } from "@/lib/practiceModel";
 import {
   Brain, ArrowLeft, Sparkles, Clock, ChevronRight, CheckCircle2,
   XCircle, Trophy, RotateCcw, ListChecks
@@ -39,6 +44,11 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [results, setResults] = useState<{ score: number; correct: number; total: number } | null>(null);
   const [showExplanations, setShowExplanations] = useState(false);
+  // Per-question results from a server that has them; null for an older one, and then nothing new shows.
+  const [attempt, setAttempt] = useState<ReturnType<typeof parseAttempt>>(null);
+  // Each submit is its own attempt: the review below starts fresh for it.
+  const [attemptNo, setAttemptNo] = useState(0);
+  const practice = usePracticeCapabilities();
 
   const { data: recording } = trpc.recordings.get.useQuery({ id: recId }, { enabled: !!recId });
   const { data: quizzes, isLoading, refetch } = trpc.quizzes.list.useQuery(
@@ -61,6 +71,8 @@ export default function QuizPage() {
   const submitMutation = trpc.quizzes.submitAttempt.useMutation({
     onSuccess: (data) => {
       setResults(data);
+      setAttempt(parseAttempt(data));
+      setAttemptNo(n => n + 1);
       setMode("results");
     },
     onError: (err) => toast.error(err.message || t("quiz.submitFailed")),
@@ -73,6 +85,7 @@ export default function QuizPage() {
     setAnswers({});
     setCurrentQ(0);
     setResults(null);
+    setAttempt(null);
     setShowExplanations(false);
     setMode("taking");
   };
@@ -100,6 +113,7 @@ export default function QuizPage() {
     setAnswers({});
     setCurrentQ(0);
     setResults(null);
+    setAttempt(null);
     setShowExplanations(false);
     setMode("taking");
   };
@@ -265,10 +279,23 @@ export default function QuizPage() {
             </CardContent>
           </Card>
 
+          {/* Missed questions with explanations, and practice on them (only when the server has both) */}
+          {practice.available && attempt && selectedQuizId && (() => {
+            const missed = missedItems(questions, attempt.results);
+            return missed.length > 0 ? (
+              <div className="space-y-6">
+                <PracticeMissedButton origin={{ quizId: selectedQuizId }} allowSimilar={practice.explanations} />
+                <MissedQuestionReview key={`${selectedQuizId}:${attempt.attemptId ?? attemptNo}`} origin={{ quizId: selectedQuizId }} items={missed} explanations={practice.explanations} />
+              </div>
+            ) : null;
+          })()}
+
           {/* Answer review */}
           {showExplanations && questions.map((q, i) => {
             const userAnswer = answers[q.id];
-            const isCorrect = userAnswer?.trim().toLowerCase() === q.correctAnswer?.trim().toLowerCase();
+            // A server that scores each question says which were right; otherwise the plain comparison as before.
+            const serverResult = attempt?.results.find(entry => entry.id === q.id);
+            const isCorrect = serverResult ? serverResult.correct : userAnswer?.trim().toLowerCase() === q.correctAnswer?.trim().toLowerCase();
             return (
               <Card key={q.id} className={`border ${isCorrect ? "border-green-500/30" : "border-red-500/30"}`}>
                 <CardHeader className="pb-2">
@@ -395,14 +422,17 @@ export default function QuizPage() {
                       <Clock className="w-3 h-3" />
                       {formatDate(quiz.createdAt)}
                     </div>
-                    <Button
-                      onClick={() => handleStartQuiz(quiz.id)}
-                      size="sm"
-                      className="w-full gap-2"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                      {t("quiz.start")}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={() => handleStartQuiz(quiz.id)}
+                        size="sm"
+                        className="w-full gap-2"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                        {t("quiz.start")}
+                      </Button>
+                      <PracticeStartButton target={{ scope: "quiz", quizId: quiz.id }} title={quiz.title} questionTotal={qCount} />
+                    </div>
                   </CardContent>
                 </Card>
               );

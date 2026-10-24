@@ -1,4 +1,5 @@
 import { clearOfflineData } from "@/lib/offlineStore";
+import { clearAllPracticeDrafts } from "@/lib/practiceDrafts";
 import { OFFLINE_OWNER_KEY } from "@/lib/offlinePack";
 /**
  * One `/api/auth/me` request for everything that asks at once. ProtectedRoute,
@@ -42,6 +43,7 @@ export function fetchSessionUser(fetcher: typeof fetch = fetch): Promise<Session
 /** After signing in or out, the next check must ask the server again. */
 export function forgetSessionUser() {
   cached = null;
+  clearAllPracticeDrafts();
   // Signing out also removes recordings kept offline, so a shared computer keeps nothing.
   void clearOfflineData();
   try {

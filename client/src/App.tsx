@@ -6,6 +6,7 @@ import { lazy, Suspense } from "react";
 import { RecorderProvider } from "./contexts/RecorderContext";
 import { LiveTranscriptProvider } from "./contexts/LiveTranscriptContext";
 import { SourceUploadsProvider } from "./contexts/SourceUploadsContext";
+import { PracticeWorkProvider } from "./contexts/PracticeWorkContext";
 import RecordingIndicator from "./components/RecordingIndicator";
 import CookieBanner from "./components/CookieBanner";
 import SkipLink from "./components/SkipLink";
@@ -77,6 +78,8 @@ const InviteFriends = lazy(() => import("./pages/InviteFriends"));
 const Templates = lazy(() => import("./pages/Templates"));
 const ExamPacks = lazy(() => import("./pages/ExamPacks"));
 const ExamPack = lazy(() => import("./pages/ExamPack"));
+const Practice = lazy(() => import("./pages/Practice"));
+const PracticeSession = lazy(() => import("./pages/PracticeSession"));
 const Groups = lazy(() => import("./pages/Groups"));
 const Developers = lazy(() => import("./pages/Developers"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
@@ -180,6 +183,8 @@ function Router() {
         <Route path="/templates" component={() => <ProtectedRoute component={Templates} />} />
         <Route path="/exam-packs" component={() => <ProtectedRoute component={ExamPacks} />} />
         <Route path="/exam-packs/:id" component={() => <ProtectedRoute component={ExamPack} />} />
+        <Route path="/practice" component={() => <ProtectedRoute component={Practice} />} />
+        <Route path="/practice/:id" component={() => <ProtectedRoute component={PracticeSession} />} />
         <Route path="/groups" component={() => <ProtectedRoute component={Groups} />} />
         <Route path="/groups/join/:token" component={() => <ProtectedRoute component={JoinGroup} />} />
         <Route path="/groups/:id" component={() => <ProtectedRoute component={GroupPage} />} />
@@ -218,6 +223,7 @@ function App() {
             <RecorderProvider>
               <LiveTranscriptProvider>
                 <SourceUploadsProvider>
+                <PracticeWorkProvider>
                 <SkipLink />
                 <RouteMeta />
                 <Toaster />
@@ -225,6 +231,7 @@ function App() {
                 <RecordingIndicator />
                 <OfflineStatus />
                 <CookieBanner />
+                </PracticeWorkProvider>
                 </SourceUploadsProvider>
               </LiveTranscriptProvider>
             </RecorderProvider>

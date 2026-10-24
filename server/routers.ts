@@ -56,6 +56,9 @@ import { signupRouter } from "./openSignup";
 import { onboardingRouter } from "./onboarding";
 import { translationsRouter } from "./translations";
 import { sourcesRouter } from "./studySources";
+import { practiceRouter } from "./practiceSessions";
+import { mistakesRouter } from "./mistakeExplanations";
+import { readQuestions, scoreSession } from "./practiceBuilder";
 import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 import { mobileRouter } from "./mobileRouter";
@@ -931,6 +934,8 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   translations: translationsRouter,
   sources: sourcesRouter,
+  practice: practiceRouter,
+  mistakes: mistakesRouter,
   calendar: calendarRouter,
   mobile: mobileRouter,
   apiKeys: apiKeysRouter,
@@ -1094,19 +1099,12 @@ export const appRouter = router({
         const recording = await getRecordingByIdDb(quiz.recordingId);
         if (!recording || recording.userId !== ctx.user.id) throw new Error("Access denied");
 
-        const questions = (quiz.questions as any[]) || [];
-        let correct = 0;
-        for (const q of questions) {
-          const userAnswer = input.answers[q.id]?.trim().toLowerCase();
-          const correctAnswer = q.correctAnswer?.trim().toLowerCase();
-          if (userAnswer && correctAnswer && (userAnswer === correctAnswer || (q.type === "multiple-choice" && userAnswer === correctAnswer))) {
-            correct++;
-          }
-        }
-        const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
-        await createQuizAttempt({ quizId: input.quizId, userId: ctx.user.id, answers: input.answers, score });
+        // Scored like exam packs (accents, case and articles do not matter for short answers).
+        const questions = readQuestions(quiz.questions, quiz.recordingId);
+        const { score, correct, results } = scoreSession(questions, input.answers);
+        const [inserted] = (await createQuizAttempt({ quizId: input.quizId, userId: ctx.user.id, answers: input.answers, score })) as unknown as [{ insertId?: number }];
         await recordQuizStudy({ userId: ctx.user.id, recordingId: quiz.recordingId, quizId: input.quizId, score, localDate: input.localDate });
-        return { score, correct, total: questions.length };
+        return { score, correct, total: questions.length, attemptId: Number(inserted?.insertId ?? 0), results };
       }),
 
     getAttempts: protectedProcedure

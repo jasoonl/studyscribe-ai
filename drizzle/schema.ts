@@ -1324,3 +1324,88 @@ export const studySourceFlags = mysqlTable("studySourceFlags", {
 ]);
 
 export type StudySourceFlag = typeof studySourceFlags.$inferSelect;
+
+// ---------------------------------------------------------------- Phase 8: mistakes and practice exams (migration 0035)
+
+/**
+ * A frozen set of questions taken as a practice (timed or not), or the record
+ * of an exam pack attempt. `questions` holds the answers too and is never sent
+ * to the browser while the session is open. `openKey` is "timed-open" only
+ * while a timed session is unfinished, so the unique index (userId, openKey)
+ * allows one open timed session per person (NULLs never collide).
+ */
+export const practiceSessions = mysqlTable("practiceSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  mode: mysqlEnum("mode", ["review", "timed"]).notNull(),
+  scope: mysqlEnum("scope", ["quiz", "pack", "course", "missed"]).notNull(),
+  quizId: int("quizId"),
+  packId: int("packId"),
+  courseId: int("courseId"),
+  parentSessionId: int("parentSessionId"),
+  title: varchar("title", { length: 255 }).notNull(),
+  questions: json("questions").$type<Array<{
+    id: string;
+    question: string;
+    type: "multiple-choice" | "short-answer";
+    options?: string[];
+    correctAnswer: string;
+    explanation: string;
+    recordingId?: number;
+  }>>().notNull(),
+  recordingIds: json("recordingIds").$type<number[]>(),
+  timeLimitSeconds: int("timeLimitSeconds"),
+  extraTimePercent: int("extraTimePercent").default(100).notNull(),
+  targetCount: int("targetCount"),
+  openKey: varchar("openKey", { length: 16 }),
+  startedAt: timestamp("startedAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  deadlineAt: timestamp("deadlineAt"),
+  submittedAt: timestamp("submittedAt"),
+  autoSubmitted: boolean("autoSubmitted").default(false).notNull(),
+  answers: json("answers").$type<Record<string, string>>(),
+  score: int("score"),
+  results: json("results").$type<Array<{ id: string; correct: boolean }>>(),
+  similarClaimedAt: timestamp("similarClaimedAt"),
+  similarAddedAt: timestamp("similarAddedAt"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("practiceSessions_user_created_idx").on(table.userId, table.createdAt),
+  index("practiceSessions_user_parent_idx").on(table.userId, table.parentSessionId),
+  uniqueIndex("practiceSessions_user_open_unique").on(table.userId, table.openKey),
+]);
+
+export type PracticeSession = typeof practiceSessions.$inferSelect;
+
+/**
+ * A grounded explanation of one missed question, cached per person by a hash
+ * of everything it was written from, so a changed transcript, source or prompt
+ * version produces a new row and stale text is never reused.
+ */
+export const questionExplanations = mysqlTable("questionExplanations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  inputHash: varchar("inputHash", { length: 64 }).notNull(),
+  attemptKey: varchar("attemptKey", { length: 64 }).notNull(),
+  questionId: varchar("questionId", { length: 20 }).notNull(),
+  recordingId: int("recordingId"),
+  status: mysqlEnum("status", ["ready", "not_covered"]).notNull(),
+  text: text("text"),
+  citations: json("citations").$type<Array<{
+    n: number;
+    recordingId: number;
+    title: string;
+    start: number | null;
+    snippet: string;
+    sourceId?: number;
+    location?: string;
+    unitIndex?: number;
+  }>>(),
+  model: varchar("model", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("questionExplanations_user_hash_unique").on(table.userId, table.inputHash),
+  index("questionExplanations_user_recording_idx").on(table.userId, table.recordingId),
+  index("questionExplanations_user_attempt_idx").on(table.userId, table.attemptKey),
+]);
+
+export type QuestionExplanation = typeof questionExplanations.$inferSelect;
