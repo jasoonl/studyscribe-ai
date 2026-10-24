@@ -37,7 +37,7 @@ export function Segmented<T extends string>({
                 if (!selected) Haptics.selectionAsync().catch(() => undefined);
                 onChange(option.value);
               }}
-              className={cn("min-h-[36px] flex-grow items-center justify-center rounded-md px-3", selected && "bg-card shadow-sm")}
+              className={cn("min-h-[44px] flex-grow items-center justify-center rounded-md px-3", selected && "bg-card shadow-sm")}
             >
               <Text variant="label" className={selected ? "text-foreground" : "text-muted-foreground"}>
                 {option.label}
