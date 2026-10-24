@@ -8,6 +8,8 @@ import { deleteBookmarksForRecordings } from "./bookmarks";
 import { deleteCourseLinksForRecordings } from "./courses";
 import { deleteActionItemsForRecordings } from "./actionItems";
 import { deleteExamPacksForRecordings } from "./examPacks";
+import { deleteSessionsForRecordings } from "./practiceSessions";
+import { deleteExplanationsForRecordings } from "./mistakeExplanations";
 import { deleteVocabularyForRecordings } from "./vocabulary";
 import { deleteFollowUpsForRecordings } from "./followUps";
 import { deleteAnnotationsForRecordings } from "./annotations";
@@ -62,6 +64,8 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
     await detachBotsFromRecordings(batch);
     await deleteAttendeeEmailsForRecordings(batch);
     // Before the recordings rows go: it looks up whose packs to check.
+    await deleteSessionsForRecordings(batch);
+    await deleteExplanationsForRecordings(batch);
     await deleteExamPacksForRecordings(batch);
     await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));
     await db.delete(recordings).where(inArray(recordings.id, batch));

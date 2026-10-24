@@ -45,3 +45,11 @@ export function sourceKindForFileName(fileName: string): StudySourceKind | null 
   const extension = fileName.includes(".") ? fileName.split(".").pop()!.trim().toLowerCase() : "";
   return Object.prototype.hasOwnProperty.call(SOURCE_EXTENSIONS, extension) ? SOURCE_EXTENSIONS[extension] : null;
 }
+
+// Mistakes and timed practice (Phase 8).
+/** Seconds after the deadline in which a submission still counts as made in time. */
+export const PRACTICE_GRACE_SECONDS = 15;
+/** Explanations one quiz attempt may generate (the whole attempt is one AI generation). */
+export const MAX_EXPLANATIONS_PER_ATTEMPT = 25;
+/** Longest explanation text stored and shown. */
+export const MAX_EXPLANATION_CHARS = 700;

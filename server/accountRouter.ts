@@ -17,6 +17,8 @@ import { protectedProcedure, router, sessionProcedure } from "./_core/trpc";
 import { deleteCoursesForUser, exportCoursesForUser } from "./courses";
 import { deleteActionItemsForUser, listActionItemsForUser } from "./actionItems";
 import { deleteExamPacksForUser, exportExamPacksForUser } from "./examPacks";
+import { deleteSessionsForUser, exportSessionsForUser } from "./practiceSessions";
+import { deleteExplanationsForUser, exportExplanationsForUser } from "./mistakeExplanations";
 import { deleteVocabularyForUser, exportVocabularyForUser } from "./vocabulary";
 import { deleteFollowUpsForUser, listFollowUpsForUser } from "./followUps";
 import { comparePassword } from "./authService";
@@ -105,6 +107,8 @@ export const accountRouter = router({
       actionItems: await listActionItemsForUser(userId),
       vocabulary: await exportVocabularyForUser(userId),
       examPacks: await exportExamPacksForUser(userId),
+      practiceSessions: await exportSessionsForUser(userId),
+      questionExplanations: await exportExplanationsForUser(userId),
       followUps: await listFollowUpsForUser(userId),
       recordingTags: owned.length ? await db.select().from(recordingTags).where(inArray(recordingTags.recordingId, owned)) : [],
       emailDrafts: await db.select().from(emailDrafts).where(eq(emailDrafts.userId, userId)),
@@ -208,6 +212,8 @@ export const accountRouter = router({
       await deleteActionItemsForUser(userId);
       await deleteVocabularyForUser(userId);
       await deleteExamPacksForUser(userId);
+      await deleteSessionsForUser(userId);
+      await deleteExplanationsForUser(userId);
       await deleteFollowUpsForUser(userId);
       await deleteAnnotationsByAuthor(userId);
       await deleteChunksForUser(userId);

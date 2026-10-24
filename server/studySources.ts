@@ -28,6 +28,7 @@ import { storageHasRoomForSlides } from "./slides";
 import { assertCanGenerate, hasUsage, recordUsage } from "./usage";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
+import { deleteExplanationsForSources } from "./mistakeExplanations";
 
 /**
  * Study sources (Phase 8): a student's PDFs, slides and notes, per course.
@@ -623,6 +624,7 @@ export const sourcesRouter = router({
       }
       if (Object.keys(changes).length > 0) {
         await db.update(studySources).set(changes).where(and(eq(studySources.id, source.id), eq(studySources.userId, ctx.user.id)));
+        if ("courseId" in changes && changes.courseId !== source.courseId) await deleteExplanationsForSources(ctx.user.id, [source.id]);
       }
       return publicSource(await loadOwned(db, ctx.user.id, source.id));
     }),
@@ -638,6 +640,8 @@ export const sourcesRouter = router({
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The file could not be removed from storage, so nothing was deleted. Try again in a moment." });
     }
     await deleteRowsForSources(db, { ids: [source.id] });
+    // Explanations that quote this file go with it, so it can never be quoted again.
+    await deleteExplanationsForSources(ctx.user.id, [source.id]);
     return { removed: true as const };
   }),
 
@@ -706,5 +710,7 @@ export async function exportSourcesForUser(userId: number) {
 export async function detachSourcesFromCourse(userId: number, courseId: number) {
   const db = await getDb();
   if (!db) return;
+  const moved = await tolerateMissingSchema(FEATURE, () => db.select({ id: studySources.id }).from(studySources).where(and(eq(studySources.userId, userId), eq(studySources.courseId, courseId))), [] as Array<{ id: number }>);
   await tolerateMissingSchema(FEATURE, () => db.update(studySources).set({ courseId: null }).where(and(eq(studySources.userId, userId), eq(studySources.courseId, courseId))), undefined);
+  await deleteExplanationsForSources(userId, moved.map(row => row.id));
 }

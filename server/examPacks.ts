@@ -9,6 +9,8 @@ import { completeJson, completeText } from "./llmJson";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
 import { protectedProcedure, router } from "./_core/trpc";
 import { aiProcedure } from "./usage";
+import { deleteSessionsForPacks, recordPackAttempt } from "./practiceSessions";
+import { readQuestions, scoreSession } from "./practiceBuilder";
 import {
   MAX_PACK_RECORDINGS,
   PACK_QUIZ_RESPONSE_FORMAT,
@@ -99,7 +101,10 @@ export async function deleteExamPacksForRecordings(recordingIds: number[]) {
     const packs = await db.select({ id: examPacks.id, recordingIds: examPacks.recordingIds }).from(examPacks).where(inArray(examPacks.userId, owners.map(owner => owner.userId)));
     const purged = new Set(recordingIds);
     const affected = packs.filter(pack => packIds(pack).some(id => purged.has(id))).map(pack => pack.id);
-    if (affected.length) await db.delete(examPacks).where(inArray(examPacks.id, affected));
+    if (affected.length) {
+      await deleteSessionsForPacks(owners.map(owner => owner.userId), affected);
+      await db.delete(examPacks).where(inArray(examPacks.id, affected));
+    }
   }, undefined);
 }
 
@@ -246,7 +251,14 @@ export const examPacksRouter = router({
         .update(examPacks)
         .set({ lastScore: result.score, attempts: sql`${examPacks.attempts} + 1`, lastAttemptAt: new Date() })
         .where(eq(examPacks.id, pack.id));
-      return result;
+      // The attempt is kept as a session so its misses can be explained and practised (null before migration 0035).
+      const session = readQuestions(questions);
+      const detailed = scoreSession(session, input.answers);
+      const sessionId = await recordPackAttempt({
+        userId: ctx.user.id, packId: pack.id, title: pack.title, questions: session, answers: input.answers,
+        recordingIds: packIds(pack), courseId: pack.courseId ?? null, score: result.score,
+      });
+      return { ...result, results: detailed.results, sessionId };
     }),
 
   rename: protectedProcedure
@@ -260,7 +272,12 @@ export const examPacksRouter = router({
 
   remove: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await explainMissingTable(() => db.delete(examPacks).where(and(eq(examPacks.id, input.id), eq(examPacks.userId, ctx.user.id))));
+    // Only the owner's pack, and only then its sessions (scoped to the owner as well).
+    const [mine] = await explainMissingTable(() => db.select({ id: examPacks.id }).from(examPacks).where(and(eq(examPacks.id, input.id), eq(examPacks.userId, ctx.user.id))).limit(1));
+    if (mine) {
+      await explainMissingTable(() => db.delete(examPacks).where(and(eq(examPacks.id, mine.id), eq(examPacks.userId, ctx.user.id))));
+      await deleteSessionsForPacks(ctx.user.id, [mine.id]);
+    }
     return { removed: true };
   }),
 });
