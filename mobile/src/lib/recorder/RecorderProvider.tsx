@@ -14,7 +14,7 @@ import {
 import { API_URL } from "../config";
 import { fileSource, nativeUploadIo } from "../fileSource";
 import { useSession } from "../SessionProvider";
-import { trpc } from "../trpc";
+import { errorMessage, trpc } from "../trpc";
 import { uploadAudio } from "../upload";
 import { deleteRecordingFile, ensureRecordingsDir, fileExists, keepRecording, readJournal, writeJournal } from "./journal";
 import { elapsedSeconds, initialRecorderState, isLive, recorderReducer, recoverFromJournal, type RecorderState } from "./machine";
@@ -202,7 +202,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
         utils.recordings.list.invalidate().catch(() => undefined);
         return recordingId;
       } catch (error) {
-        dispatch({ type: "FAILED", error: error instanceof Error ? error.message : "The upload failed." });
+        dispatch({ type: "FAILED", error: errorMessage(error, "The upload failed.") });
         return null;
       }
     },

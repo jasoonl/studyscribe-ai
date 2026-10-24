@@ -23,6 +23,8 @@ export default function AppLayout() {
       <Stack.Screen name="recording/[id]/tutor" options={{ title: "AI tutor" }} />
       <Stack.Screen name="recording/[id]/drafts" options={{ title: "Email drafts" }} />
       <Stack.Screen name="courses/[id]" options={{ title: "Course" }} />
+      <Stack.Screen name="course-sources/[id]" options={{ title: "Study sources" }} />
+      <Stack.Screen name="sources/[id]" options={{ title: "" }} />
       <Stack.Screen name="exam-packs/index" options={{ title: "Exam packs" }} />
       <Stack.Screen name="exam-packs/[id]" options={{ title: "Exam pack" }} />
       <Stack.Screen name="shared-with-me/index" options={{ title: "Shared with me" }} />
