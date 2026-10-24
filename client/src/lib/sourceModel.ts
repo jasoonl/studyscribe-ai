@@ -63,6 +63,9 @@ export type FailureReason = "needsOcr" | "noText" | "password" | "empty" | "enco
 export function failureReasonOf(message: string | null | undefined, kind?: SourceKind): FailureReason {
   const text = (message ?? "").toLowerCase();
   if (!text) return "failed";
+  // Provider trouble and a bad analysis are temporary: trying again can work. Checked before the
+  // "too long" and "unreadable" rules, which their wording would otherwise match.
+  if (text.includes("the ai service") || text.includes("analysis of this file came back unreadable")) return "failed";
   if (text.includes("password")) return "password";
   if (text.includes("selectable text") || text.includes("scanned")) return "needsOcr";
   if (text.includes("no text could be found") || text.includes("no readable text") || text.includes("no text")) return kind && kind !== "pdf" ? "noText" : kind === "pdf" ? "needsOcr" : "noText";

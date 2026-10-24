@@ -48,6 +48,16 @@ describe("failureReasonOf", () => {
     it(`reads the server sentence for ${name}`, () => expect(failureReasonOf(sentence)).toBe(reason));
   }
 
+  it("keeps AI trouble and a bad analysis retryable", () => {
+    for (const s of [
+      "The AI service took too long to answer. Try again in a moment.",
+      "The AI service could not take this request. If it keeps happening, the recording may be too long for it.",
+      "The AI service is busy right now. Try again in a minute.",
+      "The assistant's analysis of this file came back unreadable. Try again.",
+    ])
+      expect(isRetryableReason(failureReasonOf(s))).toBe(true);
+  });
+
   it("treats the generic read failure as retryable", () => {
     expect(isRetryableReason(failureReasonOf(GENERIC))).toBe(true);
   });

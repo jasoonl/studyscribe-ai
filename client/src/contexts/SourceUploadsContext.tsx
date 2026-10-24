@@ -91,6 +91,8 @@ export function describeError(error: unknown): UploadRowError {
   if (error instanceof TRPCClientError) {
     const code = (error.data as { code?: string } | undefined)?.code;
     if (code === "TOO_MANY_REQUESTS") return { kind: "rateLimited" };
+    // AI provider trouble (timeout, service down) is temporary, so the row stays retryable.
+    if (code === "TIMEOUT" || code === "SERVICE_UNAVAILABLE") return { kind: "reason", code: "failed" };
     if (message && CAP_SENTENCE.test(message)) return { kind: "message", text: message };
     const reason = failureReasonOf(message);
     if (reason !== "failed") return { kind: "reason", code: reason };

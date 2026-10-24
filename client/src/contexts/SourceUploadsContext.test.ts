@@ -40,6 +40,24 @@ describe("describeError", () => {
     expect(describeError(new SourceFailedError("This file is damaged and could not be opened.", "pdf"))).toEqual({ kind: "reason", code: "unreadable" });
   });
 
+  test.each([
+    ["The AI service took too long to answer. Try again in a moment.", "TIMEOUT"],
+    ["The AI service could not take this request. If it keeps happening, the recording may be too long for it.", "SERVICE_UNAVAILABLE"],
+    ["The AI service is having trouble right now. Try again in a few minutes.", "SERVICE_UNAVAILABLE"],
+    ["The AI service turned this server's key down. The site owner needs to check the AI settings.", "SERVICE_UNAVAILABLE"],
+  ])("keeps AI trouble retryable: %s", (text, code) => {
+    expect(describeError(trpcError(text, code))).toEqual({ kind: "reason", code: "failed" });
+    expect(describeError(new SourceFailedError(text, "pdf"))).toEqual({ kind: "reason", code: "failed" });
+  });
+
+  it("keeps a busy AI service as a refused request", () => {
+    expect(describeError(trpcError("The AI service is busy right now. Try again in a minute.", "TOO_MANY_REQUESTS"))).toEqual({ kind: "rateLimited" });
+  });
+
+  it("treats a bad analysis as retryable", () => {
+    expect(describeError(trpcError("The assistant's analysis of this file came back unreadable. Try again.", "INTERNAL_SERVER_ERROR"))).toEqual({ kind: "reason", code: "failed" });
+  });
+
   it("hides anything else", () => {
     expect(describeError(new Error("socket hang up"))).toEqual({ kind: "reason", code: "failed" });
     expect(describeError(trpcError("Study sources are not set up on this server yet.", "PRECONDITION_FAILED"))).toEqual({ kind: "notSetUp" });
