@@ -380,6 +380,7 @@ const fr: Messages = {
   "retry.button": "Relancer la transcription",
   "recording.play": "Écouter l’enregistrement",
   "recording.audioTitle": "Audio de l’enregistrement",
+  "recording.audioRemoved": "L’audio de cet enregistrement a été supprimé après la transcription. La transcription et les outils d’étude restent disponibles.",
   "recording.tabTranscript": "Transcription",
   "recording.tabTranscriptHint": "Source",
   "recording.tabNotes": "Notes d’étude",

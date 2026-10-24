@@ -380,6 +380,7 @@ const zh: Messages = {
   "retry.button": "重试转写",
   "recording.play": "播放录音",
   "recording.audioTitle": "录音音频",
+  "recording.audioRemoved": "此录音的音频已在转写后删除。转写文本和学习工具仍可使用。",
   "recording.tabTranscript": "转写",
   "recording.tabTranscriptHint": "原始材料",
   "recording.tabNotes": "学习笔记",

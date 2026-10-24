@@ -6,7 +6,7 @@ vi.mock("./db", () => ({
   setAppSetting: async () => undefined,
 }));
 
-const { cronStatus, describeFailure, resendStatus, runHealthChecks, statusFromResponse, storageStatus } = await import("./systemHealth");
+const { cronStatus, describeFailure, resendStatus, runHealthChecks, statusFromResponse, storageStatus, transferStatus } = await import("./systemHealth");
 
 describe("system health rules", () => {
   afterEach(() => vi.unstubAllEnvs());
@@ -53,7 +53,7 @@ describe("system health rules", () => {
     expect(checks.find(check => check.id === "assemblyai")?.status).toBe("ok");
     expect(checks.find(check => check.id === "llm")?.status).toBe("error");
     expect(checks.find(check => check.id === "database")?.status).toBe("ok");
-    expect(checks.map(check => check.id)).toEqual(["database", "storage", "assemblyai", "llm", "embeddings", "stripe", "resend", "recall", "workos", "push", "cron"]);
+    expect(checks.map(check => check.id)).toEqual(["database", "storage", "blob-transfer", "assemblyai", "llm", "embeddings", "stripe", "resend", "recall", "workos", "push", "cron"]);
   });
 });
 
@@ -86,5 +86,14 @@ describe("resendStatus", () => {
       expect((await resendStatus(reply(401, { name: "restricted_api_key" }))).status).toBe("ok");
       expect((await resendStatus(reply(401, { name: "validation_error" }))).status).toBe("error");
     });
+  });
+});
+
+describe("transfer status", () => {
+  const gb = 1024 ** 3;
+  it("is ok, warns at 80% and errors at 95%", () => {
+    expect(transferStatus({ served: gb, fetched: gb }, 10 * gb).status).toBe("ok");
+    expect(transferStatus({ served: 0, fetched: 8.5 * gb }, 10 * gb).status).toBe("warn");
+    expect(transferStatus({ served: 9.6 * gb, fetched: 0 }, 10 * gb).status).toBe("error");
   });
 });

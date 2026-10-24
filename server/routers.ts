@@ -7,6 +7,8 @@ import { publicProcedure, router, protectedProcedure, adminProcedure, sessionPro
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createRecording, getRecordingByAudioKeyForUser, getRecordingsByUserId, getRecordingById as getRecordingByIdDb, updateRecordingStatus, createTranscript, getTranscriptByRecordingId, updateTranscriptText, updateTranscriptSegments, createStudyNote, getStudyNotesByRecordingId, getStudyNoteById, createFlashcard, getFlashcardsByRecordingId, getFlashcardReviewsByRecordingId, recordFlashcardReview, addChatMessage, getChatHistoryByRecordingId, softDeleteRecording, getDeletedRecordingsByUserId, restoreRecording, getDb, createStudyGuide, getStudyGuidesByRecordingId, getStudyGuideById, createQuiz, getQuizzesByRecordingId, getQuizById, createQuizAttempt, getQuizAttemptsByQuizId, createEmailDraft, getEmailDraftsByRecordingId, getEmailDraftById, searchTranscripts, deletePushSubscription, upsertPushSubscription, getProcessingRecordings, setRecordingTranscriptionProviderId } from "./db";
+import { getTransferReport, assertTransferHeadroomForImport } from "./blobTransfer";
+import { removeAudioIfConfigured } from "./audioRetention";
 import { storageGet, storagePut, storageGetSignedUrl, verifyUploadedAudio, assertSignedAudioUrlIsFetchable, putAudioStream, contentTypeFromStorageKey, getBlobUsage, deleteStoredAudio } from "./storage";
 import { fetchAudioFromUrl, limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { probeAudioDuration } from "./audioDuration";
@@ -114,7 +116,7 @@ export const appRouter = router({
     /** System health (Phase 6): a live check of each configured service; statuses and sentences only, no secrets. */
     health: adminProcedure.query(async () => ({ checkedAt: new Date(), checks: await runHealthChecks() })),
     transcription: adminProcedure.query(() => ({ ...getTranscriptionConfigStatus(), live: getLiveTranscriptionStatus() })),
-    storage: adminProcedure.query(() => getBlobUsage()),
+    storage: adminProcedure.query(async () => ({ ...(await getBlobUsage()), transfer: await getTransferReport() })),
     billing: billingDiagnostics,
     meetingBots: adminProcedure.query(() => describeRecallConfig()),
     attendeeEmail: adminProcedure.query(() => ({ configured: isAttendeeEmailConfigured(), resend: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL), postalAddress: Boolean(postalAddress()) })),
@@ -359,6 +361,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         // Before downloading anything: is any transcription left this month?
         await assertCanTranscribe(ctx.user, 0);
+        await assertTransferHeadroomForImport();
         const { body, mimeType: sourceMimeType, contentLength, finalUrl, title: sourceTitle, durationSec: sourceDuration } = await fetchAudioFromUrl(input.url);
         const limited = limitStreamSize(body, MAX_IMPORT_BYTES);
         // Tee so duration can be read from the audio's own headers without
@@ -1455,6 +1458,7 @@ async function finalizeCompletedTranscription(
     // Smart search index and outgoing webhooks, each bounded by its own short
     // timeout and never throwing, so neither can strand the recording.
     await indexRecordingQuietly(recording.id);
+    await removeAudioIfConfigured(recording);
     const summary = recordingSummary(recording);
     await emitWebhookEvent(recording.userId, "recording.completed", { recording: { ...summary, status: "completed" } });
     await emitWebhookEvent(recording.userId, "transcript.ready", {

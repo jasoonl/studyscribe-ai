@@ -220,6 +220,38 @@ export default function Admin() {
                         style={{ width: `${percent}%` }}
                       />
                     </div>
+                    {storageUsage.transfer && (() => {
+                      const t = storageUsage.transfer;
+                      const used = Math.max(t.served, t.fetched);
+                      const share = Math.min(100, (used / t.limitBytes) * 100);
+                      const gb = (bytes: number) => (bytes / 1024 ** 3).toFixed(2);
+                      return (
+                        <div className="pt-3 border-t space-y-2">
+                          <div className="flex items-baseline justify-between">
+                            <p className="text-sm font-medium">
+                              Transfer this month: {gb(used)} GB of {gb(t.limitBytes)} GB
+                            </p>
+                            <p className="text-xs text-gray-500">{t.period}</p>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${share >= 95 ? "bg-red-500" : share >= 80 ? "bg-amber-500" : "bg-primary"}`}
+                              style={{ width: `${share}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {gb(t.fetched)} GB fetched from Blob, {gb(t.served)} GB sent to browsers. Counted by this server, so
+                            Vercel's own usage page is the authority.
+                          </p>
+                          {t.softCapReached && (
+                            <p className="text-xs text-red-700">
+                              Soft cap reached ({gb(t.softCapBytes)} GB): shared and public playback and link imports are paused.
+                              Owners can still play their own recordings.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {percent >= 80 && (
                       <p className="text-xs text-amber-700">
                         Nearly full. Once the store is over its limit every upload and import fails. Delete recordings

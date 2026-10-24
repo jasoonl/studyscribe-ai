@@ -391,6 +391,7 @@ const en = {
   "retry.button": "Retry transcription",
   "recording.play": "Play Recording",
   "recording.audioTitle": "Recording Audio",
+  "recording.audioRemoved": "The audio for this recording was removed after transcription. The transcript and study tools are still here.",
   "recording.tabTranscript": "Transcript",
   "recording.tabTranscriptHint": "Source material",
   "recording.tabNotes": "Study Notes",

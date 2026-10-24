@@ -19,6 +19,7 @@ import {
 // Type only: the capturer loads when slide capture starts, so it stays out of the app shell.
 import type { CapturedSlide, SlideCapturer } from "@/lib/slideCapture";
 import { MAX_SLIDES_PER_RECORDING } from "@shared/slides";
+import { buildRecorderOptions } from "@/lib/recorderOptions";
 
 /**
  * One microphone recorder for the whole app, mounted above the router.
@@ -548,7 +549,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     const mimeType = pickMimeType();
     let recorder: MediaRecorder;
     try {
-      recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
+      recorder = new MediaRecorder(recordStream, buildRecorderOptions(mimeType));
     } catch {
       releaseAudioGraph();
       toast.error(t("record.mic.recorderUnsupported"));
