@@ -112,7 +112,7 @@ export async function uploadSourceDirectly(
 // ---- Pipeline ----------------------------------------------------------------------------
 
 export type PipelineApi = {
-  extract(id: number): Promise<{ partCount: number }>;
+  extract(id: number, signal?: AbortSignal): Promise<{ partCount: number }>;
   analyzePart(id: number, index: number): Promise<void>;
   finalize(id: number): Promise<void>;
 };
@@ -175,7 +175,7 @@ export async function runSourcePipeline(
   if (needsExtract) {
     onStage?.({ stage: "reading" });
     check();
-    partCount = (await api.extract(id)).partCount;
+    partCount = (await api.extract(id, signal)).partCount;
     doneParts = [];
   }
 

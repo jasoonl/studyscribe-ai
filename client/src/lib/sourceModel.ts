@@ -53,20 +53,64 @@ export function summaryPercent(source: Pick<SourceSummary, "partCount" | "partsD
   return Math.min(99, Math.round((source.partsDone / source.partCount) * 100));
 }
 
-export type FailureReason = "needsOcr" | "tooLarge" | "tooLong" | "unreadable" | "limitReached" | "failed";
+export type FailureReason = "needsOcr" | "noText" | "password" | "empty" | "encoding" | "tooLarge" | "tooLong" | "unreadable" | "limitReached" | "failed";
 
-/** Maps the server's short failure sentence to a reason the UI words itself, so no raw server text is shown. */
-export function failureReasonOf(message: string | null | undefined): FailureReason {
+/**
+ * Maps the server's short failure sentence (written in server/sourceExtract.ts) to a reason the UI
+ * words itself, so no raw server text is shown. `kind` matters for one sentence: "No text could be
+ * found" is scan advice only for a PDF.
+ */
+export function failureReasonOf(message: string | null | undefined, kind?: SourceKind): FailureReason {
   const text = (message ?? "").toLowerCase();
   if (!text) return "failed";
-  if (text.includes("selectable text") || text.includes("scanned") || text.includes("no readable text") || text.includes("no text")) return "needsOcr";
-  if (text.includes("too large") || text.includes("larger than") || text.includes("size")) return "tooLarge";
-  if (text.includes("too many") || text.includes("pages") || text.includes("characters") || text.includes("too long")) return "tooLong";
-  if (text.includes("unreadable") || text.includes("corrupt") || text.includes("could not read") || text.includes("not a valid") || text.includes("does not match")) return "unreadable";
+  if (text.includes("password")) return "password";
+  if (text.includes("selectable text") || text.includes("scanned")) return "needsOcr";
+  if (text.includes("no text could be found") || text.includes("no readable text") || text.includes("no text")) return kind && kind !== "pdf" ? "noText" : kind === "pdf" ? "needsOcr" : "noText";
+  if (text.includes("is empty")) return "empty";
+  if (text.includes("utf-8") || text.includes("not plain text")) return "encoding";
+  if (text.includes("too large") || text.includes("larger than")) return "tooLarge";
+  if (text.includes("characters of text") || text.includes("pages, slides or sections") || text.includes("the limit is") || text.includes("took too long") || text.includes("too many") || text.includes("too long")) return "tooLong";
+  if (
+    text.includes("damaged") ||
+    text.includes("not a real") ||
+    text.includes("does not look like") ||
+    text.includes("could not be opened") ||
+    text.includes("could not be read") ||
+    text.includes("could not read") ||
+    text.includes("unreadable") ||
+    text.includes("corrupt") ||
+    text.includes("not a valid") ||
+    text.includes("does not match")
+  )
+    return "unreadable";
   if (text.includes("limit") || text.includes("allowance")) return "limitReached";
   return "failed";
 }
 
+/** Only an unexplained failure is worth trying again; the others need a different file. */
+export function isRetryableReason(reason: FailureReason): boolean {
+  return reason === "failed";
+}
+
 export function kindLabelKey(kind: SourceKind) {
   return `sources.kind.${kind}` as const;
+}
+
+export type SourceFlag = {
+  id: number;
+  unitIndex: number;
+  label: string;
+  kind: "definition" | "formula" | "date" | "example" | "exam_point";
+  text: string;
+  quote: string | null;
+  importance: number;
+};
+
+/** "Likely on a test" means flagged as an exam point or rated 2 or 3 of 3. */
+export function isLikelyOnTest(flag: Pick<SourceFlag, "kind" | "importance">): boolean {
+  return flag.kind === "exam_point" || flag.importance >= 2;
+}
+
+export function filterFlags<T extends Pick<SourceFlag, "kind" | "importance">>(flags: readonly T[], filter: "all" | "test"): T[] {
+  return filter === "test" ? flags.filter(isLikelyOnTest) : [...flags];
 }

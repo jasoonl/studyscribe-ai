@@ -7,49 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CourseDot } from "@/components/CourseDot";
 import { trpc } from "@/lib/trpc";
-import { formatTimestamp } from "@shared/timestamp";
+import { CitationChips, type AnswerMeta } from "@/components/sources/CitationChips";
+import { SourcePicker } from "@/components/sources/SourcePicker";
+import { askHref, askRequestOptions, parseAskSources, type AskSourceSelection } from "@/lib/askSources";
 import { useI18n } from "@/i18n";
-
-type Citation = { n: number; recordingId: number; title: string; start: number | null; snippet: string };
-type AnswerMeta = { citations: Citation[]; searched: number; retrieval?: "keyword" | "hybrid" };
-
-/** Where a citation opens: the recording, seeked to the moment when the transcript has timestamps. */
-function citationHref(citation: Citation): string {
-  return citation.start === null ? `/recording/${citation.recordingId}` : `/recording/${citation.recordingId}?t=${Math.floor(citation.start)}`;
-}
-
-function SourceChips({ meta }: { meta: AnswerMeta }) {
-  const { t, tn } = useI18n();
-  return (
-    <div className="space-y-2">
-      {meta.citations.length > 0 && (
-        <ul className="flex flex-wrap gap-2" aria-label={t("ask.sources")}>
-          {meta.citations.map(citation => {
-            const at = formatTimestamp(citation.start);
-            return (
-              <li key={citation.n} className="min-w-0 max-w-full">
-                <Link
-                  href={citationHref(citation)}
-                  title={citation.snippet}
-                  className="group flex max-w-full items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-3 text-xs transition-colors hover:border-primary/50 hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold tabular-nums text-primary">{citation.n}</span>
-                  <span className="truncate font-medium text-foreground">{citation.title}</span>
-                  {at && <span className="shrink-0 tabular-nums text-muted-foreground">{at}</span>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <p className="text-xs text-muted-foreground">
-        {meta.searched === 0
-          ? t("ask.noMatch")
-          : tn(meta.retrieval === "hybrid" ? "ask.searchedHybrid" : "ask.searchedKeywords", meta.searched)}
-      </p>
-    </div>
-  );
-}
 
 /**
  * Smart search (C2) status under the chat: how much of the library has been
@@ -105,6 +66,10 @@ export default function Ask() {
   const courseParam = new URLSearchParams(search).get("course");
   const courseId = courseParam && /^\d+$/.test(courseParam) ? Number.parseInt(courseParam, 10) : undefined;
 
+  const sourceList = trpc.sources.list.useQuery({ courseId: courseId }, { retry: false });
+  const sourceCount = sourceList.data?.available ? sourceList.data.sources.length : 0;
+  const readySources = sourceList.data?.available ? sourceList.data.sources.filter(source => source.status === "ready").length : 0;
+  const selection = useMemo(() => parseAskSources(search), [search]);
   const { data: courses } = trpc.courses.list.useQuery();
   const [messages, setMessages] = useState<Message[]>([]);
   const [meta, setMeta] = useState<Record<number, AnswerMeta>>({});
@@ -116,21 +81,33 @@ export default function Ask() {
 
   const ask = trpc.ai.askAcrossRecordings.useMutation({
     onSuccess: result => {
-      setMeta(current => ({ ...current, [answerIndex.current]: { citations: result.citations, searched: result.searched, retrieval: result.retrieval } }));
+      setMeta(current => ({
+        ...current,
+        [answerIndex.current]: { citations: result.citations, searched: result.searched, searchedSources: result.searchedSources, retrieval: result.retrieval, askedSources: askedSources.current, askedRecordings: askedRecordings.current },
+      }));
       setMessages(previous => [...previous, { role: "assistant", content: result.answer }]);
     },
     onError: error => toast.error(error.message || t("ask.failed")),
   });
 
+  const askedSources = useRef(true);
+  const askedRecordings = useRef(true);
+
   const send = (question: string) => {
+    const options = askRequestOptions(selection);
+    askedSources.current = options.includeSources && readySources > 0;
+    askedRecordings.current = options.includeRecordings;
     const history = messages.slice(-6).map(message => ({ role: message.role as "user" | "assistant", content: message.content }));
     setMessages(previous => [...previous, { role: "user", content: question }]);
-    ask.mutate({ question, courseId: selected?.id, history });
+    ask.mutate({ question, courseId: selected?.id, history, ...options });
   };
 
   const changeCourse = (value: string) => {
-    navigate(value === "all" ? "/ask" : `/ask?course=${value}`, { replace: true });
+    // Sources belong to a course, so a new course starts with all of its sources.
+    navigate(askHref(value === "all" ? undefined : Number.parseInt(value, 10), { ids: [], mode: selection.mode }), { replace: true });
   };
+
+  const changeSelection = (next: AskSourceSelection) => navigate(askHref(selected?.id, next), { replace: true });
 
   const emptyMessage = useMemo(
     () =>
@@ -185,6 +162,17 @@ export default function Ask() {
           </div>
         </div>
 
+        {sourceCount > 0 && (
+          <div className="mb-4 sm:max-w-sm">
+            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("ask.sources.label")}</span>
+            {selected ? (
+              <SourcePicker courseId={selected.id} selection={selection} onChange={changeSelection} />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("ask.sources.chooseCourse")}</p>
+            )}
+          </div>
+        )}
+
         <AIChatBox
           messages={messages}
           onSendMessage={send}
@@ -192,10 +180,10 @@ export default function Ask() {
           height="max(26rem, calc(100dvh - 17rem))"
           placeholder={selected ? t("ask.placeholderCourse", { course: selected.name }) : t("ask.placeholder")}
           emptyStateMessage={emptyMessage}
-          renderMessageExtra={(message, index) => (message.role === "assistant" && meta[index] ? <SourceChips meta={meta[index]} /> : null)}
+          renderMessageExtra={(message, index) => (message.role === "assistant" && meta[index] ? <CitationChips meta={meta[index]} /> : null)}
         />
         <div className="mt-3 space-y-1.5">
-          <p className="text-xs text-muted-foreground">{t("ask.footer")}</p>
+          <p className="text-xs text-muted-foreground">{readySources > 0 && selection.mode !== "recordings" ? t("ask.footerSources") : t("ask.footer")}</p>
           <SmartSearchStatus />
         </div>
       </main>
