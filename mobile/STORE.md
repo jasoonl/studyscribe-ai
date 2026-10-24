@@ -6,6 +6,8 @@ What to enter in App Store Connect and Google Play Console for StudyScribe. Keep
 
 **The app sells nothing and does not point to a purchase.** No prices, no plan comparison, no upgrade or "subscribe" buttons, no links to checkout or the billing portal. Settings has a read-only "Plan and usage" screen (plan name, this month's minutes and AI generations, reset date) with the neutral line "Plan changes aren't available in the app." The web's billing (Stripe) is unchanged.
 
+Study sources (course documents, uploads and summaries) add no purchase surface: a monthly allowance refusal is one plain sentence with no plan or price.
+
 Why:
 - **Apple, guideline 3.1.3(f) "Free Stand-alone Apps":** free apps acting as a stand-alone companion to a paid web-based tool do not need in-app purchase, provided there is no purchasing inside the app or calls to action for purchase outside of it. StudyScribe is free to download, everything works on the free plan, and paid plans are bought on the web. The guideline's examples (VoIP, cloud storage, email, web hosting) are examples, but reviewers have read the list narrowly at times, so the review notes below explain the fit. A reader-app entitlement (3.1.3(a)) does not apply: StudyScribe is not a reader app.
 - **US storefront:** since the 2025 court order Apple allows external purchase links in US apps, but that does not hold in every storefront and is still changing. One global build with no purchase path is the simplest compliant option.

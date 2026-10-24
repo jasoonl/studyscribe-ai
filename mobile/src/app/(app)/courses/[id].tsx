@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { resolveCourseColor } from "@shared/courseColors";
+import { SourcesCard } from "@/components/sources/SourcesCard";
 import { RecordingRow } from "@/components/RecordingRow";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState, SkeletonList } from "@/components/ui/misc";
@@ -40,6 +41,7 @@ export default function CourseScreen() {
       {completed > 0 ? (
         <Button label="Make an exam pack from this course" variant="outline" loading={pack.isPending} onPress={() => pack.mutate({ courseId: id })} />
       ) : null}
+      <SourcesCard courseId={id} />
       {recordings.isLoading ? (
         <SkeletonList rows={3} />
       ) : recordings.error ? (

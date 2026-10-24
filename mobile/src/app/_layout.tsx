@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
 import { APP_VERSION } from "@/lib/config";
 import { RecorderProvider } from "@/lib/recorder/RecorderProvider";
+import { UploadsProvider } from "@/lib/sources/UploadsProvider";
 import { SessionProvider, authClient, useSession } from "@/lib/SessionProvider";
 import { usePushRegistration } from "@/lib/push";
 import { useTheme } from "@/theme/tokens";
@@ -72,14 +73,16 @@ function AppShell() {
       <StatusBar style={theme.scheme === "dark" ? "light" : "dark"} />
       <ToastProvider>
         <RecorderProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
-            <Stack.Protected guard={signedIn}>
-              <Stack.Screen name="(app)" />
-            </Stack.Protected>
-            <Stack.Protected guard={!signedIn}>
-              <Stack.Screen name="(auth)" />
-            </Stack.Protected>
-          </Stack>
+          <UploadsProvider>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.background } }}>
+              <Stack.Protected guard={signedIn}>
+                <Stack.Screen name="(app)" />
+              </Stack.Protected>
+              <Stack.Protected guard={!signedIn}>
+                <Stack.Screen name="(auth)" />
+              </Stack.Protected>
+            </Stack>
+          </UploadsProvider>
         </RecorderProvider>
       </ToastProvider>
     </ThemeProvider>

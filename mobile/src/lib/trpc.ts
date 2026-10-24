@@ -35,8 +35,12 @@ export function isUnauthorized(error: unknown) {
 }
 
 /** The message to show for a failed request: the server's own words when it gave any. */
+export const USAGE_LIMIT_SENTENCE = "You have reached this month's allowance. It resets on the first of the month.";
+
 export function errorMessage(error: unknown, fallback = "Something went wrong. Please try again.") {
   if (error instanceof TRPCClientError) {
+    // The server's own usage-limit text can mention plans; the app states the fact only (App Store 3.1.3(f)).
+    if (error.data?.usageLimit) return USAGE_LIMIT_SENTENCE;
     if (error.data?.code === "UNAUTHORIZED") return "Your session ended. Sign in again.";
     if (/Failed to fetch|Network request failed/i.test(error.message)) return "Can't reach StudyScribe. Check your connection.";
     if (error.data?.zodError) return fallback;
