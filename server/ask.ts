@@ -1,11 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, like, or } from "drizzle-orm";
-import { chatHistory, recordings, transcripts } from "../drizzle/schema";
+import { chatHistory, recordings, studySourceUnits, studySources, transcripts } from "../drizzle/schema";
 import { recordingIdsInCourse } from "./courses";
 import { getDb } from "./db";
+import { tolerateMissingSchema } from "./schemaTolerance";
 import { invokeLLM } from "./_core/llm";
 import {
   NOTHING_FOUND_ANSWER,
+  NOTHING_FOUND_WITH_SOURCES_ANSWER,
   buildAskMessages,
   buildPassages,
   escapeLike,
@@ -27,7 +29,18 @@ const MAX_SOURCES = 40;
 /** Candidates each retriever contributes before fusion. */
 const CANDIDATES_PER_RETRIEVER = 24;
 
-export type AskResult = { answer: string; citations: Citation[]; searched: number; retrieval: "keyword" | "hybrid" };
+/** Study source units pulled into memory for one question. Newest sources first. */
+const MAX_SOURCE_UNITS = 200;
+
+export type AskResult = {
+  answer: string;
+  citations: Citation[];
+  /** Recordings that had a match. */
+  searched: number;
+  /** Study sources that had a match. */
+  searchedSources: number;
+  retrieval: "keyword" | "hybrid";
+};
 
 /**
  * Embedding candidates for the question, or none. Before searching it embeds
@@ -74,6 +87,59 @@ async function loadSources(userId: number, terms: string[], restrictTo: number[]
   return rows;
 }
 
+/** "Slide 7: Cell cycle" -> "Slide 7"; the part of a unit label before its title. */
+export function shortLocation(label: string) {
+  return label.split(":")[0].replace(/\s*\(cont\.\)\s*$/, "").trim() || label;
+}
+
+/**
+ * Keyword matches inside the person's study sources, as passages tagged with
+ * the source and where in it they came from. Before migration 0034 there are
+ * none. Only sources whose text has been read are searched.
+ */
+export async function loadSourcePassages(userId: number, terms: string[], courseId?: number, sourceIds?: number[]): Promise<Passage[]> {
+  if (terms.length === 0 || (sourceIds && sourceIds.length === 0)) return [];
+  const db = await getDb();
+  if (!db) return [];
+  const termMatches = terms.map(term => like(studySourceUnits.text, `%${escapeLike(term)}%`));
+  const rows = await tolerateMissingSchema(
+    "study sources",
+    () =>
+      db
+        .select({
+          sourceId: studySources.id,
+          title: studySources.title,
+          unitIndex: studySourceUnits.unitIndex,
+          label: studySourceUnits.label,
+          text: studySourceUnits.text,
+        })
+        .from(studySourceUnits)
+        .innerJoin(studySources, eq(studySources.id, studySourceUnits.sourceId))
+        .where(
+          and(
+            eq(studySources.userId, userId),
+            eq(studySourceUnits.userId, userId),
+            inArray(studySources.status, ["extracted", "analyzing", "ready"]),
+            courseId !== undefined ? eq(studySources.courseId, courseId) : undefined,
+            sourceIds ? inArray(studySources.id, sourceIds) : undefined,
+            or(...termMatches),
+          ),
+        )
+        .orderBy(desc(studySources.createdAt), desc(studySources.id), studySourceUnits.unitIndex)
+        .limit(MAX_SOURCE_UNITS),
+    [] as Array<{ sourceId: number; title: string; unitIndex: number; label: string; text: string }>,
+  );
+  const passages: Passage[] = [];
+  for (const row of rows) {
+    if (typeof row.text !== "string" || typeof row.sourceId !== "number") continue;
+    const location = shortLocation(row.label);
+    for (const passage of buildPassages({ recordingId: 0, title: row.title, fullText: row.text, segments: null })) {
+      passages.push({ ...passage, sourceId: row.sourceId, location, unitIndex: row.unitIndex });
+    }
+  }
+  return passages;
+}
+
 /**
  * Chat rows for Ask have no recording. Before migration 0019 the column is
  * still NOT NULL, so the insert fails; losing the history row must never lose
@@ -97,6 +163,12 @@ export async function askAcrossRecordings(input: {
   question: string;
   courseId?: number;
   history?: AskHistoryMessage[];
+  /** Search the person's uploaded study sources too (default true). */
+  includeSources?: boolean;
+  /** Search recordings (default true). */
+  includeRecordings?: boolean;
+  /** Limit the source search to these sources. */
+  sourceIds?: number[];
   /** Overridable so tests can run without a model. */
   complete?: (messages: ReturnType<typeof buildAskMessages>) => Promise<string>;
   /** Overridable so tests can run without an embeddings provider. */
@@ -110,32 +182,42 @@ export async function askAcrossRecordings(input: {
     if (previous) terms = extractSearchTerms(previous.content);
   }
 
+  const includeRecordings = input.includeRecordings ?? true;
+  const includeSources = input.includeSources ?? true;
+  if (!includeRecordings && !includeSources) {
+    return { answer: "Pick recordings, study sources or both to search.", citations: [], searched: 0, searchedSources: 0, retrieval: "keyword" };
+  }
+
   let restrictTo: number[] | null = null;
-  if (input.courseId !== undefined) restrictTo = await recordingIdsInCourse(input.userId, input.courseId);
+  if (includeRecordings && input.courseId !== undefined) restrictTo = await recordingIdsInCourse(input.userId, input.courseId);
 
   // A follow-up like "and the second one?" carries little meaning alone; give
   // the embedding search the previous question too.
   const previousQuestion = [...history].reverse().find(message => message.role === "user")?.content;
   const semanticQuery = input.question.trim().split(/\s+/).length < 4 && previousQuestion ? `${previousQuestion}\n${input.question}` : input.question;
-  const semantic = await (input.semantic ?? (query => loadSemantic(input.userId, query, restrictTo)))(semanticQuery);
+  const semantic = includeRecordings ? await (input.semantic ?? (query => loadSemantic(input.userId, query, restrictTo)))(semanticQuery) : [];
 
   if (terms.length === 0 && semantic.length === 0) {
-    return { answer: "Ask about a topic, a term, or something a lecturer said, and I will look for it in your recordings.", citations: [], searched: 0, retrieval: "keyword" };
+    return { answer: "Ask about a topic, a term, or something a lecturer said, and I will look for it in your recordings.", citations: [], searched: 0, searchedSources: 0, retrieval: "keyword" };
   }
 
-  const sources = terms.length ? await loadSources(input.userId, terms, restrictTo) : [];
+  const recordingRows = includeRecordings && terms.length ? await loadSources(input.userId, terms, restrictTo) : [];
+  // Study sources join only the keyword ranking; they have no embeddings yet.
+  const sourcePassages = includeSources ? await loadSourcePassages(input.userId, terms, input.courseId, input.sourceIds) : [];
+  const keywordPassages = [...recordingRows.flatMap(source => buildPassages(source)), ...sourcePassages];
   const retrieval: AskResult["retrieval"] = semantic.length ? "hybrid" : "keyword";
   const passages =
     retrieval === "hybrid"
-      ? fuseRankings(rankPassages(sources.flatMap(source => buildPassages(source)), terms, { limit: CANDIDATES_PER_RETRIEVER, perRecording: CANDIDATES_PER_RETRIEVER }), semantic, {
+      ? fuseRankings(rankPassages(keywordPassages, terms, { limit: CANDIDATES_PER_RETRIEVER, perRecording: CANDIDATES_PER_RETRIEVER }), semantic, {
           limit: MAX_PASSAGES,
           perRecording: MAX_PASSAGES_PER_RECORDING,
         })
-      : rankPassages(sources.flatMap(source => buildPassages(source)), terms);
-  const searched = new Set([...sources.map(source => source.recordingId), ...semantic.map(passage => passage.recordingId)]).size;
+      : rankPassages(keywordPassages, terms);
+  const searched = new Set([...recordingRows.map(source => source.recordingId), ...semantic.map(passage => passage.recordingId)]).size;
+  const searchedSources = new Set(sourcePassages.map(passage => passage.sourceId)).size;
 
   if (passages.length === 0) {
-    return { answer: NOTHING_FOUND_ANSWER, citations: [], searched, retrieval };
+    return { answer: searchedSources > 0 || (includeSources && !includeRecordings) ? NOTHING_FOUND_WITH_SOURCES_ANSWER : NOTHING_FOUND_ANSWER, citations: [], searched, searchedSources, retrieval };
   }
 
   const messages = buildAskMessages(input.question, passages, history);
@@ -158,6 +240,8 @@ export async function askAcrossRecordings(input: {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The assistant returned an empty answer. Try rephrasing the question." });
   }
 
-  await rememberExchange(input.userId, input.question, answer);
-  return { answer, citations: parseCitations(answer, passages), searched, retrieval };
+  // An answer that quotes a study source is not kept in the chat history, so deleting the source
+  // cannot leave its text behind there.
+  if (!passages.some(passage => passage.sourceId)) await rememberExchange(input.userId, input.question, answer);
+  return { answer, citations: parseCitations(answer, passages), searched, searchedSources, retrieval };
 }

@@ -1,5 +1,5 @@
 import { BlobNotFoundError, del, head, issueSignedToken, list, presignUrl, put } from "@vercel/blob";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/const";
+import { MAX_SOURCE_BYTES, MAX_SOURCE_LABEL, MAX_SOURCE_TEXT_BYTES, MAX_SOURCE_TEXT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, sourceKindForFileName } from "@shared/const";
 import { ENV } from "./_core/env";
 
 const MAX_AUDIO_SIZE_BYTES = MAX_UPLOAD_BYTES;
@@ -196,6 +196,60 @@ export async function createDirectAudioUpload(input: {
   });
 
   return { key, mimeType, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE };
+}
+
+/**
+ * Direct upload for a study source (Phase 8): PDF, slides or notes. Same shape
+ * as createDirectAudioUpload (a presigned single PUT, neutral `.bin` key with
+ * the kind as its label). Sources are never served back to the browser:
+ * `/api/storage` only serves audio, and the server reads them itself with a
+ * signed URL, so the key is not a way to fetch the file.
+ */
+export async function createDirectSourceUpload(input: {
+  userId: number;
+  fileName: string;
+  size: number;
+}): Promise<{ key: string; kind: ReturnType<typeof sourceKindForFileName> & string; uploadUrl: string; uploadContentType: string } | null> {
+  if (!isVercelBlobStorageConfigured()) return null;
+  const kind = sourceKindForFileName(input.fileName);
+  if (!kind) throw new Error("Unsupported file type");
+  const maxBytes = kind === "text" ? MAX_SOURCE_TEXT_BYTES : MAX_SOURCE_BYTES;
+  if (!Number.isFinite(input.size) || input.size <= 0 || input.size > maxBytes) {
+    throw new Error(`File must be between 1 byte and ${kind === "text" ? MAX_SOURCE_TEXT_LABEL : MAX_SOURCE_LABEL}`);
+  }
+  const key = `${input.userId}/sources/${crypto.randomUUID()}-${kind}.bin`;
+  const validUntil = Date.now() + 10 * 60 * 1_000;
+  const signedToken = await issueSignedToken({
+    pathname: key,
+    operations: ["put"],
+    allowedContentTypes: [BLOB_UPLOAD_CONTENT_TYPE],
+    maximumSizeInBytes: maxBytes,
+    validUntil,
+  });
+  const { presignedUrl } = await presignUrl(signedToken, {
+    operation: "put",
+    pathname: key,
+    access: "private",
+    allowedContentTypes: [BLOB_UPLOAD_CONTENT_TYPE],
+    maximumSizeInBytes: maxBytes,
+    allowOverwrite: false,
+    addRandomSuffix: false,
+    validUntil,
+  });
+  return { key, kind, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE };
+}
+
+/** Confirms an uploaded source exists and has bytes before a row is committed to it. */
+export async function verifyUploadedSource(key: string): Promise<{ size: number }> {
+  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
+  let metadata;
+  try {
+    metadata = await head(key);
+  } catch {
+    throw new Error("The uploaded file could not be found in storage. Please upload it again.");
+  }
+  if (!metadata || metadata.size <= 0) throw new Error("The uploaded file is empty. Please upload it again.");
+  return { size: metadata.size };
 }
 
 /**

@@ -55,6 +55,7 @@ import { billingDiagnostics, billingRouter } from "./billing";
 import { signupRouter } from "./openSignup";
 import { onboardingRouter } from "./onboarding";
 import { translationsRouter } from "./translations";
+import { sourcesRouter } from "./studySources";
 import { calendarRouter } from "./calendar";
 import { aiProcedure, assertCanTranscribe, recordTranscriptionUsage } from "./usage";
 import { mobileRouter } from "./mobileRouter";
@@ -812,12 +813,15 @@ export const appRouter = router({
         question: z.string().trim().min(2, "Ask a question").max(1000),
         courseId: z.number().int().positive().optional(),
         history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(6000) })).max(8).optional(),
+        includeSources: z.boolean().optional(),
+        includeRecordings: z.boolean().optional(),
+        sourceIds: z.array(z.number().int().positive()).max(60).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         if (!checkTrpcRateLimit(`ask:${ctx.user.id}`, 10 * 60 * 1000, 30)) {
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "That is a lot of questions in a short time. Give it a few minutes." });
         }
-        return askAcrossRecordings({ userId: ctx.user.id, question: input.question, courseId: input.courseId, history: input.history });
+        return askAcrossRecordings({ userId: ctx.user.id, question: input.question, courseId: input.courseId, history: input.history, includeSources: input.includeSources, includeRecordings: input.includeRecordings, sourceIds: input.sourceIds });
       }),
 
     assistantChat: aiProcedure
@@ -926,6 +930,7 @@ export const appRouter = router({
   signup: signupRouter,
   onboarding: onboardingRouter,
   translations: translationsRouter,
+  sources: sourcesRouter,
   calendar: calendarRouter,
   mobile: mobileRouter,
   apiKeys: apiKeysRouter,

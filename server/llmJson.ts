@@ -11,17 +11,19 @@ export async function completeJson(params: {
   responseFormat: InvokeParams["response_format"];
   maxTokens: number;
   what: string;
+  /** For calls that must finish well inside the 60s function limit; also stops the retry loop. */
+  timeoutMs?: number;
 }): Promise<unknown> {
   let content: unknown;
   try {
-    const response = await invokeLLM({ messages: params.messages, response_format: params.responseFormat, max_tokens: params.maxTokens });
+    const response = await invokeLLM({ messages: params.messages, response_format: params.responseFormat, max_tokens: params.maxTokens, timeoutMs: params.timeoutMs });
     content = response.choices?.[0]?.message?.content;
   } catch (error) {
     console.error(`[ai] ${params.what} failed:`, error instanceof Error ? error.message : error);
     const message = error instanceof Error && /not configured/i.test(error.message)
       ? "AI features are not set up on this server yet."
       : `Could not create ${params.what} right now. Try again in a moment.`;
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message, cause: error });
   }
   const parsed = parseJsonContent(content);
   if (parsed === null) {
@@ -31,9 +33,9 @@ export async function completeJson(params: {
 }
 
 /** Same, for plain Markdown output. */
-export async function completeText(params: { messages: InvokeParams["messages"]; maxTokens: number; what: string }): Promise<string> {
+export async function completeText(params: { messages: InvokeParams["messages"]; maxTokens: number; what: string; timeoutMs?: number }): Promise<string> {
   try {
-    const response = await invokeLLM({ messages: params.messages, max_tokens: params.maxTokens });
+    const response = await invokeLLM({ messages: params.messages, max_tokens: params.maxTokens, timeoutMs: params.timeoutMs });
     const content = response.choices?.[0]?.message?.content;
     const text = typeof content === "string" ? content.trim() : "";
     if (!text) throw new Error("empty response");
@@ -43,6 +45,6 @@ export async function completeText(params: { messages: InvokeParams["messages"];
     const message = error instanceof Error && /not configured/i.test(error.message)
       ? "AI features are not set up on this server yet."
       : `Could not create ${params.what} right now. Try again in a moment.`;
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message, cause: error });
   }
 }

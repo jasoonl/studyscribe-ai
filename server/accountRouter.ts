@@ -37,6 +37,7 @@ import { deleteCalendarDataForUser, exportCalendarDataForUser } from "./calendar
 import { deleteProviderTranscript } from "./speakerDiarization";
 import { deleteApiKeysForUser, exportApiKeysForUser } from "./apiKeys";
 import { deleteSlidesForUser, exportSlidesForUser } from "./slides";
+import { deleteSourcesForUser, exportSourcesForUser } from "./studySources";
 import { deleteMeetingBotsForUser, exportMeetingBotsForUser } from "./meetingBots";
 import { deleteRecordingEventsForUser, exportRecordingEventsForUser } from "./recordingEvents";
 import { deleteAttendeeEmailsForUser, exportAttendeeEmailsForUser } from "./attendeeEmail";
@@ -131,6 +132,7 @@ export const accountRouter = router({
       calendarReminders: await exportCalendarDataForUser(userId),
       apiKeys: await exportApiKeysForUser(userId),
       slides: await exportSlidesForUser(userId),
+      studySources: await exportSourcesForUser(userId),
       meetingNoteTakers: await exportMeetingBotsForUser(userId),
       recordingEvents: await exportRecordingEventsForUser(userId),
       notesEmailedToAttendees: await exportAttendeeEmailsForUser(userId),
@@ -181,6 +183,8 @@ export const accountRouter = router({
       }
 
       await purgeRecordings(ownRecordings);
+      // Study source files go first too; a failure here stops the deletion so no file is orphaned.
+      await deleteSourcesForUser(userId);
 
       const ownTags = await db.select({ id: tags.id }).from(tags).where(eq(tags.userId, userId));
       if (ownTags.length) {
