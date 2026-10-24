@@ -382,6 +382,9 @@ export default function RecordingDetail() {
                     />
                   </div>
                 )}
+                {!recording.audioUrl && recording.status === "completed" && (
+                  <p className="text-sm text-muted-foreground">{t("recording.audioRemoved")}</p>
+                )}
 
                 <RecordingChapters
                   recordingId={recording.id}

@@ -380,6 +380,7 @@ const ko: Messages = {
   "retry.button": "받아쓰기 다시 시도",
   "recording.play": "녹음 재생",
   "recording.audioTitle": "녹음 오디오",
+  "recording.audioRemoved": "이 녹음의 오디오는 전사 후 삭제되었습니다. 전사본과 학습 도구는 그대로 사용할 수 있습니다.",
   "recording.tabTranscript": "받아쓰기",
   "recording.tabTranscriptHint": "원본 자료",
   "recording.tabNotes": "학습 노트",

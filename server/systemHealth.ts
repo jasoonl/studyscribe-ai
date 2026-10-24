@@ -3,6 +3,7 @@ import { getAppSetting, getDb, setAppSetting } from "./db";
 import { getEmbeddingConfig } from "./embeddings";
 import { getBrowserPushConfiguration } from "./pushNotifications";
 import { describeRecallConfig, getRecallConfig } from "./recall";
+import { getTransferReport, transferLevel, type TransferTotals } from "./blobTransfer";
 import { getBlobUsage, isVercelBlobStorageConfigured } from "./storage";
 import { getStripeConfig, stripeRequest } from "./stripe";
 import { describeWorkosConfig, getWorkosConfig } from "./workos";
@@ -57,6 +58,17 @@ export function storageStatus(usage: { configured: boolean; totalBytes: number; 
   if (share >= 0.95) return { status: "error", detail: `${used} Blob suspends a store over its limit; free space or raise the plan.` };
   if (share >= 0.8) return { status: "warn", detail: `${used} Getting close to the limit.` };
   return { status: "ok", detail: used };
+}
+
+/** Monthly Blob transfer: warn at 80% of the allowance, error at 95% (the soft cap, where shared playback pauses). */
+export function transferStatus(totals: TransferTotals, limitBytes: number): Omit<HealthCheck, "id" | "label" | "latencyMs"> {
+  const used = Math.max(totals.served, totals.fetched);
+  const gb = (n: number) => (n / 1024 ** 3).toFixed(2);
+  const text = `${gb(used)} GB of ${gb(limitBytes)} GB transferred this month (${Math.round((used / limitBytes) * 100)}%; ${gb(totals.fetched)} GB fetched from Blob, ${gb(totals.served)} GB sent to browsers).`;
+  const level = transferLevel(totals, limitBytes);
+  if (level === "error") return { status: "error", detail: `${text} Shared playback and link imports are paused to keep the store from being suspended.` };
+  if (level === "warn") return { status: "warn", detail: `${text} Getting close to the free allowance.` };
+  return { status: "ok", detail: text };
 }
 
 export function cronStatus(lastRun: Date | null, now = new Date()): Omit<HealthCheck, "id" | "label" | "latencyMs"> {
@@ -114,6 +126,11 @@ export async function runHealthChecks(fetcher: typeof fetch = fetch): Promise<He
       return { status: "ok", detail: "Connected." };
     })],
     ["storage", "Storage", () => timed(async () => storageStatus(isVercelBlobStorageConfigured() ? await getBlobUsage() : { configured: false, totalBytes: 0, limitBytes: 0 }))],
+    ["blob-transfer", "Storage transfer", () => timed(async () => {
+      if (!isVercelBlobStorageConfigured()) return { status: "off", detail: "Vercel Blob is not configured." };
+      const report = await getTransferReport();
+      return transferStatus(report, report.limitBytes);
+    })],
     ["assemblyai", "Transcription (AssemblyAI)", process.env.ASSEMBLYAI_API_KEY ? () => timed(async () => {
       const response = await fetcher("https://api.assemblyai.com/v2/transcript?limit=1", { headers: { authorization: process.env.ASSEMBLYAI_API_KEY! } });
       return statusFromResponse(response.status, "AssemblyAI");

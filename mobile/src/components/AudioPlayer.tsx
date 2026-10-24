@@ -20,6 +20,8 @@ type PlayerContextValue = {
   duration: number;
   playing: boolean;
   ready: boolean;
+  /** The server says this recording has no audio (for example it was removed after transcription). */
+  noAudio: boolean;
   seek(seconds: number, play?: boolean): void;
   toggle(): void;
 };
@@ -31,6 +33,7 @@ const SPEEDS = [1, 1.25, 1.5, 2, 0.75];
 
 export function PlayerProvider({ recordingId, title, knownDuration, startAt, children }: { recordingId: number; title: string; knownDuration?: number | null; startAt?: number; children: ReactNode }) {
   const link = trpc.mobile.playbackUrl.useQuery({ recordingId }, { staleTime: 60 * 60 * 1000, retry: 1 });
+  const noAudio = (link.error as { data?: { code?: string } } | null)?.data?.code === "NOT_FOUND";
   const source = useMemo(() => (link.data ? { uri: apiUrl(link.data.path) } : null), [link.data]);
   const player = useAudioPlayer(source, { updateInterval: 250 });
   const status = useAudioPlayerStatus(player);
@@ -77,6 +80,7 @@ export function PlayerProvider({ recordingId, title, knownDuration, startAt, chi
       duration,
       playing: status.playing,
       ready: status.isLoaded,
+      noAudio,
       seek(seconds, play) {
         player.seekTo(Math.max(0, seconds)).catch(() => undefined);
         if (play && !status.playing) player.play();
@@ -89,7 +93,7 @@ export function PlayerProvider({ recordingId, title, knownDuration, startAt, chi
         }
       },
     }),
-    [status.currentTime, status.playing, status.isLoaded, status.didJustFinish, duration, player],
+    [noAudio, status.currentTime, status.playing, status.isLoaded, status.didJustFinish, duration, player],
   );
 
   return (
@@ -108,7 +112,14 @@ export function PlayerControls() {
   const [width, setWidth] = useState(1);
   const [speedIndex, setSpeedIndex] = useState(0);
   if (!context || !player) return null;
-  const { currentTime, duration, playing, ready, seek, toggle } = context;
+  const { currentTime, duration, playing, ready, noAudio, seek, toggle } = context;
+  if (noAudio) {
+    return (
+      <View className="rounded-xl border border-border bg-card p-4">
+        <Text className="text-sm text-muted-foreground">The audio for this recording was removed.</Text>
+      </View>
+    );
+  }
   const fraction = duration > 0 ? Math.min(1, currentTime / duration) : 0;
 
   return (

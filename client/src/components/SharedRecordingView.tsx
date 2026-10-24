@@ -120,16 +120,20 @@ export function SharedRecordingView({ bundle, role }: { bundle: SharedBundle; ro
         <p className="mt-2 text-sm text-muted-foreground">{role ? t(`shared.view.role.${role}`) : t("shared.view.readOnly")}</p>
       </div>
 
-      <Card className="p-4">
-        <AudioPlayer
-          ref={playerRef}
-          src={recording.audioUrl}
-          title={recording.title}
-          fallbackDuration={recording.duration ?? undefined}
-          onTimeUpdate={role ? setPlaybackTime : undefined}
-          segments={segments.length ? segments : undefined}
-        />
-      </Card>
+      {recording.audioUrl ? (
+        <Card className="p-4">
+          <AudioPlayer
+            ref={playerRef}
+            src={recording.audioUrl}
+            title={recording.title}
+            fallbackDuration={recording.duration ?? undefined}
+            onTimeUpdate={role ? setPlaybackTime : undefined}
+            segments={segments.length ? segments : undefined}
+          />
+        </Card>
+      ) : (
+        <Card className="p-4 text-sm text-muted-foreground">{t("recording.audioRemoved")}</Card>
+      )}
 
       <Tabs defaultValue="transcript" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">

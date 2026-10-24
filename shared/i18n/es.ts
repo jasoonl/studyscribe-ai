@@ -380,6 +380,7 @@ const es: Messages = {
   "retry.button": "Reintentar la transcripción",
   "recording.play": "Reproducir la grabación",
   "recording.audioTitle": "Audio de la grabación",
+  "recording.audioRemoved": "El audio de esta grabación se eliminó tras la transcripción. La transcripción y las herramientas de estudio siguen disponibles.",
   "recording.tabTranscript": "Transcripción",
   "recording.tabTranscriptHint": "Material de origen",
   "recording.tabNotes": "Apuntes",

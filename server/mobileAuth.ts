@@ -6,6 +6,7 @@ import { getAppSetting, getDb, getRecordingByAudioKey } from "./db";
 import { createSessionToken, getBearerToken, sessionMatchesUser, verifySessionToken } from "./sessionManager";
 import { authLimiter } from "./_core/rateLimit";
 import { streamStoredAudio } from "./_core/storageProxy";
+import { TRANSFER_PAUSED_MESSAGE, isTransferLimitReached, isTransferSoftCapReached } from "./blobTransfer";
 import { completeNativeSocialAuth } from "./nativeSocialAuth";
 import { IdentityTokenError, verifyAppleIdentityToken, verifyGoogleIdToken } from "./nativeIdentity";
 import { unregisterDeviceToken } from "./nativePush";
@@ -205,6 +206,11 @@ export function registerMobileRoutes(app: Express) {
       const recording = await getRecordingByAudioKey(grant.key);
       if (!recording || recording.id !== grant.recordingId) {
         res.status(404).send("Recording not found");
+        return;
+      }
+      const isOwner = recording.userId === grant.userId;
+      if (isOwner ? await isTransferLimitReached() : await isTransferSoftCapReached()) {
+        res.status(503).send(TRANSFER_PAUSED_MESSAGE);
         return;
       }
       await streamStoredAudio(req, res, grant.key);

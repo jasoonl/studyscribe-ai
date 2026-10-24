@@ -380,6 +380,7 @@ const ja: Messages = {
   "retry.button": "文字起こしを再試行",
   "recording.play": "録音を再生",
   "recording.audioTitle": "録音の音声",
+  "recording.audioRemoved": "この録音の音声は文字起こしの後に削除されました。文字起こしと学習ツールは引き続き利用できます。",
   "recording.tabTranscript": "文字起こし",
   "recording.tabTranscriptHint": "元の資料",
   "recording.tabNotes": "学習ノート",

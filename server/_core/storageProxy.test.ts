@@ -24,7 +24,16 @@ vi.mock("../storage", () => ({
   storageGetSignedUrl: async () => SIGNED_URL,
 }));
 
-import { registerStorageProxy } from "./storageProxy";
+const softCapReached = vi.fn(async () => false);
+const limitReached = vi.fn(async () => false);
+vi.mock("../blobTransfer", () => ({
+  recordTransfer: vi.fn(),
+  isTransferSoftCapReached: () => softCapReached(),
+  isTransferLimitReached: () => limitReached(),
+  TRANSFER_PAUSED_MESSAGE: "paused",
+}));
+
+import { registerStorageProxy, fullBodyCache, rangeSupport } from "./storageProxy";
 
 const SIGNED_URL = "https://blob.example/signed-get-url";
 const KEY = "7/recordings/abc-webm.bin";
@@ -33,6 +42,10 @@ const realFetch = globalThis.fetch;
 let upstream: (init?: RequestInit) => Response;
 
 beforeEach(() => {
+  fullBodyCache.clear();
+  rangeSupport.clear();
+  softCapReached.mockResolvedValue(false);
+  limitReached.mockResolvedValue(false);
   getRecordingByAudioKey.mockResolvedValue({ id: 1, userId: 7, publicShareToken: "tok_public" });
   getRecordingAccess.mockResolvedValue(null);
   getSessionFromCookie.mockReturnValue({ userId: 7 });
@@ -197,5 +210,99 @@ describe("audio access rules (Phase 6 review)", () => {
     } finally {
       Object.assign(ENV, { forgeApiUrl: saved.url, forgeApiKey: saved.key });
     }
+  });
+});
+
+describe("bandwidth savings", () => {
+  it("lets browsers cache privately and answers If-None-Match with 304 without touching storage", async () => {
+    const first = await request(url);
+    expect(first.headers.get("cache-control")).toBe("private, max-age=600");
+    const etag = first.headers.get("etag")!;
+    expect(etag).toBeTruthy();
+    let fetched = 0;
+    upstream = () => {
+      fetched += 1;
+      return new Response("x");
+    };
+    const second = await request(url, { "If-None-Match": etag });
+    expect(second.status).toBe(304);
+    expect(fetched).toBe(0);
+  });
+
+  it("still checks access before a 304", async () => {
+    const etag = (await request(url)).headers.get("etag")!;
+    getSessionFromCookie.mockReturnValue({ userId: 99 });
+    expect((await request(url, { "If-None-Match": etag })).status).toBe(403);
+  });
+
+  it("downloads a file that ignores Range once, then serves later ranges from memory", async () => {
+    let fetched = 0;
+    upstream = () => {
+      fetched += 1;
+      return new Response("0123456789", { status: 200, headers: { "content-length": "10" } });
+    };
+    expect(await (await request(url, { Range: "bytes=0-1" })).text()).toBe("01");
+    expect(await (await request(url, { Range: "bytes=4-6" })).text()).toBe("456");
+    expect((await request(url, { Range: "bytes=8-" })).status).toBe(206);
+    expect(fetched).toBe(1);
+  });
+
+  it("does not serve the cached copy to someone without access", async () => {
+    upstream = () => new Response("0123456789", { status: 200, headers: { "content-length": "10" } });
+    await request(url, { Range: "bytes=0-1" });
+    getSessionFromCookie.mockReturnValue({ userId: 99 });
+    expect((await request(url, { Range: "bytes=0-1" })).status).toBe(403);
+  });
+
+  it("keeps passing Range upstream when storage honors it", async () => {
+    let calls = 0;
+    upstream = () => {
+      calls += 1;
+      return new Response("a", { status: 206, headers: { "content-range": "bytes 0-0/11", "content-length": "1" } });
+    };
+    await request(url, { Range: "bytes=0-0" });
+    await request(url, { Range: "bytes=0-0" });
+    expect(calls).toBe(2);
+  });
+});
+
+describe("transfer soft cap", () => {
+  it("refuses a share recipient and a public link but keeps the owner playing", async () => {
+    softCapReached.mockResolvedValue(true);
+    expect((await request(url)).status).toBe(200);
+    getSessionFromCookie.mockReturnValue({ userId: 99 });
+    getRecordingAccess.mockResolvedValue({ role: "view" } as any);
+    expect((await request(url)).status).toBe(503);
+    getSessionFromCookie.mockReturnValue(null);
+    expect((await request(`${url}&token=tok_public`)).status).toBe(503);
+  });
+
+  it("stops even the owner at the hard limit", async () => {
+    limitReached.mockResolvedValue(true);
+    expect((await request(url)).status).toBe(503);
+  });
+});
+
+describe("range edge cases", () => {
+  it("streams only the requested slice of a file too large to buffer when storage ignores Range", async () => {
+    upstream = () => new Response("0123456789", { status: 200, headers: { "content-length": String(40 * 1024 * 1024) } });
+    const response = await request(url, { Range: "bytes=2-5" });
+    expect(response.status).toBe(206);
+    expect(response.headers.get("content-range")).toBe(`bytes 2-5/${40 * 1024 * 1024}`);
+    expect(response.headers.get("content-length")).toBe("4");
+    expect(await response.text()).toBe("2345");
+  });
+
+  it("ignores Range when If-Range does not match the current validator, and honors it when it does", async () => {
+    upstream = (init) =>
+      new Headers(init?.headers).get("range")
+        ? new Response("a", { status: 206, headers: { "content-range": "bytes 0-0/11", "content-length": "1" } })
+        : new Response("audio-bytes", { status: 200, headers: { "content-length": "11" } });
+    const etag = (await request(url)).headers.get("etag")!;
+    const stale = await request(url, { Range: "bytes=0-0", "If-Range": '"stale"' });
+    expect(stale.status).toBe(200);
+    expect(await stale.text()).toBe("audio-bytes");
+    const fresh = await request(url, { Range: "bytes=0-0", "If-Range": etag });
+    expect(fresh.status).toBe(206);
   });
 });

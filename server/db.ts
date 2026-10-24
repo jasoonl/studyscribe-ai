@@ -483,6 +483,13 @@ export async function updateRecordingStatus(id: number, status: "processing" | "
   return db.update(recordings).set({ status }).where(eq(recordings.id, id));
 }
 
+/** Marks a recording's audio as removed (file deleted): empty key and url, which the UI reads as "audio removed". */
+export async function clearRecordingAudio(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(recordings).set({ audioKey: "", audioUrl: "" }).where(eq(recordings.id, id));
+}
+
 // Transcript helpers
 export async function createTranscript(data: {
   recordingId: number;
@@ -1123,6 +1130,27 @@ export async function setAppSetting(key: string, value: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.insert(appSettings).values({ key, value, updatedAt: new Date() }).onDuplicateKeyUpdate({ set: { value, updatedAt: new Date() } });
+}
+
+/**
+ * Atomically adds to a {served, fetched} JSON counter in one statement, so
+ * concurrent function instances never overwrite each other's increments.
+ */
+export async function incrementTransferCounter(key: string, served: number, fetched: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const s = Math.max(0, Math.round(served));
+  const f = Math.max(0, Math.round(fetched));
+  const initial = JSON.stringify({ served: s, fetched: f });
+  await db.execute(sql`
+    INSERT INTO appSettings (\`key\`, value, updatedAt) VALUES (${key}, ${initial}, CURRENT_TIMESTAMP)
+    ON DUPLICATE KEY UPDATE
+      value = JSON_OBJECT(
+        'served', IF(JSON_VALID(value), COALESCE(CAST(JSON_EXTRACT(value, '$.served') AS DECIMAL(20,0)), 0), 0) + ${s},
+        'fetched', IF(JSON_VALID(value), COALESCE(CAST(JSON_EXTRACT(value, '$.fetched') AS DECIMAL(20,0)), 0), 0) + ${f}
+      ),
+      updatedAt = CURRENT_TIMESTAMP
+  `);
 }
 
 export async function deleteAppSetting(key: string) {
