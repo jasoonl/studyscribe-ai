@@ -1271,6 +1271,25 @@ export const studySources = mysqlTable("studySources", {
 
 export type StudySource = typeof studySources.$inferSelect;
 
+/**
+ * Standalone study notes (Phase 9): Markdown pages written without a recording.
+ * Separate from `studyNotes`, whose rows always belong to a recording.
+ * `courseId` is a plain int like the rest of the schema (no foreign keys).
+ */
+export const notePages = mysqlTable("notePages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: mediumText("body").notNull(),
+  courseId: int("courseId"),
+  createdAt: timestamp("createdAt").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`CURRENT_TIMESTAMP`).onUpdateNow().notNull(),
+}, (table) => [
+  index("notePages_user_updated_idx").on(table.userId, table.updatedAt),
+]);
+
+export type NotePage = typeof notePages.$inferSelect;
+
 /** One page, slide or section of a source, in reading order. `unitIndex` is 0-based and is the location key citations use. */
 export const studySourceUnits = mysqlTable("studySourceUnits", {
   id: int("id").autoincrement().primaryKey(),

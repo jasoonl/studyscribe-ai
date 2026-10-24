@@ -45,6 +45,7 @@ const BROWSER_STORAGE: Row[] = [
   { name: "studyscribe-app-*", purpose: "A copy of the app's own code (not your data), so StudyScribe opens without a connection (service worker cache).", lasts: "Until the next version of the app replaces it" },
   { name: "studyscribe_onboarding_done", purpose: "Remembers that you have seen the welcome tour.", lasts: "Until you clear site data" },
   { name: "studyscribe_setup_checklist_hidden:*", purpose: "Remembers that you hid the Get set up list on your library.", lasts: "Until you clear site data" },
+  { name: "studyscribe_note_draft:*", purpose: "Keeps the text of a note that could not be saved when you left its page, so it can be offered back (session storage).", lasts: "Until you close the tab" },
   { name: "studyscribe_calendar_prompt_hidden", purpose: "Remembers that you chose Not now for connecting Google Calendar on your library.", lasts: "Until you clear site data" },
   { name: "studyscribe_auto_notes", purpose: "Remembers whether study notes are written automatically (Settings).", lasts: "Until you change it or clear site data" },
   { name: "studyscribe_auto_notes_tried_*", purpose: "Stops the same notes being generated twice in one tab (session storage).", lasts: "Until you close the tab" },

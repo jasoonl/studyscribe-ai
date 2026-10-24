@@ -253,6 +253,13 @@
       "when": 1792818252484,
       "tag": "0035_phase8_mistakes_practice",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1792859194634,
+      "tag": "0036_standalone_notes",
+      "breakpoints": true
     }
   ]
 }

@@ -71,6 +71,8 @@ const CoursePage = lazy(() => import("./pages/CoursePage"));
 const SourceLibrary = lazy(() => import("./pages/SourceLibrary"));
 const SourceDetail = lazy(() => import("./pages/SourceDetail"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const Notes = lazy(() => import("./pages/Notes"));
+const NoteEditor = lazy(() => import("./pages/NoteEditor"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const Progress = lazy(() => import("./pages/Progress"));
 const Offline = lazy(() => import("./pages/Offline"));
@@ -175,6 +177,8 @@ function Router() {
         <Route path="/courses/:id/sources" component={() => <ProtectedRoute component={SourceLibrary} />} />
         <Route path="/sources/:id" component={() => <ProtectedRoute component={SourceDetail} />} />
         <Route path="/courses/:id" component={() => <ProtectedRoute component={CoursePage} />} />
+        <Route path="/notes" component={() => <ProtectedRoute component={Notes} />} />
+        <Route path="/notes/:id" component={() => <ProtectedRoute component={NoteEditor} />} />
         <Route path="/tasks" component={() => <ProtectedRoute component={Tasks} />} />
         <Route path="/plan" component={() => <ProtectedRoute component={StudyPlan} />} />
         <Route path="/progress" component={() => <ProtectedRoute component={Progress} />} />
