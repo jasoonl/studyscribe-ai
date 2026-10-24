@@ -70,6 +70,8 @@ export function failureReasonOf(message: string | null | undefined, kind?: Sourc
   if (text.includes("utf-8") || text.includes("not plain text")) return "encoding";
   if (text.includes("too large") || text.includes("larger than")) return "tooLarge";
   if (text.includes("characters of text") || text.includes("pages, slides or sections") || text.includes("the limit is") || text.includes("took too long") || text.includes("too many") || text.includes("too long")) return "tooLong";
+  // The server's generic catch-all: the cause is unknown and trying again can work.
+  if (text.includes("we could not read this file")) return "failed";
   if (
     text.includes("damaged") ||
     text.includes("not a real") ||
@@ -83,7 +85,6 @@ export function failureReasonOf(message: string | null | undefined, kind?: Sourc
     text.includes("does not match")
   )
     return "unreadable";
-  if (text.includes("limit") || text.includes("allowance")) return "limitReached";
   return "failed";
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { TRPCClientError } from "@trpc/client";
 import { SourceFailedError, SourceStillReadingError, describeError } from "./SourceUploadsContext";
 
@@ -24,11 +24,23 @@ describe("describeError", () => {
     expect(describeError(new SourceStillReadingError())).toEqual({ kind: "stillReading" });
   });
 
-  it("shows plain cap sentences and hides anything else", () => {
-    expect(describeError(trpcError("You can keep up to 60 study sources. Delete one you no longer need first.", "BAD_REQUEST"))).toEqual({
-      kind: "message",
-      text: "You can keep up to 60 study sources. Delete one you no longer need first.",
-    });
+  test.each([
+    ["You can keep up to 60 study sources. Delete one you no longer need first.", "BAD_REQUEST"],
+    ["You have reached the storage limit for study sources. Delete one you no longer need first.", "BAD_REQUEST"],
+    ["A course can hold up to 25 study sources.", "BAD_REQUEST"],
+    ["Storage is nearly full, so uploads are paused. Your existing material is safe.", "PRECONDITION_FAILED"],
+  ])("shows the cap sentence as written: %s", (text, code) => {
+    const result = describeError(trpcError(text, code));
+    expect(result).toEqual({ kind: "message", text });
+    expect(result).not.toEqual({ kind: "reason", code: "limitReached" });
+  });
+
+  it("maps the generic read failure to a retryable reason and specific ones to unreadable", () => {
+    expect(describeError(new SourceFailedError("We could not read this file. It may be damaged. Try uploading it again.", "pdf"))).toEqual({ kind: "reason", code: "failed" });
+    expect(describeError(new SourceFailedError("This file is damaged and could not be opened.", "pdf"))).toEqual({ kind: "reason", code: "unreadable" });
+  });
+
+  it("hides anything else", () => {
     expect(describeError(new Error("socket hang up"))).toEqual({ kind: "reason", code: "failed" });
     expect(describeError(trpcError("Study sources are not set up on this server yet.", "PRECONDITION_FAILED"))).toEqual({ kind: "notSetUp" });
   });

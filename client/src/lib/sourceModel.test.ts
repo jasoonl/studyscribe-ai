@@ -21,12 +21,15 @@ describe("summaryPercent", () => {
   });
 });
 
+const GENERIC = "We could not read this file. It may be damaged. Try uploading it again.";
+
 describe("failureReasonOf", () => {
   // These are the exact sentences server/sourceExtract.ts raises.
   const cases: [string, string, ReturnType<typeof failureReasonOf>][] = [
     ["pdf scan", "This PDF has no selectable text. Scanned PDFs are not supported yet; upload a version with real text.", "needsOcr"],
     ["password", "This PDF is password protected. Remove the password and upload it again.", "password"],
     ["damaged pdf", "This PDF is damaged or not a real PDF, so its text could not be read.", "unreadable"],
+    ["generic read failure", GENERIC, "failed"],
     ["damaged zip", "This file is damaged and could not be opened.", "unreadable"],
     ["not pptx", "This file does not look like a PowerPoint presentation.", "unreadable"],
     ["not docx", "This file does not look like a Word document.", "unreadable"],
@@ -44,6 +47,20 @@ describe("failureReasonOf", () => {
   for (const [name, sentence, reason] of cases) {
     it(`reads the server sentence for ${name}`, () => expect(failureReasonOf(sentence)).toBe(reason));
   }
+
+  it("treats the generic read failure as retryable", () => {
+    expect(isRetryableReason(failureReasonOf(GENERIC))).toBe(true);
+  });
+
+  it("does not read a cap sentence as a usage limit", () => {
+    for (const s of [
+      "You can keep up to 60 study sources. Delete one you no longer need first.",
+      "You have reached the storage limit for study sources. Delete one you no longer need first.",
+      "A course can hold up to 25 study sources.",
+      "Storage is nearly full, so uploads are paused. Your existing material is safe.",
+    ])
+      expect(failureReasonOf(s)).toBe("failed");
+  });
 
   it("gives scan advice only for a PDF when no text was found", () => {
     const sentence = "No text could be found in this file.";

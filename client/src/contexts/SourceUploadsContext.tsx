@@ -78,6 +78,9 @@ function sleep(ms: number, signal?: AbortSignal) {
   });
 }
 
+/** The server's plain cap sentences; shown as written (they name no plan or price). */
+const CAP_SENTENCE = /keep up to|storage limit|can hold up to|storage is nearly full/i;
+
 /** Turns whatever went wrong into a row error. A refused request (429, a plan limit) stays resumable. */
 export function describeError(error: unknown): UploadRowError {
   if (usageLimitOf(error)) return { kind: "usageLimit" };
@@ -88,9 +91,10 @@ export function describeError(error: unknown): UploadRowError {
   if (error instanceof TRPCClientError) {
     const code = (error.data as { code?: string } | undefined)?.code;
     if (code === "TOO_MANY_REQUESTS") return { kind: "rateLimited" };
+    if (message && CAP_SENTENCE.test(message)) return { kind: "message", text: message };
     const reason = failureReasonOf(message);
     if (reason !== "failed") return { kind: "reason", code: reason };
-    // Server sentences for caps ("You can keep up to 25 sources in a course") are plain and safe to show.
+    // Other plain BAD_REQUEST sentences are safe to show too.
     if (code === "BAD_REQUEST" && message) return { kind: "message", text: message };
     if (message && /sources? (in|per)|keep up to|storage/i.test(message)) return { kind: "message", text: message };
   }
