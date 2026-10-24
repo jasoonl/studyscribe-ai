@@ -23,6 +23,8 @@ describe("SEO basics", () => {
     expect(metaForPath("/")).toMatchObject({ canonical: `${SITE_ORIGIN}/`, index: true });
     expect(metaForPath("/dashboard")).toMatchObject({ canonical: null, index: false });
     expect(metaForPath("/login")).toMatchObject({ canonical: null, index: false });
+    expect(metaForPath("/notes")).toMatchObject({ canonical: null, index: false });
+    expect(metaForPath("/notes/12")).toMatchObject({ canonical: null, index: false });
   });
 
   it("keeps titles and descriptions within what search results show, without em dashes", () => {

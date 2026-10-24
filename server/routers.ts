@@ -58,6 +58,7 @@ import { signupRouter } from "./openSignup";
 import { onboardingRouter } from "./onboarding";
 import { translationsRouter } from "./translations";
 import { sourcesRouter } from "./studySources";
+import { notePagesRouter } from "./notePages";
 import { practiceRouter } from "./practiceSessions";
 import { mistakesRouter } from "./mistakeExplanations";
 import { readQuestions, scoreSession } from "./practiceBuilder";
@@ -937,6 +938,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   translations: translationsRouter,
   sources: sourcesRouter,
+  notePages: notePagesRouter,
   practice: practiceRouter,
   mistakes: mistakesRouter,
   calendar: calendarRouter,

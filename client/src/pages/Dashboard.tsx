@@ -289,6 +289,7 @@ export default function Dashboard() {
           </Button>
           {[
             { href: "/plan", label: t("library.plan") },
+            { href: "/notes", label: t("library.notes") },
             { href: "/tasks", label: t("library.tasks") },
             { href: "/exam-packs", label: t("library.examPacks") },
             { href: "/knowledge-base", label: t("library.knowledgeBase") },
