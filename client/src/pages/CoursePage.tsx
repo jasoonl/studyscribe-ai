@@ -12,6 +12,7 @@ import { RecordingList } from "@/components/RecordingList";
 import { useTrashRecording } from "@/hooks/useTrashRecording";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
+import { PracticeStartButton } from "@/components/practice/PracticeSetup";
 
 export default function CoursePage() {
   const { t, tn } = useI18n();
@@ -101,6 +102,7 @@ export default function CoursePage() {
                   <span className="sr-only sm:not-sr-only">{t("course.examPack")}</span>
                 </Button>
               </Link>
+              {!course.archived && <PracticeStartButton target={{ scope: "course", courseId: course.id }} title={course.name} compactLabel />}
               <Button size="sm" variant="outline" className="gap-2" onClick={() => setEditing(true)}>
                 <Pencil className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only sm:not-sr-only">{t("course.edit")}</span>

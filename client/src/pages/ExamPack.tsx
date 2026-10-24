@@ -14,6 +14,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { MissedQuestionReview } from "@/components/practice/MissedQuestionReview";
+import { PracticeMissedButton } from "@/components/practice/PracticeMissedButton";
+import { PracticeStartButton } from "@/components/practice/PracticeSetup";
+import { usePracticeCapabilities } from "@/hooks/usePracticeCapabilities";
+import { missedItems, parseAttempt } from "@/lib/practiceModel";
 
 type Question = {
   id: string;
@@ -54,10 +59,15 @@ function PracticeExam({
   const utils = trpc.useUtils();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<Result | null>(null);
+  const [attempt, setAttempt] = useState<ReturnType<typeof parseAttempt>>(null);
+  const [attemptNo, setAttemptNo] = useState(0);
+  const practice = usePracticeCapabilities();
   const summaryRef = useRef<HTMLDivElement>(null);
   const submit = trpc.examPacks.submitAttempt.useMutation({
     onSuccess: data => {
       setResult(data);
+      setAttempt(parseAttempt(data));
+      setAttemptNo(n => n + 1);
       void utils.examPacks.list.invalidate();
       requestAnimationFrame(() => summaryRef.current?.focus());
     },
@@ -67,6 +77,7 @@ function PracticeExam({
   useEffect(() => {
     setAnswers({});
     setResult(null);
+    setAttempt(null);
   }, [questions]);
 
   const answered = questions.filter(question => answers[question.id]?.trim()).length;
@@ -81,13 +92,27 @@ function PracticeExam({
             <p className="text-sm text-muted-foreground">{t("examPack.resultText", { correct: result.correct, total: result.total })}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => { setAnswers({}); setResult(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+            <Button variant="outline" className="gap-2" onClick={() => { setAnswers({}); setResult(null); setAttempt(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
               <RotateCcw className="h-4 w-4" /> {t("translate.tryAgain")}
             </Button>
             <Button variant="outline" disabled={regenerating} onClick={onRegenerate}>{t("examPack.newQuestions")}</Button>
           </div>
         </div>
       )}
+
+      {result && practice.available && attempt && (() => {
+        const filled = attempt.results.map(entry => {
+          const question = questions.find(item => item.id === entry.id);
+          return { ...entry, userAnswer: entry.userAnswer || answers[entry.id] || "", correctAnswer: entry.correctAnswer || question?.correctAnswer || "" };
+        });
+        const missed = missedItems(questions, filled);
+        return missed.length > 0 ? (
+          <div className="space-y-6">
+            <PracticeMissedButton origin={{ packId }} allowSimilar={practice.explanations} />
+            <MissedQuestionReview key={`${packId}:${attemptNo}`} origin={{ packId }} items={missed} explanations={practice.explanations} />
+          </div>
+        ) : null;
+      })()}
 
       <ol className="space-y-4">
         {questions.map((question, index) => {
@@ -226,6 +251,9 @@ export default function ExamPack() {
                   <Download className="h-4 w-4" />
                   <span className="sr-only sm:not-sr-only">{t("examPack.downloadGuide")}</span>
                 </Button>
+              )}
+              {questions.length > 0 && (
+                <PracticeStartButton target={{ scope: "pack", packId: pack.id }} title={pack.title} questionTotal={questions.length} compactLabel />
               )}
               <Button variant="outline" size="sm" className="gap-2" onClick={() => setConfirmDelete(true)}>
                 <Trash2 className="h-4 w-4" />
