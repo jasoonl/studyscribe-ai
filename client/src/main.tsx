@@ -5,6 +5,7 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import { registerServiceWorkerForOffline } from "./lib/serviceWorker";
 import { captureReferralFromUrl } from "./lib/referral";
+import { reloadOnStaleBuild } from "./lib/staleBuild";
 import superjson from "superjson";
 import App from "./App";
 import { startAnalyticsIfConsented } from "@/lib/cookieConsent";
@@ -75,4 +76,5 @@ void initUiLanguage().finally(() => {
 });
 
 captureReferralFromUrl();
+reloadOnStaleBuild();
 registerServiceWorkerForOffline();
