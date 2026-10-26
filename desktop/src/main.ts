@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
+  net,
   screen,
   session,
   shell,
@@ -13,6 +14,8 @@ import {
   type Rectangle,
   type WebContents,
 } from "electron";
+import { execFile } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { release } from "node:os";
 import { join, resolve } from "node:path";
@@ -20,12 +23,14 @@ import {
   compactBounds,
   deepLinkPath,
   findDeepLink,
+  googleSignInState,
   isAllowedNavigation,
   isAllowedPermission,
   isAppUrl,
   isExternalLink,
   PROTOCOL,
   resolveOrigin,
+  signedInCode,
   studyHelpPath,
 } from "./lib/policy";
 import { loopbackFor, pickScreen, systemAudioSupport } from "./lib/systemAudio";
@@ -37,6 +42,9 @@ import { loopbackFor, pickScreen, systemAudioSupport } from "./lib/systemAudio";
  */
 
 const isMac = process.platform === "darwin";
+
+// The app was called "StudyScribe" before; keep its data folder (settings, sign-in) where it was.
+app.setPath("userData", join(app.getPath("appData"), "StudyScribe"));
 const support = systemAudioSupport(process.platform, release());
 
 // Every renderer is sandboxed. The only exception is an explicit --no-sandbox, which Chromium
@@ -47,8 +55,11 @@ function settingsPath() {
   return join(app.getPath("userData"), "settings.json");
 }
 
-/** `{ "origin": "https://…" }` in the app's data folder points the app at another StudyScribe server. */
-function readSettings(): { origin?: string } {
+/**
+ * `{ "origin": "https://…" }` in the app's data folder points the app at another StudyScribe server;
+ * `"signInBrowser": "default"` sends Google sign-in to the default browser instead of Chrome.
+ */
+function readSettings(): { origin?: string; signInBrowser?: "chrome" | "default" } {
   try {
     return JSON.parse(readFileSync(settingsPath(), "utf8"));
   } catch {
@@ -73,10 +84,16 @@ if (!app.requestSingleInstanceLock()) {
     app.setAsDefaultProtocolClient(PROTOCOL);
   }
   const initialLink = findDeepLink(process.argv);
-  pendingPath = initialLink ? deepLinkPath(initialLink) : null;
+  // A signed-in link that starts the app belongs to a sign-in begun before it quit; its verifier is gone.
+  pendingPath = initialLink && !signedInCode(initialLink) ? deepLinkPath(initialLink) : null;
 }
 
 function handleDeepLink(link: string) {
+  const code = signedInCode(link);
+  if (code) {
+    void finishBrowserSignIn(code);
+    return;
+  }
   const path = deepLinkPath(link);
   if (!path) return;
   if (!mainWindow) {
@@ -122,6 +139,65 @@ function navigateInApp(path: string) {
   );
 }
 
+/* ---------- Google sign-in in the browser ---------- */
+
+// Google sign-in runs in the person's browser, where their Google accounts are already signed in,
+// and comes back as studyscribe://signed-in (server/desktopAuth.ts). The verifier never leaves this process.
+let browserSignIn: { verifier: string; startedAt: number } | null = null;
+let inWindowSignIn = false;
+const SIGN_IN_TTL_MS = 15 * 60 * 1000;
+
+/** Chrome on macOS when it is installed (Google accounts usually live there), else the default browser. */
+function openInSignInBrowser(url: string) {
+  const chrome = "/Applications/Google Chrome.app";
+  if (isMac && readSettings().signInBrowser !== "default" && existsSync(chrome)) {
+    execFile("/usr/bin/open", ["-a", chrome, url], error => {
+      if (error) void shell.openExternal(url);
+    });
+    return;
+  }
+  void shell.openExternal(url);
+}
+
+async function startBrowserSignIn(googleUrl: string, state: string) {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  try {
+    const response = await net.fetch(new URL(`/api/auth/google/desktop?${new URLSearchParams({ state, challenge })}`, origin).href);
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    const { authUrl } = (await response.json()) as { authUrl?: string };
+    if (!authUrl || !googleSignInState(authUrl)) throw new Error("no sign-in URL");
+    browserSignIn = { verifier, startedAt: Date.now() };
+    openInSignInBrowser(authUrl);
+  } catch (error) {
+    // A server without desktop sign-in: sign in inside the window as before.
+    console.warn("[desktop] Browser sign-in unavailable, signing in here", error);
+    inWindowSignIn = true;
+    void mainWindow?.loadURL(googleUrl);
+  }
+}
+
+async function finishBrowserSignIn(code: string) {
+  const window = mainWindow;
+  const pending = browserSignIn;
+  if (!window || !pending || Date.now() - pending.startedAt > SIGN_IN_TTL_MS) return;
+  browserSignIn = null;
+  if (window.isMinimized()) window.restore();
+  window.focus();
+  if (!isAppUrl(window.webContents.getURL(), origin)) await window.loadURL(new URL("/login", origin).href);
+  // Posted from the app's own page so the session cookie lands in the app.
+  const result = (await window.webContents.executeJavaScript(
+    `fetch("/api/auth/desktop/exchange", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(${JSON.stringify({ code, verifier: pending.verifier })}) })
+      .then(r => r.json().then(body => ({ ok: r.ok, body })), () => ({ ok: false, body: {} }))`,
+    true,
+  )) as { ok: boolean; body: { next?: string; error?: string } };
+  if (result.ok) {
+    void window.loadURL(new URL(result.body.next ?? "/dashboard", origin).href);
+    return;
+  }
+  void dialog.showMessageBox(window, { type: "warning", message: "Google sign-in didn't finish", detail: result.body.error ?? "Please try again." });
+}
+
 /* ---------- Navigation and window guards ---------- */
 
 function openExternally(url: string) {
@@ -131,6 +207,13 @@ function openExternally(url: string) {
 function guard(contents: WebContents) {
   contents.on("will-attach-webview", event => event.preventDefault());
   const onNavigate = (event: Electron.Event, url: string) => {
+    if (isAppUrl(url, origin)) inWindowSignIn = false;
+    const state = googleSignInState(url);
+    if (state && !inWindowSignIn && contents === mainWindow?.webContents) {
+      event.preventDefault();
+      void startBrowserSignIn(url, state);
+      return;
+    }
     if (isAllowedNavigation(url, origin)) return;
     event.preventDefault();
     openExternally(url);
@@ -326,7 +409,7 @@ function createWindow() {
     height: 860,
     minWidth: 360,
     minHeight: 480,
-    title: "StudyScribe",
+    title: "StudyScribe AI",
     show: false,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#0d1221" : "#f8fafd",
     ...(process.platform === "linux" && existsSync(icon) ? { icon } : {}),
@@ -342,6 +425,8 @@ function createWindow() {
     },
   });
   mainWindow = window;
+  // Keep the title short; the pages' own titles describe the website.
+  window.on("page-title-updated", event => event.preventDefault());
   window.once("ready-to-show", () => window.show());
   window.on("closed", () => {
     mainWindow = null;

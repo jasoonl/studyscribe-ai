@@ -4,12 +4,14 @@ import {
   deepLinkPath,
   DEFAULT_ORIGIN,
   findDeepLink,
+  googleSignInState,
   isAllowedNavigation,
   isAllowedPermission,
   isAppUrl,
   isExternalLink,
   normalizeOrigin,
   resolveOrigin,
+  signedInCode,
   studyHelpPath,
 } from "./policy";
 import { loopbackFor, pickScreen, systemAudioSupport } from "./systemAudio";
@@ -81,6 +83,24 @@ describe("studyscribe:// links", () => {
   it("finds a link among command-line arguments (Windows and Linux)", () => {
     expect(findDeepLink(["/opt/StudyScribe/studyscribe", "--no-sandbox", "studyscribe://record"])).toBe("studyscribe://record");
     expect(findDeepLink(["app"])).toBeNull();
+  });
+});
+
+describe("Google sign-in in the browser", () => {
+  it("picks out the state of the page's redirect to Google, and nothing else", () => {
+    expect(googleSignInState("https://accounts.google.com/o/oauth2/v2/auth?client_id=x&state=abc.def")).toBe("abc.def");
+    expect(googleSignInState("https://accounts.google.com/o/oauth2/auth?state=abc.def")).toBe("abc.def");
+    expect(googleSignInState("https://accounts.google.com/v3/signin/identifier?state=abc.def")).toBeNull();
+    expect(googleSignInState("http://accounts.google.com/o/oauth2/v2/auth?state=abc.def")).toBeNull();
+    expect(googleSignInState("https://evil.example/o/oauth2/v2/auth?state=abc.def")).toBeNull();
+    expect(googleSignInState(`${LOCAL}/login`)).toBeNull();
+  });
+
+  it("reads the handoff code from studyscribe://signed-in only", () => {
+    expect(signedInCode("studyscribe://signed-in?code=eyJ0.c2ln")).toBe("eyJ0.c2ln");
+    expect(signedInCode("studyscribe://signed-in?code=not%20a%20code")).toBeNull();
+    expect(signedInCode("studyscribe://recording/12?code=eyJ0.c2ln")).toBeNull();
+    expect(signedInCode("https://signed-in?code=eyJ0.c2ln")).toBeNull();
   });
 });
 

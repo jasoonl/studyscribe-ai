@@ -85,6 +85,26 @@ export function deepLinkPath(link: string): string | null {
   return path === "/" ? "/dashboard" : `${path}${query}`;
 }
 
+/**
+ * The OAuth state of a Google sign-in the page started (its redirect to
+ * accounts.google.com), so the app can send that sign-in to the browser
+ * instead. Null for any other URL, including Google's later sign-in pages.
+ */
+export function googleSignInState(url: string): string | null {
+  const target = parse(url);
+  if (!target || target.protocol !== "https:" || !SIGN_IN_HOSTS.has(target.hostname)) return null;
+  if (!/^\/o\/oauth2\/(v2\/)?auth$/.test(target.pathname)) return null;
+  return target.searchParams.get("state");
+}
+
+/** The handoff code in studyscribe://signed-in?code=…, which the browser opens after a Google sign-in (server/desktopAuth.ts). */
+export function signedInCode(link: string): string | null {
+  const url = parse(link);
+  if (!url || url.protocol !== `${PROTOCOL}:` || url.hostname !== "signed-in") return null;
+  const code = url.searchParams.get("code");
+  return code && code.length <= 2048 && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(code) ? code : null;
+}
+
 export function findDeepLink(argv: string[]): string | null {
   return argv.find(arg => arg.startsWith(`${PROTOCOL}://`)) ?? null;
 }
