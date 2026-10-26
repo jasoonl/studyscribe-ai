@@ -62,7 +62,7 @@ E2E_EMAIL=you@example.com E2E_PASSWORD=... xvfb-run -a -s "-screen 0 1920x1080x2
 1. Join the Apple Developer Program and create a "Developer ID Application" certificate; install it in the build Mac's keychain (or export it as a .p12 and set `CSC_LINK` and `CSC_KEY_PASSWORD`).
 2. Create an app-specific password for the Apple ID and note the Team ID.
 3. In `electron-builder.yml` set `mac.notarize: true`, then build with `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` set: `npm run dist:mac`. electron-builder signs with the hardened runtime and the entitlements in `build/entitlements.mac.plist` (JIT, microphone, network), submits to Apple's notary service and staples the ticket.
-4. Check with `spctl -a -vv release/mac-universal/StudyScribe.app` and `xcrun stapler validate release/StudyScribe-<version>-universal.dmg`.
+4. Check with `spctl -a -vv "release/mac-universal/StudyScribe AI.app"` and `xcrun stapler validate "release/StudyScribe AI-<version>-universal.dmg"`.
 
 **Windows:** without a code-signing certificate SmartScreen warns on install. Buy an OV or EV certificate (EV, or Azure Trusted Signing, builds reputation fastest), then set `CSC_LINK`/`CSC_KEY_PASSWORD` (or electron-builder's `win.azureSignOptions`) and run `npm run dist:win`.
 

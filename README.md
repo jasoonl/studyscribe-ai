@@ -74,12 +74,12 @@ cd desktop
 npm install
 npm run build
 npx electron-builder --mac dir --arm64      # or: npm run dist:mac for a DMG
-cp -R release/mac-arm64/StudyScribe.app ~/Applications/
+cp -R "release/mac-arm64/StudyScribe AI.app" ~/Applications/
 ```
 
-Then open **StudyScribe** from `~/Applications` (drag it to the Dock or the Desktop to keep it handy). Unsigned builds may need right-click > Open the first time.
+Then open **StudyScribe AI** from `~/Applications` (drag it to the Dock or the Desktop to keep it handy). Unsigned builds may need right-click > Open the first time.
 
-**Google sign-in uses your own browser.** "Continue with Google" opens in Chrome (or your default browser when Chrome isn't installed), where your Google accounts are already signed in, so you just pick one. The browser then asks to open StudyScribe, and the app finishes signing in. Set `"signInBrowser": "default"` in `~/Library/Application Support/StudyScribe/settings.json` to use your default browser (for example Safari) instead.
+**Google sign-in uses your own browser.** "Continue with Google" opens in Chrome (or your default browser when Chrome isn't installed), where your Google accounts are already signed in, so you just pick one. The browser then asks to open StudyScribe AI, and the app finishes signing in. Set `"signInBrowser": "default"` in `~/Library/Application Support/StudyScribe/settings.json` to use your default browser (for example Safari) instead.
 
 See [desktop/README.md](desktop/README.md) for system audio, security settings, signing and releases.
 

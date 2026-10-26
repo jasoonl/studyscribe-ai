@@ -42,6 +42,9 @@ import { loopbackFor, pickScreen, systemAudioSupport } from "./lib/systemAudio";
  */
 
 const isMac = process.platform === "darwin";
+
+// The app was called "StudyScribe" before; keep its data folder (settings, sign-in) where it was.
+app.setPath("userData", join(app.getPath("appData"), "StudyScribe"));
 const support = systemAudioSupport(process.platform, release());
 
 // Every renderer is sandboxed. The only exception is an explicit --no-sandbox, which Chromium
