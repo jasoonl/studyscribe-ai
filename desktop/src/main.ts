@@ -406,7 +406,7 @@ function createWindow() {
     height: 860,
     minWidth: 360,
     minHeight: 480,
-    title: "StudyScribe",
+    title: "StudyScribe AI",
     show: false,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#0d1221" : "#f8fafd",
     ...(process.platform === "linux" && existsSync(icon) ? { icon } : {}),

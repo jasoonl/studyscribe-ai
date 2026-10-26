@@ -63,6 +63,26 @@ npm run db:push     # generate + apply a new Drizzle migration
 npm run db:migrate  # apply committed migrations only
 ```
 
+## Desktop app
+
+StudyScribe AI also runs as its own app on Mac, Windows and Linux (`desktop/`, built with Electron). It opens the live site in its own window and adds what a browser tab can't: recording your computer's audio along with the microphone, and an always-on-top Study help window (View > Study Help Window, Cmd/Ctrl+Shift+H).
+
+To build it and install it on a Mac:
+
+```bash
+cd desktop
+npm install
+npm run build
+npx electron-builder --mac dir --arm64      # or: npm run dist:mac for a DMG
+cp -R release/mac-arm64/StudyScribe.app ~/Applications/
+```
+
+Then open **StudyScribe** from `~/Applications` (drag it to the Dock or the Desktop to keep it handy). Unsigned builds may need right-click > Open the first time.
+
+**Google sign-in uses your own browser.** "Continue with Google" opens in Chrome (or your default browser when Chrome isn't installed), where your Google accounts are already signed in, so you just pick one. The browser then asks to open StudyScribe, and the app finishes signing in. Set `"signInBrowser": "default"` in `~/Library/Application Support/StudyScribe/settings.json` to use your default browser (for example Safari) instead.
+
+See [desktop/README.md](desktop/README.md) for system audio, security settings, signing and releases.
+
 ## Deployment
 
 Production runs on Vercel, deploying automatically on push to `main`. Database schema migrations don't run automatically on deploy — they need to be applied against the live database separately (see the migration files under `drizzle/` and `server/schemaInit.ts`).
