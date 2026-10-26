@@ -17,7 +17,7 @@ self.addEventListener("install", (event) => {
         const list = await fetch("/sw-assets.json", { cache: "no-store" });
         if (list.ok) {
           const { files } = await list.json();
-          await Promise.all((files || []).map((file) => cache.add(file).catch(() => {})));
+          await Promise.all((files || []).map((file) => precache(cache, file)));
         }
       } catch {
         // Development has no asset list; files are cached as they load instead.
@@ -26,6 +26,19 @@ self.addEventListener("install", (event) => {
     })(),
   );
 });
+
+function isAppPage(response) {
+  return (response.headers.get("content-type") || "").includes("text/html");
+}
+
+async function precache(cache, file) {
+  try {
+    const response = await fetch(file);
+    if (response.ok && !isAppPage(response)) await cache.put(file, response);
+  } catch {
+    // Skipped: it is fetched and cached when first used instead.
+  }
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -68,8 +81,11 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       (async () => {
         const cached = await caches.match(request);
-        if (cached) return cached;
+        if (cached && !isAppPage(cached)) return cached;
         const response = await fetch(request);
+        // A file from an older deploy comes back as the app page (the host's fallback). Never keep
+        // that under the file's name, or every later visit would load a page instead of code.
+        if (isAppPage(response)) return new Response("Not found", { status: 404 });
         if (response.ok) {
           const cache = await caches.open(CACHE);
           await cache.put(request, response.clone());

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { isChunkLoadError, reloadForUpdate } from "@/lib/staleBuild";
+import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import { Component, ReactNode } from "react";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  reloading?: boolean;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -21,7 +23,20 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error) {
+    // A page file from before the latest deploy: load the new version instead of showing an error.
+    if (isChunkLoadError(error) && reloadForUpdate()) this.setState({ reloading: true });
+  }
+
   render() {
+    if (this.state.reloading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       return (
         <div className="flex items-center justify-center min-h-screen p-8 bg-background">
