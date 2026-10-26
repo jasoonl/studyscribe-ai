@@ -4,6 +4,8 @@ import path from "path";
 const templateRoot = path.resolve(import.meta.dirname);
 
 export default defineConfig({
+  // tsconfig keeps "jsx": "preserve" for the client build; tests need JSX compiled.
+  oxc: { jsx: { runtime: "automatic" } },
   root: templateRoot,
   resolve: {
     alias: {
