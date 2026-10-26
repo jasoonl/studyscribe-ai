@@ -11,6 +11,7 @@ import { readOAuthState, safeNextPath } from "./googleSignup";
 import { autoJoinByDomain } from "./organizations";
 import { registerSsoRoutes } from "./ssoRoutes";
 import { completeGoogleSignup } from "./googleSignupFlow";
+import { desktopHandoffPage, registerDesktopAuthRoutes, signDesktopHandoff } from "./desktopAuth";
 import { getSafeApplicationOrigin, isTransactionalEmailConfigured, sendPasswordResetEmail } from "./email";
 import { authLimiter, passwordResetLimiter } from "./_core/rateLimit";
 import { MIN_AGE } from "@shared/legal";
@@ -19,6 +20,7 @@ import { countRecentSignups, decideSignupPath, isOpenSignupEnabled, openSignupDa
 export function registerAuthRoutes(app: Express) {
   registerEmailVerificationRoutes(app);
   registerSsoRoutes(app);
+  registerDesktopAuthRoutes(app);
 
   /**
    * POST /api/auth/login
@@ -357,6 +359,13 @@ export function registerAuthRoutes(app: Express) {
 
       if (await ssoRequiredForEmail(user.email, user.id)) {
         res.redirect(302, `${origin}/login?sso=1&error=${encodeURIComponent(SSO_REQUIRED_MESSAGE)}`);
+        return;
+      }
+
+      // A sign-in the desktop app sent to the browser goes back to the app rather than signing in this browser.
+      if (stateData.desktop) {
+        await autoJoinByDomain(user, result.user.hostedDomain);
+        res.type("html").send(desktopHandoffPage(signDesktopHandoff({ userId: user.id, challenge: stateData.desktop, next: stateData.next })));
         return;
       }
 

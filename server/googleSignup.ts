@@ -31,6 +31,8 @@ export type GoogleOAuthState = {
   invite?: string;
   /** Where to land after signing in: a path on this site only. */
   next?: string;
+  /** Set when the desktop app sent this sign-in to the browser: the app's challenge (server/desktopAuth.ts). */
+  desktop?: string;
   /** Unix seconds after which the state is refused. */
   exp: number;
   /** Random, so two states are never equal. */
@@ -75,6 +77,7 @@ export function readOAuthState(state: string, secret = stateSecret(), nowSeconds
     consented: data.consented === true,
     invite: typeof data.invite === "string" && data.invite.trim() ? data.invite.trim().slice(0, 64) : undefined,
     next: safeNextPath(data.next) ?? undefined,
+    desktop: typeof data.desktop === "string" && /^[A-Za-z0-9_-]{43}$/.test(data.desktop) ? data.desktop : undefined,
     exp: data.exp,
     n: String(data.n ?? ""),
   };
