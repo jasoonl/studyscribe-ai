@@ -7,6 +7,8 @@ export type PreparedAudioUpload = {
   mimeType: string;
   uploadUrl: string;
   uploadContentType: string;
+  /** "r2": one signed PUT at any size. Absent or "blob": files over 50MB go in parts. */
+  provider?: "r2" | "blob";
 };
 
 type UploadPreparationResponse =
@@ -57,7 +59,7 @@ export async function uploadAudioDirectly(
   const uploadBody = new Blob([file], { type: prepared.upload.uploadContentType });
 
   // A single PUT is rejected for very large files, so send those in parts.
-  if (file.size > MULTIPART_THRESHOLD_BYTES) {
+  if (file.size > MULTIPART_THRESHOLD_BYTES && prepared.upload.provider !== "r2") {
     // The Blob client is only needed for large files; load it then.
     const { uploadPresigned } = await import("@vercel/blob/client");
     await uploadPresigned(prepared.upload.key, uploadBody, {

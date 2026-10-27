@@ -204,6 +204,16 @@ export default function Admin() {
             </h2>
             <Card className="p-5 space-y-3">
               {(() => {
+                if (storageUsage.provider === "r2" && !storageUsage.metered) {
+                  return (
+                    <>
+                      <p className="text-sm font-medium">Cloudflare R2 (no transfer fees)</p>
+                      <p className="text-xs text-gray-500">
+                        Free tier is 10 GB of storage. Usage is not measured here; check R2 Metrics in the Cloudflare dashboard.
+                      </p>
+                    </>
+                  );
+                }
                 const percent = Math.min(100, (storageUsage.totalBytes / storageUsage.limitBytes) * 100);
                 const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(bytes >= 1024 * 1024 * 100 ? 0 : 1);
                 return (

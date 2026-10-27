@@ -20,6 +20,7 @@ vi.mock("../sessionUser", () => ({
 vi.mock("../storage", () => ({
   createDirectAudioUpload: vi.fn(),
   isVercelBlobStorageConfigured: () => true,
+  isObjectStorageConfigured: () => true,
   contentTypeFromStorageKey: (key: string) => (key.endsWith("-webm.bin") ? "audio/webm" : "application/octet-stream"),
   storageGetSignedUrl: async () => SIGNED_URL,
 }));

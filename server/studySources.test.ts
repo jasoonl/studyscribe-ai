@@ -57,6 +57,7 @@ const storage = vi.hoisted(() => ({
   verifyUploadedSource: vi.fn(),
   createDirectSourceUpload: vi.fn(),
   isVercelBlobStorageConfigured: vi.fn(() => true),
+  isObjectStorageConfigured: vi.fn(() => true),
   storageGetSignedUrl: vi.fn(),
 }));
 vi.mock("./storage", () => storage);
@@ -93,6 +94,7 @@ beforeEach(() => {
   storage.deleteStoredAudio.mockImplementation(async () => void log.push("blob:delete"));
   storage.verifyUploadedSource.mockResolvedValue({ size: 1000 });
   storage.isVercelBlobStorageConfigured.mockReturnValue(true);
+  storage.isObjectStorageConfigured.mockReturnValue(true);
   usage.hasUsage.mockResolvedValue(false);
   usage.recordUsage.mockResolvedValue({ recorded: true });
   usage.assertCanGenerate.mockResolvedValue(undefined);

@@ -10,7 +10,7 @@ import { getRecordingAccess, requireRecordingAccess } from "./recordingAccess";
 import { explainMissingSchema, tolerateMissingSchema } from "./schemaTolerance";
 import { getVerifiedSession } from "./sessionUser";
 import { safeEqual } from "./_core/secrets";
-import { deleteStoredAudio, getBlobUsage, isVercelBlobStorageConfigured, storageGetSignedUrl, storagePut } from "./storage";
+import { deleteStoredAudio, getBlobUsage, isObjectStorageConfigured, storageGetSignedUrl, storagePut } from "./storage";
 import { protectedProcedure, router } from "./_core/trpc";
 
 /**
@@ -74,10 +74,15 @@ let storageCheck: { at: number; room: boolean } | null = null;
 
 /** Whether storage has room for more slides; asked at most every five minutes, since listing the store is slow. */
 export async function storageHasRoomForSlides(now = Date.now()) {
-  if (!isVercelBlobStorageConfigured()) return true;
+  if (!isObjectStorageConfigured()) return true;
   if (storageCheck && now - storageCheck.at < 5 * 60 * 1000) return storageCheck.room;
   try {
     const usage = await getBlobUsage();
+    // Unmetered (R2): no measured usage to compare against, so there is always room.
+    if (!usage.metered) {
+      storageCheck = { at: now, room: true };
+      return true;
+    }
     storageCheck = { at: now, room: usage.totalBytes < usage.limitBytes * STORAGE_HEADROOM };
   } catch (error) {
     console.warn("[slides] storage usage check failed:", error instanceof Error ? error.message : error);

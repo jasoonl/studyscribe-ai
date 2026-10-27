@@ -6,7 +6,7 @@ import { safeEqual } from "./secrets";
 import { getRecordingByAudioKey } from "../db";
 import { getRecordingAccess } from "../recordingAccess";
 import { handleUploadPresigned } from "@vercel/blob/client";
-import { createDirectAudioUpload, issueLargeUploadToken, isVercelBlobStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
+import { createDirectAudioUpload, issueLargeUploadToken, isObjectStorageConfigured, contentTypeFromStorageKey, storageGetSignedUrl } from "../storage";
 import { verifyTranscriptionAudioToken } from "../transcriptionAudioLink";
 import { BodyCache, RangeSupportMemory, audioEtag, etagMatches } from "./audioProxyCache";
 import { TRANSFER_PAUSED_MESSAGE, isTransferLimitReached, isTransferSoftCapReached, recordTransfer } from "../blobTransfer";
@@ -274,7 +274,7 @@ export function registerStorageProxy(app: Express) {
   });
 
   app.get("/api/storage", async (req, res) => {
-    if (!isVercelBlobStorageConfigured()) {
+    if (!isObjectStorageConfigured()) {
       res.status(404).send("External storage is not configured");
       return;
     }

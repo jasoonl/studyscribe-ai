@@ -5,7 +5,8 @@ import { contentTypeFor, type UploadIo, type UploadSource } from "./upload";
 /** A file on the phone (a recording, or something picked) as an upload source. */
 export function fileSource(uri: string, name: string, declaredType?: string | null, knownSize?: number | null): UploadSource & { uri: string } {
   const file = new File(uri);
-  const size = knownSize && knownSize > 0 ? knownSize : file.size ?? 0;
+  // The real size on disk wins: the upload URL signs the exact Content-Length, so a stale picker size would fail it.
+  const size = file.size && file.size > 0 ? file.size : knownSize && knownSize > 0 ? knownSize : 0;
   return {
     uri,
     name,

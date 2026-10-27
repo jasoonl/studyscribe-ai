@@ -29,7 +29,7 @@ import {
   type RecallConfig,
 } from "./recall";
 import { explainMissingSchema, tolerateMissingSchema } from "./schemaTolerance";
-import { isVercelBlobStorageConfigured, putAudioStream, storagePut } from "./storage";
+import { isObjectStorageConfigured, putAudioStream, storagePut } from "./storage";
 import { startTranscription } from "./transcriptionStart";
 import { limitStreamSize, MAX_IMPORT_BYTES } from "./urlAudioImport";
 import { assertCanTranscribe } from "./usage";
@@ -103,7 +103,7 @@ async function storeMeetingAudio(userId: number, response: globalThis.Response) 
   const limited = limitStreamSize(response.body as ReadableStream<Uint8Array>, MAX_IMPORT_BYTES);
   const [upload, probe] = limited.tee();
   const contentLength = Number(response.headers.get("content-length")) || null;
-  if (isVercelBlobStorageConfigured()) {
+  if (isObjectStorageConfigured()) {
     const [stored, duration] = await Promise.all([putAudioStream({ userId, mimeType: "audio/mpeg", body: upload }), probeAudioDuration(probe, "audio/mpeg", contentLength)]);
     return { key: stored.key, url: stored.url, mimeType: stored.mimeType, duration };
   }
