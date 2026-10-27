@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CourseDot } from "@/components/CourseDot";
 import { trpc } from "@/lib/trpc";
 import { CitationChips, type AnswerMeta } from "@/components/sources/CitationChips";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SourcePicker } from "@/components/sources/SourcePicker";
 import { askHref, askRequestOptions, parseAskSources, type AskSourceSelection } from "@/lib/askSources";
 import { useI18n } from "@/i18n";
@@ -165,10 +166,10 @@ export default function Ask() {
         {sourceCount > 0 && (
           <div className="mb-4 sm:max-w-sm">
             <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("ask.sources.label")}</span>
-            {selected ? (
-              <SourcePicker courseId={selected.id} selection={selection} onChange={changeSelection} />
+            {courseId !== undefined && !courses ? (
+              <Skeleton className="h-10 w-full" aria-label={t("common.loading")} />
             ) : (
-              <p className="text-sm text-muted-foreground">{t("ask.sources.chooseCourse")}</p>
+              <SourcePicker courseId={selected?.id} selection={selection} onChange={changeSelection} />
             )}
           </div>
         )}

@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { FileText, Presentation, RotateCw, Sparkles, Trash2 } from "lucide-react";
+import { FileText, FolderInput, Presentation, RotateCw, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/formatBytes";
 import { failureReasonOf, isRetryableReason, kindLabelKey, stageOf, summaryPercent, type SourceSummary } from "@/lib/sourceModel";
 import { isStalled } from "@/lib/sourceUpload";
 import { useI18n } from "@/i18n";
 import { MAX_SOURCES_PER_COURSE } from "@shared/const";
+import { CourseDot } from "@/components/CourseDot";
 import { DeleteSourceDialog } from "./DeleteSourceDialog";
+import { MoveSourceDialog } from "./MoveSourceDialog";
 import { SourceProgress } from "./SourceProgress";
 import { SourceStatusBadge } from "./SourceStatusBadge";
 
@@ -20,15 +22,20 @@ type Props = {
   onDelete: (source: SourceSummary) => void;
   deleting?: boolean;
   now: number;
+  /** The course the file is filed under, shown as a label (Files page). */
+  course?: { name: string; color: unknown } | null;
+  /** Offers "Move" to file it under a course or take it out of one (Files page). */
+  movable?: boolean;
 };
 
 export function unitNounKey(kind: SourceSummary["kind"]) {
   return kind === "pptx" ? ("sources.meta.slides" as const) : kind === "pdf" ? ("sources.meta.pages" as const) : ("sources.meta.sections" as const);
 }
 
-export function SourceCard({ source, driven, onContinue, onRetry, onDelete, deleting, now }: Props) {
+export function SourceCard({ source, driven, onContinue, onRetry, onDelete, deleting, now, course, movable }: Props) {
   const { t, tn, formatDate, formatNumber } = useI18n();
   const [confirming, setConfirming] = useState(false);
+  const [moving, setMoving] = useState(false);
   const stage = stageOf(source.status);
   const reason = failureReasonOf(source.errorMessage, source.kind);
   const working = stage === "waiting" || stage === "reading" || stage === "summarizing";
@@ -61,6 +68,18 @@ export function SourceCard({ source, driven, onContinue, onRetry, onDelete, dele
             <SourceStatusBadge status={source.status} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{meta.join(" · ")}</p>
+          {course !== undefined && (
+            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              {course ? (
+                <>
+                  <CourseDot color={course.color} className="size-2" />
+                  <span className="min-w-0 truncate">{course.name}</span>
+                </>
+              ) : (
+                <span>{t("files.unfiled")}</span>
+              )}
+            </p>
+          )}
 
           {working && (
             <div className="mt-3">
@@ -103,10 +122,16 @@ export function SourceCard({ source, driven, onContinue, onRetry, onDelete, dele
                 {t("sources.upload.retry")}
               </Button>
             )}
+            {movable && (
+              <Button size="sm" variant="ghost" className="ml-auto min-h-9 gap-1.5 text-muted-foreground" onClick={() => setMoving(true)} aria-label={t("files.move.named", { name: source.title })}>
+                <FolderInput className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("files.move.button")}</span>
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto min-h-9 gap-1.5 text-muted-foreground"
+              className={movable ? "min-h-9 gap-1.5 text-muted-foreground" : "ml-auto min-h-9 gap-1.5 text-muted-foreground"}
               onClick={() => setConfirming(true)}
               aria-label={t("sources.delete.named", { name: source.title })}
             >
@@ -116,6 +141,7 @@ export function SourceCard({ source, driven, onContinue, onRetry, onDelete, dele
           </div>
         </div>
       </div>
+      {movable && <MoveSourceDialog source={source} open={moving} onOpenChange={setMoving} />}
       <DeleteSourceDialog title={source.title} open={confirming} onOpenChange={setConfirming} pending={deleting} onConfirm={() => onDelete(source)} />
     </li>
   );

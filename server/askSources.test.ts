@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Tables answer from `rows`; anything not listed is empty. `failing` makes a table throw.
 let rows: Record<string, any[]> = {};
 let failing: Record<string, unknown> = {};
+// Fails the first query on a table only, then answers normally.
+let failFirst: Record<string, unknown> = {};
 const touched: string[] = [];
 const inserts: string[] = [];
 
@@ -12,8 +14,14 @@ function chain(table: string, write = false): any {
     {},
     {
       get(_target, prop) {
+        if (prop === "__table") return table;
         if (prop === "then") {
           return (resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+            if (failFirst[table]) {
+              const error = failFirst[table];
+              delete failFirst[table];
+              return reject(error);
+            }
             if (failing[table]) return reject(failing[table]);
             resolve(write ? [{}] : rows[table] ?? []);
           };
@@ -25,12 +33,16 @@ function chain(table: string, write = false): any {
 }
 vi.mock("./db", () => ({
   getDb: async () => ({
-    select: () => ({ from: (t: any) => (touched.push(getTableName(t)), chain(getTableName(t))) }),
+    select: () => ({ from: (t: any) => {
+        const name = t?.__table ?? getTableName(t);
+        if (!t?.__table) touched.push(name);
+        return chain(name);
+      } }),
     insert: (t: any) => (inserts.push(getTableName(t)), chain(getTableName(t), true)),
   }),
 }));
 
-import { askAcrossRecordings, loadSourcePassages, shortLocation } from "./ask";
+import { askAcrossRecordings, capUnitsPerSource, loadSourcePassages, shortLocation, unitsPerSourceCap } from "./ask";
 import { NOTHING_FOUND_ANSWER, NOTHING_FOUND_WITH_SOURCES_ANSWER, buildAskMessages, parseCitations, passageOwner, rankPassages, type Passage } from "./askRetrieval";
 import { capPerRecording, fuseRankings } from "./embeddings";
 
@@ -40,6 +52,7 @@ const recordingRow = { recordingId: 1, title: "Cell biology", fullText: "Mitocho
 beforeEach(() => {
   rows = {};
   failing = {};
+  failFirst = {};
   touched.length = 0;
   inserts.length = 0;
 });
@@ -60,6 +73,18 @@ describe("loadSourcePassages", () => {
   it("returns no passages when the tables are missing (migration 0034 not applied)", async () => {
     failing = { studySourceUnits: { code: "ER_NO_SUCH_TABLE", message: "doesn't exist" } };
     await expect(loadSourcePassages(7, ["atp"])).resolves.toEqual([]);
+  });
+
+  it("falls back to the simple query when the windowed one fails for another reason", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    failFirst = { studySourceUnits: { code: "ER_PARSE_ERROR", message: "syntax near secret row text" } };
+    rows = { studySourceUnits: [unit(4, 6, "Slide 7: Respiration", "Mitochondria make ATP through respiration.")] };
+    const passages = await loadSourcePassages(7, ["atp"]);
+    expect(passages).toHaveLength(1);
+    expect(passages[0]).toMatchObject({ sourceId: 4, location: "Slide 7" });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0].join(" "))).not.toContain("secret row text");
+    warn.mockRestore();
   });
 
   it("does not query without terms or with an empty source filter", async () => {
@@ -197,5 +222,21 @@ describe("askAcrossRecordings with sources", () => {
     const result = await askAcrossRecordings({ ...options, question: "What do mitochondria make?", complete: async () => "ATP [1]." });
     expect(result.citations[0]).toMatchObject({ recordingId: 1 });
     expect(result.searchedSources).toBe(0);
+  });
+});
+
+describe("per-source cap for file questions", () => {
+  it("lets every file of a full library fit inside the unit limit", () => {
+    expect(unitsPerSourceCap() * 60).toBeLessThanOrEqual(200);
+    expect(unitsPerSourceCap(4) * 25).toBeLessThanOrEqual(200);
+    expect(unitsPerSourceCap(undefined, [7])).toBeGreaterThan(unitsPerSourceCap());
+  });
+
+  it("does not let a big recent file crowd out an older one", () => {
+    const big = Array.from({ length: 150 }, (_, i) => ({ sourceId: 9, unitIndex: i }));
+    const old = [{ sourceId: 2, unitIndex: 4 }];
+    const kept = capUnitsPerSource([...big, ...old], unitsPerSourceCap());
+    expect(kept.filter(row => row.sourceId === 9)).toHaveLength(unitsPerSourceCap());
+    expect(kept.some(row => row.sourceId === 2)).toBe(true);
   });
 });

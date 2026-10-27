@@ -118,6 +118,9 @@ export default function SourceLibrary() {
               </div>
               <h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">{t("sources.title")}</h1>
               <p className="mt-1.5 max-w-xl text-sm text-muted-foreground">{t("sources.subtitle")}</p>
+              <Link href={`/files?course=${courseId}`} className="mt-2 inline-block text-sm font-medium text-primary underline underline-offset-2">
+                {t("files.allFilesLink")}
+              </Link>
             </div>
 
             <p role="status" aria-live="polite" className="sr-only">

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, desc, eq, inArray, like, lte, or, sql, type SQL } from "drizzle-orm";
 import { chatHistory, recordings, studySourceUnits, studySources, transcripts } from "../drizzle/schema";
 import { recordingIdsInCourse } from "./courses";
 import { getDb } from "./db";
@@ -31,6 +31,29 @@ const CANDIDATES_PER_RETRIEVER = 24;
 
 /** Study source units pulled into memory for one question. Newest sources first. */
 const MAX_SOURCE_UNITS = 200;
+
+/** Most files one question can read: the library cap, or the course cap when a course is chosen. */
+const MAX_FILES_ALL = 60;
+const MAX_FILES_COURSE = 25;
+
+/**
+ * How many matching units one file may contribute, so a big recent file cannot crowd out an
+ * older file with the best answer. Every file that matches is represented within MAX_SOURCE_UNITS.
+ */
+export function unitsPerSourceCap(courseId?: number, sourceIds?: number[]): number {
+  const files = sourceIds && sourceIds.length > 0 ? sourceIds.length : courseId !== undefined ? MAX_FILES_COURSE : MAX_FILES_ALL;
+  return Math.max(3, Math.min(50, Math.floor(MAX_SOURCE_UNITS / files)));
+}
+
+/** Keeps the first `cap` rows of each source, in the order given. */
+export function capUnitsPerSource<T extends { sourceId: number }>(rows: T[], cap: number): T[] {
+  const seen = new Map<number, number>();
+  return rows.filter(row => {
+    const count = (seen.get(row.sourceId) ?? 0) + 1;
+    seen.set(row.sourceId, count);
+    return count <= cap;
+  });
+}
 
 export type AskResult = {
   answer: string;
@@ -92,6 +115,55 @@ export function shortLocation(label: string) {
   return label.split(":")[0].replace(/\s*\(cont\.\)\s*$/, "").trim() || label;
 }
 
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type UnitsArgs = { userId: number; termMatches: SQL[]; courseId?: number; sourceIds?: number[]; perSource: number };
+
+function unitsWhere({ userId, termMatches, courseId, sourceIds }: UnitsArgs) {
+  return and(
+    eq(studySources.userId, userId),
+    eq(studySourceUnits.userId, userId),
+    inArray(studySources.status, ["extracted", "analyzing", "ready"]),
+    courseId !== undefined ? eq(studySources.courseId, courseId) : undefined,
+    sourceIds ? inArray(studySources.id, sourceIds) : undefined,
+    or(...termMatches),
+  );
+}
+
+/** Each file's first `perSource` matching units (by position), newest files first, at most MAX_SOURCE_UNITS. */
+export function buildWindowedUnitsQuery(db: Db, args: UnitsArgs) {
+  const ranked = db
+    .select({
+      sourceId: studySources.id,
+      title: studySources.title,
+      createdAt: studySources.createdAt,
+      unitIndex: studySourceUnits.unitIndex,
+      label: studySourceUnits.label,
+      text: studySourceUnits.text,
+      rn: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${studySources.id} ORDER BY ${studySourceUnits.unitIndex})`.as("rn"),
+    })
+    .from(studySourceUnits)
+    .innerJoin(studySources, eq(studySources.id, studySourceUnits.sourceId))
+    .where(unitsWhere(args))
+    .as("ranked");
+  return db
+    .select({ sourceId: ranked.sourceId, title: ranked.title, unitIndex: ranked.unitIndex, label: ranked.label, text: ranked.text })
+    .from(ranked)
+    .where(lte(ranked.rn, args.perSource))
+    .orderBy(desc(ranked.createdAt), desc(ranked.sourceId), ranked.unitIndex)
+    .limit(MAX_SOURCE_UNITS);
+}
+
+/** The plain query: newest files first, at most MAX_SOURCE_UNITS units. */
+export function buildSimpleUnitsQuery(db: Db, args: UnitsArgs) {
+  return db
+    .select({ sourceId: studySources.id, title: studySources.title, unitIndex: studySourceUnits.unitIndex, label: studySourceUnits.label, text: studySourceUnits.text })
+    .from(studySourceUnits)
+    .innerJoin(studySources, eq(studySources.id, studySourceUnits.sourceId))
+    .where(unitsWhere(args))
+    .orderBy(desc(studySources.createdAt), desc(studySources.id), studySourceUnits.unitIndex)
+    .limit(MAX_SOURCE_UNITS);
+}
+
 /**
  * Keyword matches inside the person's study sources, as passages tagged with
  * the source and where in it they came from. Before migration 0034 there are
@@ -102,33 +174,20 @@ export async function loadSourcePassages(userId: number, terms: string[], course
   const db = await getDb();
   if (!db) return [];
   const termMatches = terms.map(term => like(studySourceUnits.text, `%${escapeLike(term)}%`));
-  const rows = await tolerateMissingSchema(
-    "study sources",
-    () =>
-      db
-        .select({
-          sourceId: studySources.id,
-          title: studySources.title,
-          unitIndex: studySourceUnits.unitIndex,
-          label: studySourceUnits.label,
-          text: studySourceUnits.text,
-        })
-        .from(studySourceUnits)
-        .innerJoin(studySources, eq(studySources.id, studySourceUnits.sourceId))
-        .where(
-          and(
-            eq(studySources.userId, userId),
-            eq(studySourceUnits.userId, userId),
-            inArray(studySources.status, ["extracted", "analyzing", "ready"]),
-            courseId !== undefined ? eq(studySources.courseId, courseId) : undefined,
-            sourceIds ? inArray(studySources.id, sourceIds) : undefined,
-            or(...termMatches),
-          ),
-        )
-        .orderBy(desc(studySources.createdAt), desc(studySources.id), studySourceUnits.unitIndex)
-        .limit(MAX_SOURCE_UNITS),
-    [] as Array<{ sourceId: number; title: string; unitIndex: number; label: string; text: string }>,
-  );
+  const perSource = unitsPerSourceCap(courseId, sourceIds);
+  type UnitRow = { sourceId: number; title: string; unitIndex: number; label: string; text: string };
+  const args = { userId, termMatches, courseId, sourceIds, perSource };
+  // Number each file's matching units, then keep the first few of every file before the overall cut.
+  // If that query ever errors for a reason other than a missing table, Ask falls back to the simple
+  // newest-first query (capped per file afterwards) rather than losing its sources.
+  let rawRows: UnitRow[];
+  try {
+    rawRows = await tolerateMissingSchema("study sources", () => buildWindowedUnitsQuery(db, args), [] as UnitRow[]);
+  } catch (error) {
+    console.warn("[ask] windowed source query failed, using the simple query:", error instanceof Error ? error.name : typeof error);
+    rawRows = await tolerateMissingSchema("study sources", () => buildSimpleUnitsQuery(db, args), [] as UnitRow[]);
+  }
+  const rows = capUnitsPerSource(rawRows, perSource);
   const passages: Passage[] = [];
   for (const row of rows) {
     if (typeof row.text !== "string" || typeof row.sourceId !== "number") continue;
