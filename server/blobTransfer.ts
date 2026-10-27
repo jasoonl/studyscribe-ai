@@ -10,6 +10,8 @@
  * break playback. Serverless instances can be frozen with bytes still pending,
  * so the figure is a floor, not an invoice.
  */
+import { isR2StorageConfigured } from "./r2";
+
 export const TRANSFER_KEY_PREFIX = "blob_transfer:";
 export const DEFAULT_TRANSFER_LIMIT_BYTES = 10 * 1024 ** 3;
 const FLUSH_BYTES = 2 * 1024 * 1024;
@@ -18,6 +20,11 @@ const SOFT_CAP_CACHE_MS = 60_000;
 
 export type TransferTotals = { served: number; fetched: number };
 export type TransferLevel = "ok" | "warn" | "error";
+
+/** R2 has no egress fees, so the Vercel Blob transfer budget, soft cap and counter are all off for it. */
+function transferUnmetered(): boolean {
+  return isR2StorageConfigured();
+}
 
 export function transferPeriod(date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -92,6 +99,7 @@ export async function flushTransfer(): Promise<void> {
  */
 export function recordTransfer(bytes: Partial<TransferTotals>, options: { flush?: boolean } = {}): void {
   try {
+    if (transferUnmetered()) return;
     pending.served += Math.max(0, bytes.served ?? 0);
     pending.fetched += Math.max(0, bytes.fetched ?? 0);
     if (options.flush || pending.served + pending.fetched >= FLUSH_BYTES || Date.now() - lastFlush >= FLUSH_INTERVAL_MS) void flushTransfer().catch(() => undefined);
@@ -115,16 +123,19 @@ export async function getTransferReport() {
   const totals = await getTransferTotals();
   const limitBytes = transferLimitBytes();
   const softCapBytes = transferSoftCapBytes();
-  return { period: transferPeriod(), ...totals, limitBytes, softCapBytes, level: transferLevel(totals, limitBytes), softCapReached: transferUsedBytes(totals) >= softCapBytes };
+  const unmetered = transferUnmetered();
+  return { period: transferPeriod(), ...totals, limitBytes, softCapBytes, unmetered, level: unmetered ? ("ok" as const) : transferLevel(totals, limitBytes), softCapReached: !unmetered && transferUsedBytes(totals) >= softCapBytes };
 }
 
 /** True when this month's transfer reached the soft cap. Cached for a minute; fails open. */
 export async function isTransferSoftCapReached(now = Date.now()): Promise<boolean> {
+  if (transferUnmetered()) return false;
   return (await cachedUsedBytes(now)) >= transferSoftCapBytes();
 }
 
 /** True at the hard limit, where Vercel would suspend the store; even owners are refused then. */
 export async function isTransferLimitReached(now = Date.now()): Promise<boolean> {
+  if (transferUnmetered()) return false;
   return (await cachedUsedBytes(now)) >= transferLimitBytes();
 }
 

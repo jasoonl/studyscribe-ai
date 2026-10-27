@@ -107,11 +107,12 @@ export async function uploadAudio(source: UploadSource, io: UploadIo, onProgress
     return { kind: "inline", base64, mimeType: source.mimeType };
   }
   if (!prepare.ok) throw new UploadError(await readError(prepare, "Could not prepare the upload."));
-  const prepared = (await prepare.json()) as { enabled: boolean; upload?: { key: string; mimeType: string; uploadUrl: string; uploadContentType: string } };
+  const prepared = (await prepare.json()) as { enabled: boolean; upload?: { key: string; mimeType: string; uploadUrl: string; uploadContentType: string; provider?: "r2" | "blob" } };
   if (!prepared.enabled || !prepared.upload) throw new UploadError("Uploads are not available right now.");
-  const { key, mimeType, uploadUrl, uploadContentType } = prepared.upload;
+  const { key, mimeType, uploadUrl, uploadContentType, provider } = prepared.upload;
 
-  if (source.size <= MULTIPART_THRESHOLD_BYTES) {
+  // R2 takes one signed PUT at any size; only Vercel Blob needs the multipart path.
+  if (source.size <= MULTIPART_THRESHOLD_BYTES || provider === "r2") {
     const result = await io.putFile(uploadUrl, { "Content-Type": uploadContentType }, (sent) => onProgress(Math.min(1, sent / source.size)));
     if (result.status < 200 || result.status >= 300) {
       throw new UploadError(`The upload could not be completed (${result.status}${result.body ? `: ${result.body.slice(0, 200)}` : ""}).`);

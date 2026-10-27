@@ -117,7 +117,8 @@ export async function uploadRecordingAudio(
 
   // The generic content type the server assigned, on the body as well as the header (see directAudioUpload.ts).
   const body = new Blob([blob], { type: prepared.uploadContentType });
-  if (plan === "multipart") {
+  // R2 takes one signed PUT at any size; only Vercel Blob needs the multipart path.
+  if (plan === "multipart" && prepared.provider !== "r2") {
     await deps.multipart({
       key: prepared.key,
       body,

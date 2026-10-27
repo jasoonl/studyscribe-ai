@@ -23,7 +23,7 @@ import {
 } from "./sourceFlags";
 import { planParts } from "./sourceParts";
 import { parseJsonContent } from "./studyExtraction";
-import { createDirectSourceUpload, deleteStoredAudio, isVercelBlobStorageConfigured, storageGetSignedUrl, verifyUploadedSource } from "./storage";
+import { createDirectSourceUpload, deleteStoredAudio, isObjectStorageConfigured, storageGetSignedUrl, verifyUploadedSource } from "./storage";
 import { storageHasRoomForSlides } from "./slides";
 import { assertCanGenerate, hasUsage, recordUsage } from "./usage";
 import { checkTrpcRateLimit } from "./_core/rateLimit";
@@ -369,7 +369,7 @@ export const sourcesRouter = router({
       if (input.size > maxBytesForKind(kind)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: kind === "text" ? "Text and Markdown files can be up to 2MB." : "Files can be up to 25MB." });
       }
-      if (!isVercelBlobStorageConfigured()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "File storage is not set up on this server yet." });
+      if (!isObjectStorageConfigured()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "File storage is not set up on this server yet." });
       if (input.courseId !== undefined) await requireOwnCourse(ctx.user.id, input.courseId);
       await assertQuota(await requireDb(), ctx.user.id, input.courseId ?? null, input.size);
       // Documents must never crowd out lecture audio in the shared store.

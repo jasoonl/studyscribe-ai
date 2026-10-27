@@ -17,7 +17,7 @@ import { deleteChunksForRecordings } from "./embeddings";
 import { deleteGroupSharesForRecordings } from "./groups";
 import { deleteTranslationsForRecordings } from "./translations";
 import { getDb } from "./db";
-import { deleteStoredAudio } from "./storage";
+import { StorageDeleteError, deleteStoredAudio } from "./storage";
 import { deleteSlidesForRecordings } from "./slides";
 import { deleteRecordingEventsForRecordings } from "./recordingEvents";
 import { detachBotsFromRecordings } from "./meetingBots";
@@ -33,8 +33,18 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  // If some files could not be removed, their recordings are kept (never drop the row of a file that survives);
+  // the rest are purged and the failure is reported at the end.
+  let incomplete: StorageDeleteError | null = null;
+  try {
+    await deleteStoredAudio(rows.map((row) => row.audioKey ?? ""));
+  } catch (error) {
+    if (!(error instanceof StorageDeleteError)) throw error;
+    incomplete = error;
+    const failed = new Set(error.failedKeys);
+    rows = rows.filter((row) => !(row.audioKey && failed.has(row.audioKey)));
+  }
   const ids = rows.map((row) => row.id);
-  await deleteStoredAudio(rows.map((row) => row.audioKey ?? ""));
   // Captured slides are stored files too; the same rule applies.
   await deleteSlidesForRecordings(ids);
 
@@ -70,5 +80,6 @@ export async function purgeRecordings(rows: Array<{ id: number; audioKey: string
     await db.delete(userNotifications).where(inArray(userNotifications.recordingId, batch));
     await db.delete(recordings).where(inArray(recordings.id, batch));
   }
+  if (incomplete) throw new Error(`${incomplete.message}, so those recordings were kept. Try again in a moment.`);
   return { deleted: ids.length };
 }

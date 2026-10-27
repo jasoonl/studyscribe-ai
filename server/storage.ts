@@ -1,6 +1,9 @@
 import { BlobNotFoundError, del, head, issueSignedToken, list, presignUrl, put } from "@vercel/blob";
 import { MAX_SOURCE_BYTES, MAX_SOURCE_LABEL, MAX_SOURCE_TEXT_BYTES, MAX_SOURCE_TEXT_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, sourceKindForFileName } from "@shared/const";
 import { ENV } from "./_core/env";
+import { getR2Config, isR2StorageConfigured, presignGet, presignPut, r2Delete, r2Head, r2PutBuffer, r2PutStream, type R2Config } from "./r2";
+
+export { isR2StorageConfigured };
 
 const MAX_AUDIO_SIZE_BYTES = MAX_UPLOAD_BYTES;
 const AUDIO_MIME_TYPES = new Set([
@@ -45,6 +48,32 @@ export function isVercelBlobStorageConfigured() {
     process.env.BLOB_READ_WRITE_TOKEN ||
     (process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN),
   );
+}
+
+/** Which backend serves files. R2 wins when fully configured, then Vercel Blob, then the legacy Forge API. */
+export type StorageProvider = "r2" | "blob" | "forge" | "none";
+
+export function getStorageProvider(): StorageProvider {
+  if (isR2StorageConfigured()) return "r2";
+  if (isVercelBlobStorageConfigured()) return "blob";
+  if ((process.env.BUILT_IN_FORGE_API_URL || ENV.forgeApiUrl) && (process.env.BUILT_IN_FORGE_API_KEY || ENV.forgeApiKey)) return "forge";
+  return "none";
+}
+
+/** True when direct uploads and the file helpers below have a backend (R2 or Vercel Blob; not Forge). */
+export function isObjectStorageConfigured() {
+  return isR2StorageConfigured() || isVercelBlobStorageConfigured();
+}
+
+function requireR2(): R2Config {
+  const config = getR2Config();
+  if (!config) throw new Error("Storage is not configured");
+  return config;
+}
+
+/** R2 has no egress charge, so the monthly transfer budget (a Vercel Blob concept) does not apply to it. */
+export function isTransferMetered() {
+  return !isR2StorageConfigured();
 }
 
 function getForgeConfig() {
@@ -162,8 +191,8 @@ export async function createDirectAudioUpload(input: {
   fileName: string;
   mimeType: string;
   size: number;
-}): Promise<{ key: string; mimeType: string; uploadUrl: string; uploadContentType: string } | null> {
-  if (!isVercelBlobStorageConfigured()) return null;
+}): Promise<{ key: string; mimeType: string; uploadUrl: string; uploadContentType: string; provider: "r2" | "blob" } | null> {
+  if (!isObjectStorageConfigured()) return null;
   // Browsers often report a blank or generic type for files such as .mov, so fall back to the extension.
   const declared = input.mimeType.split(";")[0].trim().toLowerCase();
   const extension = input.fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -176,6 +205,12 @@ export async function createDirectAudioUpload(input: {
 
   const label = AUDIO_TYPE_LABELS[mimeType] || "audio";
   const key = `${input.userId}/recordings/${crypto.randomUUID()}-${label}.bin`;
+  if (isR2StorageConfigured()) {
+    // One signed PUT at any size (R2 allows 5 GB), bound to this content type and length, valid for 3 hours
+    // so a slow upload of a large file can finish.
+    const uploadUrl = presignPut(requireR2(), key, { contentType: BLOB_UPLOAD_CONTENT_TYPE, contentLength: input.size, expiresInSeconds: 3 * 60 * 60 });
+    return { key, mimeType, uploadUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE, provider: "r2" };
+  }
   const validUntil = Date.now() + 10 * 60 * 1_000;
   const signedToken = await issueSignedToken({
     pathname: key,
@@ -195,7 +230,7 @@ export async function createDirectAudioUpload(input: {
     validUntil,
   });
 
-  return { key, mimeType, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE };
+  return { key, mimeType, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE, provider: "blob" };
 }
 
 /**
@@ -209,8 +244,8 @@ export async function createDirectSourceUpload(input: {
   userId: number;
   fileName: string;
   size: number;
-}): Promise<{ key: string; kind: ReturnType<typeof sourceKindForFileName> & string; uploadUrl: string; uploadContentType: string } | null> {
-  if (!isVercelBlobStorageConfigured()) return null;
+}): Promise<{ key: string; kind: ReturnType<typeof sourceKindForFileName> & string; uploadUrl: string; uploadContentType: string; provider: "r2" | "blob" } | null> {
+  if (!isObjectStorageConfigured()) return null;
   const kind = sourceKindForFileName(input.fileName);
   if (!kind) throw new Error("Unsupported file type");
   const maxBytes = kind === "text" ? MAX_SOURCE_TEXT_BYTES : MAX_SOURCE_BYTES;
@@ -218,6 +253,10 @@ export async function createDirectSourceUpload(input: {
     throw new Error(`File must be between 1 byte and ${kind === "text" ? MAX_SOURCE_TEXT_LABEL : MAX_SOURCE_LABEL}`);
   }
   const key = `${input.userId}/sources/${crypto.randomUUID()}-${kind}.bin`;
+  if (isR2StorageConfigured()) {
+    const uploadUrl = presignPut(requireR2(), key, { contentType: BLOB_UPLOAD_CONTENT_TYPE, contentLength: input.size, expiresInSeconds: 10 * 60 });
+    return { key, kind, uploadUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE, provider: "r2" };
+  }
   const validUntil = Date.now() + 10 * 60 * 1_000;
   const signedToken = await issueSignedToken({
     pathname: key,
@@ -236,15 +275,15 @@ export async function createDirectSourceUpload(input: {
     addRandomSuffix: false,
     validUntil,
   });
-  return { key, kind, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE };
+  return { key, kind, uploadUrl: presignedUrl, uploadContentType: BLOB_UPLOAD_CONTENT_TYPE, provider: "blob" };
 }
 
 /** Confirms an uploaded source exists and has bytes before a row is committed to it. */
 export async function verifyUploadedSource(key: string): Promise<{ size: number }> {
-  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
-  let metadata;
+  if (!isObjectStorageConfigured()) throw new Error("Storage is not configured");
+  let metadata: { size: number } | null;
   try {
-    metadata = await head(key);
+    metadata = isR2StorageConfigured() ? await r2Head(requireR2(), key) : await head(key);
   } catch {
     throw new Error("The uploaded file could not be found in storage. Please upload it again.");
   }
@@ -258,6 +297,8 @@ export async function verifyUploadedSource(key: string): Promise<{ size: number 
  * createDirectAudioUpload handed out for this user is accepted, with the same size and content-type limits.
  */
 export async function issueLargeUploadToken(input: { userId: number; pathname: string; size: number }) {
+  // R2 takes one signed PUT at any size, so the multipart token flow is Blob-only.
+  if (isR2StorageConfigured()) throw new Error("Large-file uploads use a single signed upload on this server");
   if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
   if (!new RegExp(`^${input.userId}/recordings/[0-9a-f-]{36}-[a-z0-9]+\\.bin$`).test(input.pathname)) throw new Error("Invalid upload path");
   if (!Number.isFinite(input.size) || input.size <= 0 || input.size > MAX_AUDIO_SIZE_BYTES) {
@@ -295,13 +336,17 @@ export async function putAudioStream(input: {
   mimeType: string;
   body: ReadableStream<Uint8Array>;
 }): Promise<{ key: string; mimeType: string; url: string }> {
-  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
+  if (!isObjectStorageConfigured()) throw new Error("Storage is not configured");
 
   const mimeType = normalizeAudioMimeType(input.mimeType);
   if (!AUDIO_MIME_TYPES.has(mimeType)) throw new Error(`Unsupported audio format: ${input.mimeType}`);
 
   const label = AUDIO_TYPE_LABELS[mimeType] || "audio";
   const key = `${input.userId}/recordings/${crypto.randomUUID()}-${label}.bin`;
+  if (isR2StorageConfigured()) {
+    await r2PutStream(requireR2(), key, input.body, BLOB_UPLOAD_CONTENT_TYPE);
+    return { key, mimeType, url: publicStorageProxyUrl(key) };
+  }
   const result = await put(key, input.body, {
     access: "private",
     addRandomSuffix: false,
@@ -320,12 +365,21 @@ export async function putAudioStream(input: {
  */
 export async function getBlobUsage(): Promise<{
   configured: boolean;
+  provider: StorageProvider;
+  /** False when the figures below are unknown (R2: listing the bucket would spend request quota). */
+  metered: boolean;
   totalBytes: number;
   objectCount: number;
   limitBytes: number;
 }> {
+  const provider = getStorageProvider();
+  if (provider === "r2") {
+    // R2's free tier is 10 GB with no egress fees; usage is deliberately not measured (a full listing costs
+    // Class A operations), so report it as unmetered. The Cloudflare dashboard shows the real figure.
+    return { configured: true, provider, metered: false, totalBytes: 0, objectCount: 0, limitBytes: Number(process.env.R2_STORAGE_LIMIT_BYTES) || 10 * 1024 ** 3 };
+  }
   const limitBytes = Number(process.env.BLOB_STORAGE_LIMIT_BYTES) || 1024 * 1024 * 1024;
-  if (!isVercelBlobStorageConfigured()) return { configured: false, totalBytes: 0, objectCount: 0, limitBytes };
+  if (!isVercelBlobStorageConfigured()) return { configured: false, provider, metered: false, totalBytes: 0, objectCount: 0, limitBytes };
 
   let totalBytes = 0;
   let objectCount = 0;
@@ -339,7 +393,7 @@ export async function getBlobUsage(): Promise<{
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
 
-  return { configured: true, totalBytes, objectCount, limitBytes };
+  return { configured: true, provider, metered: true, totalBytes, objectCount, limitBytes };
 }
 
 /**
@@ -348,9 +402,50 @@ export async function getBlobUsage(): Promise<{
  * pointed at it. A missing object is fine (already gone); any other failure is
  * reported to the caller rather than swallowed.
  */
+/** Thrown when some keys could not be deleted; the rest were. Callers keep the rows of `failedKeys`. */
+export class StorageDeleteError extends Error {
+  constructor(readonly failedKeys: string[]) {
+    super(`${failedKeys.length} stored file${failedKeys.length === 1 ? "" : "s"} could not be removed from storage`);
+    this.name = "StorageDeleteError";
+  }
+}
+
+const R2_DELETE_CONCURRENCY = 8;
+const R2_DELETE_BUDGET_MS = 40_000;
+
 export async function deleteStoredAudio(keys: string[]): Promise<void> {
   const unique = Array.from(new Set(keys.filter(Boolean)));
-  if (unique.length === 0 || !isVercelBlobStorageConfigured()) return;
+  if (unique.length === 0 || !isObjectStorageConfigured()) return;
+  if (isR2StorageConfigured()) {
+    const config = requireR2();
+    const deadline = Date.now() + R2_DELETE_BUDGET_MS;
+    const failed: string[] = [];
+    const deleted: string[] = [];
+    let next = 0;
+    const lane = async () => {
+      while (next < unique.length) {
+        const key = unique[next++];
+        if (Date.now() >= deadline) {
+          failed.push(key);
+          continue;
+        }
+        try {
+          await r2Delete(config, key); // a missing object (404) counts as deleted
+          deleted.push(key);
+        } catch {
+          failed.push(key);
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(R2_DELETE_CONCURRENCY, unique.length) }, lane));
+    // Recordings made before the switch may still sit in Blob; remove the same keys there so they do not
+    // linger in the 1GB store. Best effort: nothing on the Blob side can fail the delete.
+    if (isVercelBlobStorageConfigured() && deleted.length) {
+      for (let i = 0; i < deleted.length; i += 100) await del(deleted.slice(i, i + 100)).catch(() => undefined);
+    }
+    if (failed.length) throw new StorageDeleteError(failed);
+    return;
+  }
   for (let i = 0; i < unique.length; i += 100) {
     try {
       await del(unique.slice(i, i + 100));
@@ -369,11 +464,16 @@ export async function deleteStoredAudio(keys: string[]): Promise<void> {
  * commit a recording to it.
  */
 export async function verifyUploadedAudio(key: string): Promise<{ size: number; contentType: string }> {
-  if (!isVercelBlobStorageConfigured()) throw new Error("Storage is not configured");
+  if (!isObjectStorageConfigured()) throw new Error("Storage is not configured");
 
-  let metadata;
+  let metadata: { size: number; contentType: string } | null;
   try {
-    metadata = await head(key);
+    if (isR2StorageConfigured()) {
+      metadata = await r2Head(requireR2(), key);
+      if (!metadata) throw new Error("not found");
+    } else {
+      metadata = await head(key);
+    }
   } catch (error) {
     throw new Error(
       `The uploaded audio could not be found in storage (${error instanceof Error ? error.message : "unknown error"}). Please try recording or uploading again.`,
@@ -417,6 +517,11 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
+  if (isR2StorageConfigured()) {
+    const key = appendHashSuffix(normalizeKey(relKey));
+    await r2PutBuffer(requireR2(), key, typeof data === "string" ? Buffer.from(data) : data, contentType);
+    return { key, url: publicStorageProxyUrl(key) };
+  }
   if (isVercelBlobStorageConfigured()) {
     const key = normalizeKey(relKey);
     const blobData = typeof data === "string" || !Buffer.isBuffer(data) ? Buffer.from(data) : data;
@@ -453,11 +558,12 @@ export async function storagePut(
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  if (isVercelBlobStorageConfigured()) return { key, url: publicStorageProxyUrl(key) };
+  if (isObjectStorageConfigured()) return { key, url: publicStorageProxyUrl(key) };
   return { key, url: `/manus-storage/${key}` };
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
+  if (isR2StorageConfigured()) return presignGet(requireR2(), normalizeKey(relKey), { expiresInSeconds: 10 * 60 });
   if (isVercelBlobStorageConfigured()) {
     const key = normalizeKey(relKey);
     const validUntil = Date.now() + 10 * 60 * 1_000;

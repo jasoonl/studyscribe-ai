@@ -4,7 +4,8 @@ import { getEmbeddingConfig } from "./embeddings";
 import { getBrowserPushConfiguration } from "./pushNotifications";
 import { describeRecallConfig, getRecallConfig } from "./recall";
 import { getTransferReport, transferLevel, type TransferTotals } from "./blobTransfer";
-import { getBlobUsage, isVercelBlobStorageConfigured } from "./storage";
+import { getBlobUsage, getStorageProvider, isObjectStorageConfigured } from "./storage";
+import { getR2Config, r2CheckBucket } from "./r2";
 import { getStripeConfig, stripeRequest } from "./stripe";
 import { describeWorkosConfig, getWorkosConfig } from "./workos";
 
@@ -58,6 +59,14 @@ export function storageStatus(usage: { configured: boolean; totalBytes: number; 
   if (share >= 0.95) return { status: "error", detail: `${used} Blob suspends a store over its limit; free space or raise the plan.` };
   if (share >= 0.8) return { status: "warn", detail: `${used} Getting close to the limit.` };
   return { status: "ok", detail: used };
+}
+
+/** Cloudflare R2 check: the bucket answers a HEAD with the configured credentials. Never includes keys or URLs. */
+export function r2Status(result: { ok: boolean; status: number | null }): Omit<HealthCheck, "id" | "label" | "latencyMs"> {
+  if (result.ok) return { status: "ok", detail: "Cloudflare R2 is active and the bucket is reachable with these credentials (free tier: 10 GB, no egress fees; usage is shown in the Cloudflare dashboard)." };
+  if (result.status === 401 || result.status === 403) return { status: "error", detail: `Cloudflare R2 refused the access key (${result.status}). Check R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and that the token covers the bucket.` };
+  if (result.status === null) return { status: "error", detail: "Cloudflare R2 could not be reached." };
+  return { status: "error", detail: `Cloudflare R2 answered ${result.status}.` };
 }
 
 /** Monthly Blob transfer: warn at 80% of the allowance, error at 95% (the soft cap, where shared playback pauses). */
@@ -125,9 +134,14 @@ export async function runHealthChecks(fetcher: typeof fetch = fetch): Promise<He
       await db.execute(sql`select 1`);
       return { status: "ok", detail: "Connected." };
     })],
-    ["storage", "Storage", () => timed(async () => storageStatus(isVercelBlobStorageConfigured() ? await getBlobUsage() : { configured: false, totalBytes: 0, limitBytes: 0 }))],
+    ["storage", "Storage", () => timed(async () => {
+      const r2 = getStorageProvider() === "r2" ? getR2Config() : null;
+      if (r2) return r2Status(await r2CheckBucket(r2, fetcher, 5_000));
+      return storageStatus(isObjectStorageConfigured() ? await getBlobUsage() : { configured: false, totalBytes: 0, limitBytes: 0 });
+    })],
     ["blob-transfer", "Storage transfer", () => timed(async () => {
-      if (!isVercelBlobStorageConfigured()) return { status: "off", detail: "Vercel Blob is not configured." };
+      if (getStorageProvider() === "r2") return { status: "off", detail: "Cloudflare R2 is active and has no transfer charges, so there is no monthly transfer budget to track." };
+      if (getStorageProvider() !== "blob") return { status: "off", detail: "Vercel Blob is not configured." };
       const report = await getTransferReport();
       return transferStatus(report, report.limitBytes);
     })],

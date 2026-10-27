@@ -149,7 +149,7 @@ export function createApi(origin: string, fetchImpl: FetchLike = (input, init) =
       });
       if (response.status === 409) return null;
       const body = (await readJson(response)) as
-        | { enabled: true; upload: { key: string; mimeType: string; uploadUrl: string; uploadContentType: string } }
+        | { enabled: true; upload: { key: string; mimeType: string; uploadUrl: string; uploadContentType: string; provider?: "r2" | "blob" } }
         | { enabled: false }
         | { error?: string };
       if (response.status === 401) throw new ApiError("Sign in to StudyScribe to save this recording.", 401);
