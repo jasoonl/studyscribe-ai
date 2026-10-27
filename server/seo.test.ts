@@ -15,6 +15,7 @@ describe("SEO basics", () => {
     expect(robots).toContain(`Sitemap: ${SITE_ORIGIN}/sitemap.xml`);
     expect(robots).toMatch(/Disallow: \/api\//);
     expect(robots).toMatch(/Disallow: \/dashboard/);
+    expect(robots).toMatch(/Disallow: \/files/);
   });
 
   it("gives public pages a canonical and everything else noindex", () => {
@@ -25,6 +26,8 @@ describe("SEO basics", () => {
     expect(metaForPath("/login")).toMatchObject({ canonical: null, index: false });
     expect(metaForPath("/notes")).toMatchObject({ canonical: null, index: false });
     expect(metaForPath("/notes/12")).toMatchObject({ canonical: null, index: false });
+    expect(metaForPath("/files")).toMatchObject({ canonical: null, index: false });
+    expect(metaForPath("/sources/4")).toMatchObject({ canonical: null, index: false });
   });
 
   it("keeps titles and descriptions within what search results show, without em dashes", () => {

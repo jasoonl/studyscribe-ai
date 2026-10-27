@@ -12,5 +12,6 @@ Disallow: /admin
 Disallow: /team
 Disallow: /groups
 Disallow: /billing
+Disallow: /files
 
 Sitemap: https://studyscribe-ai.vercel.app/sitemap.xml

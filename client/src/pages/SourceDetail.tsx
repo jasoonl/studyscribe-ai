@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { AlertCircle, ArrowLeft, MoreHorizontal, Pencil, RotateCw, Sparkles, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, FolderInput, MoreHorizontal, Pencil, RotateCw, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Markdown } from "@/components/Markdown";
 import { DeleteSourceDialog } from "@/components/sources/DeleteSourceDialog";
 import { KeyPointsList } from "@/components/sources/KeyPointsList";
+import { MoveSourceDialog } from "@/components/sources/MoveSourceDialog";
 import { LocationChip } from "@/components/sources/LocationChip";
 import { PassageViewer } from "@/components/sources/PassageViewer";
 import { SourceUploadRow } from "@/components/sources/SourceUploadRow";
@@ -41,6 +42,7 @@ export default function SourceDetail() {
   const utils = trpc.useUtils();
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [title, setTitle] = useState("");
   const [announcement, setAnnouncement] = useState("");
   const lastStatus = useRef<string | null>(null);
@@ -119,13 +121,13 @@ export default function SourceDetail() {
       await remove.mutateAsync({ id });
       await utils.sources.list.invalidate();
       toast.success(t("sources.delete.done"));
-      navigate(source?.courseId ? `/courses/${source.courseId}/sources` : "/dashboard");
+      navigate(source?.courseId ? `/courses/${source.courseId}/sources` : "/files");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("sources.error.failed"));
     }
   };
 
-  const backHref = source?.courseId ? `/courses/${source.courseId}/sources` : "/dashboard";
+  const backHref = source?.courseId ? `/courses/${source.courseId}/sources` : "/files";
   const askHref = source ? `/ask?${source.courseId ? `course=${source.courseId}&` : ""}source=${source.id}` : "/ask";
   const topPoints = flags.filter(flag => flag.importance >= 3).slice(0, 5);
   const percent = source ? summaryPercent(source) : null;
@@ -138,7 +140,7 @@ export default function SourceDetail() {
           <Link href={backHref}>
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">{t("sources.title")}</span>
+              <span className="sr-only sm:not-sr-only">{source && !source.courseId ? t("files.title") : t("sources.title")}</span>
             </Button>
           </Link>
           {source && (
@@ -167,6 +169,10 @@ export default function SourceDetail() {
                     <Pencil className="size-4" aria-hidden="true" />
                     {t("sources.rename.button")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setMoving(true)}>
+                    <FolderInput className="size-4" aria-hidden="true" />
+                    {t("files.move.button")}
+                  </DropdownMenuItem>
                   <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
                     <Trash2 className="size-4" aria-hidden="true" />
                     {t("sources.delete.button")}
@@ -193,8 +199,8 @@ export default function SourceDetail() {
           <div className="py-24 text-center">
             <h1 className="mb-2 text-2xl font-bold tracking-tight">{t("sources.detail.notFound")}</h1>
             <p className="mb-6 text-muted-foreground">{t("sources.detail.notFoundHint")}</p>
-            <Link href="/dashboard">
-              <Button>{t("course.backToLibrary")}</Button>
+            <Link href="/files">
+              <Button>{t("files.backToFiles")}</Button>
             </Link>
           </div>
         ) : (
@@ -350,6 +356,7 @@ export default function SourceDetail() {
           </form>
         </DialogContent>
       </Dialog>
+      {source && <MoveSourceDialog source={source} open={moving} onOpenChange={setMoving} />}
       {source && <DeleteSourceDialog title={source.title} open={deleting} onOpenChange={setDeleting} pending={remove.isPending} onConfirm={() => void doDelete()} />}
     </div>
   );

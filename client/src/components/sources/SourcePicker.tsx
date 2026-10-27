@@ -18,7 +18,7 @@ type Props = { courseId: number | undefined; selection: AskSourceSelection; onCh
 function Body({ courseId, selection, onChange, onDone, mobile }: Props & { onDone: () => void; mobile: boolean }) {
   const { t } = useI18n();
   const name = useId();
-  const list = trpc.sources.list.useQuery({ courseId }, { enabled: courseId !== undefined });
+  const list = trpc.sources.list.useQuery({ courseId });
   const ready = (list.data?.sources ?? []).filter(source => source.status === "ready");
   const allIds = ready.map(source => source.id);
   const checked = (id: number) => selection.mode !== "recordings" && (selection.ids.length === 0 || selection.ids.includes(id));
@@ -59,12 +59,10 @@ function Body({ courseId, selection, onChange, onDone, mobile }: Props & { onDon
           </div>
         ) : ready.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {t("ask.sources.none")}{" "}
-            {courseId !== undefined && (
-              <Link href={`/courses/${courseId}/sources`} className="font-medium text-primary underline underline-offset-2">
-                {t("ask.sources.addLink")}
-              </Link>
-            )}
+            {courseId === undefined ? t("ask.sources.noneAll") : t("ask.sources.none")}{" "}
+            <Link href={courseId !== undefined ? `/courses/${courseId}/sources` : "/files"} className="font-medium text-primary underline underline-offset-2">
+              {t("ask.sources.addLink")}
+            </Link>
           </p>
         ) : (
           <>
@@ -108,12 +106,12 @@ export function SourcePicker(props: Props) {
   const { t, tn } = useI18n();
   const mobile = useIsMobile();
   const [open, setOpen] = useState(false);
-  const list = trpc.sources.list.useQuery({ courseId: props.courseId }, { enabled: props.courseId !== undefined });
+  const list = trpc.sources.list.useQuery({ courseId: props.courseId });
   const available = (list.data?.sources ?? []).filter(source => source.status === "ready").length;
   const label = pickerLabel(props.selection, available);
   const text =
     label.key === "all"
-      ? t("ask.sources.triggerAll")
+      ? t(props.courseId === undefined ? "ask.sources.triggerAllFiles" : "ask.sources.triggerAll")
       : label.key === "some"
         ? tn("ask.sources.triggerSome", label.count)
         : label.key === "recordingsOnly"
