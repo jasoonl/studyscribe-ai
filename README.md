@@ -1,67 +1,96 @@
 # StudyScribe AI
 
-StudyScribe AI turns recorded lectures and meetings into study material. Record or upload audio, get it transcribed (with speaker diarization), and generate AI study notes, flashcards, quizzes, study guides, and email/document drafts from the transcript — plus an AI tutor chat scoped to that recording.
+**Turn lectures and meetings into study material.** Record, upload or paste a link, get a speaker-labelled transcript, and generate notes, flashcards, quizzes, study guides and an AI tutor from it.
 
-It's a full-stack app: a React SPA talking to an Express/tRPC API, backed by a TiDB Cloud (MySQL-compatible) database via Drizzle ORM. It's currently live on Vercel at [studyscribe-ai.vercel.app](https://studyscribe-ai.vercel.app).
+**Live app:** [studyscribe-ai.vercel.app](https://studyscribe-ai.vercel.app) · **Demo:** [/demo](https://studyscribe-ai.vercel.app/demo)
 
-## Features
+![The StudyScribe library](client/public/landing/dashboard.jpg)
 
-- **Record or upload** lectures/meetings (audio, up to 16MB)
-- **Transcription with speaker diarization** via AssemblyAI, processed asynchronously
-- **AI study tools** generated from the transcript: study notes, flashcards (with spaced-repetition-style review, learn mode, test mode), quizzes, study guides, and email/document drafts
-- **AI tutor chat** scoped to a recording's content
-- **Knowledge base search** across all your transcripts
-- **Custom auth**: invite-gated email/password + Google OAuth, with an admin flow for reviewing access requests and issuing invite codes
-- **Sharing**: generate a no-login public link for a recording, or share it directly with another StudyScribe account
-- **Admin dashboard**: manage invite requests/codes and user roles at `/admin`
-- Browser push notifications, in-app notification center, analytics dashboard
+## What it does
+
+| | |
+| --- | --- |
+| **Capture** | Record in the browser (with optional tab or screen audio and live transcription), upload audio or video up to 1 GB, import from a link (including YouTube), or send a note-taker bot to Zoom, Meet or Teams. |
+| **Transcribe** | AssemblyAI transcription with speaker labels, automatic language detection and custom vocabulary. Search, comment, highlight, rename speakers and export to TXT, SRT or VTT. |
+| **Study** | AI notes from templates, flashcards with spaced repetition, quizzes, study guides, key terms and chapters, tasks and due dates, exam packs across many recordings, a study planner and progress tracking. |
+| **Ask** | An AI tutor for each recording, and Ask StudyScribe across your whole library and uploaded files (PDFs, slides, documents) with cited, clickable answers. |
+| **Organise** | Courses, tags, a Files library, standalone notes, bookmarks and offline review. |
+| **Share** | Public links, view/comment/edit sharing, study groups, teams with SSO, emailing notes to meeting attendees, Notion and Google Docs export, webhooks and a public API. |
+
+The interface is available in English, Spanish, French, Simplified Chinese, Japanese and Korean.
+
+## Apps in this repo
+
+| App | Folder | Notes |
+| --- | --- | --- |
+| Web app and API | `client/`, `server/`, `shared/` | The main product, deployed to Vercel. |
+| Mobile app | [`mobile/`](mobile/README.md) | Expo (iOS and Android). |
+| Desktop app | [`desktop/`](desktop/README.md) | Electron (Mac, Windows, Linux). |
+| Chrome extension | [`extension/`](extension/README.md) | Import a page or record a tab. |
 
 ## Tech stack
 
-- **Frontend**: React 19, Vite, [wouter](https://github.com/molefrog/wouter) for routing, TanStack Query, shadcn/ui + Tailwind v4
-- **Backend**: Express + [tRPC](https://trpc.io) (most of the API), plus a few plain REST routes for auth and webhooks
-- **Database**: TiDB Cloud (MySQL-compatible) via [Drizzle ORM](https://orm.drizzle.team)
-- **AI/transcription**: AssemblyAI (speaker diarization), an OpenAI-compatible chat completion API for study-tool generation
-- **Storage**: Vercel Blob
-- **Email**: Resend
-- **Hosting**: Vercel (serverless functions), with the app also portable to a standalone Node server (Railway/Render configs exist but aren't the active deployment)
-
-See [CLAUDE.md](CLAUDE.md) for a deeper architecture walkthrough (bootstrapping, auth model, database env-var resolution, provider abstractions).
+- **Frontend:** React 19, Vite, [wouter](https://github.com/molefrog/wouter), TanStack Query, shadcn/ui and Tailwind v4
+- **Backend:** Express and [tRPC](https://trpc.io), plus REST routes for auth, webhooks and the public API
+- **Database:** TiDB Cloud (MySQL-compatible) with [Drizzle ORM](https://orm.drizzle.team)
+- **AI:** AssemblyAI for transcription, any OpenAI-compatible API for generation and embeddings
+- **Services:** Cloudflare R2 or Vercel Blob (storage), Resend (email), Stripe (billing), Recall.ai (meeting bots), WorkOS (SSO), Web Push
 
 ## Getting started
 
+Requires Node 22.
+
 ```bash
 npm install --include=dev --no-audit --no-fund
-npm run dev
+npm run dev        # Express + Vite on the first free port from 3000
 ```
 
-This starts an Express server with Vite middleware for HMR, on the first free port from 3000.
+For local development you need `JWT_SECRET`, `PUBLIC_APP_URL` (e.g. `http://localhost:3000`) and a database connection (`DATABASE_URL`, or the `TIDB_*` / `DB_*` variables). Everything else is optional and switches its feature off when missing:
 
-### Environment variables
-
-| Variable | Purpose |
+| Variable | Turns on |
 | --- | --- |
-| `TIDB_HOST` / `TIDB_PORT` / `TIDB_USER` / `TIDB_PASSWORD` / `TIDB_DATABASE` (or `DB_*` equivalents, or `DATABASE_URL`) | Database connection — see `getExternalDatabaseConfig()` in `server/db.ts` for precedence |
-| `JWT_SECRET` | Signs session cookies |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
-| `PUBLIC_APP_URL` or `APP_URL` | Canonical app origin, used for OAuth redirects and password-reset links |
-| `ASSEMBLYAI_API_KEY` / `ASSEMBLYAI_WEBHOOK_SECRET` | Transcription + speaker diarization |
-| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` | AI study-tool generation (OpenAI-compatible) |
-| `BLOB_READ_WRITE_TOKEN` (or `BLOB_STORE_ID` + `VERCEL_OIDC_TOKEN`) | Vercel Blob storage for recordings |
-| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | Transactional email (password reset) |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Browser push notifications |
+| `ASSEMBLYAI_API_KEY` | Transcription (`ASSEMBLYAI_WEBHOOK_SECRET` for webhook mode) |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` | AI notes, flashcards, quizzes, tutor and Ask |
+| `OPENAI_EMBEDDING_MODEL` | Smart search |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in, Calendar and Docs export |
+| `R2_*` or `BLOB_READ_WRITE_TOKEN` | File storage ([R2 setup](docs/storage-r2.md)) |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Email |
+| `STRIPE_*` | Paid plans |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Browser push |
 
-### Common commands
+Mock servers in `scripts/dev/` stand in for AssemblyAI, OpenAI, Stripe, Google and the rest so you can run every feature without keys. See [CLAUDE.md](CLAUDE.md) for the commands.
+
+### Commands
 
 ```bash
 npm run build       # production build (client + server bundle)
 npm start           # run the built standalone server
-npm run check       # TypeScript check
-npm test            # run the test suite (vitest)
-npm run format      # prettier
-npm run db:push     # generate + apply a new Drizzle migration
-npm run db:migrate  # apply committed migrations only
+npm run check       # TypeScript
+npm test            # Vitest
+npm run format      # Prettier
+npm run db:migrate  # apply committed migrations in drizzle/
+npm run evals       # AI quality checks (see evals/README.md)
 ```
+
+## Project structure
+
+```
+client/        React web app (pages, components, hooks, i18n)
+server/        Express app, tRPC routers, auth, provider integrations
+shared/        Code shared by client, server and mobile (plans, languages, translations)
+drizzle/       Database schema and SQL migrations
+api/           Vercel serverless entry point
+mobile/        Expo mobile app
+desktop/       Electron desktop app
+extension/     Chrome extension
+scripts/       Dev mock servers, demo video and screenshot pipelines, YouTube relay, DB tools
+evals/         AI quality eval cases and baseline
+docs/          Handoff notes, plans, guides, security and compliance
+patches/       Package patches (pnpm)
+tools/         Vendored Claude skill tooling
+```
+
+Start with [docs/README.md](docs/README.md) for the documentation index and [CLAUDE.md](CLAUDE.md) for a detailed architecture walkthrough.
 
 ## Desktop app
 
@@ -85,15 +114,8 @@ See [desktop/README.md](desktop/README.md) for system audio, security settings, 
 
 ## Deployment
 
-Production runs on Vercel, deploying automatically on push to `main`. Database schema migrations don't run automatically on deploy — they need to be applied against the live database separately (see the migration files under `drizzle/` and `server/schemaInit.ts`).
+Production runs on Vercel and deploys automatically on every push to `main`. Database migrations are not applied on deploy: run `npm run db:migrate` against the production database after merging a change that adds one. Railway and Render configs (`railway.json`, `render.yaml`, `Procfile`) are kept from an earlier evaluation and are not the active deployment.
 
-## Project structure
+## License
 
-```
-client/src/       React app (pages, components, hooks)
-server/           Express app, tRPC routers, auth, provider integrations
-drizzle/          Database schema and migrations
-shared/           Code shared between client and server
-```
-
-See [CLAUDE.md](CLAUDE.md) for details on how these fit together.
+[MIT](LICENSE) © 2026 Jason Loo
