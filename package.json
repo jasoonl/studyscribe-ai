@@ -1,6 +1,9 @@
 {
-  "name": "scribesyncs-ai",
+  "name": "studyscribe-ai",
   "version": "1.0.0",
+  "description": "Turn lectures and meetings into transcripts, notes, flashcards, quizzes and an AI tutor.",
+  "homepage": "https://studyscribe-ai.vercel.app",
+  "repository": "github:jasoonl/studyscribe-ai",
   "type": "module",
   "license": "MIT",
   "engines": {

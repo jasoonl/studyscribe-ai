@@ -1,6 +1,6 @@
 # StudyScribe AI — Feature Gap Analysis & Roadmap (vs. Otter.ai and Cluely)
 
-_Last updated: 2026-10-13. Supersedes the scope of `competitor-benchmark.md` (Day 6), which is kept for history._
+_Last updated: 2026-10-13. Supersedes the scope of [`competitor-benchmark.md`](../archive/competitor-benchmark.md) (Day 6), which is kept for history._
 
 ## Ground rules for every item in this plan
 
@@ -37,7 +37,7 @@ _Last updated: 2026-10-13. Supersedes the scope of `competitor-benchmark.md` (Da
 - **Post-call notes**, transcript, action items, follow-up email draft.
 - Positioned (controversially) as **undetectable** in screen shares — we deliberately do **not** copy this.
 
-Sources: [Sonix — Otter.ai Review 2026](https://sonix.ai/resources/otter-ai-review-pricing/), [Builts — What is Cluely](https://builts.ai/blog/what-is-cluely/), [Dupple — Cluely review (Jul 2026)](https://dupple.com/reviews/cluely), [aisotools — Cluely review 2026](https://aisotools.com/blog/cluely-review-2026), plus the references in `competitor-benchmark.md`. Several of these are third-party/affiliate reviews; re-check plan-tier details on the vendors' own sites before quoting them publicly.
+Sources: [Sonix — Otter.ai Review 2026](https://sonix.ai/resources/otter-ai-review-pricing/), [Builts — What is Cluely](https://builts.ai/blog/what-is-cluely/), [Dupple — Cluely review (Jul 2026)](https://dupple.com/reviews/cluely), [aisotools — Cluely review 2026](https://aisotools.com/blog/cluely-review-2026), plus the references in [`competitor-benchmark.md`](../archive/competitor-benchmark.md). Several of these are third-party/affiliate reviews; re-check plan-tier details on the vendors' own sites before quoting them publicly.
 
 ---
 
